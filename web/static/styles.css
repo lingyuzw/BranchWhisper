@@ -493,6 +493,10 @@ textarea {
   line-height: 1.55;
 }
 
+.prompt-textarea {
+  min-height: 360px;
+}
+
 .composer textarea {
   min-height: 44px;
   max-height: 132px;
