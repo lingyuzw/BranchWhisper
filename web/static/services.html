@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>buding services</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body data-page="services">
+    <div class="admin-app">
+      <header class="top-nav">
+        <a class="wordmark" href="/static/index.html">
+          <span>b</span>
+          <strong>buding</strong>
+        </a>
+
+        <nav class="top-links">
+          <a href="/static/index.html">对话</a>
+          <a class="active" href="/static/services.html">服务</a>
+          <a href="/static/settings.html">配置</a>
+        </nav>
+
+        <span class="connection-pill" id="systemState">静态预览</span>
+      </header>
+
+      <main class="admin-stage">
+        <section class="admin-head">
+          <div>
+            <p class="eyebrow">Service operations</p>
+            <h1>模型服务</h1>
+          </div>
+          <div class="head-actions">
+            <button class="primary-action" id="startAllBtn" type="button">
+              <i data-lucide="power"></i>
+              一键启动
+            </button>
+            <button class="secondary-action" id="stopAllBtn" type="button">
+              <i data-lucide="square"></i>
+              停止全部
+            </button>
+            <button class="secondary-action" id="clearAllLogsBtn" type="button">
+              <i data-lucide="trash-2"></i>
+              清空日志
+            </button>
+            <button class="icon-button" id="healthBtn" type="button" title="刷新状态">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+        </section>
+
+        <section class="services-layout">
+          <div class="service-list" id="serviceCards"></div>
+
+          <aside class="logs-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Logs</p>
+                <h2>运行日志</h2>
+              </div>
+              <button class="icon-button" id="refreshLogsBtn" type="button" title="刷新日志">
+                <i data-lucide="rotate-cw"></i>
+              </button>
+            </div>
+            <div class="log-tabs" id="logTabs"></div>
+            <pre id="logOutput">选择一个服务查看日志。</pre>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
