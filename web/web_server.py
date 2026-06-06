@@ -44,6 +44,7 @@ SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
 MIC_SAMPLE_RATE = 16000
 VAD_BLOCK_SIZE = 512
 END = object()
+GLOBAL_TTS_LOCK = asyncio.Lock()
 
 # TTS output from the local CosyVoice endpoint is expected to be raw PCM16LE.
 # These defaults reduce clipping/pops when the HTTP stream is forwarded to the
@@ -128,9 +129,10 @@ DEFAULT_SERVICE_PROFILES = {
         "description": "Speech recognition service, started by qwen-asr-serve.",
         "cwd": "/root/autodl-tmp/project",
         "command": (
+            "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
             "/root/miniconda3/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B "
             "--served-model-name qwen3-asr "
-            "--gpu-memory-utilization 0.45 "
+            "--gpu-memory-utilization 0.35 "
             "--max-model-len 8192 "
             "--max-num-seqs 1 "
             "--enforce-eager "
@@ -138,7 +140,7 @@ DEFAULT_SERVICE_PROFILES = {
             "--port 8001"
         ),
         "health_url": "http://127.0.0.1:8001/health",
-        "startup_wait_sec": 15,
+        "startup_wait_sec": 0,
     },
     "llm": {
         "label": "llama.cpp Qwen3.5",
@@ -164,7 +166,7 @@ DEFAULT_SERVICE_PROFILES = {
         "cwd": "/root/autodl-tmp/project/CosyVoice",
         "command": (
             "/root/miniconda3/bin/conda run --no-capture-output -n cosyvoice_vllm python -u "
-            "/root/autodl-tmp/project/buding/tts/trained_tts_server.py "
+            "/root/autodl-tmp/project/LoveChoice/tts/trained_tts_server.py "
             "--repo_dir /root/autodl-tmp/project/CosyVoice "
             "--model_dir /root/autodl-tmp/project/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B "
             "--speaker hanser "
@@ -174,7 +176,7 @@ DEFAULT_SERVICE_PROFILES = {
             "--port 50000"
         ),
         "health_url": "http://127.0.0.1:50000/health",
-        "startup_wait_sec": 0,
+        "startup_wait_sec": 10,
     },
 }
 
@@ -1084,15 +1086,20 @@ class DialogSession:
                     if should_flush_tts(buffer, first_chunk):
                         # First segment is intentionally shorter for lower
                         # first-audio latency; later segments are longer to
-                        # reduce TTS prosody jumps.
-                        await text_queue.put(buffer)
+                        # reduce TTS prosody jumps. Clean before enqueueing so
+                        # prompt echoes like <|endofprompt|> never reach TTS.
+                        tts_text = clean_for_tts(buffer)
+                        if tts_text:
+                            await text_queue.put(tts_text)
                         buffer = ""
                         first_chunk = False
 
         if buffer.strip():
-            await text_queue.put(buffer)
+            tts_text = clean_for_tts(buffer)
+            if tts_text:
+                await text_queue.put(tts_text)
 
-        return full_answer
+        return clean_for_tts(full_answer) or full_answer.strip()
 
     async def tts_queue_worker(self, text_queue: asyncio.Queue) -> None:
         # TTS requests are sequential so audio order is deterministic. The
@@ -1113,55 +1120,63 @@ class DialogSession:
         # Raw PCM16 must stay 2-byte aligned. Network/HTTP chunks are transport
         # chunks, not audio frame boundaries; odd bytes or abrupt segment edges
         # can sound like pops/clicks in the browser.
-        await self.send_event("tts_segment", text=text)
-        payload = {
-            "text": text,
-            "stream": True,
-            "speed": self.settings.tts_speed,
-            "seed": self.settings.tts_seed,
-        }
-        started = time.perf_counter()
-        first_audio = True
-        self.reset_tts_pcm_state()
+        text = clean_for_tts(text)
+        if not text:
+            return
 
-        try:
-            async with httpx.AsyncClient(timeout=None) as client:
-                async with client.stream("POST", self.settings.tts_url, json=payload) as resp:
-                    resp.raise_for_status()
-                    async for chunk in resp.aiter_bytes():
-                        if not chunk:
-                            continue
-                        if first_audio:
-                            await self.send_event("metric", name="tts_first_audio_ms", value=int((time.perf_counter() - started) * 1000))
-                            await self.send_event("audio_format", sample_rate=self.settings.tts_sample_rate, channels=1, format="pcm_s16le")
-                            first_audio = False
-
-                        safe_chunk = self.process_tts_pcm_chunk(chunk)
-                        if safe_chunk:
-                            await self.send_audio(safe_chunk)
-
-                tail = self.finish_tts_pcm_stream()
-                if tail:
-                    await self.send_audio(tail)
-
-        except httpx.ConnectError as exc:
-            await self.send_event(
-                "error",
-                message=(
-                    f"CosyVoice3 TTS 服务连接失败：{self.settings.tts_url}。"
-                    "请去“服务”页面启动 CosyVoice3 TTS，并查看 tts 日志。"
-                    f"原始错误：{exc}"
-                ),
-            )
-        except httpx.HTTPStatusError as exc:
-            await self.send_event(
-                "error",
-                message=f"CosyVoice3 TTS 返回 HTTP {exc.response.status_code}：请查看 tts 日志。",
-            )
-        except httpx.HTTPError as exc:
-            await self.send_event("error", message=f"CosyVoice3 TTS 请求失败：{exc}")
-        finally:
+        # CosyVoice/vLLM paths can be unstable under concurrent requests, so all
+        # browser sessions share one TTS lock. This prevents overlapping /tts
+        # calls that can produce garbled "啊啊啊" audio or NoneType failures.
+        async with GLOBAL_TTS_LOCK:
+            await self.send_event("tts_segment", text=text)
+            payload = {
+                "text": text,
+                "stream": True,
+                "speed": self.settings.tts_speed,
+                "seed": self.settings.tts_seed,
+            }
+            started = time.perf_counter()
+            first_audio = True
             self.reset_tts_pcm_state()
+
+            try:
+                async with httpx.AsyncClient(timeout=None) as client:
+                    async with client.stream("POST", self.settings.tts_url, json=payload) as resp:
+                        resp.raise_for_status()
+                        async for chunk in resp.aiter_bytes():
+                            if not chunk:
+                                continue
+                            if first_audio:
+                                await self.send_event("metric", name="tts_first_audio_ms", value=int((time.perf_counter() - started) * 1000))
+                                await self.send_event("audio_format", sample_rate=self.settings.tts_sample_rate, channels=1, format="pcm_s16le")
+                                first_audio = False
+
+                            safe_chunk = self.process_tts_pcm_chunk(chunk)
+                            if safe_chunk:
+                                await self.send_audio(safe_chunk)
+
+                    tail = self.finish_tts_pcm_stream()
+                    if tail:
+                        await self.send_audio(tail)
+
+            except httpx.ConnectError as exc:
+                await self.send_event(
+                    "error",
+                    message=(
+                        f"CosyVoice3 TTS 服务连接失败：{self.settings.tts_url}。"
+                        "请去“服务”页面启动 CosyVoice3 TTS，并查看 tts 日志。"
+                        f"原始错误：{exc}"
+                    ),
+                )
+            except httpx.HTTPStatusError as exc:
+                await self.send_event(
+                    "error",
+                    message=f"CosyVoice3 TTS 返回 HTTP {exc.response.status_code}：请查看 tts 日志。",
+                )
+            except httpx.HTTPError as exc:
+                await self.send_event("error", message=f"CosyVoice3 TTS 请求失败：{exc}")
+            finally:
+                self.reset_tts_pcm_state()
 
     def reset_tts_pcm_state(self) -> None:
         self.tts_pcm_pending = b""
@@ -1458,8 +1473,50 @@ def should_flush_tts(text: str, first_chunk: bool) -> bool:
 
 
 def clean_for_tts(text: str) -> str:
-    text = text.strip()
-    text = re.sub(r"\s*END\s*$", "", text, flags=re.IGNORECASE).strip()
+    """Normalize assistant text before sending it to CosyVoice.
+
+    llama.cpp / chat-template misconfiguration can sometimes echo prompt text,
+    for example: "You are a helpful assistant<|endofprompt|>你好". CosyVoice
+    should only receive natural speakable text, not system prompts or special
+    tokens. This function is deliberately conservative: it removes known prompt
+    wrappers and drops pure prompt fragments, while keeping normal Chinese text.
+    """
+    text = str(text or "").strip()
+    if not text:
+        return ""
+
+    # Keep only the real assistant answer after common prompt separators.
+    for marker in ("<|endofprompt|>", "<|im_start|>assistant", "assistant:", "Assistant:"):
+        if marker in text:
+            text = text.split(marker)[-1]
+
+    # Remove common chat-template / special tokens.
+    text = re.sub(r"<\|.*?\|>", "", text)
+
+    # Remove accidental prompt echoes that should never be spoken.
+    prompt_fragments = (
+        "You are a helpful assistant",
+        "You are a helpful",
+        "A conversation between User and Assistant",
+    )
+    for fragment in prompt_fragments:
+        text = text.replace(fragment, "")
+
+    # Remove role labels at the beginning or on their own lines.
+    text = re.sub(r"(^|\n)\s*(system|user|assistant)\s*[:：]\s*", "\\1", text, flags=re.I)
+
+    # Remove explicit stop words and leftover wrappers.
+    text = re.sub(r"\s*END\s*$", "", text, flags=re.IGNORECASE)
+    text = text.replace("<s>", "").replace("</s>", "")
+
+    # Collapse whitespace to make TTS rhythm more stable.
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # If only an English prompt fragment is left, do not synthesize it.
+    if re.fullmatch(r"[A-Za-z0-9\s,.'\"!?:;_\-<>|/]+", text or ""):
+        if re.search(r"(helpful|assistant|system|prompt|user|conversation)", text, flags=re.I):
+            return ""
+
     return text
 
 
