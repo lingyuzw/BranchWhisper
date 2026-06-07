@@ -67,7 +67,7 @@ function createServiceCard(service) {
   card.innerHTML = `
     <div class="service-head">
       <span class="status-dot"></span>
-      <div class="service-title"><strong>${service.label || service.id}</strong></div>
+      <div class="service-title"><strong>${service.label || service.id}</strong><br /><small style="color:var(--text-muted);font-size:var(--font-xs);font-weight:400">${service.description || ""}</small></div>
       <span class="service-badge ${service.running ? 'running' : healthOk === false ? 'failed' : ''}">${stateLabel}</span>
     </div>
     <div class="service-meta">

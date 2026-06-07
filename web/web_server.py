@@ -314,6 +314,30 @@ def _is_pid_alive(pid: int) -> bool:
     except OSError:
         return False
 
+
+def _create_virtual_process(pid: int) -> subprocess.Popen | None:
+    """Create a minimal Popen wrapper around an existing process ID.
+
+    Used when the web server restarts and finds existing child processes
+    via PID files. This lets ServiceManager manage them through the normal
+    status() and stop() code paths. On platforms where a Popen skeleton
+    cannot be crafted (e.g. Windows without a process handle), returns None
+    and the caller falls through to the PID-file-based kill logic.
+    """
+    try:
+        proc = subprocess.Popen.__new__(subprocess.Popen)
+        proc.pid = pid
+        proc.returncode = None
+        if platform.system() == "Windows":
+            # On Windows, Popen.terminate()/poll() need a real process
+            # handle. Without it the operations would silently fail.
+            # The stop() method already has a PID-file fallback for this case.
+            return None
+        return proc
+    except Exception:
+        return None
+
+
 class ServiceManager:
     # Manages local subprocesses for ASR, LLM, and TTS. The web server itself
     # must already be running; "start all" means starting the model services
@@ -330,6 +354,9 @@ class ServiceManager:
             pid = _read_service_pid(sid)
             if pid and _is_pid_alive(pid):
                 self.started_at[sid] = time.time()
+                proc = _create_virtual_process(pid)
+                if proc:
+                    self.processes[sid] = proc
 
     def update_service(self, service_id: str, patch: dict) -> dict:
         if service_id not in self.services:
@@ -370,6 +397,16 @@ class ServiceManager:
         port_open = is_tcp_port_open(health_url)
         external_running = bool(health and health.get("ok")) or port_open
         running = tracked_running or external_running
+
+        # 如果服务端口已通但没有 tracked process，尝试从 PID 文件注入进程引用，
+        # 使得后续 stop() 能通过 _terminate_process 正确终止。
+        if not tracked_running and external_running:
+            pid = _read_service_pid(service_id)
+            if pid and _is_pid_alive(pid):
+                if service_id not in self.processes:
+                    proc = _create_virtual_process(pid)
+                    if proc:
+                        self.processes[service_id] = proc
 
         return {
             "id": service_id,

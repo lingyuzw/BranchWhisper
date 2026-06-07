@@ -123,10 +123,12 @@
             <h1>配置中心</h1>
             <a data-setting-nav="appearance"><i data-lucide="palette"></i>外观</a>
             <a data-setting-nav="engine"><i data-lucide="cpu"></i>模型引擎</a>
+            <a data-setting-nav="memory-config"><i data-lucide="brain"></i>记忆</a>
             <a data-setting-nav="prompt"><i data-lucide="message-square-text"></i>Prompt</a>
             <a data-setting-nav="tts"><i data-lucide="volume-2"></i>语音合成</a>
             <a data-setting-nav="vad"><i data-lucide="mic-vocal"></i>语音检测</a>
-            <a data-setting-nav="commands"><i data-lucide="terminal-square"></i>服务命令</a>
+            <a data-setting-nav="tools-config"><i data-lucide="terminal-square"></i>工具</a>
+            <a data-setting-nav="commands"><i data-lucide="sliders-horizontal"></i>服务命令</a>
             <button class="primary-action full" id="saveAllBtn" type="button"><i data-lucide="save"></i>应用配置</button>
           </aside>
           <section class="settings-content">
@@ -151,6 +153,21 @@
                 <label class="wide"><span>API Key</span><input id="llmApiKey" type="password" autocomplete="off" /></label>
               </div>
             </article>
+            <article class="settings-panel" id="memory-config">
+              <div class="panel-head"><div><p class="eyebrow">Memory</p><h2>记忆设置</h2></div></div>
+              <div class="form-grid compact">
+                <label><span>自动记忆</span><input id="memoryEnabled" type="checkbox" /></label>
+                <label><span>自动提取</span><input id="memoryExtractEnabled" type="checkbox" /></label>
+                <label><span>短期→中期天数</span><input id="memoryShortToMidDays" type="number" min="1" max="365" step="1" /></label>
+                <label><span>短期→中期次数</span><input id="memoryShortToMidCount" type="number" min="1" max="50" step="1" /></label>
+                <label><span>中期→长期天数</span><input id="memoryMidToLongDays" type="number" min="1" max="730" step="1" /></label>
+                <label><span>中期→长期次数</span><input id="memoryMidToLongCount" type="number" min="1" max="50" step="1" /></label>
+                <label><span>短期删除天数</span><input id="memoryShortDeleteDays" type="number" min="1" max="730" step="1" /></label>
+                <label><span>中期降级天数</span><input id="memoryMidDowngradeDays" type="number" min="1" max="730" step="1" /></label>
+                <label><span>长期降级天数</span><input id="memoryLongDowngradeDays" type="number" min="1" max="3650" step="1" /></label>
+                <label><span>上下文最大条数</span><input id="memoryMaxContextItems" type="number" min="1" max="50" step="1" /></label>
+              </div>
+            </article>
             <article class="settings-panel settings-panel--prominent" id="prompt">
               <div class="panel-head"><div><p class="eyebrow">Persona</p><h2>Prompt 配置</h2></div></div>
               <label class="wide"><span>System Prompt</span><textarea class="prompt-textarea" id="systemPrompt"></textarea></label>
@@ -163,6 +180,7 @@
                 <label><span>TTS Seed</span><input id="ttsSeed" type="number" min="0" step="1" /></label>
                 <label><span>TTS Volume</span><input id="ttsVolume" type="number" min="0.05" max="1.5" step="0.01" /></label>
                 <label><span>TTS Fade ms</span><input id="ttsFadeMs" type="number" min="0" max="40" step="1" /></label>
+                <label><span>采样率</span><input id="ttsSampleRate" type="number" min="8000" max="48000" step="1000" /></label>
               </div>
             </article>
             <article class="settings-panel" id="vad">
@@ -174,6 +192,15 @@
                 <label><span>Pre Speech ms</span><input id="preSpeech" type="number" min="0" max="800" step="10" /></label>
                 <label><span>Min Utterance ms</span><input id="minUtterance" type="number" min="100" max="1500" step="10" /></label>
                 <label><span>Max Utterance sec</span><input id="maxUtterance" type="number" min="2" max="60" step="1" /></label>
+              </div>
+            </article>
+            <article class="settings-panel" id="tools-config">
+              <div class="panel-head"><div><p class="eyebrow">Tools</p><h2>工具设置</h2></div></div>
+              <div class="form-grid compact">
+                <label><span>启用工令</span><input id="toolsEnabled" type="checkbox" /></label>
+                <label><span>自动调用</span><input id="toolsAutoCall" type="checkbox" /></label>
+                <label><span>超时秒数</span><input id="toolsTimeout" type="number" min="1" max="60" step="0.5" /></label>
+                <label><span>结果最大字符</span><input id="toolsMaxResultChars" type="number" min="100" max="10000" step="100" /></label>
               </div>
             </article>
             <article class="settings-panel" id="commands">

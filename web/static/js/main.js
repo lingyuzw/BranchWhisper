@@ -118,3 +118,10 @@ export function setTheme(theme) {
     btn.classList.toggle("active", btn.dataset.theme === theme);
   });
 }
+
+// 暴露主题 API 给其他模块使用
+window.__lovechoice = {
+  setTheme,
+  loadTheme,
+  getTheme: () => localStorage.getItem("lovechoice.theme") || "dark",
+};
