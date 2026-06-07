@@ -69,7 +69,8 @@ async function switchPage(page, pushState = true) {
   currentPage = page;
   if (pushState) history.pushState({ page }, "", `#${page}`);
 
-  // init page module, but skip re-init if already loaded (SPA anti-flash)
+  // init page module — always re-init settings (it's lightweight and idempotent)
+  // dashboard and services are heavy (websocket, polling) so only init once
   try {
     if (page === "dashboard") {
       if (!dashboardInitialized) {
@@ -84,14 +85,16 @@ async function switchPage(page, pushState = true) {
         servicesInitialized = true;
       }
     } else if (page === "settings") {
-      if (!settingsInitialized) {
-        const { initSettings } = await import("./ui-settings.js");
-        await initSettings();
-        settingsInitialized = true;
-      }
+      // re-init every time so it always fetches fresh config
+      const { initSettings } = await import("./ui-settings.js");
+      await initSettings();
     }
   } catch (e) {
     console.error(`Failed to init page ${page}:`, e);
+    // reset latch so user can retry
+    if (page === "settings") settingsInitialized = false;
+    if (page === "services") servicesInitialized = false;
+    if (page === "dashboard") dashboardInitialized = false;
   }
 }
 
