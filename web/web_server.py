@@ -1091,6 +1091,10 @@ def create_app(args) -> FastAPI:
     return app
 
 
+def compact_str(s: str) -> str:
+    return "".join(s.split())[:200]
+
+
 class DialogSession:
     # One DialogSession is created for each browser tab. It owns conversation
     # history, WebSocket sends, and the current VAD stream state.
@@ -1335,9 +1339,6 @@ class DialogSession:
             messages,
             title_hint=title_hint,
         )
-
-def compact_str(s: str) -> str:
-    return "".join(s.split())[:200]
 
     def build_contextual_request_messages(self, user_text: str, request_user_text: str) -> list[dict[str, str]]:
         messages = list(self.messages)
