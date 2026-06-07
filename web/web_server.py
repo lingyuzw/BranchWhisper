@@ -292,6 +292,28 @@ class SessionSettings:
             setattr(self, key, value)
 
 
+def _pid_file(service_id: str) -> Path:
+    return LOG_DIR / f"{service_id}.pid"
+
+def _write_service_pid(service_id: str, pid: int) -> None:
+    _pid_file(service_id).write_text(str(pid), encoding="utf-8")
+
+def _read_service_pid(service_id: str) -> int | None:
+    pf = _pid_file(service_id)
+    if pf.exists():
+        try:
+            return int(pf.read_text(encoding="utf-8").strip())
+        except (ValueError, OSError):
+            pass
+    return None
+
+def _is_pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
 class ServiceManager:
     # Manages local subprocesses for ASR, LLM, and TTS. The web server itself
     # must already be running; "start all" means starting the model services
@@ -303,6 +325,11 @@ class ServiceManager:
         self.log_files: dict[str, Path] = {}
         self.started_at: dict[str, float] = {}
         LOG_DIR.mkdir(parents=True, exist_ok=True)
+        # 挂接上次启动的子进程 PID 文件（服务端重启后能重新控制已有进程）
+        for sid in self.services:
+            pid = _read_service_pid(sid)
+            if pid and _is_pid_alive(pid):
+                self.started_at[sid] = time.time()
 
     def update_service(self, service_id: str, patch: dict) -> dict:
         if service_id not in self.services:
@@ -410,6 +437,7 @@ class ServiceManager:
         self.processes[service_id] = process
         self.log_files[service_id] = log_file
         self.started_at[service_id] = time.time()
+        _write_service_pid(service_id, process.pid)
         return await self.status(service_id)
 
     async def stop(self, service_id: str) -> dict:
@@ -419,6 +447,24 @@ class ServiceManager:
         process = self.processes.get(service_id)
         if process is not None and process.poll() is None:
             await asyncio.to_thread(self._terminate_process, process)
+        else:
+            # 服务端重启后没有原 Popen 句柄，通过 PID 文件杀死旧进程
+            pid = _read_service_pid(service_id)
+            if pid and _is_pid_alive(pid):
+                try:
+                    if platform.system() == "Windows":
+                        os.kill(pid, signal.SIGTERM)
+                    else:
+                        os.killpg(pid, signal.SIGTERM)
+                except Exception:
+                    try:
+                        if platform.system() == "Windows":
+                            os.kill(pid, signal.SIGKILL)
+                        else:
+                            os.killpg(pid, signal.SIGKILL)
+                    except Exception:
+                        pass
+        _pid_file(service_id).unlink(missing_ok=True)
         return await self.status(service_id)
 
     async def start_all(self, overrides: dict | None = None) -> list[dict]:
