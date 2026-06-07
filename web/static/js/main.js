@@ -108,6 +108,10 @@ function applyTheme(theme) {
   } else {
     document.documentElement.classList.remove("theme-light");
   }
+  // sync toggle buttons if present
+  document.querySelectorAll("#themeToggle button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.theme === theme);
+  });
 }
 
 export function setTheme(theme) {

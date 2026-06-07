@@ -43,8 +43,8 @@
   --font-label: 12px;
 }
 
-/* ---- light theme ---- */
-.theme-light {
+/* ---- light theme (higher specificity to override :root) ---- */
+html.theme-light {
   --bg: #ffffff;
   --bg-elevated: #f6f8fa;
   --surface: #ffffff;
