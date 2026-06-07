@@ -12,45 +12,45 @@
   </head>
   <body data-page="dashboard">
     <div class="app-shell">
-      <!-- header -->
       <header class="topbar">
         <a class="brand" href="/static/index.html">
           <span class="brand-mark">LC</span>
           <span><strong>LoveChoice</strong><small>Voice Console</small></span>
         </a>
-
         <nav class="nav-tabs">
           <a class="active" href="/static/index.html"><i data-lucide="messages-square"></i>对话</a>
           <a href="/static/services.html"><i data-lucide="activity"></i>服务</a>
           <a href="/static/settings.html"><i data-lucide="settings-2"></i>配置</a>
         </nav>
-
         <div class="topbar-status">
-          <button class="icon-button" id="memoryTriggerBtn" type="button" title="记忆管理">
-            <i data-lucide="brain"></i>
-          </button>
+          <button class="icon-button" id="memoryTriggerBtn" type="button" title="记忆"><i data-lucide="brain"></i></button>
           <span class="status-pill" id="dialogState">待机</span>
         </div>
       </header>
 
-      <!-- main: 2-column -->
       <main class="voice-console">
-        <!-- left sidebar -->
+        <!-- sidebar -->
         <aside class="sidebar">
-          <button class="primary-action full" id="newConversationBtn" type="button">
-            <i data-lucide="plus"></i> 新建对话
-          </button>
+          <button class="primary-action full" id="newConversationBtn" type="button"><i data-lucide="plus"></i> 新建对话</button>
 
           <div class="conversation-rail">
-            <div class="rail-head">
-              <p class="eyebrow">Sessions</p>
-            </div>
+            <p class="eyebrow rail-label">Sessions</p>
             <div class="conversation-list" id="conversationList"></div>
           </div>
 
-          <!-- compact pipeline indicator -->
+          <!-- waveform in sidebar -->
+          <div class="sidebar-scope">
+            <div class="scope-header">
+              <span id="vadLabel">idle</span>
+              <span id="levelText">0%</span>
+            </div>
+            <canvas id="scopeCanvas" width="320" height="80"></canvas>
+            <div class="level-track"><span class="level-bar" id="levelBar"></span></div>
+          </div>
+
+          <!-- pipeline -->
           <div class="pipeline-compact" id="pipelineCompact">
-            <div class="pipeline-row" data-stage="vad"><span class="pdot"></span><strong>VAD</strong><small id="plVadLabel">idle</small></div>
+            <div class="pipeline-row" data-stage="vad"><span class="pdot"></span><strong>VAD</strong><small>idle</small></div>
             <div class="pipeline-row" data-stage="asr"><span class="pdot"></span><strong>ASR</strong><small>--</small></div>
             <div class="pipeline-row" data-stage="llm"><span class="pdot"></span><strong>LLM</strong><small>--</small></div>
             <div class="pipeline-row" data-stage="tts"><span class="pdot"></span><strong>TTS</strong><small>--</small></div>
@@ -63,41 +63,46 @@
           </div>
         </aside>
 
-        <!-- main chat area -->
-        <section class="chat-panel">
-          <div class="chat-header">
-            <div>
-              <p class="eyebrow">Active Thread</p>
+        <!-- chat: centered, narrow -->
+        <section class="chat-area" id="chatArea">
+          <!-- empty welcome state (hidden when has messages) -->
+          <div class="chat-welcome" id="chatWelcome">
+            <div class="welcome-brand">
+              <span class="welcome-icon">LC</span>
+              <h1>有什么我可以帮你的？</h1>
+              <p>打开麦克风开始语音对话，或输入文字发送消息</p>
+            </div>
+            <div class="composer welcome-composer">
+              <button class="voice-button" id="micBtnWelcome" type="button"><i data-lucide="mic"></i></button>
+              <textarea id="textInputWelcome" rows="1" autocomplete="off" placeholder="输入消息..."></textarea>
+              <button class="send-button" id="sendBtnWelcome" type="button"><i data-lucide="send"></i></button>
+            </div>
+          </div>
+
+          <!-- message area (hidden when empty) -->
+          <div class="chat-messages" id="chatMessages" style="display:none">
+            <div class="messages-header">
               <strong id="conversationTitle">新的对话</strong>
+              <span id="conversationMeta">本次 · 0 条</span>
             </div>
-            <span id="conversationMeta">本次 · 0 条</span>
+            <div class="transcript" id="transcript"></div>
           </div>
 
-          <div class="transcript" id="transcript" aria-live="polite"></div>
-
-          <!-- listen strip -->
-          <div class="listen-strip">
-            <div class="listen-meta">
-              <span id="vadLabel">idle</span>
-              <span id="levelText">0%</span>
+          <!-- bottom composer (hidden when empty) -->
+          <div class="chat-composer" id="chatComposer" style="display:none">
+            <div class="composer">
+              <button class="voice-button" id="micBtn" type="button"><i data-lucide="mic"></i></button>
+              <textarea id="textInput" rows="1" autocomplete="off" placeholder="输入消息..."></textarea>
+              <button class="send-button" id="sendBtn" type="button"><i data-lucide="send"></i></button>
+              <button class="icon-button" id="interruptBtn" type="button" title="打断"><i data-lucide="octagon-x"></i></button>
+              <button class="icon-button" id="resetBtn" type="button" title="新对话"><i data-lucide="square-pen"></i></button>
             </div>
-            <canvas id="scopeCanvas" width="1280" height="160"></canvas>
-            <div class="level-track"><span class="level-bar" id="levelBar"></span></div>
-          </div>
-
-          <!-- composer -->
-          <div class="composer">
-            <button class="voice-button" id="micBtn" type="button" title="麦克风"><i data-lucide="mic"></i></button>
-            <textarea id="textInput" rows="1" autocomplete="off" placeholder="输入文字，或打开麦克风开始说话"></textarea>
-            <button class="send-button" id="sendBtn" type="button" title="发送"><i data-lucide="send"></i></button>
-            <button class="icon-button" id="interruptBtn" type="button" title="打断"><i data-lucide="octagon-x"></i></button>
-            <button class="icon-button" id="resetBtn" type="button" title="新对话"><i data-lucide="square-pen"></i></button>
           </div>
         </section>
       </main>
     </div>
 
-    <!-- memory modal (hidden by default) -->
+    <!-- memory modal -->
     <div class="modal-overlay" id="memoryModal" hidden>
       <div class="modal-panel">
         <div class="modal-head">

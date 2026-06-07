@@ -46,9 +46,10 @@ export async function startMic({ onSendSamples }) {
   state.silentGain.connect(state.audioCtx.destination);
 
   state.micActive = true;
-  $("#micBtn")?.classList.add("active");
-  const micBtn = $("#micBtn");
-  if (micBtn) micBtn.innerHTML = '<i data-lucide="mic-off"></i>';
+  // update both mic buttons (welcome + bottom composer)
+  document.querySelectorAll("#micBtn, #micBtnWelcome").forEach((btn) => {
+    btn.classList.add("active"); btn.innerHTML = '<i data-lucide="mic-off"></i>';
+  });
 }
 
 export function stopMic() {
@@ -62,9 +63,9 @@ export function stopMic() {
   state.micSource = null;
   state.micProcessor = null;
   state.silentGain = null;
-  $("#micBtn")?.classList.remove("active");
-  const micBtn = $("#micBtn");
-  if (micBtn) micBtn.innerHTML = '<i data-lucide="mic"></i>';
+  document.querySelectorAll("#micBtn, #micBtnWelcome").forEach((btn) => {
+    btn.classList.remove("active"); btn.innerHTML = '<i data-lucide="mic"></i>';
+  });
 }
 
 /* ---- sample rate conversion ---- */
