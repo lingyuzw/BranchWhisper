@@ -26,6 +26,8 @@ from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from runtime_brain import MemoryStore, ToolManager, parse_tool_call
+
 
 # Backend data flow:
 # 1. Browser sends 16 kHz float32 PCM blocks over WebSocket.
@@ -40,6 +42,8 @@ LOG_DIR = RUNTIME_DIR / "logs"
 CONVERSATION_DIR = RUNTIME_DIR / "conversations"
 CONVERSATION_INDEX = CONVERSATION_DIR / "index.json"
 SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
+MEMORY_DB = RUNTIME_DIR / "memory.sqlite3"
+TOOLS_CONFIG = RUNTIME_DIR / "tools.json"
 
 MIC_SAMPLE_RATE = 16000
 VAD_BLOCK_SIZE = 512
@@ -196,6 +200,20 @@ class SessionSettings:
     max_tokens: int
     history_turns: int
     system: str
+    memory_enabled: bool
+    memory_extract_enabled: bool
+    memory_short_to_mid_days: int
+    memory_short_to_mid_count: int
+    memory_mid_to_long_days: int
+    memory_mid_to_long_count: int
+    memory_short_delete_days: int
+    memory_mid_downgrade_days: int
+    memory_long_downgrade_days: int
+    memory_max_context_items: int
+    tools_enabled: bool
+    tools_auto_call: bool
+    tools_timeout: float
+    tools_max_result_chars: int
     tts_url: str
     tts_sample_rate: int
     tts_speed: float
@@ -223,6 +241,20 @@ class SessionSettings:
             max_tokens=args.max_tokens,
             history_turns=args.history_turns,
             system=args.system,
+            memory_enabled=args.memory_enabled,
+            memory_extract_enabled=args.memory_extract_enabled,
+            memory_short_to_mid_days=args.memory_short_to_mid_days,
+            memory_short_to_mid_count=args.memory_short_to_mid_count,
+            memory_mid_to_long_days=args.memory_mid_to_long_days,
+            memory_mid_to_long_count=args.memory_mid_to_long_count,
+            memory_short_delete_days=args.memory_short_delete_days,
+            memory_mid_downgrade_days=args.memory_mid_downgrade_days,
+            memory_long_downgrade_days=args.memory_long_downgrade_days,
+            memory_max_context_items=args.memory_max_context_items,
+            tools_enabled=args.tools_enabled,
+            tools_auto_call=args.tools_auto_call,
+            tools_timeout=args.tools_timeout,
+            tools_max_result_chars=args.tools_max_result_chars,
             tts_url=args.tts_url,
             tts_sample_rate=args.tts_sample_rate,
             tts_speed=args.tts_speed,
@@ -740,6 +772,8 @@ def create_app(args) -> FastAPI:
     app.state.vad_store = VadModelStore(args.vad_device)
     app.state.service_manager = ServiceManager(Path(args.service_config) if args.service_config else None)
     app.state.conversation_store = ConversationStore()
+    app.state.memory_store = MemoryStore(MEMORY_DB)
+    app.state.tool_manager = ToolManager(TOOLS_CONFIG)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.get("/")
@@ -755,6 +789,52 @@ def create_app(args) -> FastAPI:
         app.state.settings.update_from_dict(payload or {})
         save_persisted_settings(app.state.settings)
         return asdict(app.state.settings)
+
+    @app.get("/api/memory")
+    async def memory_items(limit: int = 200, query: str = "", layer: str = ""):
+        return {
+            "items": app.state.memory_store.list_memories(app.state.settings, limit=limit, query=query, layer=layer),
+            "db_path": str(MEMORY_DB),
+        }
+
+    @app.post("/api/memory")
+    async def create_memory_item(payload: dict | None = Body(default=None)):
+        item = app.state.memory_store.create_memory(payload or {})
+        return {"item": item}
+
+    @app.patch("/api/memory/{memory_id}")
+    async def update_memory_item(memory_id: str, payload: dict | None = Body(default=None)):
+        item = app.state.memory_store.update_memory(memory_id, payload or {})
+        return {"item": item}
+
+    @app.delete("/api/memory/{memory_id}")
+    async def delete_memory_item(memory_id: str):
+        return {"ok": app.state.memory_store.delete_memory(memory_id)}
+
+    @app.post("/api/memory/decay")
+    async def decay_memory():
+        return app.state.memory_store.apply_decay(app.state.settings)
+
+    @app.get("/api/tools")
+    async def tools_config():
+        return app.state.tool_manager.get_config()
+
+    @app.patch("/api/tools")
+    async def update_tools_config(payload: dict | None = Body(default=None)):
+        return app.state.tool_manager.update_config(payload or {})
+
+    @app.post("/api/tools/test")
+    async def test_tool(payload: dict | None = Body(default=None)):
+        payload = payload or {}
+        tool_id = str(payload.get("id") or "")
+        arguments = payload.get("arguments") if isinstance(payload.get("arguments"), dict) else {}
+        result = await app.state.tool_manager.execute(
+            tool_id,
+            arguments,
+            timeout=app.state.settings.tools_timeout,
+            max_chars=app.state.settings.tools_max_result_chars,
+        )
+        return {"id": tool_id, "result": result}
 
     @app.get("/api/health")
     async def health():
@@ -839,6 +919,8 @@ def create_app(args) -> FastAPI:
             app.state.settings,
             app.state.vad_store,
             app.state.conversation_store,
+            app.state.memory_store,
+            app.state.tool_manager,
             websocket.query_params.get("conversation_id"),
         )
         await session.run()
@@ -855,6 +937,8 @@ class DialogSession:
         default_settings: SessionSettings,
         vad_store: VadModelStore,
         conversation_store: ConversationStore,
+        memory_store: MemoryStore,
+        tool_manager: ToolManager,
         conversation_id: str | None,
     ):
         self.websocket = websocket
@@ -862,10 +946,13 @@ class DialogSession:
         self.vad_store = vad_store
         self.vad_session: VoiceVadSession | None = None
         self.conversation_store = conversation_store
+        self.memory_store = memory_store
+        self.tool_manager = tool_manager
         self.conversation = conversation_store.get_or_create(conversation_id)
         self.messages = self.build_llm_messages(self.conversation)
         self.send_lock = asyncio.Lock()
         self.processing = False
+        self.current_task: asyncio.Task | None = None
         self.reset_tts_pcm_state()
 
     async def run(self) -> None:
@@ -883,6 +970,7 @@ class DialogSession:
                 elif message.get("bytes") is not None:
                     await self.handle_audio_bytes(message["bytes"])
         except WebSocketDisconnect:
+            await self.interrupt_current_turn(notify=False)
             return
 
     async def handle_text_message(self, raw: str) -> None:
@@ -906,6 +994,7 @@ class DialogSession:
             return
 
         if msg_type == "reset":
+            await self.interrupt_current_turn(notify=False)
             # Reset means "new chat" rather than deleting the old one. The old
             # conversation stays on disk and can be reopened from the sidebar.
             self.conversation = self.conversation_store.create()
@@ -918,14 +1007,18 @@ class DialogSession:
         if msg_type == "text":
             text = str(data.get("text") or "").strip()
             if text:
-                await self.process_user_text(text, source="text")
+                await self.start_current_task(self.process_user_text(text, source="text"))
+            return
+
+        if msg_type == "interrupt":
+            await self.interrupt_current_turn()
             return
 
     async def handle_audio_bytes(self, raw: bytes) -> None:
         if self.processing:
-            # While the assistant is speaking, drop incoming mic audio to avoid
-            # feeding TTS playback back into ASR. This is simple non-barge-in
-            # behavior; later you can replace it with echo cancellation.
+            # The browser sends an explicit "interrupt" control message when
+            # local barge-in detection fires. Until that message cancels the
+            # active turn, ignore audio to avoid feeding TTS playback to ASR.
             return
 
         if self.vad_session is None:
@@ -948,7 +1041,37 @@ class DialogSession:
                 await self.send_event("vad_short", duration_ms=event["duration_ms"])
             elif event_type == "vad_end":
                 await self.send_event("vad_end", duration_ms=event["duration_ms"])
-                await self.process_utterance(event["audio"])
+                await self.start_current_task(self.process_utterance(event["audio"]))
+
+    async def start_current_task(self, coro) -> None:
+        if self.current_task and not self.current_task.done():
+            await self.send_event("busy")
+            return
+        self.current_task = asyncio.create_task(coro)
+
+        def _clear_task(task: asyncio.Task) -> None:
+            if self.current_task is task:
+                self.current_task = None
+
+        self.current_task.add_done_callback(_clear_task)
+
+    async def interrupt_current_turn(self, notify: bool = True) -> None:
+        task = self.current_task
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+        self.current_task = None
+        self.processing = False
+        self.reset_tts_pcm_state()
+        if self.vad_session:
+            self.vad_session.reset()
+        if notify:
+            await self.send_event("interrupted")
 
     async def process_utterance(self, audio: np.ndarray) -> None:
         # VAD has decided that one user turn is complete. Convert it to WAV
@@ -1000,7 +1123,13 @@ class DialogSession:
                 return
 
             request_user_text = build_request_user_text(user_text, last_assistant_content(self.messages))
-            request_messages = self.messages + [{"role": "user", "content": request_user_text}]
+            tool_result = await self.maybe_execute_tool(user_text)
+            if tool_result:
+                request_user_text += (
+                    "\n\n联网/API 工具结果如下。请基于结果回答用户；如果结果不足或失败，要自然说明不确定，不要编造：\n"
+                    + json.dumps(tool_result, ensure_ascii=False)
+                )
+            request_messages = self.build_contextual_request_messages(user_text, request_user_text)
             text_queue: asyncio.Queue = asyncio.Queue()
             # TTS runs in parallel with the streaming LLM response. The LLM
             # producer places completed text segments in this queue.
@@ -1016,6 +1145,7 @@ class DialogSession:
                 self.messages.append({"role": "assistant", "content": full_answer})
                 self.persist_messages([{"role": "assistant", "content": full_answer}])
                 await self.send_event("conversation_saved", conversation=self.conversation)
+                await asyncio.to_thread(self.memory_store.observe_turn, self.settings, user_text, full_answer)
             self.trim_history()
         except Exception as exc:
             await self.send_event("error", message=f"Dialog failed: {exc}")
@@ -1038,6 +1168,90 @@ class DialogSession:
             messages,
             title_hint=title_hint,
         )
+
+    def build_contextual_request_messages(self, user_text: str, request_user_text: str) -> list[dict[str, str]]:
+        messages = list(self.messages)
+        memory_context = self.memory_store.format_context(self.settings, user_text)
+        if memory_context:
+            messages = [messages[0], {"role": "system", "content": memory_context}, *messages[1:]]
+        messages.append({"role": "user", "content": request_user_text})
+        return messages
+
+    async def maybe_execute_tool(self, user_text: str) -> dict | None:
+        if not self.settings.tools_enabled:
+            return None
+
+        specs = self.tool_manager.enabled_specs()
+        if not specs:
+            return None
+
+        heuristic_call = self.tool_manager.suggest_from_text(user_text)
+        custom_enabled = any(not spec.get("builtin") for spec in specs)
+        tool_signal = bool(
+            heuristic_call
+            or custom_enabled
+            or re.search(r"(当前|现在|最新|实时|热点|新闻|搜索|查一下|网上|天气|价格|汇率|网址|https?://)", user_text, flags=re.I)
+        )
+        if not tool_signal:
+            return None
+
+        call = heuristic_call
+        if self.settings.tools_auto_call:
+            planned = await self.plan_tool_call(user_text)
+            if planned:
+                call = planned
+
+        if not call:
+            return None
+
+        tool_id = call.get("id") or ""
+        arguments = call.get("arguments") if isinstance(call.get("arguments"), dict) else {}
+        if not self.tool_manager.tool_exists(tool_id):
+            return None
+
+        await self.send_event("tool", id=tool_id, arguments=arguments)
+        try:
+            result = await self.tool_manager.execute(
+                tool_id,
+                arguments,
+                timeout=self.settings.tools_timeout,
+                max_chars=self.settings.tools_max_result_chars,
+            )
+            return {"tool": tool_id, "arguments": arguments, "result": result}
+        except Exception as exc:
+            return {"tool": tool_id, "arguments": arguments, "result": {"ok": False, "error": str(exc)}}
+
+    async def plan_tool_call(self, user_text: str) -> dict | None:
+        planner_system = (
+            "你是工具路由器，只输出 JSON，不输出解释。"
+            "当用户需要当前、实时、联网、热点新闻、天气、财经价格、URL 读取或某个自定义 API 时，选择一个工具。"
+            "普通闲聊、稳定常识、情绪陪伴和不需要联网的问题，输出 {\"tool_call\": null}。"
+            "输出格式必须是 {\"tool_call\":{\"id\":\"工具id\",\"arguments\":{...}}} 或 {\"tool_call\":null}。\n\n"
+            "可用工具：\n"
+            f"{self.tool_manager.planner_tool_text()}"
+        )
+        messages = [
+            {"role": "system", "content": planner_system},
+            {"role": "user", "content": user_text},
+        ]
+        try:
+            text = await self.complete_llm_text(messages, temperature=0.0, max_tokens=260)
+        except Exception:
+            return None
+        return parse_tool_call(text)
+
+    async def complete_llm_text(self, messages: list[dict[str, str]], temperature: float = 0.0, max_tokens: int = 260) -> str:
+        payload = {
+            "model": self.settings.llm_model,
+            "messages": messages,
+            "stream": False,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        async with httpx.AsyncClient(timeout=self.settings.tools_timeout) as client:
+            resp = await client.post(self.settings.llm_url, json=payload)
+        resp.raise_for_status()
+        return extract_chat_message_text(resp.json())
 
     async def stream_llm(self, request_messages: list[dict[str, str]], text_queue: asyncio.Queue) -> str:
         # llama.cpp exposes an OpenAI-compatible SSE stream. We forward each
@@ -1397,6 +1611,21 @@ def extract_llm_delta(data: dict) -> str:
     return text or ""
 
 
+def extract_chat_message_text(data: dict) -> str:
+    choices = data.get("choices") or []
+    if choices:
+        message = choices[0].get("message") or {}
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        text = choices[0].get("text")
+        if isinstance(text, str):
+            return text
+    if isinstance(data.get("content"), str):
+        return data["content"]
+    return json.dumps(data, ensure_ascii=False)
+
+
 def is_story_request(text: str) -> bool:
     return any(keyword in text for keyword in STORY_KEYWORDS)
 
@@ -1534,6 +1763,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-tokens", type=int, default=220)
     parser.add_argument("--history-turns", type=int, default=8)
     parser.add_argument("--system", default=DEFAULT_SYSTEM)
+
+    parser.add_argument("--memory-enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--memory-extract-enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--memory-short-to-mid-days", type=int, default=60)
+    parser.add_argument("--memory-short-to-mid-count", type=int, default=3)
+    parser.add_argument("--memory-mid-to-long-days", type=int, default=180)
+    parser.add_argument("--memory-mid-to-long-count", type=int, default=5)
+    parser.add_argument("--memory-short-delete-days", type=int, default=180)
+    parser.add_argument("--memory-mid-downgrade-days", type=int, default=180)
+    parser.add_argument("--memory-long-downgrade-days", type=int, default=365)
+    parser.add_argument("--memory-max-context-items", type=int, default=12)
+
+    parser.add_argument("--tools-enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--tools-auto-call", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--tools-timeout", type=float, default=12.0)
+    parser.add_argument("--tools-max-result-chars", type=int, default=4000)
 
     parser.add_argument("--tts-url", default="http://127.0.0.1:50000/tts")
     parser.add_argument("--tts-sample-rate", type=int, default=24000)

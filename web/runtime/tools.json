@@ -1,0 +1,20 @@
+{
+  "builtins": {
+    "web_search": {
+      "enabled": true
+    },
+    "hot_news": {
+      "enabled": true
+    },
+    "url_fetch": {
+      "enabled": true
+    },
+    "weather": {
+      "enabled": true
+    },
+    "finance": {
+      "enabled": true
+    }
+  },
+  "custom_tools": []
+}

@@ -53,6 +53,20 @@ const DEFAULT_CONFIG = {
   max_tokens: 220,
   history_turns: 8,
   system: DEFAULT_SYSTEM,
+  memory_enabled: true,
+  memory_extract_enabled: true,
+  memory_short_to_mid_days: 60,
+  memory_short_to_mid_count: 3,
+  memory_mid_to_long_days: 180,
+  memory_mid_to_long_count: 5,
+  memory_short_delete_days: 180,
+  memory_mid_downgrade_days: 180,
+  memory_long_downgrade_days: 365,
+  memory_max_context_items: 12,
+  tools_enabled: true,
+  tools_auto_call: true,
+  tools_timeout: 12,
+  tools_max_result_chars: 4000,
   tts_url: "http://127.0.0.1:50000/tts",
   tts_sample_rate: 24000,
   tts_speed: 1.08,
@@ -108,15 +122,23 @@ const state = {
   activeConversation: null,
   selectedLogService: "asr",
   currentConfig: { ...DEFAULT_CONFIG },
+  memories: [],
+  toolsConfig: { builtins: [], custom_tools: [] },
   ws: null,
   reconnectTimer: 0,
   manualSocketClose: false,
   connected: false,
   micActive: false,
   busy: false,
+  assistantActive: false,
+  interrupting: false,
+  dropAudioUntilNextAssistant: false,
+  bargeInFrames: 0,
+  lastInterruptAt: 0,
   audioCtx: null,
   playerGain: null,
   playheadTime: 0,
+  playbackSources: new Set(),
   micStream: null,
   micSource: null,
   micProcessor: null,
@@ -179,6 +201,20 @@ function fillConfig(config) {
   setValue("maxTokens", config.max_tokens ?? DEFAULT_CONFIG.max_tokens);
   setValue("historyTurns", config.history_turns ?? DEFAULT_CONFIG.history_turns);
   setValue("systemPrompt", config.system || DEFAULT_CONFIG.system);
+  setChecked("memoryEnabled", config.memory_enabled ?? DEFAULT_CONFIG.memory_enabled);
+  setChecked("memoryExtractEnabled", config.memory_extract_enabled ?? DEFAULT_CONFIG.memory_extract_enabled);
+  setValue("memoryShortToMidDays", config.memory_short_to_mid_days ?? DEFAULT_CONFIG.memory_short_to_mid_days);
+  setValue("memoryShortToMidCount", config.memory_short_to_mid_count ?? DEFAULT_CONFIG.memory_short_to_mid_count);
+  setValue("memoryMidToLongDays", config.memory_mid_to_long_days ?? DEFAULT_CONFIG.memory_mid_to_long_days);
+  setValue("memoryMidToLongCount", config.memory_mid_to_long_count ?? DEFAULT_CONFIG.memory_mid_to_long_count);
+  setValue("memoryShortDeleteDays", config.memory_short_delete_days ?? DEFAULT_CONFIG.memory_short_delete_days);
+  setValue("memoryMidDowngradeDays", config.memory_mid_downgrade_days ?? DEFAULT_CONFIG.memory_mid_downgrade_days);
+  setValue("memoryLongDowngradeDays", config.memory_long_downgrade_days ?? DEFAULT_CONFIG.memory_long_downgrade_days);
+  setValue("memoryMaxContextItems", config.memory_max_context_items ?? DEFAULT_CONFIG.memory_max_context_items);
+  setChecked("toolsEnabled", config.tools_enabled ?? DEFAULT_CONFIG.tools_enabled);
+  setChecked("toolsAutoCall", config.tools_auto_call ?? DEFAULT_CONFIG.tools_auto_call);
+  setValue("toolsTimeout", config.tools_timeout ?? DEFAULT_CONFIG.tools_timeout);
+  setValue("toolsMaxResultChars", config.tools_max_result_chars ?? DEFAULT_CONFIG.tools_max_result_chars);
   setValue("ttsSpeed", config.tts_speed ?? DEFAULT_CONFIG.tts_speed);
   setValue("ttsSeed", config.tts_seed ?? DEFAULT_CONFIG.tts_seed);
   setValue("ttsVolume", config.tts_volume ?? DEFAULT_CONFIG.tts_volume);
@@ -201,6 +237,16 @@ function value(id, fallback = "") {
   return el ? el.value : fallback;
 }
 
+function setChecked(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.checked = Boolean(value);
+}
+
+function checked(id, fallback = false) {
+  const el = document.getElementById(id);
+  return el ? Boolean(el.checked) : fallback;
+}
+
 function collectConfig() {
   return {
     asr_mode: value("asrMode", DEFAULT_CONFIG.asr_mode),
@@ -212,6 +258,20 @@ function collectConfig() {
     max_tokens: Number(value("maxTokens", DEFAULT_CONFIG.max_tokens)),
     history_turns: Number(value("historyTurns", DEFAULT_CONFIG.history_turns)),
     system: value("systemPrompt", DEFAULT_CONFIG.system).trim(),
+    memory_enabled: checked("memoryEnabled", DEFAULT_CONFIG.memory_enabled),
+    memory_extract_enabled: checked("memoryExtractEnabled", DEFAULT_CONFIG.memory_extract_enabled),
+    memory_short_to_mid_days: Number(value("memoryShortToMidDays", DEFAULT_CONFIG.memory_short_to_mid_days)),
+    memory_short_to_mid_count: Number(value("memoryShortToMidCount", DEFAULT_CONFIG.memory_short_to_mid_count)),
+    memory_mid_to_long_days: Number(value("memoryMidToLongDays", DEFAULT_CONFIG.memory_mid_to_long_days)),
+    memory_mid_to_long_count: Number(value("memoryMidToLongCount", DEFAULT_CONFIG.memory_mid_to_long_count)),
+    memory_short_delete_days: Number(value("memoryShortDeleteDays", DEFAULT_CONFIG.memory_short_delete_days)),
+    memory_mid_downgrade_days: Number(value("memoryMidDowngradeDays", DEFAULT_CONFIG.memory_mid_downgrade_days)),
+    memory_long_downgrade_days: Number(value("memoryLongDowngradeDays", DEFAULT_CONFIG.memory_long_downgrade_days)),
+    memory_max_context_items: Number(value("memoryMaxContextItems", DEFAULT_CONFIG.memory_max_context_items)),
+    tools_enabled: checked("toolsEnabled", DEFAULT_CONFIG.tools_enabled),
+    tools_auto_call: checked("toolsAutoCall", DEFAULT_CONFIG.tools_auto_call),
+    tools_timeout: Number(value("toolsTimeout", DEFAULT_CONFIG.tools_timeout)),
+    tools_max_result_chars: Number(value("toolsMaxResultChars", DEFAULT_CONFIG.tools_max_result_chars)),
     tts_url: value("ttsUrl", DEFAULT_CONFIG.tts_url).trim(),
     tts_speed: Number(value("ttsSpeed", DEFAULT_CONFIG.tts_speed)),
     tts_seed: Number(value("ttsSeed", DEFAULT_CONFIG.tts_seed)),
@@ -414,6 +474,10 @@ function connectSocket() {
   ws.addEventListener("message", handleSocketMessage);
   ws.addEventListener("close", () => {
     state.connected = false;
+    stopAssistantAudio();
+    state.busy = false;
+    state.assistantActive = false;
+    state.interrupting = false;
     setDialogState("断开");
     if (!state.previewMode && !state.manualSocketClose) {
       window.clearTimeout(state.reconnectTimer);
@@ -482,8 +546,15 @@ function handleDialogEvent(data) {
       state.currentAssistant = null;
       break;
     case "assistant_start":
+      window.clearTimeout(state.releaseTimer);
+      state.assistantActive = true;
+      state.interrupting = false;
+      state.dropAudioUntilNextAssistant = false;
       state.currentAssistant = addMessage("assistant", "");
       setDialogState("生成");
+      break;
+    case "tool":
+      setDialogState(`工具 ${data.id || ""}`);
       break;
     case "llm_delta":
       appendAssistant(data.text || "");
@@ -499,7 +570,23 @@ function handleDialogEvent(data) {
       addMessage("system", data.message || "出错了");
       setDialogState("错误");
       break;
+    case "busy":
+      setDialogState("忙碌");
+      break;
+    case "interrupted":
+      stopAssistantAudio();
+      state.busy = false;
+      state.assistantActive = false;
+      state.interrupting = false;
+      state.dropAudioUntilNextAssistant = false;
+      setDialogState(state.micActive ? "监听中" : "待机");
+      break;
     case "reset":
+      stopAssistantAudio();
+      state.busy = false;
+      state.assistantActive = false;
+      state.interrupting = false;
+      state.dropAudioUntilNextAssistant = false;
       applyConversation(data.conversation, { renderMessages: true });
       setDialogState("待机");
       break;
@@ -564,6 +651,7 @@ async function sendText() {
     return;
   }
   await ensureAudioContext();
+  if (state.busy && state.assistantActive) interruptAssistant("text");
   state.busy = true;
   setDialogState("发送");
   state.ws.send(JSON.stringify({ type: "text", text }));
@@ -614,7 +702,11 @@ async function startMic() {
   state.micProcessor.onaudioprocess = (event) => {
     const input = event.inputBuffer.getChannelData(0);
     updateLevel(input);
-    if (!state.micActive || state.busy || state.ws?.readyState !== WebSocket.OPEN) return;
+    if (!state.micActive || state.ws?.readyState !== WebSocket.OPEN) return;
+    if (state.busy && state.assistantActive && shouldTriggerBargeIn()) {
+      interruptAssistant("voice");
+    }
+    if (state.busy) return;
     sendMicSamples(downsample(input, state.audioCtx.sampleRate, 16000));
   };
 
@@ -695,8 +787,47 @@ function updateLevel(input) {
   setText("levelText", `${level}%`);
 }
 
+function shouldTriggerBargeIn() {
+  const now = performance.now();
+  if (state.interrupting || now - state.lastInterruptAt < 900) return false;
+  if (!state.audioCtx) return false;
+  const playbackPending = state.playheadTime > state.audioCtx.currentTime + 0.08;
+  if (!playbackPending && !state.assistantActive) return false;
+
+  if (state.latestLevel >= 0.28) state.bargeInFrames += 1;
+  else state.bargeInFrames = Math.max(0, state.bargeInFrames - 1);
+  return state.bargeInFrames >= 3;
+}
+
+function interruptAssistant(reason = "voice") {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+  state.interrupting = true;
+  state.lastInterruptAt = performance.now();
+  state.bargeInFrames = 0;
+  state.dropAudioUntilNextAssistant = true;
+  stopAssistantAudio();
+  state.busy = false;
+  state.assistantActive = false;
+  setDialogState("打断");
+  state.ws.send(JSON.stringify({ type: "interrupt", reason }));
+}
+
+function stopAssistantAudio() {
+  window.clearTimeout(state.releaseTimer);
+  for (const source of state.playbackSources) {
+    try {
+      source.stop();
+    } catch {
+      // Source may already have ended.
+    }
+  }
+  state.playbackSources.clear();
+  if (state.audioCtx) state.playheadTime = state.audioCtx.currentTime;
+}
+
 async function schedulePcm16(arrayBuffer) {
   await ensureAudioContext();
+  if (state.dropAudioUntilNextAssistant) return;
   if (!arrayBuffer.byteLength || arrayBuffer.byteLength < 2) return;
   const view = new DataView(arrayBuffer);
   const sampleCount = Math.floor(view.byteLength / 2);
@@ -718,6 +849,8 @@ async function schedulePcm16(arrayBuffer) {
   source.connect(state.playerGain);
 
   const startAt = Math.max(state.audioCtx.currentTime + 0.06, state.playheadTime || 0);
+  state.playbackSources.add(source);
+  source.onended = () => state.playbackSources.delete(source);
   source.start(startAt);
   state.playheadTime = startAt + buffer.duration;
 }
@@ -727,6 +860,9 @@ function releaseAfterPlayback() {
   const remaining = state.audioCtx ? Math.max(0, state.playheadTime - state.audioCtx.currentTime) : 0;
   state.releaseTimer = window.setTimeout(() => {
     state.busy = false;
+    state.assistantActive = false;
+    state.interrupting = false;
+    state.dropAudioUntilNextAssistant = false;
     setDialogState(state.micActive ? "监听中" : "待机");
   }, remaining * 1000 + 140);
 }
@@ -824,7 +960,181 @@ function initServices() {
 
 function initSettings() {
   $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
+  $("#refreshMemoryBtn")?.addEventListener("click", loadMemory);
+  $("#addMemoryBtn")?.addEventListener("click", addMemory);
+  $("#refreshToolsBtn")?.addEventListener("click", loadTools);
+  $("#testToolBtn")?.addEventListener("click", testTool);
   renderProfileList();
+  loadMemory();
+  loadTools();
+}
+
+async function loadMemory() {
+  const host = $("#memoryList");
+  if (!host) return;
+  if (state.previewMode) {
+    host.innerHTML = `<div class="runtime-row"><div><strong>静态预览</strong><span>后端启动后这里会显示 SQLite 记忆。</span></div></div>`;
+    return;
+  }
+  try {
+    const data = await fetchJson("/api/memory?limit=80");
+    state.memories = data.items || [];
+    renderMemoryList();
+  } catch (error) {
+    host.innerHTML = `<div class="runtime-row"><div><strong>记忆读取失败</strong><span>${error.message}</span></div></div>`;
+  }
+}
+
+function renderMemoryList() {
+  const host = $("#memoryList");
+  if (!host) return;
+  host.innerHTML = "";
+  if (!state.memories.length) {
+    host.innerHTML = `<div class="runtime-row"><div><strong>暂无记忆</strong><span>聊天或手动新增后会出现在这里。</span></div></div>`;
+    return;
+  }
+  for (const item of state.memories) {
+    const row = document.createElement("div");
+    row.className = "runtime-row";
+    row.innerHTML = `
+      <div>
+        <strong></strong>
+        <span></span>
+        <code></code>
+      </div>
+      <button class="small-button delete-memory" type="button"><i data-lucide="trash-2"></i>删除</button>
+    `;
+    row.querySelector("strong").textContent = `[${item.layer}] ${item.key}`;
+    row.querySelector("span").textContent = item.value || "";
+    row.querySelector("code").textContent = `记录 ${item.count || 0} 次 · 最近 ${item.last_seen_text || "--"}`;
+    row.querySelector(".delete-memory").addEventListener("click", () => deleteMemory(item.id));
+    host.appendChild(row);
+  }
+  renderIcons();
+}
+
+async function addMemory() {
+  if (state.previewMode) return;
+  const value = window.prompt("要记住什么？");
+  if (!value?.trim()) return;
+  try {
+    await fetchJson("/api/memory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: value.trim(), layer: "mid" }),
+    });
+    await loadMemory();
+    setSystemState("记忆已新增");
+  } catch (error) {
+    setSystemState(`新增记忆失败 ${error.message}`);
+  }
+}
+
+async function deleteMemory(id) {
+  if (!id || state.previewMode) return;
+  if (!window.confirm("删除这条记忆？")) return;
+  try {
+    await fetchJson(`/api/memory/${encodeURIComponent(id)}`, { method: "DELETE" });
+    await loadMemory();
+    setSystemState("记忆已删除");
+  } catch (error) {
+    setSystemState(`删除记忆失败 ${error.message}`);
+  }
+}
+
+async function loadTools() {
+  if (state.previewMode) {
+    renderTools({ builtins: [], custom_tools: [] });
+    return;
+  }
+  try {
+    state.toolsConfig = await fetchJson("/api/tools");
+    renderTools(state.toolsConfig);
+  } catch (error) {
+    const output = $("#toolTestOutput");
+    if (output) output.textContent = `工具配置读取失败：${error.message}`;
+  }
+}
+
+function renderTools(config) {
+  const builtinHost = $("#builtinToolList");
+  if (builtinHost) {
+    builtinHost.innerHTML = "";
+    for (const tool of config.builtins || []) {
+      const row = document.createElement("label");
+      row.className = "runtime-row";
+      row.innerHTML = `
+        <div>
+          <strong></strong>
+          <span></span>
+          <code></code>
+        </div>
+        <input class="builtin-enabled" type="checkbox" />
+      `;
+      row.dataset.toolId = tool.id;
+      row.querySelector("strong").textContent = tool.name || tool.id;
+      row.querySelector("span").textContent = tool.description || "";
+      row.querySelector("code").textContent = tool.id;
+      row.querySelector(".builtin-enabled").checked = Boolean(tool.enabled);
+      builtinHost.appendChild(row);
+    }
+  }
+  setValue("customToolsJson", JSON.stringify(config.custom_tools || [], null, 2));
+}
+
+function collectToolsConfig() {
+  const builtins = {};
+  document.querySelectorAll("#builtinToolList .runtime-row").forEach((row) => {
+    const id = row.dataset.toolId;
+    if (!id) return;
+    builtins[id] = { enabled: Boolean(row.querySelector(".builtin-enabled")?.checked) };
+  });
+  let customTools = [];
+  const raw = value("customToolsJson", "[]").trim() || "[]";
+  try {
+    customTools = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Custom API JSON 格式错误：${error.message}`);
+  }
+  if (!Array.isArray(customTools)) throw new Error("Custom API Tools JSON 必须是数组。");
+  return { builtins, custom_tools: customTools };
+}
+
+async function saveToolsConfig() {
+  if (state.previewMode) return;
+  await fetchJson("/api/tools", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(collectToolsConfig()),
+  });
+}
+
+async function testTool() {
+  if (state.previewMode) return;
+  const output = $("#toolTestOutput");
+  const id = value("toolTestId", "").trim();
+  let args = {};
+  try {
+    args = JSON.parse(value("toolTestArgs", "{}").trim() || "{}");
+  } catch (error) {
+    if (output) output.textContent = `参数 JSON 错误：${error.message}`;
+    return;
+  }
+  if (!id) {
+    if (output) output.textContent = "请填写 Tool ID。";
+    return;
+  }
+  try {
+    if (output) output.textContent = "calling...";
+    const data = await fetchJson("/api/tools/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, arguments: args }),
+    });
+    if (output) output.textContent = JSON.stringify(data, null, 2);
+  } catch (error) {
+    if (output) output.textContent = `工具测试失败：${error.message}`;
+  }
 }
 
 function renderServiceCards() {
@@ -961,8 +1271,11 @@ async function saveSettingsPage() {
       });
     }
 
+    await saveToolsConfig();
     await loadConfig();
     await loadServices();
+    await loadMemory();
+    await loadTools();
     setSystemState("配置已应用");
   } catch (error) {
     setSystemState(`保存失败 ${error.message}`);

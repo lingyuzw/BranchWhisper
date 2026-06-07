@@ -79,6 +79,48 @@
             </div>
 
             <div class="settings-block">
+              <h3>记忆</h3>
+              <div class="form-grid compact">
+                <label class="check-row"><input id="memoryEnabled" type="checkbox" /><span>启用记忆</span></label>
+                <label class="check-row"><input id="memoryExtractEnabled" type="checkbox" /><span>自动抽取</span></label>
+                <label><span>上下文条数</span><input id="memoryMaxContextItems" type="number" min="1" max="30" step="1" /></label>
+                <label><span>短升中天数</span><input id="memoryShortToMidDays" type="number" min="7" max="365" step="1" /></label>
+                <label><span>短升中次数</span><input id="memoryShortToMidCount" type="number" min="2" max="20" step="1" /></label>
+                <label><span>中升长天数</span><input id="memoryMidToLongDays" type="number" min="30" max="730" step="1" /></label>
+                <label><span>中升长次数</span><input id="memoryMidToLongCount" type="number" min="2" max="50" step="1" /></label>
+                <label><span>短期删除天数</span><input id="memoryShortDeleteDays" type="number" min="30" max="730" step="1" /></label>
+                <label><span>中期降级天数</span><input id="memoryMidDowngradeDays" type="number" min="30" max="730" step="1" /></label>
+                <label><span>长期降级天数</span><input id="memoryLongDowngradeDays" type="number" min="90" max="1825" step="1" /></label>
+              </div>
+              <div class="inline-actions">
+                <button class="small-button" id="refreshMemoryBtn" type="button"><i data-lucide="refresh-cw"></i>刷新记忆</button>
+                <button class="small-button" id="addMemoryBtn" type="button"><i data-lucide="plus"></i>手动新增</button>
+              </div>
+              <div class="runtime-list" id="memoryList"></div>
+            </div>
+
+            <div class="settings-block">
+              <h3>联网工具</h3>
+              <div class="form-grid compact">
+                <label class="check-row"><input id="toolsEnabled" type="checkbox" /><span>启用工具</span></label>
+                <label class="check-row"><input id="toolsAutoCall" type="checkbox" /><span>自动调用</span></label>
+                <label><span>Timeout sec</span><input id="toolsTimeout" type="number" min="2" max="60" step="1" /></label>
+                <label><span>Max Result Chars</span><input id="toolsMaxResultChars" type="number" min="1000" max="20000" step="500" /></label>
+              </div>
+              <div class="runtime-list" id="builtinToolList"></div>
+              <label><span>Custom API Tools JSON</span><textarea class="tool-json" id="customToolsJson"></textarea></label>
+              <div class="form-grid">
+                <label><span>Test Tool ID</span><input id="toolTestId" type="text" placeholder="web_search" /></label>
+                <label><span>Test Arguments JSON</span><input id="toolTestArgs" type="text" placeholder='{"query":"今天科技新闻"}' /></label>
+              </div>
+              <div class="inline-actions">
+                <button class="small-button" id="refreshToolsBtn" type="button"><i data-lucide="refresh-cw"></i>刷新工具</button>
+                <button class="small-button" id="testToolBtn" type="button"><i data-lucide="play"></i>测试工具</button>
+              </div>
+              <pre id="toolTestOutput"></pre>
+            </div>
+
+            <div class="settings-block">
               <h3>VAD</h3>
               <div class="form-grid compact">
                 <label><span>Threshold</span><input id="vadThreshold" type="number" min="0.1" max="0.9" step="0.01" /></label>

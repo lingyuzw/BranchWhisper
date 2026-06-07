@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+
+web/runtime/memory.sqlite3
+web/runtime/memory.sqlite3-*
+web/runtime/logs/
+web/runtime/conversations/
+logs/
+
