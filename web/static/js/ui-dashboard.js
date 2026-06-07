@@ -211,11 +211,11 @@ function drawScope() {
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#f8faf9";
+  ctx.fillStyle = "#0d1117";
   ctx.fillRect(0, 0, width, height);
 
   // subtle grid
-  ctx.strokeStyle = "rgba(23, 32, 38, 0.06)";
+  ctx.strokeStyle = "rgba(255,255,255,0.03)";
   ctx.lineWidth = 1;
   for (let x = 0; x < width; x += 24) {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
@@ -235,11 +235,11 @@ function drawScope() {
     if (index === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
-  const lineColor = state.busy ? "#c77900" : state.micActive ? "#007c74" : "#3158d4";
+  const lineColor = state.busy ? "#d29922" : state.micActive ? "#d4a853" : "#58a6ff";
   ctx.strokeStyle = lineColor;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.shadowColor = lineColor;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 10;
   ctx.stroke();
   ctx.shadowBlur = 0;
 
@@ -247,7 +247,7 @@ function drawScope() {
   ctx.beginPath();
   ctx.moveTo(0, height / 2);
   ctx.lineTo(width, height / 2);
-  ctx.strokeStyle = "rgba(23, 32, 38, 0.14)";
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
   ctx.lineWidth = 1;
   ctx.stroke();
 
