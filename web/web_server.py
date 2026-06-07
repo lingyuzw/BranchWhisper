@@ -464,7 +464,10 @@ class ServiceManager:
                             os.killpg(pid, signal.SIGKILL)
                     except Exception:
                         pass
-        _pid_file(service_id).unlink(missing_ok=True)
+        try:
+            _pid_file(service_id).unlink()
+        except FileNotFoundError:
+            pass
         return await self.status(service_id)
 
     async def start_all(self, overrides: dict | None = None) -> list[dict]:
@@ -678,7 +681,10 @@ class ConversationStore:
 
         path = self.root / f"{conversation_id}.json"
         try:
-            path.unlink(missing_ok=True)
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
         except OSError:
             return False
 

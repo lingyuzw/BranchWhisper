@@ -14,7 +14,7 @@
   </head>
   <body data-page="dashboard">
     <div class="app-shell">
-      <!-- shared header (all pages) -->
+      <!-- header -->
       <header class="topbar">
         <a class="brand" data-nav="dashboard">
           <span class="brand-mark">LC</span>
@@ -121,6 +121,7 @@
           <aside class="settings-nav">
             <p class="eyebrow">Configuration</p>
             <h1>配置中心</h1>
+            <a data-setting-nav="appearance"><i data-lucide="palette"></i>外观</a>
             <a data-setting-nav="engine"><i data-lucide="cpu"></i>模型引擎</a>
             <a data-setting-nav="prompt"><i data-lucide="message-square-text"></i>Prompt</a>
             <a data-setting-nav="tts"><i data-lucide="volume-2"></i>语音合成</a>
@@ -129,6 +130,13 @@
             <button class="primary-action full" id="saveAllBtn" type="button"><i data-lucide="save"></i>应用配置</button>
           </aside>
           <section class="settings-content">
+            <article class="theme-section" id="appearance">
+              <div class="panel-head"><div><p class="eyebrow">Appearance</p><h2>外观</h2></div></div>
+              <div class="theme-toggle-group" id="themeToggle">
+                <button class="active" data-theme="dark"><i data-lucide="moon"></i>深色</button>
+                <button data-theme="light"><i data-lucide="sun"></i>浅色</button>
+              </div>
+            </article>
             <article class="settings-panel" id="engine">
               <div class="panel-head"><div><p class="eyebrow">Model Engine</p><h2>模型引擎</h2></div><span class="soft-badge" id="apiKeyState">未保存</span></div>
               <div class="form-grid">
@@ -170,14 +178,14 @@
             </article>
             <article class="settings-panel" id="commands">
               <div class="panel-head"><div><p class="eyebrow">Command Editors</p><h2>服务命令</h2></div></div>
-              <div class="profile-list command-editor-list" id="profileList"></div>
+              <div class="profile-list" id="profileList"></div>
             </article>
           </section>
         </div>
       </main>
     </div>
 
-    <!-- memory modal (shared) -->
+    <!-- memory modal -->
     <div class="modal-overlay" id="memoryModal" hidden>
       <div class="modal-panel">
         <div class="modal-head"><h2>记忆管理</h2><button class="icon-button modal-close" type="button"><i data-lucide="x"></i></button></div>

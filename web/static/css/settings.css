@@ -3,31 +3,38 @@
    LoveChoice Voice Console · Precision Console
    ============================================================ */
 
-.prompt-textarea { min-height: 380px; color: var(--text-soft); background: var(--bg); }
+.prompt-textarea { min-height: 380px; color: var(--text-soft); background: var(--bg); font-size: var(--font-body); }
 .settings-panel--prominent .prompt-textarea { min-height: 420px; }
 
 .profile-list { display: grid; gap: 8px; }
 
 .profile-card {
-  display: grid; gap: 8px; padding: 10px;
+  display: grid; gap: 8px; padding: 12px;
   border: 1px solid var(--border); border-radius: var(--radius-md);
-  background: var(--surface-muted);
+  background: var(--surface-muted); transition: background 200ms;
 }
 .profile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.profile-head strong { display: block; font-size: 13px; font-weight: 600; }
-.profile-head span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 10px; }
+.profile-head strong { display: block; font-size: 15px; font-weight: 600; }
+.profile-head span { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--font-sm); }
 .profile-summary { display: flex; gap: 5px; flex-wrap: wrap; }
 .profile-summary span {
-  min-height: 24px; display: inline-flex; align-items: center;
-  padding: 0 7px; border: 1px solid var(--border); border-radius: 999px;
-  color: var(--text-muted); background: var(--surface); font-size: 10px; font-weight: 700;
+  min-height: 26px; display: inline-flex; align-items: center;
+  padding: 0 8px; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--text-muted); background: var(--surface); font-size: var(--font-xs); font-weight: 700;
 }
 
 .advanced-profile { border-top: 1px solid var(--border); padding-top: 8px; }
 .advanced-profile summary {
-  min-height: 28px; display: inline-flex; align-items: center; gap: 6px;
-  color: var(--text-soft); cursor: pointer; font-size: 11px; font-weight: 700; list-style: none;
+  min-height: 30px; display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-soft); cursor: pointer; font-size: var(--font-sm); font-weight: 700; list-style: none;
 }
 .advanced-profile summary::-webkit-details-marker { display: none; }
 .advanced-profile .form-grid { margin-top: 6px; }
-.profile-command { min-height: 140px; color: var(--text-soft); background: var(--bg); }
+.profile-command { min-height: 140px; color: var(--text-soft); background: var(--bg); font-size: var(--font-sm); }
+
+/* theme section */
+.theme-section {
+  display: grid; gap: 8px;
+  padding: 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-md); background: var(--surface);
+}
