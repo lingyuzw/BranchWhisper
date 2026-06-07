@@ -1114,6 +1114,8 @@ class DialogSession:
         self.reset_tts_pcm_state()
 
     async def run(self) -> None:
+        # 后台预加载 VAD 模型，减少首次语音的延迟
+        asyncio.create_task(self.vad_store.load())
         await self.send_event("ready", settings=asdict(self.settings))
         await self.send_event("conversation", conversation=self.conversation)
         try:
@@ -1327,14 +1329,31 @@ class DialogSession:
             title_hint=title_hint,
         )
 
+def compact_str(s: str) -> str:
+    return "".join(s.split())[:200]
+
     def build_contextual_request_messages(self, user_text: str, request_user_text: str) -> list[dict[str, str]]:
         messages = list(self.messages)
         memory_context = self.memory_store.format_context(self.settings, user_text)
+
+        # 注入当前时间
+        from datetime import datetime
+        now_str = datetime.now().strftime("%Y年%m月%d日 %A %H:%M")
+        time_note = f"\n\n当前时间：{now_str}。你要自然地感知这个时间（比如晚上就聊晚上的话题，早上就聊早上的），但不要生硬地报时。"
+        # 重复检测
+        recent_user_msgs = [m.get("content","") for m in messages[-6:] if m.get("role") == "user"]
+        if len(recent_user_msgs) >= 2 and recent_user_msgs[-1]:
+            last = compact_str(recent_user_msgs[-1])
+            prev = compact_str(recent_user_msgs[-2])
+            if last and prev and last == prev:
+                time_note += "\n注意：用户刚才问了和上一轮完全一样的问题。你应该稍微不耐烦或用不同方式回答，而不是原句重复。"
+
+        old_content = messages[0].get("content", "")
         if memory_context:
-            # 将记忆上下文拼接到已有的 system prompt 中，避免插入第二条
-            # system 消息违反 llama.cpp Qwen3 Jinja 模板约束。
-            old_content = messages[0].get("content", "")
-            messages[0] = {**messages[0], "content": old_content + "\n\n" + memory_context}
+            old_content += "\n\n" + memory_context
+        old_content += time_note
+        messages[0] = {**messages[0], "content": old_content}
+
         messages.append({"role": "user", "content": request_user_text})
         return messages
 
@@ -1424,6 +1443,8 @@ class DialogSession:
             "stream": True,
             "temperature": self.settings.temperature,
             "max_tokens": self.settings.max_tokens,
+            "top_p": 0.9,
+            "repeat_penalty": 1.08,
         }
         buffer = ""
         full_answer = ""

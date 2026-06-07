@@ -114,7 +114,7 @@
 .chat-composer { padding: 8px 0 12px; }
 .composer {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px 44px 44px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px 44px 44px 44px;
   align-items: end; gap: 6px;
 }
 .composer textarea {

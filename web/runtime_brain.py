@@ -420,6 +420,48 @@ class MemoryStore:
         return "\n".join(lines)
 
 
+def _resolve_event_date(time_text: str) -> tuple[str, str]:
+    """返回 (time_text, event_date_iso) 从相对时间表达。"""
+    from datetime import date, timedelta
+    today = date.today()
+    t_clean = time_text.strip()
+    mapping = {
+        "今天晚上": 0, "今天中午": 0, "今天下午": 0, "今天上午": 0, "今天早上": 0, "今天": 0, "今早": 0, "今晚": 0,
+        "昨天晚上": 1, "昨天下午": 1, "昨天上午": 1, "昨天早上": 1, "昨天中午": 1, "昨晚": 1, "昨天": 1,
+        "前天晚上": 2, "前天下午": 2, "前天上午": 2, "前天": 2,
+        "刚才": 0, "刚刚": 0,
+    }
+    for key, offset in mapping.items():
+        if t_clean.startswith(key):
+            d = today - timedelta(days=offset)
+            return (t_clean, d.isoformat())
+    m = re.match(r"(\d{1,2})月(\d{1,2})[号日]", t_clean)
+    if m:
+        try:
+            mo, da = int(m.group(1)), int(m.group(2))
+            d = date(today.year, mo, da)
+            if d > today:
+                d = date(today.year - 1, mo, da)
+            return (t_clean, d.isoformat())
+        except ValueError:
+            pass
+    return (t_clean, today.isoformat())
+
+def _guess_time_of_day(time_text: str, full_sentence: str = "") -> str:
+    hints = {
+        "早": "morning", "上午": "morning", "晨": "morning",
+        "中午": "noon", "午": "noon",
+        "下午": "afternoon",
+        "傍晚": "evening", "黄昏": "evening", "晚上": "evening",
+        "夜": "night", "宵": "night", "深夜": "night", "凌晨": "night",
+    }
+    txt = time_text + full_sentence
+    for kw, val in hints.items():
+        if kw in txt:
+            return val
+    return "unknown"
+
+
 def extract_memory_candidates(text: str) -> list[dict]:
     """提取记忆候选。区分 semantic_fact（长期偏好）和 episodic_event（具体时间事件）。
     
