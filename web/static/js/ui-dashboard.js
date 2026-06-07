@@ -1,12 +1,12 @@
 /* ============================================================
-   ui-dashboard.js — Chat dashboard UI (index.html)
-   LoveChoice Voice Console
+   ui-dashboard.js — Chat dashboard (index.html)
+   LoveChoice Voice Console · Precision Console
    ============================================================ */
 
 import { state, ACTIVE_CONVERSATION_KEY } from "./state.js";
 import { $, setText, renderIcons, formatConversationMeta, showToast, showSkeleton } from "./utils.js";
-import { loadConfig, loadServices, loadConversations, createConversation, deleteConversation } from "./api.js";
-import { connectSocket, reconnectDialog, clearTranscript, selectConversation, sendText, resizeComposerInput, interruptAssistant, setTranscriptCallback, updatePipeline } from "./dialog.js";
+import { loadConfig, loadServices, loadConversations, createConversation, deleteConversation, loadMemory, addMemory, deleteMemory } from "./api.js";
+import { connectSocket, reconnectDialog, clearTranscript, selectConversation, sendText, resizeComposerInput, interruptAssistant, setTranscriptCallback, setPipelineUpdater } from "./dialog.js";
 import { ensureAudioContext, startMic, stopMic, sendMicSamples, shouldTriggerBargeIn } from "./audio.js";
 
 /* ---- init ---- */
@@ -15,12 +15,8 @@ export async function initDashboard() {
   setupDashboardEvents();
   showSkeleton("conversationList", 6);
 
-  const configResult = await loadConfig();
-  renderCapabilityStatus(configResult.config);
-
+  await loadConfig();
   await loadServices();
-  renderServiceOverview();
-  setSystemState(serviceSummaryText());
 
   await loadConversations();
   if (!state.activeConversationId && state.conversations.length) {
@@ -28,12 +24,13 @@ export async function initDashboard() {
     localStorage.setItem(ACTIVE_CONVERSATION_KEY, state.activeConversationId);
   }
   renderConversationList();
-  updatePipeline("idle");
+  resetPipelineCompact();
+  setPipelineUpdater((stage, label) => updatePipelineCompact(stage, label));
+  setTranscriptCallback(() => renderConversationList());
   connectSocket();
   drawScope();
-
-  // re-render conversation list when transcript updates
-  setTranscriptCallback(() => renderConversationList());
+  setText("dialogState", "待机");
+  setupMemoryModal();
 }
 
 function setupDashboardEvents() {
@@ -45,49 +42,34 @@ function setupDashboardEvents() {
   const textInput = $("#textInput");
   textInput?.addEventListener("input", () => resizeComposerInput(textInput));
   textInput?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      sendText();
-    }
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendText(); }
   });
   resizeComposerInput(textInput);
 }
 
-/* ---- service overview (topbar status) ---- */
+/* ---- pipeline compact (sidebar) ---- */
 
-function setSystemState(text) {
-  const el = $("#systemState");
-  if (el) el.textContent = text;
+function resetPipelineCompact() {
+  const rows = document.querySelectorAll("#pipelineCompact .pipeline-row");
+  rows.forEach((r) => { r.classList.remove("active", "done"); r.querySelector("small").textContent = "--"; });
 }
 
-function serviceSummaryText() {
-  const running = state.services.filter((s) => s.running).length;
-  return `后端在线 · ${running}/${state.services.length} 运行`;
-}
-
-function renderServiceOverview() {
-  const host = $("#serviceOverview");
-  if (!host) return;
-  const ids = ["asr", "llm", "tts"];
-  host.innerHTML = "";
-  for (const id of ids) {
-    const service = state.services.find((item) => item.id === id);
-    const status = service?.running ? "running" : service?.health?.ok === false ? "failed" : "";
-    const node = document.createElement("span");
-    node.className = status;
-    node.innerHTML = `<i></i>${id.toUpperCase()}`;
-    host.appendChild(node);
+function updatePipelineCompact(stage, label) {
+  const steps = ["vad", "asr", "llm", "tts"];
+  const index = steps.indexOf(stage);
+  const rows = document.querySelectorAll("#pipelineCompact .pipeline-row");
+  rows.forEach((r, i) => {
+    r.classList.remove("active", "done");
+    if (index >= 0 && i < index) r.classList.add("done");
+    else if (i === index) r.classList.add("active");
+  });
+  if (stage === "idle") {
+    rows.forEach((r) => { r.classList.remove("active", "done"); r.querySelector("small").textContent = "--"; });
   }
-}
-
-function renderCapabilityStatus(config = state.currentConfig) {
-  const memoryOn = config.memory_enabled !== false && config.memory_extract_enabled !== false;
-  const toolsOn = config.tools_enabled !== false && config.tools_auto_call !== false;
-  setText("memoryStatus", memoryOn ? "默认开启" : "等待保存开启");
-  setText("memoryDetail", `SQLite 自动记忆 · 每轮最多注入 ${config.memory_max_context_items || 12} 条`);
-  setText("toolsStatus", toolsOn ? "默认自动调用" : "等待保存开启");
-  setText("toolsDetail", "热点新闻 / 搜索 / 网页读取 / 天气 / 财经价格");
-  setText("apiKeyState", config.llm_api_key_set ? `已保存 ${config.llm_api_key_masked}` : "未保存，可填 sk-... 格式");
+  if (label && index >= 0) {
+    const row = rows[index];
+    if (row) row.querySelector("small").textContent = label;
+  }
 }
 
 /* ---- conversation list ---- */
@@ -98,158 +80,143 @@ function renderConversationList() {
   host.innerHTML = "";
   const conversations = state.conversations.slice(0, 24);
   if (!conversations.length) {
-    const empty = document.createElement("p");
-    empty.className = "conversation-empty";
-    empty.textContent = "还没有保存的对话";
-    host.appendChild(empty);
-    return;
+    const p = document.createElement("p"); p.className = "conversation-empty"; p.textContent = "还没有保存的对话"; host.appendChild(p); return;
   }
-  for (const conversation of conversations) {
+  for (const c of conversations) {
     const item = document.createElement("div");
-    item.className = `conversation-item ${conversation.id === state.activeConversationId ? "active" : ""}`;
-
-    const openButton = document.createElement("button");
-    openButton.type = "button";
-    openButton.className = "conversation-open";
-    openButton.innerHTML = "<strong></strong><span></span><small></small>";
-    openButton.querySelector("strong").textContent = conversation.title || "新的对话";
-    openButton.querySelector("span").textContent = conversation.last_message || "空会话";
-    openButton.querySelector("small").textContent = formatConversationMeta(conversation);
-    openButton.addEventListener("click", () => selectConversation(conversation.id));
-
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "conversation-delete";
-    deleteButton.title = "删除对话";
-    deleteButton.innerHTML = '<i data-lucide="trash-2"></i>';
-    deleteButton.addEventListener("click", () => handleDeleteConversation(conversation));
-
-    item.append(openButton, deleteButton);
+    item.className = `conversation-item ${c.id === state.activeConversationId ? "active" : ""}`;
+    const openBtn = document.createElement("button");
+    openBtn.type = "button"; openBtn.className = "conversation-open";
+    openBtn.innerHTML = "<strong></strong><span></span><small></small>";
+    openBtn.querySelector("strong").textContent = c.title || "新的对话";
+    openBtn.querySelector("span").textContent = c.last_message || "空会话";
+    openBtn.querySelector("small").textContent = formatConversationMeta(c);
+    openBtn.addEventListener("click", () => selectConversation(c.id));
+    const delBtn = document.createElement("button");
+    delBtn.type = "button"; delBtn.className = "conversation-delete"; delBtn.title = "删除";
+    delBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+    delBtn.addEventListener("click", () => handleDeleteConversation(c));
+    item.append(openBtn, delBtn);
     host.appendChild(item);
   }
   renderIcons();
 }
 
 async function newConversation() {
-  if (state.previewMode) {
-    clearTranscript();
-    showToast("预览模式：已清空对话区", "info");
-    return;
-  }
+  if (state.previewMode) { clearTranscript(); showToast("预览模式：已清空对话区", "info"); return; }
   try {
-    const conversation = await createConversation();
-    state.activeConversationId = conversation.id;
-    localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversation.id);
-    await loadConversations();
-    renderConversationList();
-    reconnectDialog();
-  } catch (error) {
-    showToast(`新建会话失败：${error.message}`, "error");
-  }
+    const c = await createConversation();
+    state.activeConversationId = c.id;
+    localStorage.setItem(ACTIVE_CONVERSATION_KEY, c.id);
+    await loadConversations(); renderConversationList(); reconnectDialog();
+  } catch (e) { showToast(`新建失败：${e.message}`, "error"); }
 }
 
 async function handleDeleteConversation(conversation) {
   if (!conversation?.id || state.previewMode) return;
-  const title = conversation.title || "这次对话";
-  if (!window.confirm(`删除「${title}」？这条记录会从本地历史里移除。`)) return;
-
+  if (!window.confirm(`删除「${conversation.title || "这次对话"}」？`)) return;
   const wasActive = conversation.id === state.activeConversationId;
   try {
     await deleteConversation(conversation.id);
-    if (wasActive) {
-      state.activeConversationId = "";
-      state.activeConversation = null;
-      localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
-      clearTranscript();
-    }
-    await loadConversations();
-    renderConversationList();
+    if (wasActive) { state.activeConversationId = ""; state.activeConversation = null; localStorage.removeItem(ACTIVE_CONVERSATION_KEY); clearTranscript(); }
+    await loadConversations(); renderConversationList();
     if (wasActive) reconnectDialog();
-  } catch (error) {
-    showToast(`删除会话失败：${error.message}`, "error");
-  }
+  } catch (e) { showToast(`删除失败：${e.message}`, "error"); }
 }
 
 /* ---- microphone toggle ---- */
 
 async function toggleMic() {
   if (state.micActive) {
-    stopMic();
-    setText("dialogState", "待机");
-    updatePipeline("idle");
+    stopMic(); setText("dialogState", "待机"); updatePipelineCompact("idle");
   } else {
-    if (!state.connected) {
-      showToast("对话通道未连接，不能打开麦克风。", "error");
-      return;
-    }
-    await startMic({
-      onSendSamples: (samples) => {
-        if (state.busy && state.assistantActive && shouldTriggerBargeIn()) {
-          interruptAssistant("voice");
-        }
-        if (state.busy) return;
-        sendMicSamples(samples);
-      }
-    });
-    setText("dialogState", "监听中");
-    updatePipeline("vad", "正在听...");
+    if (!state.connected) { showToast("对话通道未连接", "error"); return; }
+    await startMic({ onSendSamples: (samples) => {
+      if (state.busy && state.assistantActive && shouldTriggerBargeIn()) interruptAssistant("voice");
+      if (state.busy) return;
+      sendMicSamples(samples);
+    }});
+    setText("dialogState", "监听中"); updatePipelineCompact("vad", "listening");
   }
 }
 
-/* ---- waveform visualization ---- */
+/* ---- waveform ---- */
 
 function drawScope() {
   const canvas = $("#scopeCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
-  const width = canvas.clientWidth || 900;
-  const height = canvas.clientHeight || 220;
+  const width = canvas.clientWidth || 800;
+  const height = canvas.clientHeight || 160;
   if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
+    canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr);
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#0d1117";
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#0d1117"; ctx.fillRect(0, 0, width, height);
 
-  // subtle grid
-  ctx.strokeStyle = "rgba(255,255,255,0.03)";
-  ctx.lineWidth = 1;
-  for (let x = 0; x < width; x += 24) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-  }
-  for (let y = 0; y < height; y += 24) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-  }
+  ctx.strokeStyle = "rgba(255,255,255,0.025)"; ctx.lineWidth = 1;
+  for (let x = 0; x < width; x += 20) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+  for (let y = 0; y < height; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
 
-  // waveform line
-  state.levels.push(state.latestLevel);
-  state.levels.shift();
+  state.levels.push(state.latestLevel); state.levels.shift();
   ctx.beginPath();
-  state.levels.forEach((level, index) => {
-    const x = (index / (state.levels.length - 1)) * width;
-    const wobble = Math.sin(index * 0.45 + performance.now() / 260) * 0.06;
-    const y = height / 2 - (level + wobble) * height * 0.36;
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  state.levels.forEach((level, i) => {
+    const x = (i / (state.levels.length - 1)) * width;
+    const y = height / 2 - level * height * 0.38;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   });
   const lineColor = state.busy ? "#d29922" : state.micActive ? "#d4a853" : "#58a6ff";
-  ctx.strokeStyle = lineColor;
-  ctx.lineWidth = 2.5;
-  ctx.shadowColor = lineColor;
-  ctx.shadowBlur = 10;
-  ctx.stroke();
+  ctx.strokeStyle = lineColor; ctx.lineWidth = 2; ctx.shadowColor = lineColor; ctx.shadowBlur = 8; ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // center line
-  ctx.beginPath();
-  ctx.moveTo(0, height / 2);
-  ctx.lineTo(width, height / 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1; ctx.stroke();
 
   requestAnimationFrame(drawScope);
+}
+
+/* ---- memory modal ---- */
+
+function setupMemoryModal() {
+  $("#memoryTriggerBtn")?.addEventListener("click", openMemoryModal);
+  document.querySelector("#memoryModal .modal-close")?.addEventListener("click", closeMemoryModal);
+  $("#memoryModal")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) closeMemoryModal(); });
+  $("#memoryAddBtn")?.addEventListener("click", handleMemoryAdd);
+  $("#memoryAddInput")?.addEventListener("keydown", (e) => { if (e.key === "Enter") handleMemoryAdd(); });
+}
+
+async function openMemoryModal() {
+  $("#memoryModal").hidden = false;
+  await loadMemory(); renderMemoryModalList();
+}
+
+function closeMemoryModal() { $("#memoryModal").hidden = true; }
+
+function renderMemoryModalList() {
+  const host = $("#memoryModalList");
+  if (!host) return;
+  host.innerHTML = "";
+  if (!state.memories.length) { host.innerHTML = '<p class="conversation-empty">暂无记忆。聊天中 AI 会自动提取并保存。</p>'; return; }
+  for (const item of state.memories) {
+    const div = document.createElement("div"); div.className = "memory-item";
+    div.innerHTML = `<div><strong>${item.key || "--"}</strong><br><span>${item.value || ""}</span><br><small>${item.layer} · ${item.count || 0} 次</small></div>`;
+    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+    delBtn.addEventListener("click", () => handleMemoryDelete(item.id));
+    div.appendChild(delBtn); host.appendChild(div);
+  }
+  renderIcons();
+}
+
+async function handleMemoryAdd() {
+  const input = $("#memoryAddInput"); const val = input?.value.trim(); if (!val) return;
+  try { await addMemory(val); input.value = ""; await loadMemory(); renderMemoryModalList(); showToast("已添加", "success"); }
+  catch (e) { showToast(`添加失败：${e.message}`, "error"); }
+}
+
+async function handleMemoryDelete(id) {
+  if (!window.confirm("删除这条记忆？")) return;
+  try { await deleteMemory(id); await loadMemory(); renderMemoryModalList(); showToast("已删除", "success"); }
+  catch (e) { showToast(`删除失败：${e.message}`, "error"); }
 }

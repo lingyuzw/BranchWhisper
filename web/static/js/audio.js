@@ -49,7 +49,6 @@ export async function startMic({ onSendSamples }) {
   $("#micBtn")?.classList.add("active");
   const micBtn = $("#micBtn");
   if (micBtn) micBtn.innerHTML = '<i data-lucide="mic-off"></i>';
-  setText("micStateText", "监听中");
 }
 
 export function stopMic() {
@@ -66,7 +65,6 @@ export function stopMic() {
   $("#micBtn")?.classList.remove("active");
   const micBtn = $("#micBtn");
   if (micBtn) micBtn.innerHTML = '<i data-lucide="mic"></i>';
-  setText("micStateText", "未开启");
 }
 
 /* ---- sample rate conversion ---- */
@@ -176,8 +174,6 @@ export function stopAssistantAudio() {
   }
   state.playbackSources.clear();
   if (state.audioCtx) state.playheadTime = state.audioCtx.currentTime;
-  setText("audioStateText", "已停止");
-  setText("playbackState", "已停止");
 }
 
 export function releaseAfterPlayback({ onReleased }) {

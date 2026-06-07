@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LoveChoice Settings</title>
+    <title>LoveChoice · 配置</title>
     <link rel="stylesheet" href="/static/css/base.css" />
     <link rel="stylesheet" href="/static/css/layout.css" />
     <link rel="stylesheet" href="/static/css/settings.css" />
@@ -13,20 +13,15 @@
   <body data-page="settings">
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="/static/index.html" aria-label="LoveChoice">
+        <a class="brand" href="/static/index.html">
           <span class="brand-mark">LC</span>
-          <span>
-            <strong>LoveChoice</strong>
-            <small>Voice Console</small>
-          </span>
+          <span><strong>LoveChoice</strong><small>Voice Console</small></span>
         </a>
 
-        <nav class="nav-tabs" aria-label="主导航">
+        <nav class="nav-tabs">
           <a href="/static/index.html"><i data-lucide="messages-square"></i>对话</a>
           <a href="/static/services.html"><i data-lucide="activity"></i>服务</a>
           <a class="active" href="/static/settings.html"><i data-lucide="settings-2"></i>配置</a>
-          <a href="/static/services.html#logs-asr"><i data-lucide="scroll-text"></i>日志</a>
-          <a href="#memory"><i data-lucide="brain"></i>记忆</a>
         </nav>
 
         <div class="topbar-status">
@@ -43,10 +38,8 @@
           <a href="#tts"><i data-lucide="volume-2"></i>语音合成</a>
           <a href="#vad"><i data-lucide="mic-vocal"></i>语音检测</a>
           <a href="#commands"><i data-lucide="terminal-square"></i>服务命令</a>
-          <a href="#memory"><i data-lucide="brain"></i>记忆能力</a>
           <button class="primary-action full" id="saveAllBtn" type="button">
-            <i data-lucide="save"></i>
-            应用配置
+            <i data-lucide="save"></i>应用配置
           </button>
         </aside>
 
@@ -72,7 +65,7 @@
             </div>
           </article>
 
-          <article class="settings-panel" id="prompt">
+          <article class="settings-panel settings-panel--prominent" id="prompt">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Persona</p>
@@ -123,42 +116,7 @@
               </div>
               <a class="small-button" href="/static/services.html"><i data-lucide="activity"></i>查看服务</a>
             </div>
-            <div class="profile-list command-editor-list" id="profileList"></div>
-          </article>
-
-          <article class="settings-panel" id="memory">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Always On</p>
-                <h2>记忆与联网能力</h2>
-              </div>
-            </div>
-            <div class="ability-grid">
-              <section class="ability-card active">
-                <div class="ability-icon"><i data-lucide="brain"></i></div>
-                <div>
-                  <strong>记忆</strong>
-                  <span id="memoryStatus">默认开启</span>
-                  <p id="memoryDetail">SQLite 自动记忆</p>
-                </div>
-              </section>
-              <section class="ability-card active">
-                <div class="ability-icon"><i data-lucide="globe-2"></i></div>
-                <div>
-                  <strong>联网工具</strong>
-                  <span id="toolsStatus">默认自动调用</span>
-                  <p id="toolsDetail">热点新闻 / 搜索 / 天气</p>
-                </div>
-              </section>
-            </div>
-            <div class="block-row">
-              <h3>最近记忆</h3>
-              <div class="inline-actions">
-                <button class="small-button" id="refreshMemoryBtn" type="button"><i data-lucide="refresh-cw"></i>刷新</button>
-                <button class="small-button" id="addMemoryBtn" type="button"><i data-lucide="plus"></i>新增</button>
-              </div>
-            </div>
-            <div class="runtime-list memory-compact" id="memoryList"></div>
+            <div class="profile-list" id="profileList"></div>
           </article>
         </section>
       </main>

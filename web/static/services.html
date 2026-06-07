@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LoveChoice Services</title>
+    <title>LoveChoice · 服务</title>
     <link rel="stylesheet" href="/static/css/base.css" />
     <link rel="stylesheet" href="/static/css/layout.css" />
     <link rel="stylesheet" href="/static/css/services.css" />
@@ -13,20 +13,15 @@
   <body data-page="services">
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="/static/index.html" aria-label="LoveChoice">
+        <a class="brand" href="/static/index.html">
           <span class="brand-mark">LC</span>
-          <span>
-            <strong>LoveChoice</strong>
-            <small>Voice Console</small>
-          </span>
+          <span><strong>LoveChoice</strong><small>Voice Console</small></span>
         </a>
 
-        <nav class="nav-tabs" aria-label="主导航">
+        <nav class="nav-tabs">
           <a href="/static/index.html"><i data-lucide="messages-square"></i>对话</a>
           <a class="active" href="/static/services.html"><i data-lucide="activity"></i>服务</a>
           <a href="/static/settings.html"><i data-lucide="settings-2"></i>配置</a>
-          <a href="#logs-asr"><i data-lucide="scroll-text"></i>日志</a>
-          <a href="/static/settings.html#memory"><i data-lucide="brain"></i>记忆</a>
         </nav>
 
         <div class="topbar-status">
@@ -35,78 +30,39 @@
       </header>
 
       <main class="ops-page">
+        <!-- header row -->
         <section class="page-head">
           <div>
             <p class="eyebrow">Service Orchestration</p>
-            <h1>ASR → LLM → TTS 编排面板</h1>
+            <h1>服务编排</h1>
           </div>
           <div class="head-actions">
-            <button class="primary-action" id="startAllBtn" type="button">
-              <i data-lucide="power"></i>
-              一键启动
-            </button>
-            <button class="secondary-action" id="stopAllBtn" type="button">
-              <i data-lucide="square"></i>
-              停止全部
-            </button>
-            <button class="secondary-action" id="restartAllBtn" type="button">
-              <i data-lucide="refresh-ccw"></i>
-              重启全部
-            </button>
-            <button class="secondary-action" id="clearAllLogsBtn" type="button">
-              <i data-lucide="trash-2"></i>
-              清空日志
-            </button>
-            <button class="icon-button" id="healthBtn" type="button" title="刷新状态">
-              <i data-lucide="refresh-cw"></i>
-            </button>
+            <button class="primary-action" id="startAllBtn" type="button"><i data-lucide="power"></i>一键启动</button>
+            <button class="secondary-action" id="stopAllBtn" type="button"><i data-lucide="square"></i>停止全部</button>
+            <button class="secondary-action" id="restartAllBtn" type="button"><i data-lucide="refresh-ccw"></i>重启全部</button>
+            <button class="icon-button" id="healthBtn" type="button" title="刷新状态"><i data-lucide="refresh-cw"></i></button>
           </div>
         </section>
 
-        <section class="pipeline-overview">
-          <div class="pipeline-node">
-            <span>01</span>
-            <strong>ASR</strong>
-            <small>浏览器语音转文本</small>
-          </div>
-          <i data-lucide="arrow-right"></i>
-          <div class="pipeline-node">
-            <span>02</span>
-            <strong>LLM</strong>
-            <small>OpenAI 兼容推理</small>
-          </div>
-          <i data-lucide="arrow-right"></i>
-          <div class="pipeline-node">
-            <span>03</span>
-            <strong>TTS</strong>
-            <small>流式语音合成</small>
-          </div>
-        </section>
+        <!-- service cards row -->
+        <div class="service-list" id="serviceCards"></div>
 
-        <section class="services-layout">
-          <div class="service-list" id="serviceCards"></div>
-
-          <aside class="logs-panel" id="logs-asr">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Live Logs</p>
-                <h2>运行日志</h2>
-              </div>
-              <div class="inline-actions">
-                <button class="icon-button" id="refreshLogsBtn" type="button" title="刷新日志">
-                  <i data-lucide="rotate-cw"></i>
-                </button>
-                <button class="icon-button" id="copyLogBtn" type="button" title="复制日志">
-                  <i data-lucide="copy"></i>
-                </button>
-                <button class="icon-button" id="downloadLogBtn" type="button" title="下载日志">
-                  <i data-lucide="download"></i>
-                </button>
-              </div>
+        <!-- logs section -->
+        <section class="logs-section">
+          <div class="logs-head">
+            <div>
+              <p class="eyebrow">Live Logs</p>
+              <h2>运行日志</h2>
             </div>
-            <div class="log-tabs" id="logTabs"></div>
-            <pre class="log-viewer" id="logOutput">选择一个服务查看日志。</pre>
-          </aside>
+            <div class="inline-actions">
+              <div class="log-tabs" id="logTabs"></div>
+              <button class="icon-button" id="refreshLogsBtn" type="button" title="刷新"><i data-lucide="rotate-cw"></i></button>
+              <button class="icon-button" id="copyLogBtn" type="button" title="复制"><i data-lucide="copy"></i></button>
+              <button class="icon-button" id="downloadLogBtn" type="button" title="下载"><i data-lucide="download"></i></button>
+              <button class="icon-button" id="clearAllLogsBtn" type="button" title="清空日志"><i data-lucide="trash-2"></i></button>
+            </div>
+          </div>
+          <pre class="log-viewer" id="logOutput">选择一个服务查看日志。</pre>
         </section>
       </main>
     </div>

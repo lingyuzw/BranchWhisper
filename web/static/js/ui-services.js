@@ -1,6 +1,6 @@
 /* ============================================================
    ui-services.js — Service orchestration page (services.html)
-   LoveChoice Voice Console
+   LoveChoice Voice Console · Precision Console
    ============================================================ */
 
 import { state } from "./state.js";
@@ -37,14 +37,12 @@ function setupServiceEvents() {
   $("#downloadLogBtn")?.addEventListener("click", downloadCurrentLog);
 }
 
-/* ---- service status ---- */
-
 function serviceSummaryText() {
   const running = state.services.filter((s) => s.running).length;
   return `${running}/${state.services.length} 运行`;
 }
 
-/* ---- service cards ---- */
+/* ---- cards (slim: status dot + name + 3 buttons) ---- */
 
 function renderServiceCards() {
   const host = $("#serviceCards");
@@ -61,25 +59,10 @@ function createServiceCard(service) {
   card.className = `service-card ${stateClass}`;
   card.dataset.serviceCard = service.id;
 
-  const port = service.health_url ? new URL(service.health_url).port || "--" : "--";
-  const pid = service.external ? "external" : service.pid || "--";
-  const stateLabel = service.external ? "External" : service.running ? "Running" : healthOk === false ? "Failed" : "Stopped";
-  const health = service.health ? (service.health.ok ? "OK" : "Fail") : "--";
-
   card.innerHTML = `
     <div class="service-top">
       <span class="status-dot"></span>
-      <div class="service-title">
-        <strong></strong>
-        <span></span>
-      </div>
-      <b class="badge service-badge">${stateLabel}</b>
-    </div>
-    <div class="service-meta">
-      <div class="meta-cell"><span>STATE</span><strong>${stateLabel}</strong></div>
-      <div class="meta-cell"><span>PID</span><strong>${pid}</strong></div>
-      <div class="meta-cell"><span>PORT</span><strong>${port}</strong></div>
-      <div class="meta-cell"><span>HEALTH</span><strong>${health}</strong></div>
+      <div class="service-title"><strong>${service.label || service.id}</strong></div>
     </div>
     <div class="service-actions">
       <button class="service-action start" type="button"><i data-lucide="play"></i>启动</button>
@@ -87,103 +70,50 @@ function createServiceCard(service) {
       <button class="service-action restart" type="button"><i data-lucide="refresh-ccw"></i>重启</button>
     </div>
   `;
-  card.querySelector(".service-title strong").textContent = service.label || service.id;
-  card.querySelector(".service-title span").textContent = service.description || "";
   card.querySelector(".start").addEventListener("click", () => handleStart(service.id));
   card.querySelector(".stop").addEventListener("click", () => handleStop(service.id));
   card.querySelector(".restart").addEventListener("click", () => handleRestart(service.id));
   return card;
 }
 
-/* ---- service actions ---- */
+/* ---- actions ---- */
 
-async function handleStart(serviceId) {
-  setServiceBusy(serviceId, "启动中...");
-  if (state.previewMode) { showToast("预览模式：无法启动服务", "info"); return; }
-  try {
-    await startService(serviceId);
-    await loadServices();
-    renderServiceCards();
-    await refreshLogs(serviceId);
-  } catch (error) {
-    showToast(`启动失败：${error.message}`, "error");
-    setServiceBusy(serviceId, "");
-  }
-}
+async function handleStart(id) { setBusy(id, "启动中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await startService(id); await loadServices(); renderServiceCards(); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
+async function handleStop(id)  { setBusy(id, "停止中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await stopService(id); await loadServices(); renderServiceCards(); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
+async function handleRestart(id) { setBusy(id, "重启中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await stopService(id); await startService(id); await loadServices(); renderServiceCards(); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
 
-async function handleStop(serviceId) {
-  setServiceBusy(serviceId, "停止中...");
-  if (state.previewMode) { showToast("预览模式：无法停止服务", "info"); return; }
-  try {
-    await stopService(serviceId);
-    await loadServices();
-    renderServiceCards();
-  } catch (error) {
-    showToast(`停止失败：${error.message}`, "error");
-    setServiceBusy(serviceId, "");
-  }
-}
-
-async function handleRestart(serviceId) {
-  setServiceBusy(serviceId, "重启中...");
-  if (state.previewMode) { showToast("预览模式：无法重启服务", "info"); return; }
-  try {
-    await stopService(serviceId);
-    await startService(serviceId);
-    await loadServices();
-    renderServiceCards();
-    await refreshLogs(serviceId);
-  } catch (error) {
-    showToast(`重启失败：${error.message}`, "error");
-    setServiceBusy(serviceId, "");
-  }
-}
-
-function setServiceBusy(serviceId, label) {
-  const card = document.querySelector(`[data-service-card="${serviceId}"]`);
+function setBusy(id, label) {
+  const card = document.querySelector(`[data-service-card="${id}"]`);
   if (!card) return;
-  card.querySelectorAll("button").forEach((btn) => { btn.disabled = Boolean(label); });
-  const badge = card.querySelector(".service-badge");
-  if (badge && label) badge.textContent = label;
+  card.querySelectorAll("button").forEach((b) => { b.disabled = Boolean(label); });
 }
 
 async function handleStartAll() {
-  if (state.previewMode) { showToast("预览模式：无法启动服务", "info"); return; }
+  if (state.previewMode) return showToast("预览模式", "info");
   showLog("启动 ASR...\nASR OK\n启动 LLM...\nLLM OK\n启动 TTS...");
-  try {
-    await startAllServices();
-    await loadServices();
-    renderServiceCards();
-    showLog("启动流程已提交。请刷新状态或查看各服务日志确认模型加载进度。");
-  } catch (error) { showToast(`一键启动失败：${error.message}`, "error"); }
+  try { await startAllServices(); await loadServices(); renderServiceCards(); showLog("启动流程已提交。"); }
+  catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
 async function handleStopAll() {
-  if (state.previewMode) { showToast("预览模式：无法停止服务", "info"); return; }
+  if (state.previewMode) return showToast("预览模式", "info");
   showLog("stopping all services...");
   try { await stopAllServices(); await loadServices(); renderServiceCards(); }
-  catch (error) { showToast(`全部停止失败：${error.message}`, "error"); }
+  catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
 async function handleRestartAll() {
-  if (state.previewMode) { showToast("预览模式：无法重启服务", "info"); return; }
-  showLog("停止全部服务...\n重新启动 ASR → LLM → TTS...");
-  try {
-    await stopAllServices();
-    await startAllServices();
-    await loadServices();
-    renderServiceCards();
-  } catch (error) { showToast(`全部重启失败：${error.message}`, "error"); }
+  if (state.previewMode) return showToast("预览模式", "info");
+  showLog("停止全部...\n重新启动...");
+  try { await stopAllServices(); await startAllServices(); await loadServices(); renderServiceCards(); }
+  catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
 async function handleClearAllLogs() {
   if (state.previewMode) return;
-  if (!window.confirm("清空所有服务的运行日志？")) return;
-  try {
-    showLog("clearing all service logs...");
-    await clearAllServiceLogs();
-    await refreshLogs(state.selectedLogService, { quiet: true });
-  } catch (error) { showToast(`清空全部日志失败：${error.message}`, "error"); }
+  if (!window.confirm("清空所有日志？")) return;
+  try { await clearAllServiceLogs(); await refreshLogs(state.selectedLogService, { quiet: true }); }
+  catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
 /* ---- logs ---- */
@@ -191,72 +121,47 @@ async function handleClearAllLogs() {
 export async function refreshLogs(serviceId, options = {}) {
   state.selectedLogService = serviceId || state.selectedLogService || "asr";
   renderLogTabs();
-
-  if (state.previewMode) {
-    if (!options.quiet) showLog("预览模式没有真实日志。正式后端启动后这里会显示模型 stdout/stderr。");
-    return;
-  }
-  try {
-    const logs = await fetchServiceLogs(state.selectedLogService);
-    showLog(logs || "暂无日志。");
-  } catch (error) {
-    if (!options.quiet) showLog(`日志读取失败：${error.message}`);
-  }
+  if (state.previewMode) { if (!options.quiet) showLog("预览模式没有真实日志。"); return; }
+  try { showLog(await fetchServiceLogs(state.selectedLogService) || "暂无日志。"); }
+  catch (e) { if (!options.quiet) showLog(`读取失败：${e.message}`); }
 }
 
 function showLog(text) {
-  const output = $("#logOutput");
-  if (!output) return;
-  output.textContent = text || "";
-  output.scrollTop = output.scrollHeight;
+  const output = $("#logOutput"); if (!output) return;
+  output.textContent = text || ""; output.scrollTop = output.scrollHeight;
 }
 
 function renderLogTabs() {
-  const host = $("#logTabs");
-  if (!host) return;
+  const host = $("#logTabs"); if (!host) return;
   host.innerHTML = "";
-  for (const service of state.services) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `log-tab ${service.id === state.selectedLogService ? "active" : ""}`;
-    button.textContent = service.id.toUpperCase();
-    button.addEventListener("click", () => refreshLogs(service.id));
-    host.appendChild(button);
+  for (const s of state.services) {
+    const btn = document.createElement("button"); btn.type = "button";
+    btn.className = `log-tab ${s.id === state.selectedLogService ? "active" : ""}`;
+    btn.textContent = s.id.toUpperCase();
+    btn.addEventListener("click", () => refreshLogs(s.id));
+    host.appendChild(btn);
   }
 }
 
 async function copyCurrentLog() {
-  const text = $("#logOutput")?.textContent || "";
-  if (!text.trim()) return;
-  try { await navigator.clipboard.writeText(text); showToast("日志已复制", "success"); }
-  catch { showToast("复制失败", "error"); }
+  const text = $("#logOutput")?.textContent || ""; if (!text.trim()) return;
+  try { await navigator.clipboard.writeText(text); showToast("已复制", "success"); } catch { showToast("复制失败", "error"); }
 }
 
 function downloadCurrentLog() {
-  const text = $("#logOutput")?.textContent || "";
-  if (!text.trim()) return;
+  const text = $("#logOutput")?.textContent || ""; if (!text.trim()) return;
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `lovechoice-${state.selectedLogService || "service"}.log`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(link.href), 200);
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `lovechoice-${state.selectedLogService || "service"}.log`;
+  document.body.appendChild(a); a.click(); a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(a.href), 200);
 }
-
-/* ---- polling ---- */
 
 function startServicePolling() {
   window.clearInterval(state.servicePollTimer);
   state.servicePollTimer = window.setInterval(async () => {
-    await loadServices();
-    renderServiceCards();
-    setText("systemState", serviceSummaryText());
+    await loadServices(); renderServiceCards(); setText("systemState", serviceSummaryText());
   }, 4500);
 }
 
-// stop polling when leaving page
-window.addEventListener("beforeunload", () => {
-  window.clearInterval(state.servicePollTimer);
-});
+window.addEventListener("beforeunload", () => { window.clearInterval(state.servicePollTimer); });

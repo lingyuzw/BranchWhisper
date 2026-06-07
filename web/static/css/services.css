@@ -1,112 +1,49 @@
 /* ============================================================
-   services.css — Service orchestration page (services.html)
-   LoveChoice Voice Console · Dark Audio Studio theme
+   services.css — Service orchestration page
+   LoveChoice Voice Console · Precision Console
    ============================================================ */
 
-/* ---- pipeline overview ---- */
+.service-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 
-.pipeline-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr);
-  align-items: center; gap: 6px;
-}
-
-.pipeline-overview > svg { width: 18px; height: 18px; justify-self: center; color: var(--text-muted); }
-
-.pipeline-node {
-  min-height: 72px; display: grid; gap: 3px; padding: 12px 14px;
-  border: 1px solid var(--border); border-radius: var(--radius-card);
-  background: var(--surface);
-}
-
-.pipeline-node span { color: var(--primary); font-size: 10px; font-weight: 700; }
-.pipeline-node strong { font-size: 16px; font-weight: 600; }
-.pipeline-node small { color: var(--text-muted); font-size: 11px; }
-
-/* ---- service list ---- */
-
-.service-list {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
-}
-
-/* ---- service card ---- */
-
+/* card */
 .service-card {
   display: grid; gap: 10px; padding: 12px;
-  border: 1px solid var(--border); border-radius: var(--radius-card);
-  background: var(--surface); transition: border-color 160ms;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); transition: border-color 140ms;
 }
-
-.service-card.active { border-color: rgba(63, 185, 80, 0.25); }
-.service-card.failed { border-color: rgba(248, 81, 73, 0.25); }
+.service-card.active { border-color: rgba(63,185,80,0.22); }
+.service-card.failed { border-color: rgba(248,81,73,0.22); }
 
 .service-top {
-  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto;
-  gap: 8px; align-items: start;
+  display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 7px; align-items: start;
 }
-
 .service-badge { align-self: start; }
+.service-title { min-width: 0; display: grid; gap: 3px; }
+.service-title strong { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.service-title span { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
 
-.service-title { min-width: 0; display: grid; gap: 4px; }
+.service-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
-.service-title strong {
-  overflow: hidden; font-size: 14px; font-weight: 600;
-  text-overflow: ellipsis; white-space: nowrap;
+/* logs section */
+.logs-section { display: grid; gap: 8px; }
+.logs-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
 }
-
-.service-title span {
-  color: var(--text-muted); font-size: 11px; line-height: 1.4;
-}
-
-.service-meta {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;
-}
-
-.meta-cell {
-  min-height: 46px; display: grid; gap: 3px; align-content: start;
-  padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-control);
-  background: var(--surface-muted);
-}
-
-.meta-cell strong {
-  display: block; overflow: hidden; color: var(--text);
-  font-size: 11px; text-overflow: ellipsis; white-space: nowrap;
-}
-
-.service-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-
-/* ---- logs panel ---- */
-
-.logs-panel { display: grid; gap: 10px; padding: 12px; }
-
-.log-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-
+.log-tabs { display: flex; gap: 4px; }
 .log-tab {
-  min-height: 28px; padding: 0 10px;
+  min-height: 26px; padding: 0 9px;
   border: 1px solid var(--border); border-radius: 999px;
   color: var(--text-muted); background: var(--surface-muted);
-  font-size: 11px; font-weight: 700;
-  transition: background 120ms, color 120ms;
+  font-size: 11px; font-weight: 700; transition: background 100ms, color 100ms;
 }
-
 .log-tab:hover { color: var(--text); background: var(--surface-hover); }
 .log-tab.active { color: #0d1117; background: var(--primary); border-color: transparent; }
 
 .log-viewer, #logOutput {
-  height: 520px; margin: 0; padding: 12px; overflow: auto;
-  border: 1px solid var(--border); border-radius: var(--radius-card);
+  height: 480px; margin: 0; padding: 12px; overflow: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
   color: #c9d1d9; background: #0d1117;
-  font-size: 11px; line-height: 1.58; white-space: pre-wrap;
+  font-size: 10.5px; line-height: 1.55; white-space: pre-wrap;
 }
 
-/* ---- responsive ---- */
-
-@media (max-width: 1180px) {
-  .services-layout { grid-template-columns: 1fr; }
-  .service-list { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 760px) {
-  .pipeline-overview { grid-template-columns: 1fr; }
-  .pipeline-overview > svg { transform: rotate(90deg); }
-}
+@media (max-width: 1180px) { .service-list { grid-template-columns: 1fr; } }
