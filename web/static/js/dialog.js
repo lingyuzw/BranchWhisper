@@ -43,7 +43,9 @@ export function reconnectDialog() {
 
 function sendRuntimeSettings() {
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
-  state.ws.send(JSON.stringify({ type: "settings", settings: state.currentConfig }));
+  const settings = { ...state.currentConfig };
+  settings.tts_enabled = state.ttsEnabled;
+  state.ws.send(JSON.stringify({ type: "settings", settings }));
 }
 
 /* ---- incoming messages ---- */
@@ -60,7 +62,7 @@ function handleDialogEvent(data) {
     case "ready": setText("topStatus", "待机"); pipeline("idle"); break;
     case "conversation": applyConversation(data.conversation, true); break;
     case "conversation_saved": applyConversation(data.conversation, false); break;
-    case "settings": state.currentConfig = { ...state.currentConfig, ...(data.settings || {}) }; break;
+    case "settings": state.currentConfig = { ...state.currentConfig, ...(data.settings || {}) }; state.ttsEnabled = state.currentConfig.tts_enabled ?? true; break;
     case "vad_start": state.busy = false; setText("vadLabel", "speech"); setText("topStatus", "收音"); pipeline("vad", "正在听"); break;
     case "vad_end": setText("vadLabel", `${data.duration_ms || 0}ms`); setText("topStatus", "识别"); pipeline("asr", "识别中"); state.busy = true; break;
     case "vad_short": setText("vadLabel", "short"); break;

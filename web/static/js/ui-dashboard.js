@@ -37,6 +37,9 @@ export async function initDashboard() {
   // sidebar "new conversation" button has its own independent handler
   $("#newConversationBtn")?.addEventListener("click", newConversation);
 
+  // TTS toggle — switch icon and push state to backend
+  setupTtsToggle();
+
   setText("topStatus", "待机");
   setupMemoryModal();
   syncChatView();
@@ -52,6 +55,35 @@ function bindComposer(micId, sendId, intrId, resetId, inputId) {
   input?.addEventListener("input", () => resizeComposerInput(input));
   input?.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendText(inputId); }});
   resizeComposerInput(input);
+}
+
+/* ---- TTS toggle ---- */
+
+function setupTtsToggle() {
+  const btn = $("#ttsToggleBtn");
+  if (!btn) return;
+  // Sync icon from persisted state
+  updateTtsToggleIcon();
+  btn.addEventListener("click", () => {
+    state.ttsEnabled = !state.ttsEnabled;
+    updateTtsToggleIcon();
+    state.currentConfig.tts_enabled = state.ttsEnabled;
+    // Push to backend if connected
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      state.ws.send(JSON.stringify({ type: "settings", settings: { tts_enabled: state.ttsEnabled } }));
+    }
+  });
+}
+
+function updateTtsToggleIcon() {
+  const btn = $("#ttsToggleBtn");
+  if (!btn) return;
+  const icon = btn.querySelector("i");
+  if (icon) {
+    icon.setAttribute("data-lucide", state.ttsEnabled ? "volume-2" : "volume-x");
+    // Re-render lucide icon
+    if (window.lucide) window.lucide.createIcons();
+  }
 }
 
 /* ---- empty ↔ messages toggle ---- */

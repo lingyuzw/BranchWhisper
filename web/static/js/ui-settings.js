@@ -133,6 +133,7 @@ function fillConfig(config) {
   setChecked("memoryExtractEnabled", config.memory_extract_enabled ?? true);
   setChecked("toolsEnabled", config.tools_enabled ?? true);
   setChecked("toolsAutoCall", config.tools_auto_call ?? true);
+  setChecked("ttsEnabled", config.tts_enabled ?? true);
 }
 
 function collectConfig() {
@@ -146,6 +147,7 @@ function collectConfig() {
   result.memory_extract_enabled = checked("memoryExtractEnabled", true);
   result.tools_enabled = checked("toolsEnabled", true);
   result.tools_auto_call = checked("toolsAutoCall", true);
+  result.tts_enabled = checked("ttsEnabled", true);
   return result;
 }
 

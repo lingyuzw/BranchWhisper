@@ -222,6 +222,7 @@ class SessionSettings:
     tts_seed: int
     tts_volume: float
     tts_fade_ms: int
+    tts_enabled: bool
     vad_threshold: float
     vad_min_silence_ms: int
     vad_speech_pad_ms: int
@@ -264,6 +265,7 @@ class SessionSettings:
             tts_seed=args.tts_seed,
             tts_volume=args.tts_volume,
             tts_fade_ms=args.tts_fade_ms,
+            tts_enabled=args.tts_enabled,
             vad_threshold=args.vad_threshold,
             vad_min_silence_ms=args.vad_min_silence_ms,
             vad_speech_pad_ms=args.vad_speech_pad_ms,
@@ -314,6 +316,13 @@ def _is_pid_alive(pid: int) -> bool:
     except OSError:
         return False
 
+
+def _safe_poll(proc) -> int | None:
+    """安全 poll()，兼容 Popen.__new__() 创建的虚拟壳对象。"""
+    try:
+        return proc.poll()
+    except AttributeError:
+        return None
 
 def _create_virtual_process(pid: int) -> subprocess.Popen | None:
     """Create a minimal Popen wrapper around an existing process ID.
@@ -395,13 +404,12 @@ class ServiceManager:
         health = await check_service(service_id, health_url) if health_url else None
         tracked_running = False
         if process is not None:
-            try:
-                tracked_running = process.poll() is None
-            except AttributeError:
-                # _create_virtual_process 产生的壳对象可能缺少内部属性
-                # (Python 3.12+ 的 _waitpid_lock)。降级为 PID 存活检测。
-                pid = getattr(process, "pid", None) or _read_service_pid(service_id)
-                tracked_running = bool(pid and _is_pid_alive(pid))
+            tracked_running = _safe_poll(process) is None
+        if not tracked_running:
+            # _create_virtual_process 产生的壳对象可能缺少内部属性
+            # (Python 3.12+ 的 _waitpid_lock)。降级为 PID 存活检测。
+            pid = getattr(process, "pid", None) or _read_service_pid(service_id)
+            tracked_running = bool(pid and _is_pid_alive(pid))
         port_open = is_tcp_port_open(health_url)
         external_running = bool(health and health.get("ok")) or port_open
         running = tracked_running or external_running
@@ -423,7 +431,7 @@ class ServiceManager:
             "external": external_running and not tracked_running,
             "port_open": port_open,
             "pid": process.pid if tracked_running and process else None,
-            "returncode": None if running or process is None else process.poll(),
+            "returncode": None if running or process is None else _safe_poll(process),
             "started_at": self.started_at.get(service_id),
             "log_file": str(self.log_files.get(service_id, "")),
             "health": health,
@@ -438,10 +446,9 @@ class ServiceManager:
 
         process = self.processes.get(service_id)
         # 检查是否已在运行（安全 poll，避免虚拟 Popen 崩溃）
-        try:
-            already_running = process is not None and process.poll() is None
-        except AttributeError:
-            already_running = process is not None and _is_pid_alive(process.pid)
+        already_running = process is not None and _safe_poll(process) is None
+        if not already_running and process is not None:
+            already_running = _is_pid_alive(process.pid)
         if already_running:
             return await self.status(service_id)
 
@@ -495,7 +502,11 @@ class ServiceManager:
             raise KeyError(service_id)
 
         process = self.processes.get(service_id)
-        if process is not None and process.poll() is None:
+        # 安全 poll：虚拟 Popen 可能缺少内部属性
+        tracked = process is not None and _safe_poll(process) is None
+        if not tracked and process is not None:
+            tracked = _is_pid_alive(process.pid)
+        if tracked:
             await asyncio.to_thread(self._terminate_process, process)
         else:
             # 服务端重启后没有原 Popen 句柄，通过 PID 文件杀死旧进程
@@ -1508,15 +1519,20 @@ class DialogSession:
     async def tts_queue_worker(self, text_queue: asyncio.Queue) -> None:
         # TTS requests are sequential so audio order is deterministic. The
         # audio itself still streams back chunk by chunk inside each request.
+        # If tts_enabled is false, drain the queue silently without calling TTS.
         while True:
             text = await text_queue.get()
             if text is END:
                 return
+            if not self.settings.tts_enabled:
+                continue
             text = clean_for_tts(str(text))
             if text:
                 await self.stream_direct_tts(text)
 
     async def stream_direct_tts(self, text: str) -> None:
+        if not self.settings.tts_enabled:
+            return
         # CosyVoice server returns raw PCM16 mono. Text events and binary audio
         # frames share the same WebSocket, so the frontend can update text and
         # schedule audio playback without polling.
@@ -1977,6 +1993,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tts-seed", type=int, default=42)
     parser.add_argument("--tts-volume", type=float, default=DEFAULT_TTS_VOLUME)
     parser.add_argument("--tts-fade-ms", type=int, default=DEFAULT_TTS_FADE_MS)
+    parser.add_argument("--tts-enabled", action=argparse.BooleanOptionalAction, default=True)
 
     parser.add_argument("--vad-device", choices=["cpu", "cuda", "auto"], default="cpu")
     parser.add_argument("--vad-threshold", type=float, default=0.50)
@@ -1986,19 +2003,4 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-utterance-ms", type=int, default=250)
     parser.add_argument("--max-utterance-sec", type=float, default=15.0)
 
-    parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=7860)
-    parser.add_argument("--service-config", default="", help="Optional JSON file overriding service start commands")
-    return parser
-
-
-def main() -> None:
-    import uvicorn
-
-    args = build_parser().parse_args()
-    app = create_app(args)
-    uvicorn.run(app, host=args.host, port=args.port, access_log=False)
-
-
-if __name__ == "__main__":
-    main()
+    parse

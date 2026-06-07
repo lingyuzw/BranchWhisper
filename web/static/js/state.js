@@ -39,6 +39,7 @@ export const DEFAULT_CONFIG = {
   tts_seed: 42,
   tts_volume: 0.88,
   tts_fade_ms: 5,
+  tts_enabled: true,
   vad_threshold: 0.5,
   vad_min_silence_ms: 350,
   vad_speech_pad_ms: 120,
@@ -111,6 +112,7 @@ export const state = {
   silentGain: null,
   micPending: new Float32Array(0),
   ttsSampleRate: 24000,
+  ttsEnabled: true,
 
   /* dialogue state */
   busy: false,
