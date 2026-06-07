@@ -25,8 +25,8 @@
         <span class="connection-pill" id="systemState">静态预览</span>
       </header>
 
-      <main class="admin-stage">
-        <section class="admin-head">
+      <main class="admin-stage settings-stage">
+        <section class="admin-head settings-head">
           <div>
             <p class="eyebrow">Configuration</p>
             <h1>配置中心</h1>
@@ -37,31 +37,34 @@
           </button>
         </section>
 
-        <section class="settings-layout">
-          <article class="settings-panel">
+        <section class="settings-layout refined">
+          <article class="settings-panel core-settings">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Runtime</p>
-                <h2>对话参数</h2>
+                <p class="eyebrow">Chat Engine</p>
+                <h2>模型与语气</h2>
               </div>
+              <span class="soft-badge" id="apiKeyState">未保存，可填 sk-... 格式</span>
             </div>
 
             <div class="settings-block">
-              <h3>路由</h3>
+              <h3><i data-lucide="plug-zap"></i>OpenAI 兼容 API</h3>
               <div class="form-grid">
-                <label><span>ASR Mode</span><select id="asrMode"><option value="transcription">transcription</option><option value="chat">chat</option></select></label>
-                <label><span>ASR Model</span><input id="asrModel" type="text" /></label>
-                <label class="wide"><span>ASR URL</span><input id="asrUrl" type="text" /></label>
-                <label><span>LLM Model</span><input id="llmModel" type="text" /></label>
-                <label class="wide"><span>LLM URL</span><input id="llmUrl" type="text" /></label>
-                <label class="wide"><span>TTS URL</span><input id="ttsUrl" type="text" /></label>
+                <label><span>Model</span><input id="llmModel" type="text" /></label>
+                <label><span>Temperature</span><input id="temperature" type="number" min="0" max="1.5" step="0.01" /></label>
+                <label class="wide"><span>Chat Completions URL</span><input id="llmUrl" type="text" /></label>
+                <label class="wide"><span>API Key</span><input id="llmApiKey" type="password" autocomplete="off" /></label>
               </div>
             </div>
 
+            <div class="settings-block prompt-block">
+              <h3><i data-lucide="message-square-text"></i>Prompt</h3>
+              <label class="wide"><span>System Prompt</span><textarea class="prompt-textarea" id="systemPrompt"></textarea></label>
+            </div>
+
             <div class="settings-block">
-              <h3>生成</h3>
+              <h3><i data-lucide="audio-lines"></i>回复与语音</h3>
               <div class="form-grid compact">
-                <label><span>Temperature</span><input id="temperature" type="number" min="0" max="1.5" step="0.01" /></label>
                 <label><span>Max Tokens</span><input id="maxTokens" type="number" min="32" max="4096" step="1" /></label>
                 <label><span>History Turns</span><input id="historyTurns" type="number" min="1" max="20" step="1" /></label>
                 <label><span>TTS Speed</span><input id="ttsSpeed" type="number" min="0.7" max="1.5" step="0.01" /></label>
@@ -72,56 +75,7 @@
             </div>
 
             <div class="settings-block">
-              <h3>Prompt</h3>
-              <div class="form-grid">
-                <label class="wide"><span>System Prompt</span><textarea class="prompt-textarea" id="systemPrompt"></textarea></label>
-              </div>
-            </div>
-
-            <div class="settings-block">
-              <h3>记忆</h3>
-              <div class="form-grid compact">
-                <label class="check-row"><input id="memoryEnabled" type="checkbox" /><span>启用记忆</span></label>
-                <label class="check-row"><input id="memoryExtractEnabled" type="checkbox" /><span>自动抽取</span></label>
-                <label><span>上下文条数</span><input id="memoryMaxContextItems" type="number" min="1" max="30" step="1" /></label>
-                <label><span>短升中天数</span><input id="memoryShortToMidDays" type="number" min="7" max="365" step="1" /></label>
-                <label><span>短升中次数</span><input id="memoryShortToMidCount" type="number" min="2" max="20" step="1" /></label>
-                <label><span>中升长天数</span><input id="memoryMidToLongDays" type="number" min="30" max="730" step="1" /></label>
-                <label><span>中升长次数</span><input id="memoryMidToLongCount" type="number" min="2" max="50" step="1" /></label>
-                <label><span>短期删除天数</span><input id="memoryShortDeleteDays" type="number" min="30" max="730" step="1" /></label>
-                <label><span>中期降级天数</span><input id="memoryMidDowngradeDays" type="number" min="30" max="730" step="1" /></label>
-                <label><span>长期降级天数</span><input id="memoryLongDowngradeDays" type="number" min="90" max="1825" step="1" /></label>
-              </div>
-              <div class="inline-actions">
-                <button class="small-button" id="refreshMemoryBtn" type="button"><i data-lucide="refresh-cw"></i>刷新记忆</button>
-                <button class="small-button" id="addMemoryBtn" type="button"><i data-lucide="plus"></i>手动新增</button>
-              </div>
-              <div class="runtime-list" id="memoryList"></div>
-            </div>
-
-            <div class="settings-block">
-              <h3>联网工具</h3>
-              <div class="form-grid compact">
-                <label class="check-row"><input id="toolsEnabled" type="checkbox" /><span>启用工具</span></label>
-                <label class="check-row"><input id="toolsAutoCall" type="checkbox" /><span>自动调用</span></label>
-                <label><span>Timeout sec</span><input id="toolsTimeout" type="number" min="2" max="60" step="1" /></label>
-                <label><span>Max Result Chars</span><input id="toolsMaxResultChars" type="number" min="1000" max="20000" step="500" /></label>
-              </div>
-              <div class="runtime-list" id="builtinToolList"></div>
-              <label><span>Custom API Tools JSON</span><textarea class="tool-json" id="customToolsJson"></textarea></label>
-              <div class="form-grid">
-                <label><span>Test Tool ID</span><input id="toolTestId" type="text" placeholder="web_search" /></label>
-                <label><span>Test Arguments JSON</span><input id="toolTestArgs" type="text" placeholder='{"query":"今天科技新闻"}' /></label>
-              </div>
-              <div class="inline-actions">
-                <button class="small-button" id="refreshToolsBtn" type="button"><i data-lucide="refresh-cw"></i>刷新工具</button>
-                <button class="small-button" id="testToolBtn" type="button"><i data-lucide="play"></i>测试工具</button>
-              </div>
-              <pre id="toolTestOutput"></pre>
-            </div>
-
-            <div class="settings-block">
-              <h3>VAD</h3>
+              <h3><i data-lucide="mic-vocal"></i>语音检测</h3>
               <div class="form-grid compact">
                 <label><span>Threshold</span><input id="vadThreshold" type="number" min="0.1" max="0.9" step="0.01" /></label>
                 <label><span>Silence ms</span><input id="vadMinSilence" type="number" min="120" max="1500" step="10" /></label>
@@ -133,15 +87,56 @@
             </div>
           </article>
 
-          <article class="settings-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Launch profiles</p>
-                <h2>服务启动命令</h2>
+          <aside class="settings-side">
+            <article class="settings-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Always On</p>
+                  <h2>后台能力</h2>
+                </div>
               </div>
-            </div>
-            <div class="profile-list" id="profileList"></div>
-          </article>
+
+              <div class="ability-grid">
+                <section class="ability-card active">
+                  <div class="ability-icon"><i data-lucide="brain"></i></div>
+                  <div>
+                    <strong>记忆</strong>
+                    <span id="memoryStatus">默认开启</span>
+                    <p id="memoryDetail">SQLite 自动记忆</p>
+                  </div>
+                </section>
+                <section class="ability-card active">
+                  <div class="ability-icon"><i data-lucide="globe-2"></i></div>
+                  <div>
+                    <strong>联网工具</strong>
+                    <span id="toolsStatus">默认自动调用</span>
+                    <p id="toolsDetail">热点新闻 / 搜索 / 天气</p>
+                  </div>
+                </section>
+              </div>
+
+              <div class="settings-block compact-block">
+                <div class="block-row">
+                  <h3><i data-lucide="archive"></i>最近记忆</h3>
+                  <div class="inline-actions">
+                    <button class="small-button" id="refreshMemoryBtn" type="button"><i data-lucide="refresh-cw"></i>刷新</button>
+                    <button class="small-button" id="addMemoryBtn" type="button"><i data-lucide="plus"></i>新增</button>
+                  </div>
+                </div>
+                <div class="runtime-list memory-compact" id="memoryList"></div>
+              </div>
+            </article>
+
+            <article class="settings-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Launch Profiles</p>
+                  <h2>服务摘要</h2>
+                </div>
+              </div>
+              <div class="profile-list compact-profiles" id="profileList"></div>
+            </article>
+          </aside>
         </section>
       </main>
     </div>

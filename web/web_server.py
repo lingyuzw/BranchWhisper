@@ -22,7 +22,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 import numpy as np
-from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -44,6 +44,7 @@ CONVERSATION_INDEX = CONVERSATION_DIR / "index.json"
 SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
 MEMORY_DB = RUNTIME_DIR / "memory.sqlite3"
 TOOLS_CONFIG = RUNTIME_DIR / "tools.json"
+MASKED_SECRET_CHARS = "*"
 
 MIC_SAMPLE_RATE = 16000
 VAD_BLOCK_SIZE = 512
@@ -196,6 +197,7 @@ class SessionSettings:
     asr_max_tokens: int
     llm_url: str
     llm_model: str
+    llm_api_key: str
     temperature: float
     max_tokens: int
     history_turns: int
@@ -237,6 +239,7 @@ class SessionSettings:
             asr_max_tokens=args.asr_max_tokens,
             llm_url=args.llm_url,
             llm_model=args.llm_model,
+            llm_api_key=args.llm_api_key,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
             history_turns=args.history_turns,
@@ -506,6 +509,50 @@ def save_persisted_settings(settings: SessionSettings, path: Path = SETTINGS_CON
     path.write_text(json.dumps(asdict(settings), ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def mask_secret(value: str) -> str:
+    value = str(value or "").strip()
+    if not value:
+        return ""
+    if len(value) <= 10:
+        return f"{value[:3]}{MASKED_SECRET_CHARS * 8}"
+    return f"{value[:7]}{MASKED_SECRET_CHARS * 23}{value[-4:]}"
+
+
+def public_settings(settings: SessionSettings) -> dict:
+    data = asdict(settings)
+    api_key = str(data.pop("llm_api_key", "") or "")
+    data["llm_api_key"] = ""
+    data["llm_api_key_set"] = bool(api_key.strip())
+    data["llm_api_key_masked"] = mask_secret(api_key)
+    return data
+
+
+def update_llm_api_key(settings: SessionSettings, payload: dict) -> None:
+    if "llm_api_key" not in payload:
+        return
+    raw = payload.pop("llm_api_key")
+    if raw is None:
+        return
+    value = str(raw).strip()
+    if not value or MASKED_SECRET_CHARS in value:
+        return
+    settings.llm_api_key = value
+
+
+def llm_headers(settings: SessionSettings) -> dict[str, str]:
+    api_key = str(settings.llm_api_key or "").strip()
+    if not api_key:
+        return {}
+    return {"Authorization": f"Bearer {api_key}"}
+
+
+def enable_default_capabilities(settings: SessionSettings) -> None:
+    settings.memory_enabled = True
+    settings.memory_extract_enabled = True
+    settings.tools_enabled = True
+    settings.tools_auto_call = True
+
+
 class ConversationStore:
     # A tiny local JSON store for Codex-like conversation persistence. It keeps
     # the UI state durable across page navigation without adding a database.
@@ -769,12 +816,24 @@ def create_app(args) -> FastAPI:
     # independently.
     app = FastAPI(title="Voice Web Console")
     app.state.settings = load_persisted_settings(SessionSettings.from_args(args))
+    enable_default_capabilities(app.state.settings)
     app.state.vad_store = VadModelStore(args.vad_device)
     app.state.service_manager = ServiceManager(Path(args.service_config) if args.service_config else None)
     app.state.conversation_store = ConversationStore()
     app.state.memory_store = MemoryStore(MEMORY_DB)
     app.state.tool_manager = ToolManager(TOOLS_CONFIG)
+    app.state.tool_manager.update_config(
+        {"builtins": {tool["id"]: {"enabled": True} for tool in ToolManager.BUILTIN_TOOLS}}
+    )
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+    @app.middleware("http")
+    async def no_cache_static(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+        return response
 
     @app.get("/")
     async def index():
@@ -782,13 +841,15 @@ def create_app(args) -> FastAPI:
 
     @app.get("/api/config")
     async def config():
-        return asdict(app.state.settings)
+        return public_settings(app.state.settings)
 
     @app.patch("/api/config")
     async def update_config(payload: dict | None = Body(default=None)):
-        app.state.settings.update_from_dict(payload or {})
+        payload = dict(payload or {})
+        update_llm_api_key(app.state.settings, payload)
+        app.state.settings.update_from_dict(payload)
         save_persisted_settings(app.state.settings)
-        return asdict(app.state.settings)
+        return public_settings(app.state.settings)
 
     @app.get("/api/memory")
     async def memory_items(limit: int = 200, query: str = "", layer: str = ""):
@@ -1249,7 +1310,7 @@ class DialogSession:
             "max_tokens": max_tokens,
         }
         async with httpx.AsyncClient(timeout=self.settings.tools_timeout) as client:
-            resp = await client.post(self.settings.llm_url, json=payload)
+            resp = await client.post(self.settings.llm_url, json=payload, headers=llm_headers(self.settings))
         resp.raise_for_status()
         return extract_chat_message_text(resp.json())
 
@@ -1271,7 +1332,7 @@ class DialogSession:
         started = time.perf_counter()
 
         async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("POST", self.settings.llm_url, json=payload) as resp:
+            async with client.stream("POST", self.settings.llm_url, json=payload, headers=llm_headers(self.settings)) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
                     if not line:
@@ -1759,6 +1820,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--llm-url", default="http://127.0.0.1:8080/v1/chat/completions")
     parser.add_argument("--llm-model", default="qwen3.5-9b")
+    parser.add_argument("--llm-api-key", default=os.environ.get("BUDING_LLM_API_KEY", ""))
     parser.add_argument("--temperature", type=float, default=0.35)
     parser.add_argument("--max-tokens", type=int, default=220)
     parser.add_argument("--history-turns", type=int, default=8)

@@ -49,6 +49,7 @@ const DEFAULT_CONFIG = {
   asr_model: "qwen3-asr",
   llm_url: "http://127.0.0.1:8080/v1/chat/completions",
   llm_model: "qwen3.5-9b",
+  llm_api_key: "",
   temperature: 0.35,
   max_tokens: 220,
   history_turns: 8,
@@ -179,12 +180,14 @@ async function loadConfig() {
     state.currentConfig = { ...DEFAULT_CONFIG, ...config };
     state.ttsSampleRate = Number(config.tts_sample_rate || 24000);
     fillConfig(state.currentConfig);
+    renderCapabilityStatus(state.currentConfig);
     setSystemState("后端在线");
   } catch (error) {
     state.previewMode = true;
     state.currentConfig = { ...DEFAULT_CONFIG };
     state.ttsSampleRate = DEFAULT_CONFIG.tts_sample_rate;
     fillConfig(DEFAULT_CONFIG);
+    renderCapabilityStatus(DEFAULT_CONFIG);
     setSystemState("静态预览");
     if (page === "dashboard") addMessage("system", `预览模式：${error.message}`);
   }
@@ -196,6 +199,8 @@ function fillConfig(config) {
   setValue("asrModel", config.asr_model || DEFAULT_CONFIG.asr_model);
   setValue("llmUrl", config.llm_url || DEFAULT_CONFIG.llm_url);
   setValue("llmModel", config.llm_model || DEFAULT_CONFIG.llm_model);
+  setValue("llmApiKey", "");
+  setPlaceholder("llmApiKey", config.llm_api_key_masked || "sk-2b1f0***********************e230");
   setValue("ttsUrl", config.tts_url || DEFAULT_CONFIG.tts_url);
   setValue("temperature", config.temperature ?? DEFAULT_CONFIG.temperature);
   setValue("maxTokens", config.max_tokens ?? DEFAULT_CONFIG.max_tokens);
@@ -232,6 +237,11 @@ function setValue(id, value) {
   if (el) el.value = value;
 }
 
+function setPlaceholder(id, value) {
+  const el = document.getElementById(id);
+  if (el && value) el.placeholder = value;
+}
+
 function value(id, fallback = "") {
   const el = document.getElementById(id);
   return el ? el.value : fallback;
@@ -249,46 +259,57 @@ function checked(id, fallback = false) {
 
 function collectConfig() {
   return {
-    asr_mode: value("asrMode", DEFAULT_CONFIG.asr_mode),
-    asr_url: value("asrUrl", DEFAULT_CONFIG.asr_url).trim(),
-    asr_model: value("asrModel", DEFAULT_CONFIG.asr_model).trim(),
-    llm_url: value("llmUrl", DEFAULT_CONFIG.llm_url).trim(),
-    llm_model: value("llmModel", DEFAULT_CONFIG.llm_model).trim(),
-    temperature: Number(value("temperature", DEFAULT_CONFIG.temperature)),
-    max_tokens: Number(value("maxTokens", DEFAULT_CONFIG.max_tokens)),
-    history_turns: Number(value("historyTurns", DEFAULT_CONFIG.history_turns)),
-    system: value("systemPrompt", DEFAULT_CONFIG.system).trim(),
-    memory_enabled: checked("memoryEnabled", DEFAULT_CONFIG.memory_enabled),
-    memory_extract_enabled: checked("memoryExtractEnabled", DEFAULT_CONFIG.memory_extract_enabled),
-    memory_short_to_mid_days: Number(value("memoryShortToMidDays", DEFAULT_CONFIG.memory_short_to_mid_days)),
-    memory_short_to_mid_count: Number(value("memoryShortToMidCount", DEFAULT_CONFIG.memory_short_to_mid_count)),
-    memory_mid_to_long_days: Number(value("memoryMidToLongDays", DEFAULT_CONFIG.memory_mid_to_long_days)),
-    memory_mid_to_long_count: Number(value("memoryMidToLongCount", DEFAULT_CONFIG.memory_mid_to_long_count)),
-    memory_short_delete_days: Number(value("memoryShortDeleteDays", DEFAULT_CONFIG.memory_short_delete_days)),
-    memory_mid_downgrade_days: Number(value("memoryMidDowngradeDays", DEFAULT_CONFIG.memory_mid_downgrade_days)),
-    memory_long_downgrade_days: Number(value("memoryLongDowngradeDays", DEFAULT_CONFIG.memory_long_downgrade_days)),
-    memory_max_context_items: Number(value("memoryMaxContextItems", DEFAULT_CONFIG.memory_max_context_items)),
-    tools_enabled: checked("toolsEnabled", DEFAULT_CONFIG.tools_enabled),
-    tools_auto_call: checked("toolsAutoCall", DEFAULT_CONFIG.tools_auto_call),
-    tools_timeout: Number(value("toolsTimeout", DEFAULT_CONFIG.tools_timeout)),
-    tools_max_result_chars: Number(value("toolsMaxResultChars", DEFAULT_CONFIG.tools_max_result_chars)),
-    tts_url: value("ttsUrl", DEFAULT_CONFIG.tts_url).trim(),
-    tts_speed: Number(value("ttsSpeed", DEFAULT_CONFIG.tts_speed)),
-    tts_seed: Number(value("ttsSeed", DEFAULT_CONFIG.tts_seed)),
-    tts_volume: Number(value("ttsVolume", DEFAULT_CONFIG.tts_volume)),
-    tts_fade_ms: Number(value("ttsFadeMs", DEFAULT_CONFIG.tts_fade_ms)),
-    vad_threshold: Number(value("vadThreshold", DEFAULT_CONFIG.vad_threshold)),
-    vad_min_silence_ms: Number(value("vadMinSilence", DEFAULT_CONFIG.vad_min_silence_ms)),
-    vad_speech_pad_ms: Number(value("vadSpeechPad", DEFAULT_CONFIG.vad_speech_pad_ms)),
-    pre_speech_ms: Number(value("preSpeech", DEFAULT_CONFIG.pre_speech_ms)),
-    min_utterance_ms: Number(value("minUtterance", DEFAULT_CONFIG.min_utterance_ms)),
-    max_utterance_sec: Number(value("maxUtterance", DEFAULT_CONFIG.max_utterance_sec)),
+    asr_mode: value("asrMode", state.currentConfig.asr_mode || DEFAULT_CONFIG.asr_mode),
+    asr_url: value("asrUrl", state.currentConfig.asr_url || DEFAULT_CONFIG.asr_url).trim(),
+    asr_model: value("asrModel", state.currentConfig.asr_model || DEFAULT_CONFIG.asr_model).trim(),
+    llm_url: value("llmUrl", state.currentConfig.llm_url || DEFAULT_CONFIG.llm_url).trim(),
+    llm_model: value("llmModel", state.currentConfig.llm_model || DEFAULT_CONFIG.llm_model).trim(),
+    llm_api_key: value("llmApiKey", "").trim(),
+    temperature: Number(value("temperature", state.currentConfig.temperature ?? DEFAULT_CONFIG.temperature)),
+    max_tokens: Number(value("maxTokens", state.currentConfig.max_tokens ?? DEFAULT_CONFIG.max_tokens)),
+    history_turns: Number(value("historyTurns", state.currentConfig.history_turns ?? DEFAULT_CONFIG.history_turns)),
+    system: value("systemPrompt", state.currentConfig.system || DEFAULT_CONFIG.system).trim(),
+    memory_enabled: true,
+    memory_extract_enabled: true,
+    memory_short_to_mid_days: Number(value("memoryShortToMidDays", state.currentConfig.memory_short_to_mid_days ?? DEFAULT_CONFIG.memory_short_to_mid_days)),
+    memory_short_to_mid_count: Number(value("memoryShortToMidCount", state.currentConfig.memory_short_to_mid_count ?? DEFAULT_CONFIG.memory_short_to_mid_count)),
+    memory_mid_to_long_days: Number(value("memoryMidToLongDays", state.currentConfig.memory_mid_to_long_days ?? DEFAULT_CONFIG.memory_mid_to_long_days)),
+    memory_mid_to_long_count: Number(value("memoryMidToLongCount", state.currentConfig.memory_mid_to_long_count ?? DEFAULT_CONFIG.memory_mid_to_long_count)),
+    memory_short_delete_days: Number(value("memoryShortDeleteDays", state.currentConfig.memory_short_delete_days ?? DEFAULT_CONFIG.memory_short_delete_days)),
+    memory_mid_downgrade_days: Number(value("memoryMidDowngradeDays", state.currentConfig.memory_mid_downgrade_days ?? DEFAULT_CONFIG.memory_mid_downgrade_days)),
+    memory_long_downgrade_days: Number(value("memoryLongDowngradeDays", state.currentConfig.memory_long_downgrade_days ?? DEFAULT_CONFIG.memory_long_downgrade_days)),
+    memory_max_context_items: Number(value("memoryMaxContextItems", state.currentConfig.memory_max_context_items ?? DEFAULT_CONFIG.memory_max_context_items)),
+    tools_enabled: true,
+    tools_auto_call: true,
+    tools_timeout: Number(value("toolsTimeout", state.currentConfig.tools_timeout ?? DEFAULT_CONFIG.tools_timeout)),
+    tools_max_result_chars: Number(value("toolsMaxResultChars", state.currentConfig.tools_max_result_chars ?? DEFAULT_CONFIG.tools_max_result_chars)),
+    tts_url: value("ttsUrl", state.currentConfig.tts_url || DEFAULT_CONFIG.tts_url).trim(),
+    tts_speed: Number(value("ttsSpeed", state.currentConfig.tts_speed ?? DEFAULT_CONFIG.tts_speed)),
+    tts_seed: Number(value("ttsSeed", state.currentConfig.tts_seed ?? DEFAULT_CONFIG.tts_seed)),
+    tts_volume: Number(value("ttsVolume", state.currentConfig.tts_volume ?? DEFAULT_CONFIG.tts_volume)),
+    tts_fade_ms: Number(value("ttsFadeMs", state.currentConfig.tts_fade_ms ?? DEFAULT_CONFIG.tts_fade_ms)),
+    vad_threshold: Number(value("vadThreshold", state.currentConfig.vad_threshold ?? DEFAULT_CONFIG.vad_threshold)),
+    vad_min_silence_ms: Number(value("vadMinSilence", state.currentConfig.vad_min_silence_ms ?? DEFAULT_CONFIG.vad_min_silence_ms)),
+    vad_speech_pad_ms: Number(value("vadSpeechPad", state.currentConfig.vad_speech_pad_ms ?? DEFAULT_CONFIG.vad_speech_pad_ms)),
+    pre_speech_ms: Number(value("preSpeech", state.currentConfig.pre_speech_ms ?? DEFAULT_CONFIG.pre_speech_ms)),
+    min_utterance_ms: Number(value("minUtterance", state.currentConfig.min_utterance_ms ?? DEFAULT_CONFIG.min_utterance_ms)),
+    max_utterance_sec: Number(value("maxUtterance", state.currentConfig.max_utterance_sec ?? DEFAULT_CONFIG.max_utterance_sec)),
   };
 }
 
 function setSystemState(text) {
   const el = $("#systemState");
   if (el) el.textContent = text;
+}
+
+function renderCapabilityStatus(config = state.currentConfig) {
+  const memoryOn = config.memory_enabled !== false && config.memory_extract_enabled !== false;
+  const toolsOn = config.tools_enabled !== false && config.tools_auto_call !== false;
+  setText("memoryStatus", memoryOn ? "默认开启" : "等待保存开启");
+  setText("memoryDetail", `SQLite 自动记忆 · 每轮最多注入 ${config.memory_max_context_items || DEFAULT_CONFIG.memory_max_context_items} 条`);
+  setText("toolsStatus", toolsOn ? "默认自动调用" : "等待保存开启");
+  setText("toolsDetail", "热点新闻 / 搜索 / 网页读取 / 天气 / 财经价格");
+  setText("apiKeyState", config.llm_api_key_set ? `已保存 ${config.llm_api_key_masked}` : "未保存，可填 sk-... 格式");
 }
 
 async function initDashboard() {
@@ -962,11 +983,9 @@ function initSettings() {
   $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
   $("#refreshMemoryBtn")?.addEventListener("click", loadMemory);
   $("#addMemoryBtn")?.addEventListener("click", addMemory);
-  $("#refreshToolsBtn")?.addEventListener("click", loadTools);
-  $("#testToolBtn")?.addEventListener("click", testTool);
   renderProfileList();
+  renderCapabilityStatus(state.currentConfig);
   loadMemory();
-  loadTools();
 }
 
 async function loadMemory() {
@@ -977,7 +996,7 @@ async function loadMemory() {
     return;
   }
   try {
-    const data = await fetchJson("/api/memory?limit=80");
+    const data = await fetchJson("/api/memory?limit=12");
     state.memories = data.items || [];
     renderMemoryList();
   } catch (error) {
@@ -1211,6 +1230,9 @@ function renderProfileList() {
 
 function createProfileCard(service) {
   const card = document.createElement("section");
+  const port = service.health_url ? new URL(service.health_url).port || "--" : "--";
+  const stateLabel = service.running ? "运行中" : service.external ? "外部运行" : "待启动";
+  const health = service.health ? (service.health.ok ? "健康" : "异常") : "待检查";
   card.className = "profile-card";
   card.id = `profile-${service.id}`;
   card.dataset.serviceId = service.id;
@@ -1222,12 +1244,20 @@ function createProfileCard(service) {
       </div>
       <button class="small-button test-log" type="button"><i data-lucide="scroll-text"></i>日志</button>
     </div>
-    <div class="form-grid">
-      <label><span>Working Directory</span><input class="profile-cwd" type="text" /></label>
-      <label><span>Health URL</span><input class="profile-health" type="text" /></label>
-      <label><span>Startup Wait sec</span><input class="profile-wait" type="number" min="0" max="180" step="1" /></label>
-      <label class="wide"><span>Start Command</span><textarea class="profile-command"></textarea></label>
+    <div class="profile-summary">
+      <span>${stateLabel}</span>
+      <span>${health}</span>
+      <span>本地端口 ${port}</span>
     </div>
+    <details class="advanced-profile">
+      <summary><i data-lucide="sliders-horizontal"></i>高级启动参数</summary>
+      <div class="form-grid">
+        <label><span>Working Directory</span><input class="profile-cwd" type="text" /></label>
+        <label><span>Health URL</span><input class="profile-health" type="text" /></label>
+        <label><span>Startup Wait sec</span><input class="profile-wait" type="number" min="0" max="180" step="1" /></label>
+        <label class="wide"><span>Start Command</span><textarea class="profile-command"></textarea></label>
+      </div>
+    </details>
   `;
   card.querySelector("strong").textContent = service.label || service.id;
   card.querySelector(".profile-head span").textContent = service.description || "";
@@ -1271,11 +1301,10 @@ async function saveSettingsPage() {
       });
     }
 
-    await saveToolsConfig();
     await loadConfig();
     await loadServices();
     await loadMemory();
-    await loadTools();
+    renderCapabilityStatus(state.currentConfig);
     setSystemState("配置已应用");
   } catch (error) {
     setSystemState(`保存失败 ${error.message}`);
