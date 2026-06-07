@@ -110,6 +110,23 @@ class MemoryStore:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_layer ON memory_items(layer)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_last_seen ON memory_items(last_seen_at)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_events_item_seen ON memory_events(item_id, seen_at)")
+            # 记忆类型: semantic_fact / episodic_event
+            try:
+                conn.execute("ALTER TABLE memory_items ADD COLUMN memory_type TEXT NOT NULL DEFAULT 'semantic_fact'")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                conn.execute("ALTER TABLE memory_items ADD COLUMN time_text TEXT NOT NULL DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                conn.execute("ALTER TABLE memory_items ADD COLUMN event_date TEXT NOT NULL DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                conn.execute("ALTER TABLE memory_items ADD COLUMN time_of_day TEXT NOT NULL DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
 
     def list_memories(self, settings: Any, limit: int = 200, query: str = "", layer: str = "") -> list[dict]:
         self.apply_decay(settings)
@@ -142,6 +159,11 @@ class MemoryStore:
         data["first_seen_text"] = ts_to_text(data.get("first_seen_at"))
         data["last_seen_text"] = ts_to_text(data.get("last_seen_at"))
         data["last_changed_text"] = ts_to_text(data.get("last_changed_at"))
+        # 新字段 safe defaults
+        data.setdefault("memory_type", "semantic_fact")
+        data.setdefault("time_text", "")
+        data.setdefault("event_date", "")
+        data.setdefault("time_of_day", "")
         return data
 
     def create_memory(self, payload: dict, source: str = "manual") -> dict:
@@ -215,8 +237,17 @@ class MemoryStore:
         layer = item.get("layer") if item.get("layer") in MEMORY_LAYERS else "short"
         confidence_gain = 0.3 if source == "manual" else float(item.get("confidence_gain", 0.12))
         importance = clamp(float(item.get("importance", 0.45)), 0.0, 1.0)
+        memory_type = item.get("memory_type", "semantic_fact")
+        time_text = item.get("time_text", "")
+        event_date = item.get("event_date", "")
+        time_of_day = item.get("time_of_day", "")
+
+        # episodic_event: force key_norm to include time so different-days events stay separate
+        if memory_type == "episodic_event" and time_text:
+            key_norm = normalize_key(key) + ":" + normalize_key(time_text)
 
         with self.session() as conn:
+            # episodic: use time-augmented key_norm to avoid merging different-day events
             row = conn.execute("SELECT * FROM memory_items WHERE key_norm = ?", (key_norm,)).fetchone()
             if row:
                 memory_id = row["id"]
@@ -362,76 +393,137 @@ class MemoryStore:
         memories = self.relevant_memories(settings, query)
         if not memories:
             return ""
-        lines = ["可参考的用户记忆。只在相关时自然使用，不要直接背给用户："]
+        lines = [
+            "可参考的用户记忆。记忆分为两类：",
+            "- 长期事实（语义偏好/身份/习惯），每次对话可用",
+            "- 具体事件（某个时间点发生的事），只在时间匹配时使用",
+            "不要在用户没有问的情况下主动复述记忆。时间信息可以帮助你判断事件是否相关。",
+            "",
+        ]
         for item in memories:
-            label = {"short": "短期", "mid": "中期", "long": "长期"}.get(item["layer"], item["layer"])
-            lines.append(
-                f"- [{label}] {item['value']}（记录 {item['count']} 次，最近：{item['last_seen_text']}）"
-            )
+            mtype = item.get("memory_type", "semantic_fact")
+            if mtype == "episodic_event":
+                t = item.get("time_text", "") or ""
+                d = item.get("event_date", "") or ""
+                tod = item.get("time_of_day", "") or ""
+                extra = f" [时间: {t}]" if t else ""
+                if d:
+                    extra += f" [日期: {d}]"
+                lines.append(
+                    f"- [事件{extra}] {item['value']}（{item['count']} 次）"
+                )
+            else:
+                label = {"short": "短期", "mid": "中期", "long": "长期"}.get(item["layer"], item["layer"])
+                lines.append(
+                    f"- [{label}偏好] {item['value']}（{item['count']} 次）"
+                )
         return "\n".join(lines)
 
 
 def extract_memory_candidates(text: str) -> list[dict]:
+    """提取记忆候选。区分 semantic_fact（长期偏好）和 episodic_event（具体时间事件）。
+    
+    事件记忆保留时间语境，不同时间的事件创建不同记忆。
+    """
     text = compact_text(text, 500)
     if not text or is_low_value_memory_text(text):
         return []
 
     candidates: list[dict] = []
+
+    # ── 显式指令 ──
     explicit = re.search(r"(?:帮我记住|你记一下|记住)[:：,，\s]*(.+)", text)
     if explicit:
         value = compact_text(explicit.group(1), 300)
         if value:
-            candidates.append(
-                {
-                    "key": f"用户明确要求记住：{value[:50]}",
-                    "value": value,
-                    "layer": "mid",
-                    "confidence": 0.9,
-                    "confidence_gain": 0.3,
-                    "importance": 0.85,
-                    "source": "explicit",
-                }
-            )
+            candidates.append({
+                "key": f"用户明确要求记住：{value[:50]}",
+                "value": value,
+                "layer": "mid",
+                "confidence": 0.9,
+                "confidence_gain": 0.3,
+                "importance": 0.85,
+                "source": "explicit",
+                "memory_type": "semantic_fact",
+            })
         return candidates
 
-    patterns = [
-        (r"(?:我叫|我的名字是|我是)([\u4e00-\u9fa5A-Za-z0-9_\- ]{1,24})", "用户身份：{}", "用户名字或身份是{}", 0.82),
-        (r"我(?:很|特别|超|最)?喜欢([^。！？!?，,]{1,40})", "用户喜欢{}", "用户喜欢{}", 0.65),
-        (r"我(?:不喜欢|讨厌)([^。！？!?，,]{1,40})", "用户不喜欢{}", "用户不喜欢{}", 0.65),
-        (r"我(?:住在|现居|在)([^。！？!?，,]{1,40})(?:生活|住|工作)?", "用户地点：{}", "用户提到自己在{}", 0.58),
-        (r"我(?:最近|现在|正在|准备|打算)([^。！？!?]{2,80})", "用户近期状态：{}", "用户最近/当前{}", 0.55),
-        # 过去事件：我今天/昨天/刚才去/吃/做了X
-        (r"我(?:今[天晚]|昨[天晚]|刚才?|刚刚)[^。！？!?,\n]{0,10}(?:吃|去|买|做|看|玩|见|到|给|跟|和)([^。！？!?，,\n]{0,50})", "用户经历：{}", "用户说到{}", 0.56),
-        (r"我[^。！？!?,\n]{0,6}(?:觉得|感觉|认为)([^。！？!?，,\n]{1,50})", "用户想法：{}", "用户觉得{}", 0.52),
+    # ── 时间词提取 ──
+    time_words = [
+        "昨天晚上", "今天中午", "今天下午", "今天上午", "今天早上", "今天晚上",
+        "昨天下午", "昨天上午", "昨天早上", "昨天中午", "前天晚上", "前天下午", "前天上午",
+        "今晚", "今天", "今早", "昨天", "昨晚", "前天", "刚才", "刚刚",
     ]
-    for pattern, key_tpl, value_tpl, importance in patterns:
+    time_re = re.compile(r"(" + "|".join(time_words) + r")")
+
+    found_time = None
+    tm = time_re.search(text)
+    if tm and text.startswith("我"):
+        found_time = tm.group(1)
+        # 提取时间词后的内容作为事件描述
+        after_time = text[tm.end():]
+        after_time = re.sub(r'^(?:了|过|，|,|。|\.|\s)+', '', after_time).strip()
+        if after_time and len(after_time) >= 2 and not is_low_value_memory_text(after_time):
+            resolved_time, resolved_date = _resolve_event_date(found_time)
+            tod = _guess_time_of_day(found_time, text)
+            # 事件类型
+            if any(kw in after_time for kw in ["吃", "喝", "点", "叫"]):
+                evt_type = "meal"
+            elif any(kw in after_time for kw in ["启动", "关了", "重启", "调试", "部署", "训练", "配置", "修", "改"]):
+                evt_type = "operation"
+            else:
+                evt_type = "activity"
+            candidates.append({
+                "key": f"episodic:{evt_type}:{resolved_date}:{after_time[:30]}",
+                "value": f"用户{found_time}{after_time}",
+                "layer": "short",
+                "confidence": 0.5,
+                "importance": 0.55,
+                "source": "chat",
+                "memory_type": "episodic_event",
+                "time_text": resolved_time,
+                "event_date": resolved_date,
+                "time_of_day": tod,
+            })
+            return candidates  # 事件提取成功即返回
+
+    # ── 语义事实 (semantic_fact) ──
+    fact_patterns = [
+        (r"(?:我叫|我的名字是|我是)([一-龥A-Za-z0-9_\- ]{1,24})", "用户身份", "用户名字或身份是{}", 0.82),
+        (r"我(?:很|特别|超|最)?喜欢([^。！？!?，,]{1,40})", "用户偏好", "用户喜欢{}", 0.65),
+        (r"我(?:不喜欢|讨厌)([^。！？!?，,]{1,40})", "用户偏好", "用户不喜欢{}", 0.65),
+        (r"我(?:住在|现居|在)([^。！？!?，,]{1,40})", "用户信息", "用户提到在{}", 0.58),
+        (r"我(?:最近|现在|正在|准备|打算)([^。！？!?]{2,80})", "用户状态", "用户最近/当前{}", 0.55),
+        (r"我[^。！？!?,\n]{0,6}(?:觉得|感觉|认为)([^。！？!?，,\n]{1,50})", "用户想法", "用户觉得{}", 0.52),
+    ]
+    for pattern, fact_type, value_tpl, importance in fact_patterns:
         for match in re.finditer(pattern, text):
             value = compact_text(match.group(1), 100).strip(" ，,。.!！?")
             if value and not is_low_value_memory_text(value):
-                candidates.append(
-                    {
-                        "key": key_tpl.format(value[:50]),
-                        "value": value_tpl.format(value),
-                        "layer": "short",
-                        "confidence": 0.45,
-                        "importance": importance,
-                        "source": "chat",
-                    }
-                )
+                candidates.append({
+                    "key": f"{fact_type}:{value[:40]}",
+                    "value": value_tpl.format(value),
+                    "layer": "short",
+                    "confidence": 0.45,
+                    "importance": importance,
+                    "source": "chat",
+                    "memory_type": "semantic_fact",
+                })
 
+    # ── 通用 fallback ──
     if not candidates and "我" in text and not re.search(r"[?？]", text) and 8 <= len(text) <= 90:
-        candidates.append(
-            {
-                "key": f"用户提到：{text[:50]}",
-                "value": text,
-                "layer": "short",
-                "confidence": 0.35,
-                "importance": 0.35,
-                "source": "chat",
-            }
-        )
+        candidates.append({
+            "key": f"用户陈述:{text[:50]}",
+            "value": text,
+            "layer": "short",
+            "confidence": 0.35,
+            "importance": 0.35,
+            "source": "chat",
+            "memory_type": "semantic_fact",
+        })
 
-    deduped: list[dict] = []
+    # ── 去重 ──
+    deduped = []
     seen = set()
     for item in candidates:
         norm = normalize_key(item["key"])
@@ -439,7 +531,6 @@ def extract_memory_candidates(text: str) -> list[dict]:
             seen.add(norm)
             deduped.append(item)
     return deduped[:5]
-
 
 def is_low_value_memory_text(text: str) -> bool:
     value = re.sub(r"\s+", "", text)

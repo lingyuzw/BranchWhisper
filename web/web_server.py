@@ -393,7 +393,15 @@ class ServiceManager:
         process = self.processes.get(service_id)
         health_url = service.get("health_url", "")
         health = await check_service(service_id, health_url) if health_url else None
-        tracked_running = process is not None and process.poll() is None
+        tracked_running = False
+        if process is not None:
+            try:
+                tracked_running = process.poll() is None
+            except AttributeError:
+                # _create_virtual_process 产生的壳对象可能缺少内部属性
+                # (Python 3.12+ 的 _waitpid_lock)。降级为 PID 存活检测。
+                pid = getattr(process, "pid", None) or _read_service_pid(service_id)
+                tracked_running = bool(pid and _is_pid_alive(pid))
         port_open = is_tcp_port_open(health_url)
         external_running = bool(health and health.get("ok")) or port_open
         running = tracked_running or external_running
@@ -1323,7 +1331,10 @@ class DialogSession:
         messages = list(self.messages)
         memory_context = self.memory_store.format_context(self.settings, user_text)
         if memory_context:
-            messages = [messages[0], {"role": "system", "content": memory_context}, *messages[1:]]
+            # 将记忆上下文拼接到已有的 system prompt 中，避免插入第二条
+            # system 消息违反 llama.cpp Qwen3 Jinja 模板约束。
+            old_content = messages[0].get("content", "")
+            messages[0] = {**messages[0], "content": old_content + "\n\n" + memory_context}
         messages.append({"role": "user", "content": request_user_text})
         return messages
 
