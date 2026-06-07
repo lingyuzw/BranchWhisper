@@ -10,3 +10,8 @@ logs/
 
 # Claude Code local config
 .claude/
+CLAUDE.md
+
+# Claude Code local files
+.claude/
+CLAUDE.md
