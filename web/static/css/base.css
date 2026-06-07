@@ -213,6 +213,16 @@ label span, .meta-cell span, .runtime-chips b {
 .send-button:hover { opacity: 0.9; }
 button svg, .service-action svg, .small-button svg, .nav-tabs svg { width: 15px; height: 15px; }
 button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* toggle button: switches between on/off states visually */
+.toggle-button {
+  transition: background 180ms, border-color 180ms, color 180ms;
+}
+.toggle-button.off {
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border-color: var(--border);
+}
 .full { width: 100%; }
 
 /* hidden labels for always-enabled checkboxes */

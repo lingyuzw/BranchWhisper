@@ -4,7 +4,7 @@
    ============================================================ */
 
 import { state, DEFAULT_CONFIG } from "./state.js";
-import { $, setValue, value, setText, setPlaceholder, renderIcons, showToast } from "./utils.js";
+import { $, setValue, value, setText, setPlaceholder, renderIcons, showToast, setChecked, checked } from "./utils.js";
 import { loadConfig, saveConfig, loadServices, updateServiceConfig } from "./api.js";
 
 /* ---- init ---- */
@@ -70,19 +70,6 @@ function highlightNavSection() {
     const isActive = l.getAttribute("data-setting-nav") === currentId;
     l.classList.toggle("nav-active", isActive);
   });
-}
-
-/* ---- checkbox helpers ---- */
-
-function setChecked(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.checked = Boolean(val);
-}
-
-function checked(id, defaultVal) {
-  const el = document.getElementById(id);
-  if (el) return el.checked;
-  return defaultVal;
 }
 
 /* ---- config form ---- */

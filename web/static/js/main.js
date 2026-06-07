@@ -8,7 +8,6 @@ import { renderIcons } from "./utils.js";
 let currentPage = "dashboard";
 let dashboardInitialized = false;
 let servicesInitialized = false;
-let settingsInitialized = false;
 
 /* ---- SPA navigation ---- */
 
@@ -92,7 +91,6 @@ async function switchPage(page, pushState = true) {
   } catch (e) {
     console.error(`Failed to init page ${page}:`, e);
     // reset latch so user can retry
-    if (page === "settings") settingsInitialized = false;
     if (page === "services") servicesInitialized = false;
     if (page === "dashboard") dashboardInitialized = false;
   }

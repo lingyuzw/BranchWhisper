@@ -247,55 +247,62 @@ class MemoryStore:
             key_norm = normalize_key(key) + ":" + normalize_key(time_text)
 
         with self.session() as conn:
-            # episodic: use time-augmented key_norm to avoid merging different-day events
-            row = conn.execute("SELECT * FROM memory_items WHERE key_norm = ?", (key_norm,)).fetchone()
-            if row:
-                memory_id = row["id"]
-                confidence = clamp(float(row["confidence"]) + confidence_gain, 0.0, 1.0)
-                next_layer = row["layer"]
-                if layer == "long" or row["pinned"]:
-                    next_layer = "long"
-                elif layer == "mid" and row["layer"] == "short":
-                    next_layer = "mid"
-                conn.execute(
-                    """
-                    UPDATE memory_items
-                    SET value = ?, layer = ?, count = count + 1, confidence = ?,
-                        importance = MAX(importance, ?), last_seen_at = ?, last_changed_at = ?,
-                        pinned = MAX(pinned, ?)
-                    WHERE id = ?
-                    """,
-                    (value, next_layer, confidence, importance, now, now, 1 if item.get("pinned") else 0, memory_id),
+            # UPSERT: 原子地处理 INSERT 或 UPDATE，避免 SELECT-then-UPDATE 的并发竞态。
+            # 首次插入时 confidence / importance / layer 由 INSERT 分支决定；
+            # 冲突时 confidence 累加，layer 按规则逐层升级，importance 取更大值。
+            confidence = clamp(float(item.get("confidence", 0.45)), 0.0, 1.0)
+            if source == "manual":
+                layer = item.get("layer") if item.get("layer") in MEMORY_LAYERS else "mid"
+                confidence = max(confidence, 0.85)
+
+            conn.execute(
+                """
+                INSERT INTO memory_items (
+                    id, key, key_norm, value, layer, count, confidence, importance,
+                    first_seen_at, last_seen_at, last_changed_at, pinned, source,
+                    memory_type, time_text, event_date, time_of_day
                 )
-            else:
-                memory_id = str(uuid.uuid4())
-                confidence = clamp(float(item.get("confidence", 0.45)), 0.0, 1.0)
-                if source == "manual":
-                    layer = item.get("layer") if item.get("layer") in MEMORY_LAYERS else "mid"
-                    confidence = max(confidence, 0.85)
-                conn.execute(
-                    """
-                    INSERT INTO memory_items (
-                        id, key, key_norm, value, layer, count, confidence, importance,
-                        first_seen_at, last_seen_at, last_changed_at, pinned, source
-                    )
-                    VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        memory_id,
-                        key,
-                        key_norm,
-                        value,
-                        layer,
-                        confidence,
-                        importance,
-                        now,
-                        now,
-                        now,
-                        1 if item.get("pinned") else 0,
-                        source,
-                    ),
-                )
+                VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(key_norm) DO UPDATE SET
+                    value = excluded.value,
+                    layer = CASE
+                        WHEN excluded.layer = 'long' OR memory_items.pinned THEN 'long'
+                        WHEN excluded.layer = 'mid' AND memory_items.layer = 'short' THEN 'mid'
+                        ELSE memory_items.layer
+                    END,
+                    count = memory_items.count + 1,
+                    confidence = MIN(1.0, memory_items.confidence + ?),
+                    importance = MAX(memory_items.importance, ?),
+                    last_seen_at = excluded.last_seen_at,
+                    last_changed_at = excluded.last_changed_at,
+                    pinned = MAX(memory_items.pinned, ?)
+                """,
+                (
+                    str(uuid.uuid4()),  # id (used on INSERT only)
+                    key,
+                    key_norm,
+                    value,
+                    layer,
+                    confidence,
+                    importance,
+                    now,   # first_seen_at
+                    now,   # last_seen_at
+                    now,   # last_changed_at
+                    1 if item.get("pinned") else 0,
+                    source,
+                    memory_type,
+                    time_text,
+                    event_date,
+                    time_of_day,
+                    confidence_gain,      # confidence 增量
+                    importance,           # MAX 比较值
+                    1 if item.get("pinned") else 0,  # pinned
+                ),
+            )
+
+            # UPSERT 不会返回 id，需要从 key_norm 回查
+            row = conn.execute("SELECT id FROM memory_items WHERE key_norm = ?", (key_norm,)).fetchone()
+            memory_id = row["id"] if row else ""
 
             conn.execute(
                 "INSERT INTO memory_events (id, item_id, seen_at, source, excerpt) VALUES (?, ?, ?, ?, ?)",

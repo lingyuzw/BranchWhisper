@@ -88,12 +88,9 @@
   font-size: 11px; line-height: 1.55; white-space: pre-wrap;
 }
 
-.status-dot {
-  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
-  background: var(--text-muted); opacity: 0.4;
-  transition: background 200ms, opacity 200ms;
-}
-.service-card.active .status-dot { background: var(--success); opacity: 1; }
-.service-card.failed .status-dot { background: var(--danger); opacity: 1; }
+/* .status-dot overrides — services page uses a different dot style.
+   base.css serves as the default; these rules extend it for the card context. */
+.service-card.active .status-dot { background: var(--success); opacity: 1; box-shadow: none; animation: none; }
+.service-card.failed .status-dot { background: var(--danger); opacity: 1; box-shadow: none; }
 
 @media (max-width: 1180px) { .service-list { grid-template-columns: 1fr; } }

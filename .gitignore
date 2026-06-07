@@ -6,12 +6,5 @@ web/runtime/memory.sqlite3-*
 web/runtime/logs/
 web/runtime/conversations/
 logs/
-.claude
-
-# Claude Code local config
-.claude/
-CLAUDE.md
-
-# Claude Code local files
 .claude/
 CLAUDE.md

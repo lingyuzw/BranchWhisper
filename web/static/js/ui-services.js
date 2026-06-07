@@ -4,7 +4,7 @@
    ============================================================ */
 
 import { state } from "./state.js";
-import { $, setText, renderIcons, showToast, showSkeleton } from "./utils.js";
+import { $, setText, renderIcons, showToast, showSkeleton, showConfirm } from "./utils.js";
 import { loadConfig, loadServices, startService, stopService, startAllServices, stopAllServices, fetchServiceLogs, clearServiceLogs, clearAllServiceLogs } from "./api.js";
 
 /* ---- init ---- */
@@ -122,7 +122,7 @@ async function handleRestartAll() {
 
 async function handleClearAllLogs() {
   if (state.previewMode) return;
-  if (!window.confirm("清空所有日志？")) return;
+  if (!(await showConfirm("清空所有日志？"))) return;
   try { await clearAllServiceLogs(); await refreshLogs(state.selectedLogService, { quiet: true }); }
   catch (e) { showToast(`失败：${e.message}`, "error"); }
 }

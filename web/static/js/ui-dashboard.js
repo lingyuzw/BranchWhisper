@@ -4,7 +4,7 @@
    ============================================================ */
 
 import { state, ACTIVE_CONVERSATION_KEY } from "./state.js";
-import { $, setText, renderIcons, formatConversationMeta, showToast, showSkeleton } from "./utils.js";
+import { $, setText, renderIcons, formatConversationMeta, showToast, showSkeleton, showConfirm } from "./utils.js";
 import { loadConfig, loadServices, loadConversations, createConversation, deleteConversation, loadMemory, addMemory, deleteMemory } from "./api.js";
 import { connectSocket, reconnectDialog, clearTranscript, selectConversation, sendText as dialogSendText, resizeComposerInput, interruptAssistant, setTranscriptCallback, setPipelineUpdater } from "./dialog.js";
 import { startMic, stopMic, sendMicSamples, shouldTriggerBargeIn, ensureAudioContext } from "./audio.js";
@@ -78,12 +78,14 @@ function setupTtsToggle() {
 function updateTtsToggleIcon() {
   const btn = $("#ttsToggleBtn");
   if (!btn) return;
-  const icon = btn.querySelector("i");
-  if (icon) {
-    icon.setAttribute("data-lucide", state.ttsEnabled ? "volume-2" : "volume-x");
-    // Re-render lucide icon
-    if (window.lucide) window.lucide.createIcons();
-  }
+  // Lucide replaces <i> with <svg>, so we rebuild the inner element each time
+  const iconName = state.ttsEnabled ? "volume-2" : "volume-x";
+  const label = state.ttsEnabled ? "语音开启" : "语音关闭";
+  btn.innerHTML = `<i data-lucide="${iconName}"></i>`;
+  btn.title = label;
+  // toggle visual: off state looks muted
+  btn.classList.toggle("off", !state.ttsEnabled);
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /* ---- empty ↔ messages toggle ---- */
@@ -192,7 +194,7 @@ async function newConversation() {
 
 async function handleDeleteConversation(conversation) {
   if (!conversation?.id || state.previewMode) return;
-  if (!window.confirm(`删除「${conversation.title || "这次对话"}」？`)) return;
+  if (!(await showConfirm(`删除「${conversation.title || "这次对话"}」？`))) return;
   const wasActive = conversation.id === state.activeConversationId;
   try {
     await deleteConversation(conversation.id);
@@ -283,7 +285,7 @@ async function handleMemoryAdd() {
 }
 
 async function handleMemoryDelete(id) {
-  if (!window.confirm("删除这条记忆？")) return;
+  if (!(await showConfirm("删除这条记忆？"))) return;
   try { await deleteMemory(id); await loadMemory(); renderMemoryModalList(); showToast("已删除", "success"); }
   catch (e) { showToast(e.message, "error"); }
 }

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import asyncio
@@ -529,6 +529,9 @@ class ServiceManager:
             _pid_file(service_id).unlink()
         except FileNotFoundError:
             pass
+        # 清除进程引用和启动时间，避免 status() 误判为 running
+        self.processes.pop(service_id, None)
+        self.started_at.pop(service_id, None)
         return await self.status(service_id)
 
     async def start_all(self, overrides: dict | None = None) -> list[dict]:
@@ -577,19 +580,27 @@ class ServiceManager:
         return {"cleared": cleared}
 
     def _terminate_process(self, process: subprocess.Popen) -> None:
-        try:
-            if platform.system() == "Windows":
-                process.terminate()
-            else:
-                os.killpg(process.pid, signal.SIGTERM)
-            process.wait(timeout=8)
-        except Exception:
+        # 虚拟 Popen（Popen.__new__）在 Python 3.12+ 缺少 _waitpid_lock，
+        # wait() 会抛出 AttributeError。因此这里统一用 PID 级别信号 + 轮询确认。
+        pid = process.pid
+        for sig in (signal.SIGTERM, signal.SIGKILL):
             try:
                 if platform.system() == "Windows":
-                    process.kill()
+                    os.kill(pid, sig)
                 else:
-                    os.killpg(process.pid, signal.SIGKILL)
-            except Exception:
+                    os.killpg(pid, sig)
+            except OSError:
+                continue
+            # 轮询等待进程退出（最多 8 秒）
+            for _ in range(80):
+                if not _is_pid_alive(pid):
+                    break
+                time.sleep(0.1)
+        # 无论 wait() 是否成功，手动标记进程已结束，避免 status() 误判为 running
+        if hasattr(process, "returncode"):
+            try:
+                process.returncode = process.returncode or -15
+            except AttributeError:
                 pass
 
 
@@ -2003,4 +2014,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-utterance-ms", type=int, default=250)
     parser.add_argument("--max-utterance-sec", type=float, default=15.0)
 
-    parse
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=7860)
+    parser.add_argument("--service-config", default="")
+    return parser
+
+
+def main() -> None:
+    """程序入口：解析参数，创建 FastAPI app，用 uvicorn 启动。"""
+    import uvicorn
+
+    parser = build_parser()
+    args = parser.parse_args()
+    app = create_app(args)
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+
+
+if __name__ == "__main__":
+    main()
