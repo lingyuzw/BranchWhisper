@@ -102,11 +102,19 @@ def stream_pcm(chunks: Iterator[dict]) -> Iterator[bytes]:
 
 def format_cosyvoice3_text(text: str) -> str:
     text = text.strip()
+    # 如果 LLM 输出已经带了 <|endofprompt|> 残留（prompt 泄漏），剪掉前缀保留后面的真实对话内容。
     if "<|endofprompt|>" in text:
         text = text.split("<|endofprompt|>", 1)[1].strip()
-    # 去掉 COSYVOICE3_PROMPT 可读文本，只用 <|endofprompt|> 作为 SFT 分隔符，
-    # 避免英文前缀被 CosyVoice3 语音化输出。
-    return f"<|endofprompt|>{text}"
+    # 如果有其他英文字符串残留（如 "You are a helpful assistant"），去掉。
+    for marker in (
+        "You are a helpful assistant",
+        "You are a helpful",
+        "A conversation between User and Assistant",
+    ):
+        text = text.replace(marker, "")
+    text = text.strip()
+    # 直接传干净的中文文本，不加任何 prompt 前缀。CosyVoice3 可以零样本合成。
+    return text
 
 
 def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
