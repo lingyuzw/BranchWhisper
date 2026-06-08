@@ -65,6 +65,7 @@ class SessionSettings:
     max_tokens: int
     history_turns: int
     system: str
+    ui_font_scale: float
     memory_enabled: bool
     memory_extract_enabled: bool
     memory_short_to_mid_days: int
@@ -108,6 +109,7 @@ class SessionSettings:
             max_tokens=args.max_tokens,
             history_turns=args.history_turns,
             system=args.system,
+            ui_font_scale=args.ui_font_scale,
             memory_enabled=args.memory_enabled,
             memory_extract_enabled=args.memory_extract_enabled,
             memory_short_to_mid_days=args.memory_short_to_mid_days,
@@ -153,6 +155,8 @@ class SessionSettings:
                     value = int(value)
                 elif isinstance(current, float):
                     value = float(value)
+                if key == "ui_font_scale":
+                    value = max(0.85, min(1.35, float(value)))
             except (TypeError, ValueError):
                 continue
             setattr(self, key, value)
@@ -246,6 +250,7 @@ def add_settings_args(parser) -> None:
     parser.add_argument("--max-tokens", type=int, default=220)
     parser.add_argument("--history-turns", type=int, default=8)
     parser.add_argument("--system", default=DEFAULT_SYSTEM)
+    parser.add_argument("--ui-font-scale", type=float, default=1.0)
 
     parser.add_argument("--memory-enabled", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--memory-extract-enabled", action=argparse.BooleanOptionalAction, default=True)

@@ -39,10 +39,11 @@
   --shadow-md: 0 12px 32px rgba(0,0,0,0.28);
   --shadow-lg: 0 22px 56px rgba(0,0,0,0.40);
   --topbar-h: 50px;
-  --font-body: 14px;
-  --font-sm: 13px;
-  --font-xs: 11px;
-  --font-label: 12px;
+  --ui-font-scale: 1;
+  --font-body: calc(15px * var(--ui-font-scale));
+  --font-sm: calc(14px * var(--ui-font-scale));
+  --font-xs: calc(12px * var(--ui-font-scale));
+  --font-label: calc(13px * var(--ui-font-scale));
 }
 
 /* ---- light theme (higher specificity to override :root) ---- */
@@ -104,9 +105,9 @@ button { border: 0; cursor: pointer; background: none; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, p { margin: 0; }
 
-h1 { font-size: 24px; font-weight: 700; letter-spacing: 0; }
-h2 { font-size: 17px; font-weight: 600; letter-spacing: 0; }
-h3 { font-size: 15px; font-weight: 600; }
+h1 { font-size: calc(25px * var(--ui-font-scale)); font-weight: 700; letter-spacing: 0; }
+h2 { font-size: calc(18px * var(--ui-font-scale)); font-weight: 600; letter-spacing: 0; }
+h3 { font-size: calc(16px * var(--ui-font-scale)); font-weight: 600; }
 
 code, pre, .log-viewer, .prompt-textarea {
   font-family: "JetBrains Mono", "Fira Code", Consolas, "Microsoft YaHei", monospace;

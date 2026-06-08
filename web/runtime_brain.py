@@ -240,15 +240,26 @@ class MemoryStore:
     async def observe_turn(self, settings: Any, user_text: str, assistant_text: str = "", llm_extract_fn=None) -> list[dict]:
         if not getattr(settings, "memory_enabled", True) or not getattr(settings, "memory_extract_enabled", True):
             return []
-        # 优先使用 LLM 驱动提取（异步）；不可用时回退到正则规则
+        # Memory extraction must never block or break the dialogue turn.
         candidates = []
         if llm_extract_fn:
-            candidates = await extract_memory_candidates_llm(user_text, llm_extract_fn, assistant_text=assistant_text)
+            try:
+                candidates = await extract_memory_candidates_llm(user_text, llm_extract_fn, assistant_text=assistant_text)
+            except Exception as exc:
+                print(f"[memory] LLM extraction failed, falling back to rules: {exc}", flush=True)
         if not candidates:
-            candidates = extract_memory_candidates(user_text)
+            try:
+                candidates = extract_memory_candidates(user_text)
+            except Exception as exc:
+                print(f"[memory] rule extraction failed: {exc}", flush=True)
+                candidates = []
         saved = []
         for candidate in candidates:
-            mem = self.upsert_memory(candidate, source=candidate.get("source", "chat"), excerpt=user_text)
+            try:
+                mem = self.upsert_memory(candidate, source=candidate.get("source", "chat"), excerpt=user_text)
+            except Exception as exc:
+                print(f"[memory] skipped invalid candidate: {exc}; candidate={candidate!r}", flush=True)
+                continue
             # TODO(4E): 异步获取 embedding 并写入 memory_items.embedding 列
             #   embedding = await self._get_embedding(candidate["value"])
             #   if embedding:
@@ -256,13 +267,18 @@ class MemoryStore:
             #           conn.execute("UPDATE memory_items SET embedding = ? WHERE id = ?",
             #                        (sqlite3.Binary(struct.pack(f'{len(embedding)}f', *embedding)), mem["id"]))
             saved.append(mem)
-        self.apply_decay(settings)
+        try:
+            self.apply_decay(settings)
+        except Exception as exc:
+            print(f"[memory] decay failed: {exc}", flush=True)
         return saved
 
     def upsert_memory(self, item: dict, source: str = "chat", excerpt: str = "") -> dict:
         now = now_ts()
-        key = compact_text(item["key"], 120)
+        key = compact_text(item.get("key") or item.get("value") or "", 120)
         value = compact_text(item.get("value") or key, 1000)
+        if not key or not value:
+            raise ValueError("memory key/value is empty")
         key_norm = normalize_key(key)
         layer = item.get("layer") if item.get("layer") in MEMORY_LAYERS else "short"
         confidence_gain = 0.3 if source == "manual" else float(item.get("confidence_gain", 0.12))
@@ -289,7 +305,7 @@ class MemoryStore:
                 " memory_type, time_text, event_date, time_of_day"
                 ") VALUES ("
                 " ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?,"
-                " ?, ?, ?"
+                " ?, ?, ?, ?"
                 ")"
                 " ON CONFLICT(key_norm) DO UPDATE SET"
                 f" value = excluded.value,"

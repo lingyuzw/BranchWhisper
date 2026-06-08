@@ -64,6 +64,7 @@ function handleDialogEvent(data) {
     case "conversation": applyConversation(data.conversation, true); break;
     case "conversation_saved": applyConversation(data.conversation, false); break;
     case "settings": state.currentConfig = { ...state.currentConfig, ...(data.settings || {}) }; state.ttsEnabled = state.currentConfig.tts_enabled ?? true; break;
+    case "status": handleStatus(data); break;
     case "vad_start": state.busy = false; setText("vadLabel", "speech"); setText("topStatus", "收音"); pipeline("vad", "正在听"); break;
     case "vad_end": setText("vadLabel", `${data.duration_ms || 0}ms`); setText("topStatus", "识别"); pipeline("asr", "识别中"); state.busy = true; break;
     case "vad_short": setText("vadLabel", "short"); break;
@@ -90,6 +91,24 @@ function handleDialogEvent(data) {
       releaseAfterPlayback({ onReleased: () => { setText("topStatus", state.micActive ? "监听中" : "待机"); } }); break;
     default: break;
   }
+}
+
+function handleStatus(data) {
+  const stage = data.stage || "idle";
+  const label = statusLabel(data.label || data.status || "");
+  if (stage === "vad" && data.device) setText("vadLabel", String(data.device));
+  setText("topStatus", label || stage.toUpperCase());
+  pipeline(stage, label);
+}
+
+function statusLabel(label) {
+  const text = String(label || "");
+  return {
+    loading: "加载中",
+    ready: "就绪",
+    running: "运行中",
+    warming: "预热中",
+  }[text] || text;
 }
 
 function pipeline(stage = "idle", label = "") {

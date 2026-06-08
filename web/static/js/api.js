@@ -21,13 +21,21 @@ export async function loadConfig() {
     state.previewMode = false;
     state.currentConfig = { ...DEFAULT_CONFIG, ...config };
     state.ttsSampleRate = Number(config.tts_sample_rate || 24000);
+    applyUiFontScale(state.currentConfig.ui_font_scale);
     return { ok: true, config: state.currentConfig };
   } catch (error) {
     state.previewMode = true;
     state.currentConfig = { ...DEFAULT_CONFIG };
     state.ttsSampleRate = DEFAULT_CONFIG.tts_sample_rate;
+    applyUiFontScale(DEFAULT_CONFIG.ui_font_scale);
     return { ok: false, error, config: state.currentConfig };
   }
+}
+
+export function applyUiFontScale(value) {
+  const scale = Number(value);
+  const safeScale = Number.isFinite(scale) ? Math.max(0.85, Math.min(1.35, scale)) : 1;
+  document.documentElement.style.setProperty("--ui-font-scale", String(safeScale));
 }
 
 export async function saveConfig(configData) {
@@ -49,6 +57,17 @@ export async function loadServices() {
   } catch {
     state.previewMode = true;
     return { ok: false, services: state.services };
+  }
+}
+
+export async function loadSystemResources() {
+  try {
+    const data = await fetchJson("/api/system/resources");
+    state.systemResources = data;
+    return { ok: true, resources: data };
+  } catch {
+    state.systemResources = null;
+    return { ok: false, resources: null };
   }
 }
 

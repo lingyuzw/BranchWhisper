@@ -45,7 +45,7 @@ function setupDashboardEvents() {
   }
   eventsBound = true;
   bindComposer("micBtn", "sendBtn", "interruptBtn", "resetBtn", "textInput");
-  bindComposer("micBtnWelcome", "sendBtnWelcome", null, null, "textInputWelcome");
+  bindComposer("micBtnWelcome", "sendBtnWelcome", "interruptBtnWelcome", "resetBtnWelcome", "textInputWelcome");
   $("#newConversationBtn")?.addEventListener("click", newConversation);
   setupTtsToggle();
 }
@@ -65,31 +65,29 @@ function bindComposer(micId, sendId, intrId, resetId, inputId) {
 /* ---- TTS toggle ---- */
 
 function setupTtsToggle() {
-  const btn = $("#ttsToggleBtn");
-  if (!btn) return;
-  // Sync icon from persisted state
+  const buttons = document.querySelectorAll("#ttsToggleBtn, #ttsToggleBtnWelcome");
+  if (!buttons.length) return;
   updateTtsToggleIcon();
-  btn.addEventListener("click", () => {
-    state.ttsEnabled = !state.ttsEnabled;
-    updateTtsToggleIcon();
-    state.currentConfig.tts_enabled = state.ttsEnabled;
-    // Push to backend if connected
-    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-      state.ws.send(JSON.stringify({ type: "settings", settings: { tts_enabled: state.ttsEnabled } }));
-    }
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.ttsEnabled = !state.ttsEnabled;
+      updateTtsToggleIcon();
+      state.currentConfig.tts_enabled = state.ttsEnabled;
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: "settings", settings: { tts_enabled: state.ttsEnabled } }));
+      }
+    });
   });
 }
 
 function updateTtsToggleIcon() {
-  const btn = $("#ttsToggleBtn");
-  if (!btn) return;
-  // Lucide replaces <i> with <svg>, so we rebuild the inner element each time
   const iconName = state.ttsEnabled ? "volume-2" : "volume-x";
   const label = state.ttsEnabled ? "语音开启" : "语音关闭";
-  btn.replaceChildren(createIcon(iconName));
-  btn.title = label;
-  // toggle visual: off state looks muted
-  btn.classList.toggle("off", !state.ttsEnabled);
+  document.querySelectorAll("#ttsToggleBtn, #ttsToggleBtnWelcome").forEach((btn) => {
+    btn.replaceChildren(createIcon(iconName));
+    btn.title = label;
+    btn.classList.toggle("off", !state.ttsEnabled);
+  });
   if (window.lucide) window.lucide.createIcons();
 }
 

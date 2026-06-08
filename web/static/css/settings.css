@@ -57,3 +57,4 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface) 94%, var(--accent-rose) 6%);
 }
+.appearance-grid { grid-template-columns: minmax(180px, 260px); }

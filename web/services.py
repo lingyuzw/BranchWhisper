@@ -22,7 +22,7 @@ DEFAULT_SERVICE_PROFILES = {
         "command": (
             "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
             "/root/miniconda3/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B "
-            "--served-model-name qwen3-asr --gpu-memory-utilization 0.35 --max-model-len 8192 --max-num-seqs 1 "
+            "--served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 4096 --max-num-seqs 1 "
             "--enforce-eager --host 0.0.0.0 --port 8001"
         ),
         "health_url": "http://127.0.0.1:8001/health",
@@ -48,10 +48,10 @@ DEFAULT_SERVICE_PROFILES = {
             "/root/autodl-tmp/project/LoveChoice/tts/trained_tts_server.py "
             "--repo_dir /root/autodl-tmp/project/CosyVoice "
             "--model_dir /root/autodl-tmp/project/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B "
-            "--speaker hanser --load_vllm --fp16 --host 0.0.0.0 --port 50000"
+            "--speaker hanser --load_vllm --fp16 --defer_load --no_warmup --host 0.0.0.0 --port 50000"
         ),
         "health_url": "http://127.0.0.1:50000/health",
-        "startup_wait_sec": 10,
+        "startup_wait_sec": 0,
     },
 }
 
@@ -328,12 +328,18 @@ async def check_service(name: str, url: str) -> dict:
     try:
         async with httpx.AsyncClient(timeout=1.5) as client:
             resp = await client.get(url)
+        payload = {}
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {}
         return {
             "name": name,
             "ok": resp.status_code < 500,
             "status": resp.status_code,
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "url": url,
+            "payload": payload if isinstance(payload, dict) else {},
         }
     except Exception as exc:
         return {"name": name, "ok": False, "error": str(exc), "url": url}

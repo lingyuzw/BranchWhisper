@@ -4,6 +4,7 @@ import argparse
 import random
 import sys
 import threading
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -30,6 +31,27 @@ app = FastAPI(title="Trained CosyVoice3 TTS API")
 cosyvoice = None
 speaker = "hanser"
 tts_lock = threading.Lock()
+model_lock = threading.Lock()
+model_state = {
+    "status": "not_started",
+    "ready": False,
+    "error": "",
+    "sample_rate": None,
+    "model_dir": "",
+    "available_speakers": [],
+    "started_at": None,
+    "loaded_at": None,
+}
+
+
+def set_model_state(**updates) -> None:
+    with model_lock:
+        model_state.update(updates)
+
+
+def get_model_state() -> dict:
+    with model_lock:
+        return dict(model_state)
 
 
 def setup_cosyvoice(
@@ -108,7 +130,9 @@ def stream_pcm(chunks: Iterator[dict], release_lock: bool = False) -> Iterator[b
 
 def require_model_loaded():
     if cosyvoice is None:
-        raise HTTPException(status_code=503, detail="TTS model is not loaded")
+        state = get_model_state()
+        detail = state.get("error") or f"TTS model is {state.get('status', 'loading')}"
+        raise HTTPException(status_code=503, detail=detail)
     return cosyvoice
 
 
@@ -147,26 +171,26 @@ def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
 
 @app.get("/health")
 def health():
-    if cosyvoice is None:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "loading",
-                "ready": False,
-                "sample_rate": None,
-                "speaker": speaker,
-                "prompt": COSYVOICE3_PROMPT,
-                "default_seed": DEFAULT_SEED,
-            },
-        )
-    return {
-        "status": "ok",
-        "ready": True,
-        "sample_rate": cosyvoice.sample_rate,
+    state = get_model_state()
+    payload = {
+        "status": state.get("status"),
+        "ready": bool(state.get("ready")),
+        "sample_rate": state.get("sample_rate"),
         "speaker": speaker,
         "prompt": COSYVOICE3_PROMPT,
         "default_seed": DEFAULT_SEED,
+        "model_dir": state.get("model_dir"),
+        "available_speakers": state.get("available_speakers") or [],
+        "started_at": state.get("started_at"),
+        "loaded_at": state.get("loaded_at"),
+        "error": state.get("error") or "",
     }
+    if state.get("status") == "error":
+        return JSONResponse(
+            status_code=503,
+            content=payload,
+        )
+    return payload
 
 
 @app.post("/tts")
@@ -199,6 +223,63 @@ def tts(req: TTSRequest):
     )
 
 
+def load_model(args) -> None:
+    global cosyvoice, speaker
+
+    set_model_state(
+        status="loading",
+        ready=False,
+        error="",
+        sample_rate=None,
+        model_dir=args.model_dir,
+        available_speakers=[],
+        started_at=time.time(),
+        loaded_at=None,
+    )
+    try:
+        model = setup_cosyvoice(
+            repo_dir=args.repo_dir,
+            model_dir=args.model_dir,
+            load_vllm=args.load_vllm,
+            load_trt=args.load_trt,
+            fp16=args.fp16,
+            trt_concurrent=args.trt_concurrent,
+            strict_vllm=args.strict_vllm,
+        )
+
+        available_speakers = model.list_available_spks()
+        if args.speaker:
+            selected_speaker = args.speaker
+        elif available_speakers:
+            selected_speaker = available_speakers[0]
+        else:
+            selected_speaker = "hanser"
+
+        cosyvoice = model
+        speaker = selected_speaker
+        set_model_state(
+            status="ready",
+            ready=True,
+            error="",
+            sample_rate=model.sample_rate,
+            available_speakers=available_speakers,
+            loaded_at=time.time(),
+        )
+
+        print(f"Loaded model: {args.model_dir}", flush=True)
+        print(f"Speaker: {speaker}", flush=True)
+        print(f"Sample rate: {model.sample_rate}", flush=True)
+        print(f"Available speakers: {available_speakers}", flush=True)
+
+        if not args.no_warmup:
+            warmup_model(args.warmup_text)
+    except Exception as exc:
+        set_model_state(status="error", ready=False, error=str(exc), loaded_at=None)
+        print(f"[load failed] {exc}", flush=True)
+        if not getattr(args, "defer_load", False):
+            raise
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo_dir", required=True, help="CosyVoice repository directory")
@@ -206,6 +287,7 @@ def main():
     parser.add_argument("--speaker", default="hanser", help="Speaker id")
     parser.add_argument("--warmup_text", default=DEFAULT_WARMUP_TEXT)
     parser.add_argument("--no_warmup", action="store_true")
+    parser.add_argument("--defer_load", action="store_true", help="Start HTTP first and load the model in the background")
     parser.add_argument("--load_vllm", action="store_true", help="Enable CosyVoice3 internal vLLM acceleration")
     parser.add_argument("--strict_vllm", action="store_true", help="Exit if --load_vllm cannot initialize")
     parser.add_argument("--load_trt", action="store_true", help="Enable TensorRT acceleration if supported")
@@ -215,32 +297,10 @@ def main():
     parser.add_argument("--port", type=int, default=50000)
     args = parser.parse_args()
 
-    global cosyvoice, speaker
-    cosyvoice = setup_cosyvoice(
-        repo_dir=args.repo_dir,
-        model_dir=args.model_dir,
-        load_vllm=args.load_vllm,
-        load_trt=args.load_trt,
-        fp16=args.fp16,
-        trt_concurrent=args.trt_concurrent,
-        strict_vllm=args.strict_vllm,
-    )
-
-    available_speakers = cosyvoice.list_available_spks()
-    if args.speaker:
-        speaker = args.speaker
-    elif available_speakers:
-        speaker = available_speakers[0]
+    if args.defer_load:
+        threading.Thread(target=load_model, args=(args,), daemon=True).start()
     else:
-        speaker = "hanser"
-
-    print(f"Loaded model: {args.model_dir}", flush=True)
-    print(f"Speaker: {speaker}", flush=True)
-    print(f"Sample rate: {cosyvoice.sample_rate}", flush=True)
-    print(f"Available speakers: {available_speakers}", flush=True)
-
-    if not args.no_warmup:
-        warmup_model(args.warmup_text)
+        load_model(args)
 
     uvicorn.run(app, host=args.host, port=args.port)
 

@@ -5,20 +5,23 @@
 
 import { state } from "./state.js";
 import { $, setText, renderIcons, showToast, showSkeleton, showConfirm, createIcon, safePort } from "./utils.js";
-import { loadConfig, loadServices, startService, stopService, startAllServices, stopAllServices, fetchServiceLogs, clearServiceLogs, clearAllServiceLogs } from "./api.js";
+import { loadConfig, loadServices, loadSystemResources, startService, stopService, startAllServices, stopAllServices, fetchServiceLogs, clearServiceLogs, clearAllServiceLogs } from "./api.js";
 
 /* ---- init ---- */
 
 let eventsBound = false;
 let servicesMounted = false;
+let logLiveRefresh = true;
+let currentLogText = "";
 
 export function initServices() {
   setupServiceEvents();
   syncLogFromHash();
 
   showSkeleton("serviceCards", 3);
+  showSkeleton("resourceGrid", 3);
   loadConfig().then(() => {
-    loadServices().then(() => {
+    Promise.all([loadServices(), refreshResources({ quiet: true })]).then(() => {
       renderServiceCards();
       renderLogTabs();
       if (servicesMounted) startServicePolling();
@@ -46,8 +49,9 @@ function setupServiceEvents() {
   $("#stopAllBtn")?.addEventListener("click", handleStopAll);
   $("#restartAllBtn")?.addEventListener("click", handleRestartAll);
   $("#clearAllLogsBtn")?.addEventListener("click", handleClearAllLogs);
-  $("#healthBtn")?.addEventListener("click", () => loadServices().then(() => renderServiceCards()));
+  $("#healthBtn")?.addEventListener("click", () => Promise.all([loadServices(), refreshResources()]).then(() => renderServiceCards()));
   $("#refreshLogsBtn")?.addEventListener("click", () => refreshLogs(state.selectedLogService));
+  $("#toggleLogLiveBtn")?.addEventListener("click", toggleLogLiveRefresh);
   $("#copyLogBtn")?.addEventListener("click", copyCurrentLog);
   $("#downloadLogBtn")?.addEventListener("click", downloadCurrentLog);
 }
@@ -64,6 +68,146 @@ function serviceSummaryText() {
   return `${running}/${state.services.length} 运行`;
 }
 
+/* ---- system resources ---- */
+
+async function refreshResources(options = {}) {
+  const result = await loadSystemResources();
+  renderResourceCards();
+  if (!result.ok && !options.quiet) showToast("资源状态读取失败", "error");
+}
+
+function renderResourceCards() {
+  const host = $("#resourceGrid");
+  if (!host) return;
+  host.innerHTML = "";
+
+  const resources = state.systemResources;
+  if (!resources) {
+    setText("resourcePlatform", "资源不可用");
+    host.appendChild(createResourceCard("资源状态", "--", "后端暂未返回数据", null, "circle-alert"));
+    renderIcons();
+    return;
+  }
+
+  setText("resourcePlatform", shortPlatform(resources.platform));
+
+  const cpu = resources.cpu || {};
+  host.appendChild(createResourceCard(
+    "CPU",
+    formatPercent(cpu.percent),
+    `${cpu.cores || "--"} 核 · ${formatLoad(cpu)}`,
+    cpu.percent,
+    "cpu",
+  ));
+
+  const memory = resources.memory || {};
+  host.appendChild(createResourceCard(
+    "内存",
+    formatPercent(memory.percent),
+    `${formatBytes(memory.used_bytes)} / ${formatBytes(memory.total_bytes)}`,
+    memory.percent,
+    "memory-stick",
+  ));
+
+  const gpus = Array.isArray(resources.gpus) ? resources.gpus : [];
+  if (!gpus.length) {
+    host.appendChild(createResourceCard("GPU", "--", "未检测到 nvidia-smi", null, "monitor-cog"));
+  } else {
+    for (const gpu of gpus) {
+      host.appendChild(createResourceCard(
+        `GPU ${Number(gpu.index ?? 0) + 1}`,
+        formatPercent(gpu.util_percent),
+        `${gpu.name || "GPU"} · ${formatGpuMemory(gpu)} · ${formatTemp(gpu.temperature_c)}`,
+        gpu.util_percent,
+        "gauge",
+      ));
+    }
+  }
+  renderIcons();
+}
+
+function createResourceCard(title, valueText, detailText, percent, iconName) {
+  const card = document.createElement("article");
+  card.className = "resource-card";
+
+  const head = document.createElement("div");
+  head.className = "resource-card-head";
+  const icon = document.createElement("span");
+  icon.className = "resource-icon";
+  icon.append(createIcon(iconName));
+  const titleEl = document.createElement("strong");
+  titleEl.textContent = title;
+  head.append(icon, titleEl);
+
+  const value = document.createElement("div");
+  value.className = "resource-value";
+  value.textContent = valueText;
+
+  const detail = document.createElement("small");
+  detail.textContent = detailText;
+
+  const meter = document.createElement("div");
+  meter.className = "resource-meter";
+  const bar = document.createElement("span");
+  const pct = clampPercent(percent);
+  bar.style.width = pct === null ? "0%" : `${pct}%`;
+  meter.classList.toggle("warning", pct !== null && pct >= 75);
+  meter.classList.toggle("danger", pct !== null && pct >= 90);
+  meter.appendChild(bar);
+
+  card.append(head, value, detail, meter);
+  return card;
+}
+
+function clampPercent(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  return Math.max(0, Math.min(100, num));
+}
+
+function formatPercent(value) {
+  const pct = clampPercent(value);
+  return pct === null ? "--" : `${pct.toFixed(pct % 1 ? 1 : 0)}%`;
+}
+
+function formatLoad(cpu) {
+  const loads = [cpu.load_1m, cpu.load_5m, cpu.load_15m]
+    .map((v) => Number(v))
+    .filter((v) => Number.isFinite(v))
+    .map((v) => v.toFixed(2));
+  return loads.length ? `负载 ${loads.join(" / ")}` : "负载 --";
+}
+
+function formatBytes(value) {
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "--";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit += 1;
+  }
+  return `${size.toFixed(unit >= 3 ? 1 : 0)} ${units[unit]}`;
+}
+
+function formatGpuMemory(gpu) {
+  const used = Number(gpu.memory_used_mb);
+  const total = Number(gpu.memory_total_mb);
+  if (!Number.isFinite(used) || !Number.isFinite(total) || total <= 0) return "显存 --";
+  return `显存 ${(used / 1024).toFixed(1)} / ${(total / 1024).toFixed(1)} GB`;
+}
+
+function formatTemp(value) {
+  const temp = Number(value);
+  return Number.isFinite(temp) ? `${temp.toFixed(0)}°C` : "温度 --";
+}
+
+function shortPlatform(value) {
+  const text = String(value || "--");
+  return text.length > 42 ? `${text.slice(0, 39)}...` : text;
+}
+
 /* ---- cards (slim: status dot + name + 3 buttons) ---- */
 
 function renderServiceCards() {
@@ -77,12 +221,14 @@ function renderServiceCards() {
 function createServiceCard(service) {
   const card = document.createElement("article");
   const healthOk = service.health?.ok;
-  const stateClass = service.running ? "active" : healthOk === false ? "failed" : "";
+  const stateClass = healthOk === false ? "failed" : service.running ? "active" : "";
   card.className = `service-card ${stateClass}`;
   card.dataset.serviceCard = service.id;
 
-  const stateLabel = service.external ? "External" : service.running ? "Running" : healthOk === false ? "Failed" : "Stopped";
-  const health = service.health ? (service.health.ok ? "OK" : "Fail") : "--";
+  const healthPayload = service.health?.payload || {};
+  const loading = service.running && healthPayload.ready === false && healthPayload.status === "loading";
+  const stateLabel = healthOk === false ? "Failed" : loading ? "Loading" : service.external ? "External" : service.running ? "Running" : "Stopped";
+  const health = healthPayload.ready === false ? "Loading" : service.health ? (service.health.ok ? "OK" : "Fail") : "--";
   const pid = service.external ? "external" : service.pid || "--";
   const port = safePort(service.health_url);
 
@@ -95,10 +241,10 @@ function createServiceCard(service) {
   const name = document.createElement("strong");
   name.textContent = service.label || service.id;
   const desc = document.createElement("small");
-  desc.textContent = service.description || "";
+  desc.textContent = healthPayload.ready === false && healthPayload.status ? `模型${healthPayload.status} · ${service.description || ""}` : service.description || "";
   title.append(name, document.createElement("br"), desc);
   const badge = document.createElement("span");
-  badge.className = `service-badge ${service.running ? "running" : healthOk === false ? "failed" : ""}`;
+  badge.className = `service-badge ${healthOk === false ? "failed" : loading ? "loading" : service.running ? "running" : ""}`;
   badge.textContent = stateLabel;
   head.append(dot, title, badge);
 
@@ -172,7 +318,7 @@ async function handleRestartAll() {
 async function handleClearAllLogs() {
   if (state.previewMode) return;
   if (!(await showConfirm("清空所有日志？"))) return;
-  try { await clearAllServiceLogs(); await refreshLogs(state.selectedLogService, { quiet: true }); }
+  try { await clearAllServiceLogs(); showLog("日志已清空。"); await refreshLogs(state.selectedLogService, { quiet: true }); }
   catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
@@ -181,14 +327,64 @@ async function handleClearAllLogs() {
 export async function refreshLogs(serviceId, options = {}) {
   state.selectedLogService = serviceId || state.selectedLogService || "asr";
   renderLogTabs();
-  if (state.previewMode) { if (!options.quiet) showLog("预览模式没有真实日志。"); return; }
-  try { showLog(await fetchServiceLogs(state.selectedLogService) || "暂无日志。"); }
-  catch (e) { if (!options.quiet) showLog(`读取失败：${e.message}`); }
+  syncLogLiveButton();
+  if (state.previewMode) { if (!options.quiet) showLog("预览模式没有真实日志。", options); return; }
+  try { showLog(await fetchServiceLogs(state.selectedLogService) || "暂无日志。", options); }
+  catch (e) { if (!options.quiet) showLog(`读取失败：${e.message}`, options); }
 }
 
-function showLog(text) {
-  const output = $("#logOutput"); if (!output) return;
-  output.textContent = text || ""; output.scrollTop = output.scrollHeight;
+function showLog(text, options = {}) {
+  const output = $("#logOutput");
+  if (!output) return;
+
+  const nextText = String(text || "");
+  const nearBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 48;
+  currentLogText = nextText;
+  output.replaceChildren();
+
+  const sections = splitLogSections(nextText);
+  for (const section of sections) output.appendChild(createLogSection(section));
+
+  if (!sections.length) output.textContent = "暂无日志。";
+  if (!options.preserveScroll || nearBottom) output.scrollTop = output.scrollHeight;
+}
+
+function splitLogSections(text) {
+  const lines = String(text || "").split(/\r?\n/);
+  const sections = [];
+  let current = { title: "当前日志", lines: [] };
+  const startRe = /^=+\s*start\s+(.+?)\s*=+$/i;
+
+  for (const line of lines) {
+    const match = line.match(startRe);
+    if (match) {
+      if (current.lines.length) sections.push(current);
+      current = { title: `启动 ${match[1]}`, lines: [line] };
+    } else {
+      current.lines.push(line);
+    }
+  }
+  if (current.lines.length) sections.push(current);
+  return sections;
+}
+
+function createLogSection(section) {
+  const block = document.createElement("section");
+  block.className = "log-run";
+
+  const head = document.createElement("div");
+  head.className = "log-run-head";
+  const title = document.createElement("strong");
+  title.textContent = section.title;
+  const count = document.createElement("span");
+  count.textContent = `${section.lines.length} 行`;
+  head.append(title, count);
+
+  const body = document.createElement("pre");
+  body.className = "log-run-body";
+  body.textContent = section.lines.join("\n").trim() || "--";
+  block.append(head, body);
+  return block;
 }
 
 function renderLogTabs() {
@@ -204,12 +400,12 @@ function renderLogTabs() {
 }
 
 async function copyCurrentLog() {
-  const text = $("#logOutput")?.textContent || ""; if (!text.trim()) return;
+  const text = currentLogText || $("#logOutput")?.textContent || ""; if (!text.trim()) return;
   try { await navigator.clipboard.writeText(text); showToast("已复制", "success"); } catch { showToast("复制失败", "error"); }
 }
 
 function downloadCurrentLog() {
-  const text = $("#logOutput")?.textContent || ""; if (!text.trim()) return;
+  const text = currentLogText || $("#logOutput")?.textContent || ""; if (!text.trim()) return;
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
   a.download = `lovechoice-${state.selectedLogService || "service"}.log`;
@@ -217,11 +413,32 @@ function downloadCurrentLog() {
   window.setTimeout(() => URL.revokeObjectURL(a.href), 200);
 }
 
+function toggleLogLiveRefresh() {
+  logLiveRefresh = !logLiveRefresh;
+  syncLogLiveButton();
+  if (logLiveRefresh) refreshLogs(state.selectedLogService, { quiet: true });
+}
+
+function syncLogLiveButton() {
+  const btn = $("#toggleLogLiveBtn");
+  if (!btn) return;
+  btn.replaceChildren(createIcon(logLiveRefresh ? "pause" : "play"));
+  btn.title = logLiveRefresh ? "暂停实时刷新" : "继续实时刷新";
+  btn.classList.toggle("off", !logLiveRefresh);
+  renderIcons();
+}
+
 function startServicePolling() {
   window.clearInterval(state.servicePollTimer);
   state.servicePollTimer = window.setInterval(async () => {
     if (!servicesMounted) return;
-    await loadServices(); renderServiceCards(); setText("topStatus", serviceSummaryText());
+    await Promise.all([
+      loadServices(),
+      refreshResources({ quiet: true }),
+      logLiveRefresh ? refreshLogs(state.selectedLogService, { quiet: true, preserveScroll: true }) : Promise.resolve(),
+    ]);
+    renderServiceCards();
+    setText("topStatus", serviceSummaryText());
   }, 4500);
 }
 

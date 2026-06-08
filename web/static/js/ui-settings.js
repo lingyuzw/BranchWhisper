@@ -100,6 +100,7 @@ const CONFIG_FIELD_MAP = [
   { key: "temperature", id: "temperature" },
   { key: "max_tokens", id: "maxTokens" },
   { key: "history_turns", id: "historyTurns" },
+  { key: "ui_font_scale", id: "uiFontScale" },
   { key: "system", id: "systemPrompt" },
   { key: "tts_url", id: "ttsUrl" },
   { key: "tts_speed", id: "ttsSpeed" },
@@ -117,7 +118,7 @@ const CONFIG_FIELD_MAP = [
   { key: "tools_max_result_chars", id: "toolsMaxResultChars" },
 ];
 
-const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars"]);
+const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "ui_font_scale", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars"]);
 
 function fillConfig(config) {
   setPlaceholder("llmApiKey", config.llm_api_key_masked || "");

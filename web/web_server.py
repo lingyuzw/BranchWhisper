@@ -37,6 +37,7 @@ from config import (
 from conversations import ConversationStore
 from runtime_brain import MemoryStore, ToolManager, parse_tool_call
 from services import ServiceManager, check_service, health_url_from
+from system_resources import collect_system_resources
 from vad import MIC_SAMPLE_RATE, VadModelStore, VoiceVadSession
 
 
@@ -57,6 +58,9 @@ TOOLS_CONFIG = RUNTIME_DIR / "tools.json"
 
 END = object()
 GLOBAL_TTS_LOCK = asyncio.Lock()
+SERVICE_WARMUP_LOCK = asyncio.Lock()
+SERVICE_WARMUP_TASKS: dict[str, asyncio.Task] = {}
+SERVICE_WARMUP_DONE: set[str] = set()
 LOCALHOST_NAMES = {"127.0.0.1", "::1", "localhost"}
 
 # TTS output from the local CosyVoice endpoint is expected to be raw PCM16LE.
@@ -100,6 +104,68 @@ def require_local_service_control(request: Request) -> None:
         status_code=403,
         detail="Service control is restricted to localhost. Set BUDING_ALLOW_REMOTE_SERVICE_CONTROL=1 to override.",
     )
+
+
+async def schedule_service_warmups(settings: SessionSettings) -> None:
+    settings_snapshot = SessionSettings(**asdict(settings))
+    warmups = [
+        (
+            f"asr:{settings_snapshot.asr_url}:{settings_snapshot.asr_model}",
+            lambda s=settings_snapshot: warmup_asr(s),
+        ),
+        (
+            f"llm:{settings_snapshot.llm_url}:{settings_snapshot.llm_model}",
+            lambda s=settings_snapshot: warmup_llm(s),
+        ),
+    ]
+    async with SERVICE_WARMUP_LOCK:
+        for key, warmup_factory in warmups:
+            if key in SERVICE_WARMUP_DONE:
+                continue
+            task = SERVICE_WARMUP_TASKS.get(key)
+            if task and not task.done():
+                continue
+            SERVICE_WARMUP_TASKS[key] = asyncio.create_task(run_service_warmup(key, warmup_factory))
+
+
+async def run_service_warmup(key: str, warmup_factory) -> None:
+    last_error: Exception | None = None
+    try:
+        for attempt in range(4):
+            try:
+                await warmup_factory()
+                SERVICE_WARMUP_DONE.add(key)
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt < 3:
+                    await asyncio.sleep(5)
+        if last_error:
+            print(f"[warmup] {key} failed: {last_error}", flush=True)
+    finally:
+        SERVICE_WARMUP_TASKS.pop(key, None)
+
+
+async def warmup_asr(settings: SessionSettings) -> None:
+    silence = np.zeros(int(MIC_SAMPLE_RATE * 0.35), dtype=np.float32)
+    wav = wav_bytes_from_float32(silence)
+    await asyncio.wait_for(transcribe_audio(settings, wav), timeout=min(35.0, float(settings.asr_timeout)))
+
+
+async def warmup_llm(settings: SessionSettings) -> None:
+    payload = {
+        "model": settings.llm_model,
+        "messages": [
+            {"role": "system", "content": "只回复一个字。"},
+            {"role": "user", "content": "热身"},
+        ],
+        "stream": False,
+        "temperature": 0.0,
+        "max_tokens": 1,
+    }
+    async with httpx.AsyncClient(timeout=35.0) as client:
+        resp = await client.post(settings.llm_url, json=payload, headers=llm_headers(settings))
+    resp.raise_for_status()
 
 
 def create_app(args) -> FastAPI:
@@ -207,11 +273,17 @@ def create_app(args) -> FastAPI:
     async def services():
         return {"services": await app.state.service_manager.status_all()}
 
+    @app.get("/api/system/resources")
+    async def system_resources():
+        return collect_system_resources()
+
     @app.post("/api/services/start-all")
     async def start_all_services(request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
         overrides = (payload or {}).get("services") or {}
-        return {"services": await app.state.service_manager.start_all(overrides)}
+        services = await app.state.service_manager.start_all(overrides)
+        await schedule_service_warmups(app.state.settings)
+        return {"services": services}
 
     @app.post("/api/services/stop-all")
     async def stop_all_services(request: Request):
@@ -222,6 +294,8 @@ def create_app(args) -> FastAPI:
     async def start_service(service_id: str, request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
         service = await app.state.service_manager.start(service_id)
+        if service_id in {"asr", "llm"}:
+            await schedule_service_warmups(app.state.settings)
         return {"service": service}
 
     @app.post("/api/services/{service_id}/stop")
@@ -327,6 +401,7 @@ class DialogSession:
         # even when the voice stack dependencies are not installed locally.
         self.vad_load_task = asyncio.create_task(self.vad_store.load())
         self.vad_load_task.add_done_callback(self.consume_background_task_exception)
+        await schedule_service_warmups(self.settings)
         await self.send_event("ready", settings=public_settings(self.settings))
         await self.send_event("conversation", conversation=self.conversation)
         try:
@@ -538,13 +613,19 @@ class DialogSession:
                 self.messages.append({"role": "assistant", "content": full_answer})
                 self.persist_messages([{"role": "assistant", "content": full_answer}])
                 await self.send_event("conversation_saved", conversation=self.conversation)
-                await self.memory_store.observe_turn(self.settings, user_text, full_answer, self.extract_memories_with_llm)
+                await self.remember_turn_safely(user_text, full_answer)
             self.trim_history()
         except Exception as exc:
             await self.send_event("error", message=f"Dialog failed: {exc}")
         finally:
             self.processing = old_processing
             await self.send_event("turn_done")
+
+    async def remember_turn_safely(self, user_text: str, assistant_text: str) -> None:
+        try:
+            await self.memory_store.observe_turn(self.settings, user_text, assistant_text, self.extract_memories_with_llm)
+        except Exception as exc:
+            print(f"[memory] turn update failed: {exc}", flush=True)
 
     def build_llm_messages(self, conversation: dict) -> list[dict[str, str]]:
         messages = [{"role": "system", "content": self.settings.system}]
@@ -831,6 +912,13 @@ class DialogSession:
                     ),
                 )
             except httpx.HTTPStatusError as exc:
+                detail = ""
+                with contextlib.suppress(Exception):
+                    detail_data = exc.response.json()
+                    detail = str(detail_data.get("detail") or detail_data.get("status") or "")
+                if exc.response.status_code == 503 and "loading" in detail.lower():
+                    await self.send_event("status", stage="tts", label="loading")
+                    return
                 await self.send_event(
                     "error",
                     message=f"CosyVoice3 TTS 返回 HTTP {exc.response.status_code}：请查看 tts 日志。",

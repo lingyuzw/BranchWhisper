@@ -19,6 +19,7 @@ export const DEFAULT_CONFIG = {
   max_tokens: 220,
   history_turns: 8,
   system: "",
+  ui_font_scale: 1,
   memory_enabled: true,
   memory_extract_enabled: true,
   memory_short_to_mid_days: 60,
@@ -131,6 +132,7 @@ export const state = {
   /* services page */
   selectedLogService: "asr",
   servicePollTimer: 0,
+  systemResources: null,
 
   /* settings page */
   memories: [],

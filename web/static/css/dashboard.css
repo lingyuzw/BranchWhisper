@@ -84,7 +84,7 @@
 }
 .welcome-brand h1 { font-size: 26px; font-weight: 700; color: var(--text); }
 .welcome-brand p { font-size: var(--font-body); color: var(--text-muted); line-height: 1.5; }
-.welcome-composer { width: 100%; max-width: 600px; }
+.welcome-composer { width: 100%; max-width: 720px; }
 
 /* messages area */
 .chat-messages {
@@ -149,6 +149,7 @@
   .chat-area > * { max-width: 100%; }
   .composer { grid-template-columns: 40px minmax(0, 1fr) 40px; }
   .chat-composer .composer { grid-template-columns: 40px minmax(0, 1fr) repeat(4, 40px); overflow-x: auto; }
+  .welcome-composer { grid-template-columns: 40px minmax(0, 1fr) repeat(4, 40px); overflow-x: auto; }
   .composer textarea { border-radius: var(--radius-md); }
   .message { max-width: 92%; font-size: var(--font-sm); }
 }
