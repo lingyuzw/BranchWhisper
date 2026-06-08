@@ -43,6 +43,20 @@ export function setText(id, text) {
   if (el) el.textContent = text;
 }
 
+export function createIcon(name) {
+  const icon = document.createElement("i");
+  icon.dataset.lucide = name;
+  return icon;
+}
+
+export function safePort(url) {
+  try {
+    return url ? (new URL(url).port || "--") : "--";
+  } catch {
+    return "--";
+  }
+}
+
 /* ---- icon rendering ---- */
 
 export function renderIcons() {
@@ -54,7 +68,7 @@ export function renderIcons() {
 export function formatConversationMeta(conversation) {
   const sequence = conversation.sequence ? `第 ${conversation.sequence} 次` : "本次";
   const count = Number(conversation.message_count || 0);
-  return `${sequence} · ${count} 条`;
+  return `${sequence} / ${count} 条`;
 }
 
 /* ---- toast notification ---- */
@@ -90,19 +104,27 @@ export function showConfirm(message) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "confirm-overlay";
-    overlay.innerHTML = `
-      <div class="confirm-dialog">
-        <p>${message}</p>
-        <div class="confirm-actions">
-          <button class="secondary-action confirm-cancel">取消</button>
-          <button class="primary-action confirm-ok">确认</button>
-        </div>
-      </div>
-    `;
+    const dialog = document.createElement("div");
+    dialog.className = "confirm-dialog";
+    const text = document.createElement("p");
+    text.textContent = message;
+    const actions = document.createElement("div");
+    actions.className = "confirm-actions";
+    const cancel = document.createElement("button");
+    cancel.className = "secondary-action confirm-cancel";
+    cancel.type = "button";
+    cancel.textContent = "取消";
+    const ok = document.createElement("button");
+    ok.className = "primary-action confirm-ok";
+    ok.type = "button";
+    ok.textContent = "确认";
+    actions.append(cancel, ok);
+    dialog.append(text, actions);
+    overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    overlay.querySelector(".confirm-cancel").onclick = () => { overlay.remove(); resolve(false); };
-    overlay.querySelector(".confirm-ok").onclick = () => { overlay.remove(); resolve(true); };
+    cancel.addEventListener("click", () => { overlay.remove(); resolve(false); });
+    ok.addEventListener("click", () => { overlay.remove(); resolve(true); });
     overlay.addEventListener("click", (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } });
   });
 }

@@ -8,6 +8,7 @@ import { renderIcons } from "./utils.js";
 let currentPage = "dashboard";
 let dashboardInitialized = false;
 let servicesInitialized = false;
+let currentLeave = null;
 
 /* ---- SPA navigation ---- */
 
@@ -16,8 +17,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupNav();
   loadTheme();
 
-  const initial = document.body.dataset.page || "dashboard";
-  await switchPage(initial);
+  const initial = pageFromHash() || document.body.dataset.page || "dashboard";
+  await switchPage(initial, false);
 });
 
 function setupNav() {
@@ -35,12 +36,23 @@ function setupNav() {
   });
 
   window.addEventListener("popstate", (e) => {
-    const page = e.state?.page || "dashboard";
+    const page = e.state?.page || pageFromHash() || "dashboard";
     if (page !== currentPage) switchPage(page, false);
+  });
+
+  window.addEventListener("hashchange", () => {
+    const page = pageFromHash();
+    if (page && page !== currentPage) switchPage(page, false);
   });
 }
 
 async function switchPage(page, pushState = true) {
+  page = normalizePage(page);
+  if (currentLeave) {
+    currentLeave();
+    currentLeave = null;
+  }
+
   // hide all
   document.querySelectorAll(".page-view").forEach((p) => { p.style.display = "none"; });
 
@@ -78,15 +90,17 @@ async function switchPage(page, pushState = true) {
         dashboardInitialized = true;
       }
     } else if (page === "services") {
+      const servicesModule = await import("./ui-services.js");
       if (!servicesInitialized) {
-        const { initServices } = await import("./ui-services.js");
-        initServices();
+        servicesModule.initServices();
         servicesInitialized = true;
       }
+      servicesModule.enterServices?.();
+      currentLeave = servicesModule.leaveServices || null;
     } else if (page === "settings") {
-      // re-init every time so it always fetches fresh config
-      const { initSettings } = await import("./ui-settings.js");
-      await initSettings();
+      const settingsModule = await import("./ui-settings.js");
+      await settingsModule.initSettings();
+      currentLeave = settingsModule.leaveSettings || null;
     }
   } catch (e) {
     console.error(`Failed to init page ${page}:`, e);
@@ -94,6 +108,17 @@ async function switchPage(page, pushState = true) {
     if (page === "services") servicesInitialized = false;
     if (page === "dashboard") dashboardInitialized = false;
   }
+}
+
+function normalizePage(page) {
+  return ["dashboard", "services", "settings"].includes(page) ? page : "dashboard";
+}
+
+function pageFromHash() {
+  const hash = location.hash.replace(/^#/, "");
+  if (!hash) return "";
+  if (hash.startsWith("logs-")) return "services";
+  return normalizePage(hash.split("-")[0]);
 }
 
 /* ---- theme ---- */

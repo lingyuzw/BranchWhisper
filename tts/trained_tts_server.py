@@ -3,13 +3,14 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
 import uvicorn
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 
@@ -28,6 +29,7 @@ class TTSRequest(BaseModel):
 app = FastAPI(title="Trained CosyVoice3 TTS API")
 cosyvoice = None
 speaker = "hanser"
+tts_lock = threading.Lock()
 
 
 def setup_cosyvoice(
@@ -95,9 +97,19 @@ def tensor_to_pcm16_bytes(tts_speech) -> bytes:
     return (audio * 32767).astype(np.int16).tobytes()
 
 
-def stream_pcm(chunks: Iterator[dict]) -> Iterator[bytes]:
-    for item in chunks:
-        yield tensor_to_pcm16_bytes(item["tts_speech"])
+def stream_pcm(chunks: Iterator[dict], release_lock: bool = False) -> Iterator[bytes]:
+    try:
+        for item in chunks:
+            yield tensor_to_pcm16_bytes(item["tts_speech"])
+    finally:
+        if release_lock:
+            tts_lock.release()
+
+
+def require_model_loaded():
+    if cosyvoice is None:
+        raise HTTPException(status_code=503, detail="TTS model is not loaded")
+    return cosyvoice
 
 
 def format_cosyvoice3_text(text: str) -> str:
@@ -120,7 +132,8 @@ def format_cosyvoice3_text(text: str) -> str:
 
 def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
     try:
-        chunks = cosyvoice.inference_sft(
+        model = require_model_loaded()
+        chunks = model.inference_sft(
             format_cosyvoice3_text(text),
             speaker,
             stream=False,
@@ -134,8 +147,21 @@ def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
 
 @app.get("/health")
 def health():
+    if cosyvoice is None:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "loading",
+                "ready": False,
+                "sample_rate": None,
+                "speaker": speaker,
+                "prompt": COSYVOICE3_PROMPT,
+                "default_seed": DEFAULT_SEED,
+            },
+        )
     return {
         "status": "ok",
+        "ready": True,
         "sample_rate": cosyvoice.sample_rate,
         "speaker": speaker,
         "prompt": COSYVOICE3_PROMPT,
@@ -145,21 +171,29 @@ def health():
 
 @app.post("/tts")
 def tts(req: TTSRequest):
+    model = require_model_loaded()
+    if not tts_lock.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="TTS is already synthesizing")
+
     set_seed(req.seed)
     tts_text = format_cosyvoice3_text(req.text)
     print(f"TTS input: {tts_text}", flush=True)
 
-    chunks = cosyvoice.inference_sft(
-        tts_text,
-        speaker,
-        stream=req.stream,
-        speed=req.speed,
-    )
+    try:
+        chunks = model.inference_sft(
+            tts_text,
+            speaker,
+            stream=req.stream,
+            speed=req.speed,
+        )
+    except Exception:
+        tts_lock.release()
+        raise
     return StreamingResponse(
-        stream_pcm(chunks),
+        stream_pcm(chunks, release_lock=True),
         media_type="application/octet-stream",
         headers={
-            "X-Sample-Rate": str(cosyvoice.sample_rate),
+            "X-Sample-Rate": str(model.sample_rate),
             "X-Audio-Format": "pcm_s16le",
         },
     )

@@ -4,7 +4,7 @@
    ============================================================ */
 
 import { state } from "./state.js";
-import { $, setText } from "./utils.js";
+import { $, setText, createIcon, renderIcons } from "./utils.js";
 
 /* ---- AudioContext lifecycle ---- */
 
@@ -48,8 +48,10 @@ export async function startMic({ onSendSamples }) {
   state.micActive = true;
   // update both mic buttons (welcome + bottom composer)
   document.querySelectorAll("#micBtn, #micBtnWelcome").forEach((btn) => {
-    btn.classList.add("active"); btn.innerHTML = '<i data-lucide="mic-off"></i>';
+    btn.classList.add("active");
+    btn.replaceChildren(createIcon("mic-off"));
   });
+  renderIcons();
 }
 
 export function stopMic() {
@@ -64,8 +66,10 @@ export function stopMic() {
   state.micProcessor = null;
   state.silentGain = null;
   document.querySelectorAll("#micBtn, #micBtnWelcome").forEach((btn) => {
-    btn.classList.remove("active"); btn.innerHTML = '<i data-lucide="mic"></i>';
+    btn.classList.remove("active");
+    btn.replaceChildren(createIcon("mic"));
   });
+  renderIcons();
 }
 
 /* ---- sample rate conversion ---- */

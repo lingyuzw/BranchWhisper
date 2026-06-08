@@ -4,12 +4,13 @@
    ============================================================ */
 
 import { state, ACTIVE_CONVERSATION_KEY } from "./state.js";
-import { $, setText, renderIcons, formatConversationMeta, showToast, showSkeleton, showConfirm } from "./utils.js";
+import { $, setText, renderIcons, formatConversationMeta, showToast, showSkeleton, showConfirm, createIcon } from "./utils.js";
 import { loadConfig, loadServices, loadConversations, createConversation, deleteConversation, loadMemory, addMemory, deleteMemory } from "./api.js";
-import { connectSocket, reconnectDialog, clearTranscript, selectConversation, sendText as dialogSendText, resizeComposerInput, interruptAssistant, setTranscriptCallback, setPipelineUpdater } from "./dialog.js";
-import { startMic, stopMic, sendMicSamples, shouldTriggerBargeIn, ensureAudioContext } from "./audio.js";
+import { connectSocket, reconnectDialog, clearTranscript, selectConversation, resizeComposerInput, interruptAssistant, setTranscriptCallback, setPipelineUpdater } from "./dialog.js";
+import { startMic, stopMic, sendMicSamples, shouldTriggerBargeIn } from "./audio.js";
 
 let hasMessages = false;
+let eventsBound = false;
 
 /* ---- init ---- */
 
@@ -30,19 +31,23 @@ export async function initDashboard() {
   setTranscriptCallback(() => { renderConversationList(); syncChatView(); });
   connectSocket();
   drawScope();
-
-  // bind both composer sets
-  bindComposer("micBtn", "sendBtn", "interruptBtn", "resetBtn", "textInput");
-  bindComposer("micBtnWelcome", "sendBtnWelcome", null, null, "textInputWelcome");
-  // sidebar "new conversation" button has its own independent handler
-  $("#newConversationBtn")?.addEventListener("click", newConversation);
-
-  // TTS toggle — switch icon and push state to backend
-  setupTtsToggle();
+  setupDashboardEvents();
 
   setText("topStatus", "待机");
   setupMemoryModal();
   syncChatView();
+}
+
+function setupDashboardEvents() {
+  if (eventsBound) {
+    updateTtsToggleIcon();
+    return;
+  }
+  eventsBound = true;
+  bindComposer("micBtn", "sendBtn", "interruptBtn", "resetBtn", "textInput");
+  bindComposer("micBtnWelcome", "sendBtnWelcome", null, null, "textInputWelcome");
+  $("#newConversationBtn")?.addEventListener("click", newConversation);
+  setupTtsToggle();
 }
 
 function bindComposer(micId, sendId, intrId, resetId, inputId) {
@@ -81,7 +86,7 @@ function updateTtsToggleIcon() {
   // Lucide replaces <i> with <svg>, so we rebuild the inner element each time
   const iconName = state.ttsEnabled ? "volume-2" : "volume-x";
   const label = state.ttsEnabled ? "语音开启" : "语音关闭";
-  btn.innerHTML = `<i data-lucide="${iconName}"></i>`;
+  btn.replaceChildren(createIcon(iconName));
   btn.title = label;
   // toggle visual: off state looks muted
   btn.classList.toggle("off", !state.ttsEnabled);
@@ -168,14 +173,19 @@ function renderConversationList() {
   for (const c of conversations) {
     const item = document.createElement("div");
     item.className = `conversation-item ${c.id === state.activeConversationId ? "active" : ""}`;
-    const openBtn = document.createElement("button"); openBtn.type = "button"; openBtn.className = "conversation-open";
-    openBtn.innerHTML = "<strong></strong><span></span><small></small>";
-    openBtn.querySelector("strong").textContent = c.title || "新的对话";
-    openBtn.querySelector("span").textContent = c.last_message || "空会话";
-    openBtn.querySelector("small").textContent = formatConversationMeta(c);
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "conversation-open";
+    const title = document.createElement("strong");
+    title.textContent = c.title || "新的对话";
+    const preview = document.createElement("span");
+    preview.textContent = c.last_message || "空会话";
+    const meta = document.createElement("small");
+    meta.textContent = formatConversationMeta(c);
+    openBtn.append(title, preview, meta);
     openBtn.addEventListener("click", () => selectConversation(c.id));
     const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.className = "conversation-delete"; delBtn.title = "删除";
-    delBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+    delBtn.append(createIcon("trash-2"));
     delBtn.addEventListener("click", () => handleDeleteConversation(c));
     item.append(openBtn, delBtn); host.appendChild(item);
   }
@@ -268,12 +278,26 @@ async function openMemoryModal() { $("#memoryModal").hidden = false; await loadM
 function renderMemoryModalList() {
   const host = $("#memoryModalList"); if (!host) return;
   host.innerHTML = "";
-  if (!state.memories.length) { host.innerHTML = '<p class="conversation-empty">暂无记忆。</p>'; return; }
+  if (!state.memories.length) {
+    const empty = document.createElement("p");
+    empty.className = "conversation-empty";
+    empty.textContent = "暂无记忆。";
+    host.appendChild(empty);
+    return;
+  }
   for (const item of state.memories) {
     const div = document.createElement("div"); div.className = "memory-item";
-    div.innerHTML = `<div><strong>${item.key || "--"}</strong><br><span>${item.value || ""}</span><br><small>${item.layer} · ${item.count || 0} 次</small></div>`;
-    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+    const body = document.createElement("div");
+    const key = document.createElement("strong");
+    key.textContent = item.key || "--";
+    const value = document.createElement("span");
+    value.textContent = item.value || "";
+    const meta = document.createElement("small");
+    meta.textContent = `${item.layer} · ${item.count || 0} 次`;
+    body.append(key, document.createElement("br"), value, document.createElement("br"), meta);
+    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.appendChild(createIcon("trash-2"));
     delBtn.addEventListener("click", () => handleMemoryDelete(item.id)); div.appendChild(delBtn); host.appendChild(div);
+    div.prepend(body);
   }
   renderIcons();
 }

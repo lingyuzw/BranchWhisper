@@ -4,29 +4,44 @@
    ============================================================ */
 
 import { state } from "./state.js";
-import { $, setText, renderIcons, showToast, showSkeleton, showConfirm } from "./utils.js";
+import { $, setText, renderIcons, showToast, showSkeleton, showConfirm, createIcon, safePort } from "./utils.js";
 import { loadConfig, loadServices, startService, stopService, startAllServices, stopAllServices, fetchServiceLogs, clearServiceLogs, clearAllServiceLogs } from "./api.js";
 
 /* ---- init ---- */
 
+let eventsBound = false;
+let servicesMounted = false;
+
 export function initServices() {
   setupServiceEvents();
-  const hashLog = location.hash.replace("#logs-", "");
-  if (hashLog) state.selectedLogService = hashLog;
+  syncLogFromHash();
 
   showSkeleton("serviceCards", 3);
   loadConfig().then(() => {
     loadServices().then(() => {
       renderServiceCards();
       renderLogTabs();
-      startServicePolling();
+      if (servicesMounted) startServicePolling();
       refreshLogs(state.selectedLogService, { quiet: true });
       setText("topStatus", serviceSummaryText());
     });
   });
 }
 
+export function enterServices() {
+  servicesMounted = true;
+  syncLogFromHash();
+  startServicePolling();
+}
+
+export function leaveServices() {
+  servicesMounted = false;
+  stopServicePolling();
+}
+
 function setupServiceEvents() {
+  if (eventsBound) return;
+  eventsBound = true;
   $("#startAllBtn")?.addEventListener("click", handleStartAll);
   $("#stopAllBtn")?.addEventListener("click", handleStopAll);
   $("#restartAllBtn")?.addEventListener("click", handleRestartAll);
@@ -35,6 +50,13 @@ function setupServiceEvents() {
   $("#refreshLogsBtn")?.addEventListener("click", () => refreshLogs(state.selectedLogService));
   $("#copyLogBtn")?.addEventListener("click", copyCurrentLog);
   $("#downloadLogBtn")?.addEventListener("click", downloadCurrentLog);
+}
+
+function syncLogFromHash() {
+  const hash = location.hash.replace(/^#/, "");
+  if (hash.startsWith("logs-")) {
+    state.selectedLogService = hash.slice(5) || state.selectedLogService;
+  }
 }
 
 function serviceSummaryText() {
@@ -62,29 +84,56 @@ function createServiceCard(service) {
   const stateLabel = service.external ? "External" : service.running ? "Running" : healthOk === false ? "Failed" : "Stopped";
   const health = service.health ? (service.health.ok ? "OK" : "Fail") : "--";
   const pid = service.external ? "external" : service.pid || "--";
-  const port = service.health_url ? new URL(service.health_url).port || "--" : "--";
+  const port = safePort(service.health_url);
 
-  card.innerHTML = `
-    <div class="service-head">
-      <span class="status-dot"></span>
-      <div class="service-title"><strong>${service.label || service.id}</strong><br /><small style="color:var(--text-muted);font-size:var(--font-xs);font-weight:400">${service.description || ""}</small></div>
-      <span class="service-badge ${service.running ? 'running' : healthOk === false ? 'failed' : ''}">${stateLabel}</span>
-    </div>
-    <div class="service-meta">
-      <div class="meta-cell"><span>HEALTH</span><strong>${health}</strong></div>
-      <div class="meta-cell"><span>PID</span><strong>${pid}</strong></div>
-      <div class="meta-cell"><span>PORT</span><strong>${port}</strong></div>
-    </div>
-    <div class="service-actions">
-      <button class="service-action start" type="button"><i data-lucide="play"></i>启动</button>
-      <button class="service-action stop" type="button"><i data-lucide="square"></i>停止</button>
-      <button class="service-action restart" type="button"><i data-lucide="refresh-ccw"></i>重启</button>
-    </div>
-  `;
+  const head = document.createElement("div");
+  head.className = "service-head";
+  const dot = document.createElement("span");
+  dot.className = "status-dot";
+  const title = document.createElement("div");
+  title.className = "service-title";
+  const name = document.createElement("strong");
+  name.textContent = service.label || service.id;
+  const desc = document.createElement("small");
+  desc.textContent = service.description || "";
+  title.append(name, document.createElement("br"), desc);
+  const badge = document.createElement("span");
+  badge.className = `service-badge ${service.running ? "running" : healthOk === false ? "failed" : ""}`;
+  badge.textContent = stateLabel;
+  head.append(dot, title, badge);
+
+  const meta = document.createElement("div");
+  meta.className = "service-meta";
+  for (const [label, value] of [["HEALTH", health], ["PID", pid], ["PORT", port]]) {
+    const cell = document.createElement("div");
+    cell.className = "meta-cell";
+    const span = document.createElement("span");
+    span.textContent = label;
+    const strong = document.createElement("strong");
+    strong.textContent = String(value);
+    cell.append(span, strong);
+    meta.appendChild(cell);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "service-actions";
+  const startBtn = serviceActionButton("start", "play", "启动");
+  const stopBtn = serviceActionButton("stop", "square", "停止");
+  const restartBtn = serviceActionButton("restart", "refresh-ccw", "重启");
+  actions.append(startBtn, stopBtn, restartBtn);
+  card.append(head, meta, actions);
   card.querySelector(".start").addEventListener("click", () => handleStart(service.id));
   card.querySelector(".stop").addEventListener("click", () => handleStop(service.id));
   card.querySelector(".restart").addEventListener("click", () => handleRestart(service.id));
   return card;
+}
+
+function serviceActionButton(className, icon, label) {
+  const button = document.createElement("button");
+  button.className = `service-action ${className}`;
+  button.type = "button";
+  button.append(createIcon(icon), document.createTextNode(label));
+  return button;
 }
 
 /* ---- actions ---- */
@@ -171,8 +220,14 @@ function downloadCurrentLog() {
 function startServicePolling() {
   window.clearInterval(state.servicePollTimer);
   state.servicePollTimer = window.setInterval(async () => {
+    if (!servicesMounted) return;
     await loadServices(); renderServiceCards(); setText("topStatus", serviceSummaryText());
   }, 4500);
 }
 
-window.addEventListener("beforeunload", () => { window.clearInterval(state.servicePollTimer); });
+function stopServicePolling() {
+  window.clearInterval(state.servicePollTimer);
+  state.servicePollTimer = 0;
+}
+
+window.addEventListener("beforeunload", stopServicePolling);

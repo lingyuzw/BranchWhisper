@@ -4,10 +4,12 @@
    ============================================================ */
 
 import { state, DEFAULT_CONFIG } from "./state.js";
-import { $, setValue, value, setText, setPlaceholder, renderIcons, showToast, setChecked, checked } from "./utils.js";
+import { $, setValue, value, setText, setPlaceholder, renderIcons, showToast, createIcon, safePort } from "./utils.js";
 import { loadConfig, saveConfig, loadServices, updateServiceConfig } from "./api.js";
 
 /* ---- init ---- */
+
+let eventsBound = false;
 
 export async function initSettings() {
   setupSettingsEvents();
@@ -27,7 +29,16 @@ export async function initSettings() {
   setText("topStatus", configResult.ok ? "后端在线" : "静态预览");
 }
 
+export function leaveSettings() {
+  window.removeEventListener("scroll", highlightNavSection);
+}
+
 function setupSettingsEvents() {
+  if (eventsBound) {
+    window.addEventListener("scroll", highlightNavSection, { passive: true });
+    return;
+  }
+  eventsBound = true;
   $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
   document.querySelectorAll("#themeToggle button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -106,23 +117,35 @@ const CONFIG_FIELD_MAP = [
   { key: "tools_max_result_chars", id: "toolsMaxResultChars" },
 ];
 
+const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars"]);
 
 function fillConfig(config) {
   setPlaceholder("llmApiKey", config.llm_api_key_masked || "");
   for (const f of CONFIG_FIELD_MAP) {
+    if (!document.getElementById(f.id)) continue;
     const val = config[f.key] !== undefined ? config[f.key] : DEFAULT_CONFIG[f.key];
     setValue(f.id, val);
   }
+  const keyState = config.llm_api_key_set ? "已保存" : "未保存";
+  setText("apiKeyState", keyState);
 }
 
 function collectConfig() {
   const result = {};
-  const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars"]);
   for (const f of CONFIG_FIELD_MAP) {
+    if (!document.getElementById(f.id)) continue;
     const raw = value(f.id, "");
-    result[f.key] = NUM_FIELDS.has(f.key) ? (Number(raw) || DEFAULT_CONFIG[f.key]) : (raw || state.currentConfig[f.key] || DEFAULT_CONFIG[f.key]);
+    if (NUM_FIELDS.has(f.key)) {
+      const parsed = Number(raw);
+      result[f.key] = Number.isFinite(parsed) ? parsed : DEFAULT_CONFIG[f.key];
+    } else {
+      result[f.key] = raw || state.currentConfig[f.key] || DEFAULT_CONFIG[f.key];
+    }
   }
-  result.llm_api_key = value("llmApiKey", "").trim();
+  const apiKey = value("llmApiKey", "").trim();
+  if (apiKey) {
+    result.llm_api_key = apiKey;
+  }
   return result;
 }
 
@@ -151,27 +174,52 @@ function renderProfileList() {
 
 function createProfileCard(service) {
   const card = document.createElement("section");
-  const port = service.health_url ? new URL(service.health_url).port || "--" : "--";
+  const port = safePort(service.health_url);
   card.className = "profile-card"; card.id = `profile-${service.id}`; card.dataset.serviceId = service.id;
-  card.innerHTML = `
-    <div class="profile-head">
-      <div><strong>${service.label || service.id}</strong><span>${service.description || ""}</span></div>
-      <button class="small-button test-log" type="button"><i data-lucide="scroll-text"></i>日志</button>
-    </div>
-    <div class="profile-summary"><span>${service.running ? "运行中" : "待启动"}</span><span>端口 ${port}</span></div>
-    <details class="advanced-profile">
-      <summary><i data-lucide="sliders-horizontal"></i>高级启动参数</summary>
-      <div class="inline-actions command-actions" style="margin-bottom:6px">
-        <button class="small-button copy-command" type="button"><i data-lucide="copy"></i>复制命令</button>
-      </div>
-      <div class="form-grid">
-        <label><span>Working Directory</span><input class="profile-cwd" type="text" /></label>
-        <label><span>Health URL</span><input class="profile-health" type="text" /></label>
-        <label><span>Startup Wait sec</span><input class="profile-wait" type="number" min="0" max="180" step="1" /></label>
-        <label class="wide"><span>Start Command</span><textarea class="profile-command"></textarea></label>
-      </div>
-    </details>
-  `;
+  const head = document.createElement("div");
+  head.className = "profile-head";
+  const title = document.createElement("div");
+  const strong = document.createElement("strong");
+  strong.textContent = service.label || service.id;
+  const desc = document.createElement("span");
+  desc.textContent = service.description || "";
+  title.append(strong, desc);
+  const logBtn = document.createElement("button");
+  logBtn.className = "small-button test-log";
+  logBtn.type = "button";
+  logBtn.append(createIcon("scroll-text"), document.createTextNode("日志"));
+  head.append(title, logBtn);
+
+  const summary = document.createElement("div");
+  summary.className = "profile-summary";
+  const running = document.createElement("span");
+  running.textContent = service.running ? "运行中" : "待启动";
+  const portSpan = document.createElement("span");
+  portSpan.textContent = `端口 ${port}`;
+  summary.append(running, portSpan);
+
+  const details = document.createElement("details");
+  details.className = "advanced-profile";
+  const summaryToggle = document.createElement("summary");
+  summaryToggle.append(createIcon("sliders-horizontal"), document.createTextNode("高级启动参数"));
+  const commandActions = document.createElement("div");
+  commandActions.className = "inline-actions command-actions";
+  commandActions.style.marginBottom = "6px";
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "small-button copy-command";
+  copyBtn.type = "button";
+  copyBtn.append(createIcon("copy"), document.createTextNode("复制命令"));
+  commandActions.appendChild(copyBtn);
+  const form = document.createElement("div");
+  form.className = "form-grid";
+  form.append(
+    profileField("Working Directory", "input", "profile-cwd"),
+    profileField("Health URL", "input", "profile-health"),
+    profileField("Startup Wait sec", "input", "profile-wait", { type: "number", min: "0", max: "180", step: "1" }),
+    profileField("Start Command", "textarea", "profile-command", { wide: true }),
+  );
+  details.append(summaryToggle, commandActions, form);
+  card.append(head, summary, details);
   card.querySelector(".profile-cwd").value = service.cwd || "";
   card.querySelector(".profile-health").value = service.health_url || "";
   card.querySelector(".profile-wait").value = service.startup_wait_sec ?? 0;
@@ -182,6 +230,21 @@ function createProfileCard(service) {
     try { await navigator.clipboard.writeText(cmd); showToast("已复制", "success"); } catch { showToast("复制失败", "error"); }
   });
   return card;
+}
+
+function profileField(labelText, tag, className, options = {}) {
+  const label = document.createElement("label");
+  if (options.wide) label.className = "wide";
+  const span = document.createElement("span");
+  span.textContent = labelText;
+  const field = document.createElement(tag);
+  field.className = className;
+  if (options.type) field.type = options.type;
+  for (const attr of ["min", "max", "step"]) {
+    if (options[attr]) field.setAttribute(attr, options[attr]);
+  }
+  label.append(span, field);
+  return label;
 }
 
 function collectProfileConfig(serviceId) {

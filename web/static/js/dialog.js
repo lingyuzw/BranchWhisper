@@ -44,6 +44,7 @@ export function reconnectDialog() {
 function sendRuntimeSettings() {
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
   const settings = { ...state.currentConfig };
+  delete settings.llm_api_key;
   settings.tts_enabled = state.ttsEnabled;
   state.ws.send(JSON.stringify({ type: "settings", settings }));
 }
@@ -110,7 +111,11 @@ function addMsg(role, text) {
   t.appendChild(node); scrollTranscript(); return node;
 }
 function appendAssistant(text) { if (!state.currentAssistant) state.currentAssistant = addMsg("assistant", ""); if (state.currentAssistant) state.currentAssistant.textContent += text; scrollTranscript(); }
-export function clearTranscript() { const t = $("#transcript"); if (t) t.innerHTML = ""; state.currentAssistant = null; }
+export function clearTranscript() {
+  const t = $("#transcript");
+  if (t) t.replaceChildren();
+  state.currentAssistant = null;
+}
 function scrollTranscript() { const t = $("#transcript"); if (t) t.scrollTop = t.scrollHeight; }
 function renderTranscript(msgs) { clearTranscript(); for (const m of msgs) { if (["user","assistant","system"].includes(m.role)) addMsg(m.role, m.content || ""); } }
 
