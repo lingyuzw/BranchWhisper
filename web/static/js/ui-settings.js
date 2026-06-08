@@ -49,12 +49,18 @@ function setupSettingsEvents() {
     });
   });
   window.addEventListener("scroll", highlightNavSection, { passive: true });
-  // nav link clicks: scroll to section
+  // nav link clicks: scroll to section + 立即高亮避免 smooth scroll 延迟
   document.querySelectorAll("[data-setting-nav]").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       const id = link.dataset.settingNav;
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const target = document.getElementById(id);
+      if (!target) return;
+      // 立即高亮，不等 scroll 事件触发
+      document.querySelectorAll("[data-setting-nav]").forEach((l) => {
+        l.classList.toggle("nav-active", l.dataset.settingNav === id);
+      });
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }

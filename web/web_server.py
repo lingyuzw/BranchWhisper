@@ -1476,8 +1476,12 @@ class DialogSession:
             "max_tokens": self.settings.max_tokens,
             "top_p": 0.95,
             "repeat_penalty": 1.18,
-            "frequency_penalty": 0.4,
-            "presence_penalty": 0.3,
+            # llama.cpp DRY sampling：检测重复短语并惩罚，比单纯的 repeat_penalty 更精准
+            "dry_multiplier": 0.8,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": -1,
+            "seed": int(time.time() * 1000) % 2147483647,
         }
         buffer = ""
         full_answer = ""
@@ -2022,7 +2026,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--service-config", default="")
     return parser
-
 
 def main() -> None:
     """程序入口：解析参数，创建 FastAPI app，用 uvicorn 启动。"""
