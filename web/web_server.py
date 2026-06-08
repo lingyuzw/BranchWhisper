@@ -1148,9 +1148,10 @@ class DialogSession:
 
     async def run(self) -> None:
         # 后台预加载 VAD 模型，减少首次语音的延迟
-        asyncio.create_task(self.vad_store.load())
+        vad_task = asyncio.create_task(self.vad_store.load())
         await self.send_event("ready", settings=asdict(self.settings))
         await self.send_event("conversation", conversation=self.conversation)
+        await vad_task  # VAD 加载完成后再进入消息循环，首句无延迟
         try:
             while True:
                 message = await self.websocket.receive()
@@ -1338,7 +1339,7 @@ class DialogSession:
                 self.messages.append({"role": "assistant", "content": full_answer})
                 self.persist_messages([{"role": "assistant", "content": full_answer}])
                 await self.send_event("conversation_saved", conversation=self.conversation)
-                await asyncio.to_thread(self.memory_store.observe_turn, self.settings, user_text, full_answer)
+                await self.memory_store.observe_turn(self.settings, user_text, full_answer)
             self.trim_history()
         except Exception as exc:
             await self.send_event("error", message=f"Dialog failed: {exc}")
@@ -1941,6 +1942,7 @@ def clean_for_tts(text: str) -> str:
 
     # Remove accidental prompt echoes that should never be spoken.
     prompt_fragments = (
+        "You are a helpful assistant<|endofprompt|>",
         "You are a helpful assistant",
         "You are a helpful",
         "A conversation between User and Assistant",

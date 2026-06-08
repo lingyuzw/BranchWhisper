@@ -104,7 +104,9 @@ def format_cosyvoice3_text(text: str) -> str:
     text = text.strip()
     if "<|endofprompt|>" in text:
         text = text.split("<|endofprompt|>", 1)[1].strip()
-    return f"{COSYVOICE3_PROMPT}<|endofprompt|>{text}"
+    # 去掉 COSYVOICE3_PROMPT 可读文本，只用 <|endofprompt|> 作为 SFT 分隔符，
+    # 避免英文前缀被 CosyVoice3 语音化输出。
+    return f"<|endofprompt|>{text}"
 
 
 def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
@@ -196,9 +198,3 @@ def main():
 
     if not args.no_warmup:
         warmup_model(args.warmup_text)
-
-    uvicorn.run(app, host=args.host, port=args.port)
-
-
-if __name__ == "__main__":
-    main()

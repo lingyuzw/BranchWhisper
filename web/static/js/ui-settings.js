@@ -96,19 +96,10 @@ const CONFIG_FIELD_MAP = [
   { key: "pre_speech_ms", id: "preSpeech" },
   { key: "min_utterance_ms", id: "minUtterance" },
   { key: "max_utterance_sec", id: "maxUtterance" },
-  { key: "memory_short_to_mid_days", id: "memoryShortToMidDays" },
-  { key: "memory_short_to_mid_count", id: "memoryShortToMidCount" },
-  { key: "memory_mid_to_long_days", id: "memoryMidToLongDays" },
-  { key: "memory_mid_to_long_count", id: "memoryMidToLongCount" },
-  { key: "memory_short_delete_days", id: "memoryShortDeleteDays" },
-  { key: "memory_mid_downgrade_days", id: "memoryMidDowngradeDays" },
-  { key: "memory_long_downgrade_days", id: "memoryLongDowngradeDays" },
-  { key: "memory_max_context_items", id: "memoryMaxContextItems" },
   { key: "tools_timeout", id: "toolsTimeout" },
   { key: "tools_max_result_chars", id: "toolsMaxResultChars" },
 ];
 
-const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "memory_short_to_mid_days", "memory_short_to_mid_count", "memory_mid_to_long_days", "memory_mid_to_long_count", "memory_short_delete_days", "memory_mid_downgrade_days", "memory_long_downgrade_days", "memory_max_context_items", "tools_timeout", "tools_max_result_chars"]);
 
 function fillConfig(config) {
   setPlaceholder("llmApiKey", config.llm_api_key_masked || "");
@@ -116,25 +107,16 @@ function fillConfig(config) {
     const val = config[f.key] !== undefined ? config[f.key] : DEFAULT_CONFIG[f.key];
     setValue(f.id, val);
   }
-  setChecked("memoryEnabled", config.memory_enabled ?? true);
-  setChecked("memoryExtractEnabled", config.memory_extract_enabled ?? true);
-  setChecked("toolsEnabled", config.tools_enabled ?? true);
-  setChecked("toolsAutoCall", config.tools_auto_call ?? true);
-  setChecked("ttsEnabled", config.tts_enabled ?? true);
 }
 
 function collectConfig() {
   const result = {};
+  const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars"]);
   for (const f of CONFIG_FIELD_MAP) {
     const raw = value(f.id, "");
     result[f.key] = NUM_FIELDS.has(f.key) ? (Number(raw) || DEFAULT_CONFIG[f.key]) : (raw || state.currentConfig[f.key] || DEFAULT_CONFIG[f.key]);
   }
   result.llm_api_key = value("llmApiKey", "").trim();
-  result.memory_enabled = checked("memoryEnabled", true);
-  result.memory_extract_enabled = checked("memoryExtractEnabled", true);
-  result.tools_enabled = checked("toolsEnabled", true);
-  result.tools_auto_call = checked("toolsAutoCall", true);
-  result.tts_enabled = checked("ttsEnabled", true);
   return result;
 }
 
