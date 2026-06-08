@@ -129,8 +129,8 @@ def stream_pcm(chunks: Iterator[dict], release_lock: bool = False) -> Iterator[b
 
 
 def require_model_loaded():
-    if cosyvoice is None:
-        state = get_model_state()
+    state = get_model_state()
+    if cosyvoice is None or not state.get("ready"):
         detail = state.get("error") or f"TTS model is {state.get('status', 'loading')}"
         raise HTTPException(status_code=503, detail=detail)
     return cosyvoice
@@ -154,9 +154,11 @@ def format_cosyvoice3_text(text: str) -> str:
     return f"<|endofprompt|>{text}"
 
 
-def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
+def warmup_model(model=None, text: str = DEFAULT_WARMUP_TEXT, raise_on_error: bool = False) -> None:
     try:
-        model = require_model_loaded()
+        model = model or cosyvoice
+        if model is None:
+            raise RuntimeError("TTS model is not loaded")
         chunks = model.inference_sft(
             format_cosyvoice3_text(text),
             speaker,
@@ -167,6 +169,8 @@ def warmup_model(text: str = DEFAULT_WARMUP_TEXT) -> None:
             pass
     except Exception as exc:
         print(f"[warmup skipped] {exc}", flush=True)
+        if raise_on_error:
+            raise
 
 
 @app.get("/health")
@@ -258,12 +262,12 @@ def load_model(args) -> None:
         cosyvoice = model
         speaker = selected_speaker
         set_model_state(
-            status="ready",
-            ready=True,
+            status="warming" if not args.no_warmup else "ready",
+            ready=bool(args.no_warmup),
             error="",
             sample_rate=model.sample_rate,
             available_speakers=available_speakers,
-            loaded_at=time.time(),
+            loaded_at=None,
         )
 
         print(f"Loaded model: {args.model_dir}", flush=True)
@@ -272,7 +276,8 @@ def load_model(args) -> None:
         print(f"Available speakers: {available_speakers}", flush=True)
 
         if not args.no_warmup:
-            warmup_model(args.warmup_text)
+            warmup_model(model, args.warmup_text, raise_on_error=True)
+        set_model_state(status="ready", ready=True, loaded_at=time.time())
     except Exception as exc:
         set_model_state(status="error", ready=False, error=str(exc), loaded_at=None)
         print(f"[load failed] {exc}", flush=True)

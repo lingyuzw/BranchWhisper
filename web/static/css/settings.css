@@ -44,7 +44,7 @@
 .profile-command {
   min-height: 140px;
   color: var(--text-soft);
-  background: #0c0d0b;
+  background: var(--log-bg);
   font-size: var(--font-sm);
 }
 

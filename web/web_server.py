@@ -131,14 +131,14 @@ async def schedule_service_warmups(settings: SessionSettings) -> None:
 async def run_service_warmup(key: str, warmup_factory) -> None:
     last_error: Exception | None = None
     try:
-        for attempt in range(4):
+        for attempt in range(12):
             try:
                 await warmup_factory()
                 SERVICE_WARMUP_DONE.add(key)
                 return
             except Exception as exc:
                 last_error = exc
-                if attempt < 3:
+                if attempt < 11:
                     await asyncio.sleep(5)
         if last_error:
             print(f"[warmup] {key} failed: {last_error}", flush=True)

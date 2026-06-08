@@ -149,24 +149,24 @@
   color: var(--text-soft);
   background:
     linear-gradient(180deg, rgba(89,195,195,0.04), transparent 120px),
-    #0c0d0b;
+    var(--log-bg);
   font-size: var(--font-xs); line-height: 1.55; white-space: normal;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
 }
 .log-run {
   display: grid; gap: 0;
   margin-bottom: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--log-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: rgba(255,255,255,0.025);
+  background: var(--log-panel);
 }
 .log-run-head {
   min-height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 0 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--log-border);
   color: var(--text);
-  background: rgba(255,255,255,0.035);
+  background: var(--log-panel-head);
 }
 .log-run-head strong { font-size: var(--font-sm); font-weight: 700; }
 .log-run-head span { color: var(--text-muted); font-size: var(--font-xs); }

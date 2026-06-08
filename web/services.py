@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import platform
+import re
 import signal
 import socket
 import subprocess
@@ -22,7 +23,7 @@ DEFAULT_SERVICE_PROFILES = {
         "command": (
             "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
             "/root/miniconda3/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B "
-            "--served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 4096 --max-num-seqs 1 "
+            "--served-model-name qwen3-asr --gpu-memory-utilization 0.28 --max-model-len 4096 --max-num-seqs 1 "
             "--enforce-eager --host 0.0.0.0 --port 8001"
         ),
         "health_url": "http://127.0.0.1:8001/health",
@@ -48,7 +49,7 @@ DEFAULT_SERVICE_PROFILES = {
             "/root/autodl-tmp/project/LoveChoice/tts/trained_tts_server.py "
             "--repo_dir /root/autodl-tmp/project/CosyVoice "
             "--model_dir /root/autodl-tmp/project/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B "
-            "--speaker hanser --load_vllm --fp16 --defer_load --no_warmup --host 0.0.0.0 --port 50000"
+            "--speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000"
         ),
         "health_url": "http://127.0.0.1:50000/health",
         "startup_wait_sec": 0,
@@ -161,6 +162,7 @@ class ServiceManager:
                 return await self.status(service_id)
 
         command = service.get("command", "").strip()
+        command = tune_start_command(service_id, command)
         if not command:
             raise ValueError(f"{service_id} command is empty")
 
@@ -321,6 +323,50 @@ def load_service_profiles(config_path: Path | None) -> dict:
             if service_id in profiles and isinstance(service_patch, dict):
                 profiles[service_id].update(service_patch)
     return profiles
+
+
+def tune_start_command(service_id: str, command: str) -> str:
+    if service_id != "asr" or "--gpu-memory-utilization" not in command:
+        return command
+    safe_util = safe_gpu_memory_utilization(default=0.28)
+    return re.sub(r"--gpu-memory-utilization\s+\S+", f"--gpu-memory-utilization {safe_util:.2f}", command)
+
+
+def safe_gpu_memory_utilization(default: float = 0.28) -> float:
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=memory.free,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=1.5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return default
+
+    if result.returncode != 0:
+        return default
+
+    for line in result.stdout.splitlines():
+        parts = [part.strip() for part in line.split(",")]
+        if len(parts) < 2:
+            continue
+        try:
+            free_mb = float(parts[0])
+            total_mb = float(parts[1])
+        except ValueError:
+            continue
+        if total_mb <= 0:
+            continue
+        # vLLM refuses to start when requested total memory is higher than
+        # currently free memory. Keep a small buffer for LLM/TTS coexistence.
+        utilization = max(0.18, min(default, (free_mb / total_mb) - 0.03))
+        return round(utilization, 2)
+    return default
 
 
 async def check_service(name: str, url: str) -> dict:
