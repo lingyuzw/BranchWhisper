@@ -94,7 +94,7 @@ class ToolProviderConfig:
             data = {}
         if not isinstance(data, dict):
             data = {}
-        return deep_merge(DEFAULT_TOOL_PROVIDER_CONFIG, data)
+        return deep_merge(DEFAULT_TOOL_PROVIDER_CONFIG, self._drop_runtime_fields(data))
 
     def public(self) -> dict:
         return self._mask(self.load())
@@ -138,3 +138,14 @@ class ToolProviderConfig:
                     continue
             result[key] = value
         return result
+
+    def _drop_runtime_fields(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: self._drop_runtime_fields(item)
+                for key, item in value.items()
+                if not (str(key).endswith("_set") or str(key).endswith("_masked"))
+            }
+        if isinstance(value, list):
+            return [self._drop_runtime_fields(item) for item in value]
+        return value

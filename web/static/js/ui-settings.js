@@ -84,6 +84,7 @@ function setupSettingsEvents() {
   eventsBound = true;
   $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
   $("#toolResolveBtn")?.addEventListener("click", runToolResolve);
+  $("#toolResolveClearBtn")?.addEventListener("click", clearToolResolve);
   $("#addBotProfileBtn")?.addEventListener("click", addBotProfile);
   bindChatIdentityEvents();
   $("#toolProviderCancelBtn")?.addEventListener("click", closeToolProviderModal);
@@ -347,11 +348,11 @@ function renderToolProviders() {
     const status = document.createElement("div");
     status.className = "tool-provider-status";
     const providerName = provider.provider || (key === "url_fetch" ? "built-in" : "default");
-    const hasSecret = Boolean(provider.api_key_set || provider.webhook_url_set || provider.api_key || provider.webhook_url);
+    const secretState = providerSecretState(key, provider);
     status.innerHTML = `
       <span>${provider.enabled === false ? "已关闭" : "已启用"}</span>
       <span>${escapeHtml(providerName)}</span>
-      <span>${hasSecret ? "密钥已配置" : "免密/未配置密钥"}</span>
+      <span>${secretState}</span>
     `;
     const action = document.createElement("button");
     action.className = "secondary-action";
@@ -389,10 +390,11 @@ function openToolProviderModal(key) {
   setText("toolProviderModalTitle", `${PROVIDER_LABELS[key] || key}配置`);
   const summary = $("#toolProviderModalSummary");
   if (summary) {
+    const secretState = providerSecretState(key, provider);
     summary.innerHTML = `
       <span>${provider.enabled === false ? "当前关闭" : "当前启用"}</span>
       <span>Provider: ${escapeHtml(provider.provider || "default")}</span>
-      <span>${provider.api_key_set || provider.webhook_url_set ? "密钥已保存" : "未保存密钥"}</span>
+      <span>${secretState}</span>
     `;
   }
   const host = $("#toolProviderModalFields");
@@ -428,6 +430,12 @@ function openToolProviderModal(key) {
 
 async function applyToolProviderModal() {
   if (!editingToolProvider) return;
+  const button = $("#toolProviderApplyBtn");
+  if (button) {
+    button.disabled = true;
+    button.dataset.originalText = button.textContent || "保存工具配置";
+    button.textContent = "保存中...";
+  }
   const next = normalizeProviderDraft(editingToolProvider, toolProviderDraft[editingToolProvider] || {});
   document.querySelectorAll("#toolProviderModalFields [data-provider-field]").forEach((input) => {
     const field = input.dataset.providerField;
@@ -440,7 +448,10 @@ async function applyToolProviderModal() {
   toolProviderDraft[editingToolProvider] = next;
   closeToolProviderModal();
   renderToolProviders();
-  if (state.previewMode) return;
+  if (state.previewMode) {
+    resetToolProviderApplyButton();
+    return;
+  }
   try {
     await saveToolConfig(collectToolConfig());
     syncToolProviderDraft();
@@ -448,7 +459,17 @@ async function applyToolProviderModal() {
     showToast("工具配置已保存", "success");
   } catch (e) {
     showToast(`工具配置保存失败：${e.message}`, "error");
+  } finally {
+    resetToolProviderApplyButton();
   }
+}
+
+function resetToolProviderApplyButton() {
+  const button = $("#toolProviderApplyBtn");
+  if (!button) return;
+  button.disabled = false;
+  button.innerHTML = '<i data-lucide="check"></i>保存工具配置';
+  renderIcons();
 }
 
 function applyProviderDefaults(key, next) {
@@ -478,6 +499,28 @@ function stripProviderRuntimeFields(provider) {
   for (const key of Object.keys(provider)) {
     if (key.endsWith("_set") || key.endsWith("_masked")) delete provider[key];
   }
+}
+
+function providerSecretState(key, provider) {
+  if (providerHasDirectSecret(provider)) return "密钥已配置";
+  if (provider.provider === "gaode" && gaodeSharedSecretAvailable(key)) return "高德 Key 可复用";
+  if (key === "url_fetch" || provider.provider === "wttr" || provider.provider === "duckduckgo" || provider.provider === "google_rss" || provider.provider === "built-in" || provider.provider === "default") {
+    return "免密";
+  }
+  return "未配置密钥";
+}
+
+function providerHasDirectSecret(provider = {}) {
+  return Boolean(provider.api_key_set || provider.webhook_url_set || provider.api_key || provider.webhook_url || provider.api_key_masked || provider.webhook_url_masked);
+}
+
+function gaodeSharedSecretAvailable(currentKey) {
+  return ["weather", "search", "map"]
+    .filter((key) => key !== currentKey)
+    .some((key) => {
+      const provider = toolProviderDraft[key] || {};
+      return provider.provider === "gaode" && providerHasDirectSecret(provider);
+    });
 }
 
 function closeToolProviderModal() {
@@ -515,6 +558,11 @@ async function runToolResolve() {
   } catch (e) {
     setText("toolResolveResult", `测试失败：${e.message}`);
   }
+}
+
+function clearToolResolve() {
+  setValue("toolResolveInput", "");
+  setText("toolResolveResult", "等待测试。");
 }
 
 function renderBotProfiles() {

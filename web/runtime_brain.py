@@ -822,6 +822,36 @@ def clean_place_query(text: str) -> str:
     return cleaned or compact_text(text, 80)
 
 
+def has_any(text: str, keywords: tuple[str, ...]) -> bool:
+    return any(keyword in text for keyword in keywords)
+
+
+def looks_like_geo_question(text: str) -> bool:
+    return has_any(
+        text,
+        (
+            "地图",
+            "路线",
+            "地址",
+            "导航",
+            "附近",
+            "周边",
+            "怎么走",
+            "距离",
+            "在哪",
+            "在哪里",
+            "属于哪里",
+            "属于哪",
+            "哪个城市",
+            "哪个省",
+            "哪个区",
+            "哪个县",
+            "地理位置",
+            "位置",
+        ),
+    )
+
+
 class ToolManager:
     BUILTIN_TOOLS = [
         {
@@ -976,22 +1006,22 @@ class ToolManager:
 
     def suggest_from_text(self, text: str) -> dict | None:
         lowered = text.lower()
-        if re.search(r"(几点|几号|星期几|礼拜几|当前时间|现在时间|现在几点|今天日期|今天几号)", text) and self.tool_exists("time"):
+        if has_any(text, ("几点", "几号", "星期几", "礼拜几", "当前时间", "现在时间", "现在几点", "今天日期", "今天几号")) and self.tool_exists("time"):
             return {"id": "time", "arguments": {}}
         url_match = re.search(r"https?://[^\s，。！？]+", text)
         if url_match and self.tool_exists("url_fetch"):
             return {"id": "url_fetch", "arguments": {"url": url_match.group(0)}}
-        if re.search(r"(热点|新闻|最近发生|时事|头条|今日消息|最新消息)", text) and self.tool_exists("hot_news"):
+        if has_any(text, ("热点", "新闻", "最近发生", "时事", "头条", "今日消息", "最新消息")) and self.tool_exists("hot_news"):
             topic = re.sub(r"(今天|现在|当前|最新|热点|新闻|帮我|查一下|看看|是什么|有哪些)", "", text).strip(" ，。？?")
             return {"id": "hot_news", "arguments": {"topic": topic[:40], "limit": 6}}
-        if re.search(r"(天气|下雨|气温|温度|冷不冷|热不热|降雨|空气质量)", text) and self.tool_exists("weather"):
+        if has_any(text, ("天气", "下雨", "气温", "温度", "冷不冷", "热不热", "降雨", "空气质量")) and self.tool_exists("weather"):
             location = re.sub(r"(天气|下雨|气温|温度|今天|现在|查一下|怎么样|如何)", "", text).strip(" ，。？?")
             return {"id": "weather", "arguments": {"location": location or "北京"}}
-        if re.search(r"(地图|路线|地址|导航|附近|怎么走|距离)", text) and self.tool_exists("map"):
+        if looks_like_geo_question(text) and self.tool_exists("map"):
             return {"id": "map", "arguments": {"query": text}}
         if re.search(r"(股票|股价|汇率|币价|价格|金价|美股|基金|btc|eth|usd|cny|人民币|美元|港币)", lowered) and self.tool_exists("finance"):
             return {"id": "finance", "arguments": {"query": text}}
-        if re.search(r"(搜索|查一下|帮我查|网上|资料|最新|现在|当前|实时|官网|多少钱|哪里买|评价|怎么样)", text) and self.tool_exists("web_search"):
+        if (has_any(text, ("搜索", "查一下", "帮我查", "网上", "资料", "最新", "现在", "当前", "实时", "官网", "多少钱", "哪里买", "评价", "怎么样")) or looks_like_geo_question(text)) and self.tool_exists("web_search"):
             return {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         return None
 
