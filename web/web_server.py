@@ -426,6 +426,7 @@ async def deliver_proactive_text(
         return {"ok": False, "error": "消息内容为空。"}
 
     result: dict[str, Any] = {"ok": False, "error": "", "conversation_id": ""}
+    delivered = False
     errors = []
 
     if channel in {"web", "all"}:
@@ -441,7 +442,7 @@ async def deliver_proactive_text(
                 }
             ],
         )
-        result["ok"] = True
+        delivered = True
         result["conversation_id"] = conversation["id"]
 
     if channel in {"weixin", "all"}:
@@ -452,14 +453,15 @@ async def deliver_proactive_text(
             try:
                 sent = await app.state.integration_manager.send_weixin_text(integration_id, content, sender_id=sender_id)
                 if sent.get("ok"):
-                    result["ok"] = True
+                    delivered = True
                 else:
                     errors.append(sent.get("error") or "微信发送失败。")
             except Exception as exc:
                 errors.append(str(exc))
 
-    if not result["ok"] and not errors:
+    if not delivered and not errors:
         errors.append(f"不支持的触达通道：{channel}")
+    result["ok"] = delivered and not errors
     result["error"] = "；".join(item for item in errors if item)
     return result
 
@@ -654,16 +656,34 @@ def create_app(args) -> FastAPI:
     async def proactive_test(request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
         payload = payload or {}
+        config = app.state.proactive_store.load_config()
+        channel = str(payload.get("channel") or app.state.proactive_store.default_channel(config) or "web")
         event = app.state.proactive_store.create_event(
             {
                 "kind": "test",
                 "title": payload.get("title") or "主动消息测试",
                 "content": payload.get("content") or "这是一条主动消息测试。保存后会出现在对话列表里。",
-                "channel": payload.get("channel") or "web",
+                "channel": channel,
                 "status": "pending",
             }
         )
-        return {"event": event, "events": app.state.proactive_store.list_events()}
+        result = await deliver_proactive_text(
+            app,
+            title=event["title"],
+            content=event["content"],
+            channel=event["channel"],
+            source="proactive_test",
+        )
+        app.state.proactive_store.update_event(
+            event["id"],
+            {
+                "status": "done" if result.get("ok") else "failed",
+                "fired_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "conversation_id": result.get("conversation_id", ""),
+                "last_error": result.get("error", ""),
+            },
+        )
+        return {"event": app.state.proactive_store.get_event(event["id"]) or event, "result": result, "events": app.state.proactive_store.list_events()}
 
     @app.post("/api/proactive/events/{event_id}/dismiss")
     async def dismiss_proactive_event(event_id: str, request: Request):
@@ -818,13 +838,22 @@ def create_app(args) -> FastAPI:
         require_local_service_control(request)
         return app.state.integration_manager.list_integrations()
 
+    @app.get("/api/integrations/weixin/my-session")
+    async def my_weixin_session(request: Request):
+        require_local_service_control(request)
+        integration_id = preferred_integration_id(app)
+        return {
+            "integration_id": integration_id,
+            "session": app.state.integration_manager.my_weixin_session(integration_id) if integration_id else {},
+        }
+
     @app.post("/api/integrations")
     async def create_integration(request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
         try:
             item = app.state.integration_manager.create_integration(payload or {})
         except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise HTTPException(status_code=409, detail="接入实例已存在，请编辑已有实例或换一个实例名。") from exc
         return {"integration": item, **app.state.integration_manager.list_integrations()}
 
     @app.patch("/api/integrations/{integration_id}")

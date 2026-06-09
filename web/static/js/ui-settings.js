@@ -33,6 +33,18 @@ import {
 let eventsBound = false;
 let toolProviderDraft = {};
 let editingToolProvider = "";
+let activeSettingsSection = "";
+const SETTINGS_SECTION_LABELS = {
+  appearance: "外观",
+  engine: "本地模型引擎",
+  tools: "联网工具",
+  proactive: "主动性",
+  botProfiles: "Bot 人格",
+  prompt: "Prompt 配置",
+  tts: "语音合成",
+  vad: "语音检测",
+  commands: "服务命令",
+};
 const CHAT_IDENTITY = {
   user: {
     nameKey: "web_user_name",
@@ -75,6 +87,8 @@ export async function initSettings() {
   fillProactiveConfig();
   renderProactiveEvents();
   renderReminders();
+  prepareSettingsSectionModal();
+  refreshSettingsOverview();
   // 即使 loadConfig 失败也调 fillConfig(DEFAULT_CONFIG)
   if (!configResult.ok) fillConfig(configResult.config);
   await loadServices();
@@ -94,6 +108,15 @@ function setupSettingsEvents() {
   }
   eventsBound = true;
   $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
+  $("#settingsSectionSaveBtn")?.addEventListener("click", saveSettingsPage);
+  $("#settingsSectionCancelBtn")?.addEventListener("click", closeSettingsSectionModal);
+  document.querySelector("#settingsSectionModal .modal-close")?.addEventListener("click", closeSettingsSectionModal);
+  $("#settingsSectionModal")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeSettingsSectionModal();
+  });
+  document.querySelectorAll("[data-open-config]").forEach((card) => {
+    card.addEventListener("click", () => openSettingsSectionModal(card.dataset.openConfig));
+  });
   $("#toolResolveBtn")?.addEventListener("click", runToolResolve);
   $("#toolResolveClearBtn")?.addEventListener("click", clearToolResolve);
   $("#proactiveTestBtn")?.addEventListener("click", runProactiveTest);
@@ -131,28 +154,83 @@ function setupSettingsEvents() {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       const id = link.dataset.settingNav;
-      const target = document.getElementById(id);
-      if (!target) return;
+      if (id) {
+        openSettingsSectionModal(id);
+      }
       // 立即高亮，不等 scroll 事件触发
       document.querySelectorAll("[data-setting-nav]").forEach((l) => {
         l.classList.toggle("nav-active", l.dataset.settingNav === id);
       });
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
 
 function highlightNavSection() {
-  const sections = document.querySelectorAll(".settings-panel[id], .theme-section[id]");
   const navLinks = document.querySelectorAll("[data-setting-nav]");
-  let currentId = "";
-  for (const s of sections) {
-    if (s.getBoundingClientRect().top < 160) currentId = s.id;
-  }
   navLinks.forEach((l) => {
-    const isActive = l.getAttribute("data-setting-nav") === currentId;
-    l.classList.toggle("nav-active", isActive);
+    l.classList.toggle("nav-active", l.getAttribute("data-setting-nav") === activeSettingsSection);
   });
+}
+
+function prepareSettingsSectionModal() {
+  document.querySelectorAll(".settings-content > .theme-section[id], .settings-content > .settings-panel[id]").forEach((section) => {
+    section.classList.add("settings-section-detached");
+  });
+}
+
+function openSettingsSectionModal(id) {
+  const section = document.getElementById(id);
+  const body = $("#settingsSectionModalBody");
+  if (!section || !body) return;
+  activeSettingsSection = id;
+  setText("settingsSectionModalTitle", SETTINGS_SECTION_LABELS[id] || "配置");
+  body.innerHTML = "";
+  body.appendChild(section);
+  section.classList.remove("settings-section-detached");
+  $("#settingsSectionModal").hidden = false;
+  highlightNavSection();
+  renderIcons();
+}
+
+function closeSettingsSectionModal() {
+  const modal = $("#settingsSectionModal");
+  const body = $("#settingsSectionModalBody");
+  const grid = $("#settingsOverviewGrid");
+  if (body && grid) {
+    for (const section of Array.from(body.children)) {
+      section.classList.add("settings-section-detached");
+      grid.after(section);
+    }
+    restoreSettingsSectionOrder();
+  }
+  if (modal) modal.hidden = true;
+  activeSettingsSection = "";
+  highlightNavSection();
+}
+
+function restoreSettingsSectionOrder() {
+  const grid = $("#settingsOverviewGrid");
+  const content = grid?.parentElement;
+  if (!grid || !content) return;
+  let anchor = grid;
+  for (const id of Object.keys(SETTINGS_SECTION_LABELS)) {
+    const section = document.getElementById(id);
+    if (!section || section.parentElement !== content) continue;
+    anchor.after(section);
+    anchor = section;
+  }
+}
+
+function refreshSettingsOverview() {
+  setText("appearanceSummary", `${window.__branchwhisper?.getTheme?.() === "light" ? "浅色" : "深色"} · 字号 ${value("uiFontScale", 1)}`);
+  setText("engineSummary", `${value("llmModel", "本地模型")} · ${value("historyTurns", 8)} 轮`);
+  setText("toolsSummary", `${value("toolsEnabled", "true") === "true" ? "已启用" : "已关闭"} · ${Object.keys(toolProviderDraft || {}).filter((key) => (toolProviderDraft[key] || {}).enabled !== false).length} 项`);
+  setText("proactiveSummary", `${value("proactiveEnabled", "false") === "true" ? "已开启" : "已关闭"} · ${value("followupLevel", "restrained")}`);
+  setText("botProfileSummary", `${(state.botProfiles || []).length || 1} 个 Profile`);
+  setText("promptSummary", `${(value("systemPrompt", "") || "").length} 字`);
+  setText("ttsSummary", `${value("ttsSpeed", 1)}x · ${value("ttsSampleRate", 24000)}Hz`);
+  setText("vadSummary", `阈值 ${value("vadThreshold", 0.5)} · 静音 ${value("vadMinSilence", 500)}ms`);
+  setText("commandsSummary", `${(state.services || []).length} 个服务`);
 }
 
 /* ---- config form ---- */
@@ -690,7 +768,7 @@ function renderProactiveEvents() {
     const content = document.createElement("span");
     content.textContent = event.content || "";
     const meta = document.createElement("small");
-    meta.textContent = `${event.status || "pending"} · ${event.created_at || ""}`;
+    meta.textContent = `${event.status || "pending"} · ${event.last_error || event.created_at || ""}`;
     body.append(title, content, meta);
     item.appendChild(body);
     host.appendChild(item);
@@ -699,10 +777,10 @@ function renderProactiveEvents() {
 
 async function runProactiveTest() {
   try {
-    await testProactiveMessage("这是一条主动消息测试。它会作为枝语的主动消息出现在对话列表里。");
+    const event = await testProactiveMessage("这是一条主动消息测试。它会按当前主动性通道发送；如果启用了微信，会发到已绑定的“我的微信会话”。");
     await loadProactiveEvents();
     renderProactiveEvents();
-    showToast("主动消息已创建", "success");
+    showToast(event?.status === "failed" ? "主动测试已记录，但发送失败，请看事件原因。" : "主动消息测试已发送", event?.status === "failed" ? "error" : "success");
   } catch (e) {
     showToast(`主动消息测试失败：${e.message}`, "error");
   }
@@ -886,6 +964,7 @@ async function saveSettingsPage() {
     renderReminders();
     await loadServices(); renderProfileList();
     renderBotProfiles();
+    refreshSettingsOverview();
     window.dispatchEvent(new CustomEvent("branchwhisper:appearance-updated"));
     showToast("配置已应用", "success");
   } catch (e) { showToast(`保存失败：${e.message}`, "error"); }

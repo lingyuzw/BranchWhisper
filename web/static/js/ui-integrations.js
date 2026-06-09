@@ -51,7 +51,7 @@ export function leaveIntegrations() {
 function setupIntegrationEvents() {
   if (eventsBound) return;
   eventsBound = true;
-  $("#addIntegrationBtn")?.addEventListener("click", () => openIntegrationModal());
+  $("#addIntegrationBtn")?.addEventListener("click", () => openAddIntegrationModal());
   $("#refreshIntegrationsBtn")?.addEventListener("click", () => refreshIntegrations());
   $("#integrationLoginBtn")?.addEventListener("click", () => beginQrLogin());
   $("#integrationInstallBtn")?.addEventListener("click", () => runSelectedAction("install"));
@@ -384,6 +384,12 @@ function renderAccountList(selected) {
   stateDir.className = "integration-account-item";
   stateDir.innerHTML = `<span>STATE</span><strong>${escapeHtml(selected.runtime?.state_dir || "--")}</strong>`;
   host.appendChild(stateDir);
+  const mySession = selected.my_weixin_session || {};
+  const my = document.createElement("div");
+  my.className = `integration-account-item ${mySession.bound ? "" : "muted"}`;
+  const reachable = mySession.reachable ? `可主动触达 · ${formatReachable(mySession.reachable_remaining_sec)}` : "等待你从微信发消息绑定";
+  my.innerHTML = `<span>我的微信会话</span><strong>${escapeHtml(mySession.bound ? reachable : "未绑定")}</strong><small>${escapeHtml(mySession.sender_id || "请先在微信里给 BranchWhisper 发一条消息")}</small>`;
+  host.appendChild(my);
   const accounts = Array.isArray(selected.accounts) ? selected.accounts : [];
   if (!accounts.length) {
     const empty = document.createElement("div");
@@ -531,6 +537,17 @@ function openIntegrationModal(integration = null) {
   renderIcons();
 }
 
+function openAddIntegrationModal() {
+  const existing = state.integrations.find((item) => item.id === "weixin_personal");
+  if (existing) {
+    state.selectedIntegrationId = existing.id;
+    openIntegrationModal(existing);
+    showToast("已存在微信个人号实例，已切换为编辑。", "info");
+    return;
+  }
+  openIntegrationModal();
+}
+
 function closeIntegrationModal() {
   $("#integrationModal").hidden = true;
   editingIntegrationId = "";
@@ -554,13 +571,29 @@ async function saveIntegrationForm(event) {
       await updateIntegration(editingIntegrationId, payload);
       state.selectedIntegrationId = editingIntegrationId;
     } else {
-      await createIntegration(payload);
+      const existing = state.integrations.find((item) => item.id === payload.id);
+      if (existing) {
+        await updateIntegration(existing.id, payload);
+      } else {
+        await createIntegration(payload);
+      }
       state.selectedIntegrationId = payload.id;
     }
     closeIntegrationModal();
     await refreshIntegrations({ quiet: true });
     showToast("接入配置已保存", "success");
   } catch (error) {
+    if (error.status === 409) {
+      const existing = state.integrations.find((item) => item.id === payload.id);
+      if (existing) {
+        await updateIntegration(existing.id, payload);
+        state.selectedIntegrationId = existing.id;
+        closeIntegrationModal();
+        await refreshIntegrations({ quiet: true });
+        showToast("实例已存在，已更新已有配置。", "success");
+        return;
+      }
+    }
     showToast(`保存失败：${error.message}`, "error");
   }
 }
@@ -653,6 +686,14 @@ function loginStatusText(status) {
 
 function compact(text, limit) {
   return text.length > limit ? `${text.slice(0, limit - 3)}...` : text;
+}
+
+function formatReachable(seconds) {
+  const sec = Number(seconds || 0);
+  if (!Number.isFinite(sec) || sec <= 0) return "已过期";
+  const hours = Math.floor(sec / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  return hours > 0 ? `剩余 ${hours}h ${minutes}m` : `剩余 ${minutes}m`;
 }
 
 function escapeHtml(value) {

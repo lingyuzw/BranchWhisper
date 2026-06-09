@@ -9,8 +9,23 @@ import { state, DEFAULT_CONFIG } from "./state.js";
 
 export async function fetchJson(url, options = {}) {
   const resp = await fetch(url, options);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
+  const text = await resp.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { detail: text };
+    }
+  }
+  if (!resp.ok) {
+    const detail = data.detail || data.error || `HTTP ${resp.status}`;
+    const error = new Error(detail);
+    error.status = resp.status;
+    error.payload = data;
+    throw error;
+  }
+  return data;
 }
 
 /* ---- config ---- */
@@ -330,8 +345,11 @@ export function conversationExportUrl(conversationId) {
 
 /* ---- memory ---- */
 
-export async function loadMemory() {
-  const data = await fetchJson("/api/memory?limit=12");
+export async function loadMemory(limit = 12, query = "", layer = "") {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (query) params.set("query", query);
+  if (layer) params.set("layer", layer);
+  const data = await fetchJson(`/api/memory?${params.toString()}`);
   state.memories = data.items || [];
   return state.memories;
 }

@@ -13,9 +13,6 @@ import {
   createConversation,
   deleteConversation,
   updateConversation,
-  loadMemory,
-  addMemory,
-  deleteMemory,
 } from "./api.js";
 import {
   bindAppearanceRefresh,
@@ -58,10 +55,8 @@ export async function initDashboard() {
   connectSocket();
   drawScope();
   setupDashboardEvents();
-  await refreshMemoryInsight({ quiet: true });
 
   setText("topStatus", "待机");
-  setupMemoryModal();
   syncChatView();
 }
 
@@ -76,7 +71,6 @@ function setupDashboardEvents() {
   $("#newConversationBtn")?.addEventListener("click", newConversation);
   $("#conversationSearchInput")?.addEventListener("input", handleConversationSearch);
   $("#archiveModeBtn")?.addEventListener("click", toggleArchiveMode);
-  $("#memoryInsightRefreshBtn")?.addEventListener("click", () => refreshMemoryInsight());
   setupTtsToggle();
 }
 
@@ -414,114 +408,6 @@ function drawScope() {
   ctx.shadowBlur = 0;
 
   requestAnimationFrame(drawScope);
-}
-
-function setupMemoryModal() {
-  $("#memoryTriggerBtn")?.addEventListener("click", openMemoryModal);
-  document.querySelector("#memoryModal .modal-close")?.addEventListener("click", () => { $("#memoryModal").hidden = true; });
-  $("#memoryModal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) $("#memoryModal").hidden = true; });
-  $("#memoryAddBtn")?.addEventListener("click", handleMemoryAdd);
-  $("#memoryAddInput")?.addEventListener("keydown", (event) => { if (event.key === "Enter") handleMemoryAdd(); });
-}
-
-async function refreshMemoryInsight(options = {}) {
-  try {
-    await loadMemory();
-    renderMemoryInsight();
-  } catch (error) {
-    if (!options.quiet) showToast(`记忆读取失败：${error.message}`, "error");
-  }
-}
-
-function renderMemoryInsight() {
-  const host = $("#memoryInsightList");
-  if (!host) return;
-  host.innerHTML = "";
-  const items = state.memories || [];
-  if (!items.length) {
-    const empty = document.createElement("p");
-    empty.className = "conversation-empty";
-    empty.textContent = "暂无记忆";
-    host.appendChild(empty);
-    return;
-  }
-  for (const item of items.slice(0, 4)) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "memory-insight-item";
-    row.title = item.value || item.key || "";
-    row.innerHTML = `<strong>${escapeHtml(item.key || "记忆")}</strong><span>${escapeHtml(item.value || "")}</span>`;
-    row.addEventListener("click", openMemoryModal);
-    host.appendChild(row);
-  }
-}
-
-async function openMemoryModal() {
-  $("#memoryModal").hidden = false;
-  await loadMemory();
-  renderMemoryModalList();
-  renderMemoryInsight();
-}
-
-function renderMemoryModalList() {
-  const host = $("#memoryModalList");
-  if (!host) return;
-  host.innerHTML = "";
-  if (!state.memories.length) {
-    const empty = document.createElement("p");
-    empty.className = "conversation-empty";
-    empty.textContent = "暂无记忆。";
-    host.appendChild(empty);
-    return;
-  }
-  for (const item of state.memories) {
-    const div = document.createElement("div");
-    div.className = "memory-item";
-    const body = document.createElement("div");
-    const key = document.createElement("strong");
-    key.textContent = item.key || "--";
-    const value = document.createElement("span");
-    value.textContent = item.value || "";
-    const meta = document.createElement("small");
-    meta.textContent = `${item.layer} · ${item.count || 0} 次`;
-    body.append(key, document.createElement("br"), value, document.createElement("br"), meta);
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.appendChild(createIcon("trash-2"));
-    delBtn.addEventListener("click", () => handleMemoryDelete(item.id));
-    div.append(body, delBtn);
-    host.appendChild(div);
-  }
-  renderIcons();
-}
-
-async function handleMemoryAdd() {
-  const input = $("#memoryAddInput");
-  const val = input?.value.trim();
-  if (!val) return;
-  try {
-    await addMemory(val);
-    input.value = "";
-    await loadMemory();
-    renderMemoryModalList();
-    renderMemoryInsight();
-    showToast("已添加", "success");
-  } catch (error) {
-    showToast(error.message, "error");
-  }
-}
-
-async function handleMemoryDelete(id) {
-  if (!(await showConfirm("删除这条记忆？"))) return;
-  try {
-    await deleteMemory(id);
-    await loadMemory();
-    renderMemoryModalList();
-    renderMemoryInsight();
-    showToast("已删除", "success");
-  } catch (error) {
-    showToast(error.message, "error");
-  }
 }
 
 function escapeHtml(value) {

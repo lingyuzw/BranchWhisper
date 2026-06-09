@@ -22,10 +22,10 @@
           <a class="active" data-nav="dashboard"><i data-lucide="messages-square"></i>对话</a>
           <a data-nav="services"><i data-lucide="activity"></i>服务</a>
           <a data-nav="integrations"><i data-lucide="bot"></i>接入</a>
+          <a data-nav="memory"><i data-lucide="brain"></i>记忆</a>
           <a data-nav="settings"><i data-lucide="settings-2"></i>配置</a>
         </nav>
         <div class="topbar-status">
-          <button class="icon-button" id="memoryTriggerBtn" type="button" title="记忆" style="display:none"><i data-lucide="brain"></i></button>
           <span class="status-pill" id="topStatus">待机</span>
         </div>
       </header>
@@ -42,10 +42,6 @@
             <div class="conversation-rail">
               <p class="eyebrow rail-label">Sessions</p>
               <div class="conversation-list" id="conversationList"></div>
-            </div>
-            <div class="memory-insight" id="memoryInsight">
-              <div class="memory-insight-head"><span>记忆</span><button class="icon-button" id="memoryInsightRefreshBtn" type="button" title="刷新记忆"><i data-lucide="refresh-cw"></i></button></div>
-              <div class="memory-insight-list" id="memoryInsightList"></div>
             </div>
             <div class="sidebar-scope">
               <div class="scope-header"><span id="vadLabel">idle</span><span id="levelText">0%</span></div>
@@ -94,6 +90,33 @@
                 <button class="icon-button" id="resetBtn" type="button" title="新对话"><i data-lucide="square-pen"></i></button>
               </div>
             </div>
+          </section>
+        </div>
+      </main>
+
+      <!-- page: memory -->
+      <main class="page-view" id="page-memory" style="display:none">
+        <div class="ops-page memory-page">
+          <section class="page-head">
+            <div><p class="eyebrow">Memory Center</p><h1>记忆中心</h1></div>
+            <div class="head-actions">
+              <button class="secondary-action" id="memoryRefreshPageBtn" type="button"><i data-lucide="refresh-cw"></i>刷新</button>
+            </div>
+          </section>
+          <section class="memory-stats-grid" id="memoryStatsGrid"></section>
+          <section class="memory-page-panel">
+            <div class="memory-toolbar">
+              <input id="memorySearchInput" type="search" placeholder="搜索记忆" autocomplete="off" />
+              <select id="memoryLayerFilter">
+                <option value="">全部层级</option>
+                <option value="short">短期</option>
+                <option value="mid">中期</option>
+                <option value="long">长期</option>
+              </select>
+              <input id="memoryAddPageInput" type="text" placeholder="手动添加一条记忆..." autocomplete="off" />
+              <button class="primary-action" id="memoryAddPageBtn" type="button"><i data-lucide="plus"></i>添加</button>
+            </div>
+            <div class="memory-page-list" id="memoryPageList"></div>
           </section>
         </div>
       </main>
@@ -205,6 +228,17 @@
             <button class="primary-action full" id="saveAllBtn" type="button"><i data-lucide="save"></i>应用配置</button>
           </aside>
           <section class="settings-content">
+            <section class="settings-overview-grid" id="settingsOverviewGrid">
+              <article class="settings-overview-card" data-open-config="appearance"><span><i data-lucide="palette"></i>外观</span><strong id="appearanceSummary">主题与对话头像</strong><small>字体、主题、双方资料</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="engine"><span><i data-lucide="cpu"></i>模型引擎</span><strong id="engineSummary">本地模型</strong><small>ASR / LLM 基础参数</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="tools"><span><i data-lucide="globe-2"></i>联网工具</span><strong id="toolsSummary">工具中心</strong><small>天气、搜索、地图、新闻</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="proactive"><span><i data-lucide="sparkles"></i>主动性</span><strong id="proactiveSummary">默认关闭</strong><small>早安、提醒、主动追问</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="botProfiles"><span><i data-lucide="bot"></i>Bot 人格</span><strong id="botProfileSummary">默认人格</strong><small>工具开关、风格、System Prompt</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="prompt"><span><i data-lucide="message-square-text"></i>Prompt</span><strong id="promptSummary">系统提示词</strong><small>主对话人格设定</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="tts"><span><i data-lucide="volume-2"></i>语音合成</span><strong id="ttsSummary">TTS</strong><small>速度、音量、采样率</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="vad"><span><i data-lucide="mic-vocal"></i>语音检测</span><strong id="vadSummary">VAD</strong><small>阈值、静音、切分</small><button class="secondary-action" type="button">配置</button></article>
+              <article class="settings-overview-card" data-open-config="commands"><span><i data-lucide="sliders-horizontal"></i>服务命令</span><strong id="commandsSummary">启动参数</strong><small>ASR / LLM / TTS 命令</small><button class="secondary-action" type="button">配置</button></article>
+            </section>
             <article class="theme-section" id="appearance">
               <div class="panel-head"><div><p class="eyebrow">Appearance</p><h2>外观</h2></div></div>
               <div class="appearance-layout">
@@ -382,20 +416,6 @@
       </main>
     </div>
 
-    <!-- memory modal -->
-    <div class="modal-overlay" id="memoryModal" hidden>
-      <div class="modal-panel">
-        <div class="modal-head"><h2>记忆管理</h2><button class="icon-button modal-close" type="button"><i data-lucide="x"></i></button></div>
-        <div class="modal-body">
-          <div class="memory-add-row">
-            <input id="memoryAddInput" type="text" placeholder="添加新记忆..." autocomplete="off" />
-            <button class="primary-action" id="memoryAddBtn" type="button">添加</button>
-          </div>
-          <div class="memory-list-compact" id="memoryModalList"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- integration modal -->
     <div class="modal-overlay" id="integrationModal" hidden>
       <div class="modal-panel integration-modal-panel">
@@ -428,6 +448,21 @@
             <button class="secondary-action" id="toolProviderCancelBtn" type="button">取消</button>
             <button class="primary-action" id="toolProviderApplyBtn" type="button"><i data-lucide="check"></i>保存工具配置</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- settings section modal -->
+    <div class="modal-overlay" id="settingsSectionModal" hidden>
+      <div class="modal-panel settings-section-modal-panel">
+        <div class="modal-head">
+          <h2 id="settingsSectionModalTitle">配置</h2>
+          <button class="icon-button modal-close" type="button"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" id="settingsSectionModalBody"></div>
+        <div class="modal-actions settings-section-modal-actions">
+          <button class="secondary-action" id="settingsSectionCancelBtn" type="button">关闭</button>
+          <button class="primary-action" id="settingsSectionSaveBtn" type="button"><i data-lucide="save"></i>应用配置</button>
         </div>
       </div>
     </div>

@@ -72,53 +72,6 @@
   color: var(--text-muted); font-size: var(--font-xs); font-weight: 500; opacity: 0.7;
 }
 
-.memory-insight {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-}
-
-.memory-insight-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: var(--font-xs);
-  font-weight: 800;
-}
-
-.memory-insight-list {
-  display: grid;
-  gap: 6px;
-}
-
-.memory-insight-item {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-soft);
-  text-align: left;
-  background: var(--surface);
-}
-
-.memory-insight-item strong,
-.memory-insight-item span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.memory-insight-item strong { color: var(--text); font-size: var(--font-xs); }
-.memory-insight-item span { color: var(--text-muted); font-size: var(--font-xs); }
-
 /* sidebar scope (waveform) */
 .sidebar-scope {
   padding: 8px 8px 6px; border: 1px solid var(--border);
@@ -305,9 +258,6 @@ html.theme-light .message-avatar {
   }
   .conversation-list {
     max-height: 220px;
-  }
-  .memory-insight {
-    display: none;
   }
   .chat-area > * { max-width: 100%; }
   .composer { grid-template-columns: 40px minmax(0, 1fr) 40px; }

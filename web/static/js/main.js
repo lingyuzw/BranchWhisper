@@ -9,6 +9,7 @@ let currentPage = "dashboard";
 let dashboardInitialized = false;
 let servicesInitialized = false;
 let integrationsInitialized = false;
+let memoryInitialized = false;
 let currentLeave = null;
 
 /* ---- SPA navigation ---- */
@@ -76,9 +77,6 @@ async function switchPage(page, pushState = true) {
   document.body.dataset.page = page;
 
   // memory button only on dashboard
-  const memBtn = document.getElementById("memoryTriggerBtn");
-  if (memBtn) memBtn.style.display = page === "dashboard" ? "" : "none";
-
   currentPage = page;
   if (pushState) history.pushState({ page }, "", `#${page}`);
 
@@ -107,6 +105,14 @@ async function switchPage(page, pushState = true) {
       }
       integrationsModule.enterIntegrations?.();
       currentLeave = integrationsModule.leaveIntegrations || null;
+    } else if (page === "memory") {
+      const memoryModule = await import("./ui-memory.js");
+      if (!memoryInitialized) {
+        await memoryModule.initMemoryPage();
+        memoryInitialized = true;
+      } else {
+        await memoryModule.enterMemoryPage?.();
+      }
     } else if (page === "settings") {
       const settingsModule = await import("./ui-settings.js");
       await settingsModule.initSettings();
@@ -122,7 +128,7 @@ async function switchPage(page, pushState = true) {
 }
 
 function normalizePage(page) {
-  return ["dashboard", "services", "integrations", "settings"].includes(page) ? page : "dashboard";
+  return ["dashboard", "services", "integrations", "memory", "settings"].includes(page) ? page : "dashboard";
 }
 
 function pageFromHash() {

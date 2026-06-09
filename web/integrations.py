@@ -189,6 +189,7 @@ class IntegrationManager:
                 }
             ],
             "sessions": {},
+            "my_weixin_session": {},
         }
 
     def load_config(self) -> dict:
@@ -205,12 +206,15 @@ class IntegrationManager:
         sessions = data.get("sessions")
         if isinstance(sessions, dict):
             base["sessions"] = {str(k): str(v) for k, v in sessions.items() if k and v}
+        if isinstance(data.get("my_weixin_session"), dict):
+            base["my_weixin_session"] = dict(data["my_weixin_session"])
         return base
 
     def save_config(self, data: dict) -> dict:
         payload = {
             "integrations": [self.normalize_integration(item) for item in data.get("integrations", []) if isinstance(item, dict)],
             "sessions": data.get("sessions") if isinstance(data.get("sessions"), dict) else {},
+            "my_weixin_session": data.get("my_weixin_session") if isinstance(data.get("my_weixin_session"), dict) else {},
         }
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
@@ -291,6 +295,7 @@ class IntegrationManager:
         item["account"] = runtime.get("account") or (accounts[0]["id"] if accounts else "")
         item["last_message_at"] = runtime.get("last_message_at") or ""
         item["recent_timings"] = runtime.get("recent_timings") or []
+        item["my_weixin_session"] = self.my_weixin_session(item["id"])
         return item
 
     def weixin_accounts(self, integration: dict) -> list[dict]:
@@ -382,16 +387,15 @@ class IntegrationManager:
     async def send_weixin_text(self, integration_id: str, text: str, sender_id: str = "", account_id: str = "") -> dict:
         integration = self.require_integration(integration_id)
         target = None
-        if sender_id:
-            for item in self.recent_weixin_targets(integration_id):
-                if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
-                    target = item
-                    break
+        my_session = self.my_weixin_session(integration_id)
+        sender_id = sender_id or str(my_session.get("sender_id") or "")
+        account_id = account_id or str(my_session.get("account_id") or "")
+        for item in self.recent_weixin_targets(integration_id):
+            if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
+                target = item
+                break
         if not target:
-            targets = self.recent_weixin_targets(integration_id)
-            target = targets[0] if targets else None
-        if not target:
-            error = "没有 24 小时内可主动触达的微信联系人；需要对方先发一条消息。"
+            error = "我的微信会话未绑定或已超过 24 小时可触达窗口；请先用你的微信给 BranchWhisper 发一条消息。"
             self.append_log(integration_id, f"[proactive] send skipped: {error}")
             return {"ok": False, "error": error}
 
@@ -420,6 +424,49 @@ class IntegrationManager:
             f"[proactive] sent text account={target['account_id']} to={target['sender_id']} client_id={client_id}",
         )
         return {"ok": True, "client_id": client_id, "account_id": target["account_id"], "sender_id": target["sender_id"]}
+
+    def my_weixin_session(self, integration_id: str = "") -> dict:
+        data = self.load_config()
+        session = data.get("my_weixin_session") if isinstance(data.get("my_weixin_session"), dict) else {}
+        if integration_id and session and session.get("platform_id") != safe_id(integration_id):
+            return {}
+        if not session:
+            return {}
+        updated_at = float(session.get("updated_at_ts") or 0)
+        remaining = max(0, int(24 * 3600 - (time.time() - updated_at))) if updated_at else 0
+        return {
+            **session,
+            "bound": bool(session.get("sender_id") and session.get("account_id")),
+            "reachable": remaining > 0,
+            "reachable_remaining_sec": remaining,
+        }
+
+    def bind_my_weixin_session(
+        self,
+        platform_id: str,
+        *,
+        account_id: str,
+        session_id: str,
+        sender_id: str,
+        conversation_id: str,
+        context_token: str = "",
+    ) -> dict:
+        data = self.load_config()
+        item = {
+            "platform_id": safe_id(platform_id),
+            "account_id": str(account_id or ""),
+            "session_id": str(session_id or ""),
+            "sender_id": str(sender_id or ""),
+            "conversation_id": str(conversation_id or ""),
+            "context_token_set": bool(str(context_token or "")),
+            "updated_at": now_text(),
+            "updated_at_ts": time.time(),
+        }
+        data["my_weixin_session"] = item
+        self.save_config(data)
+        self.runtime.setdefault(item["platform_id"], {})["my_weixin_session"] = item
+        self.append_log(item["platform_id"], f"[weixin-session] bound my session sender={item['sender_id']} conversation={conversation_id}")
+        return self.my_weixin_session(item["platform_id"])
 
     def get_integration(self, integration_id: str) -> dict | None:
         integration_id = safe_id(integration_id)
@@ -980,6 +1027,16 @@ class ExternalDialogEngine:
         runtime_settings = self.settings_for_profile(settings, bot_profile)
         conversation_id = self.integration_manager.session_conversation_id(platform_id, session_id, sender_id, self.conversation_store)
         conversation = self.conversation_store.load(conversation_id) or self.conversation_store.create(f"{platform_id} / {sender_id}")
+        metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+        if platform_id and sender_id and metadata.get("account_id"):
+            self.integration_manager.bind_my_weixin_session(
+                platform_id,
+                account_id=str(metadata.get("account_id") or ""),
+                session_id=session_id,
+                sender_id=sender_id,
+                conversation_id=conversation_id,
+                context_token=str(metadata.get("context_token") or ""),
+            )
 
         trace_id = f"ext_{uuid.uuid4().hex[:10]}"
         started_at = time.perf_counter()
