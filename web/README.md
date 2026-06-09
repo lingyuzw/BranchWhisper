@@ -149,6 +149,56 @@ outputs/voice_web_app/runtime/logs/tts.log
 
 页面左侧每个服务点“日志”也能直接查看。
 
+## 4.1 服务配置保存位置
+
+配置中心里修改 ASR、LLM、TTS 的 Working Directory、Health URL、Start Command 和启动等待时间后，点击“应用配置”会保存到：
+
+```text
+web/runtime/service_profiles.json
+```
+
+下次重新启动 Web 控制台时会自动读取这个文件。也可以用 `--service-config` 指定其它配置文件：
+
+```bash
+python web/web_server.py --host 0.0.0.0 --port 7860 --service-config /home/me/project/voice_services.local.json
+```
+
+如果要恢复默认服务命令，停止 Web 控制台后备份并删除 `web/runtime/service_profiles.json`，再重新启动即可。
+
+## 4.2 微信个人号接入环境安装
+
+接入页的微信个人号实例依赖 OpenClaw、Node.js/npm、微信适配器和 ffmpeg。页面会做环境检测，但不会自动全局安装这些工具。
+
+先确认环境：
+
+```bash
+node -v
+npm -v
+ffmpeg -version
+```
+
+安装 OpenClaw CLI 与微信个人号适配器：
+
+```bash
+npm install -g openclaw
+npm install -g @tencent-weixin/openclaw-weixin-cli
+openclaw --version
+```
+
+进入页面：
+
+```text
+http://127.0.0.1:7860#integrations
+```
+
+操作顺序：
+
+1. 点击“添加微信个人号”。
+2. 保持默认 `openclaw_profile=buding` 或填写自己的 profile。
+3. 点击环境检查，确认 `node/npm/openclaw/ffmpeg` 可用。
+4. 点击扫码登录。
+5. 登录成功后启动实例和桥接进程。
+
 ## 5. 调参建议
 
 更快结束收音：

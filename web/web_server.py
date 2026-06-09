@@ -55,6 +55,7 @@ RUNTIME_DIR = APP_DIR / "runtime"
 LOG_DIR = RUNTIME_DIR / "logs"
 CONVERSATION_DIR = RUNTIME_DIR / "conversations"
 SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
+SERVICE_PROFILES_CONFIG = RUNTIME_DIR / "service_profiles.json"
 MEMORY_DB = RUNTIME_DIR / "memory.sqlite3"
 TOOLS_CONFIG = RUNTIME_DIR / "tools.json"
 INTEGRATIONS_CONFIG = RUNTIME_DIR / "integrations.json"
@@ -187,30 +188,45 @@ def attach_service_warmups(services: list[dict]) -> list[dict]:
     return services
 
 
+def service_warmup_specs(settings: SessionSettings) -> dict:
+    return {
+        "asr": (
+            service_warmup_key("asr", settings),
+            lambda s=settings: warmup_asr(s),
+        ),
+        "llm": (
+            service_warmup_key("llm", settings),
+            lambda s=settings: warmup_llm(s),
+        ),
+    }
+
+
+def queue_service_warmup_locked(service_id: str, key: str, warmup_factory) -> None:
+    if key in SERVICE_WARMUP_DONE:
+        set_warmup_status(service_id, key, "ready")
+        return
+    task = SERVICE_WARMUP_TASKS.get(key)
+    if task and not task.done():
+        return
+    set_warmup_status(service_id, key, "queued")
+    SERVICE_WARMUP_TASKS[key] = asyncio.create_task(run_service_warmup(service_id, key, warmup_factory))
+
+
+async def schedule_service_warmup(service_id: str, settings: SessionSettings) -> None:
+    settings_snapshot = SessionSettings(**asdict(settings))
+    spec = service_warmup_specs(settings_snapshot).get(service_id)
+    if not spec:
+        return
+    key, warmup_factory = spec
+    async with SERVICE_WARMUP_LOCK:
+        queue_service_warmup_locked(service_id, key, warmup_factory)
+
+
 async def schedule_service_warmups(settings: SessionSettings) -> None:
     settings_snapshot = SessionSettings(**asdict(settings))
-    warmups = [
-        (
-            "asr",
-            service_warmup_key("asr", settings_snapshot),
-            lambda s=settings_snapshot: warmup_asr(s),
-        ),
-        (
-            "llm",
-            service_warmup_key("llm", settings_snapshot),
-            lambda s=settings_snapshot: warmup_llm(s),
-        ),
-    ]
     async with SERVICE_WARMUP_LOCK:
-        for service_id, key, warmup_factory in warmups:
-            if key in SERVICE_WARMUP_DONE:
-                set_warmup_status(service_id, key, "ready")
-                continue
-            task = SERVICE_WARMUP_TASKS.get(key)
-            if task and not task.done():
-                continue
-            set_warmup_status(service_id, key, "queued")
-            SERVICE_WARMUP_TASKS[key] = asyncio.create_task(run_service_warmup(service_id, key, warmup_factory))
+        for service_id, (key, warmup_factory) in service_warmup_specs(settings_snapshot).items():
+            queue_service_warmup_locked(service_id, key, warmup_factory)
 
 
 async def run_service_warmup(service_id: str, key: str, warmup_factory) -> None:
@@ -265,7 +281,8 @@ def create_app(args) -> FastAPI:
     app.state.settings = load_persisted_settings(SessionSettings.from_args(args), SETTINGS_CONFIG)
     enable_default_capabilities(app.state.settings)
     app.state.vad_store = VadModelStore(args.vad_device)
-    app.state.service_manager = ServiceManager(Path(args.service_config) if args.service_config else None, LOG_DIR)
+    service_config_path = Path(args.service_config) if args.service_config else SERVICE_PROFILES_CONFIG
+    app.state.service_manager = ServiceManager(service_config_path, LOG_DIR)
     app.state.conversation_store = ConversationStore(CONVERSATION_DIR)
     app.state.memory_store = MemoryStore(MEMORY_DB)
     app.state.tool_manager = ToolManager(TOOLS_CONFIG)
@@ -379,7 +396,7 @@ def create_app(args) -> FastAPI:
     async def start_all_services(request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
         overrides = (payload or {}).get("services") or {}
-        services = await app.state.service_manager.start_all(overrides)
+        services = await app.state.service_manager.start_all(overrides, allow_config_update=True)
         await schedule_service_warmups(app.state.settings)
         return {"services": attach_service_warmups(services)}
 
@@ -392,9 +409,9 @@ def create_app(args) -> FastAPI:
     @app.post("/api/services/{service_id}/start")
     async def start_service(service_id: str, request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
-        service = await app.state.service_manager.start(service_id)
+        service = await app.state.service_manager.start(service_id, payload or {}, allow_config_update=True)
         if service_id in {"asr", "llm"}:
-            await schedule_service_warmups(app.state.settings)
+            await schedule_service_warmup(service_id, app.state.settings)
         service = attach_service_warmups([service])[0]
         return {"service": service}
 
@@ -634,7 +651,6 @@ class DialogSession:
         # even when the voice stack dependencies are not installed locally.
         self.vad_load_task = asyncio.create_task(self.vad_store.load())
         self.vad_load_task.add_done_callback(self.consume_background_task_exception)
-        await schedule_service_warmups(self.settings)
         await self.send_event("ready", settings=public_settings(self.settings))
         await self.send_event("conversation", conversation=self.conversation)
         try:

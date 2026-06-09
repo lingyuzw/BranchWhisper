@@ -330,7 +330,10 @@ class ServiceManager:
 def load_service_profiles(config_path: Path | None) -> dict:
     profiles = json.loads(json.dumps(DEFAULT_SERVICE_PROFILES))
     if config_path and config_path.exists():
-        data = json.loads(config_path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = {}
         for service_id, service_patch in (data.get("services") or {}).items():
             if service_id in profiles and isinstance(service_patch, dict):
                 profiles[service_id].update(service_patch)

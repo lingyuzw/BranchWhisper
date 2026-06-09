@@ -227,7 +227,7 @@ function createServiceCard(service) {
 
   const healthPayload = normalizedHealthPayload(service);
   const stateLabel = serviceStateLabel(runtimeState, service);
-  const health = serviceHealthLabel(service, healthPayload);
+  const health = serviceHealthInfo(service, healthPayload);
   const warmup = warmupLabel(service.warmup, healthPayload);
   const pid = service.external ? "external" : service.pid || "--";
   const port = safePort(service.health_url);
@@ -250,16 +250,15 @@ function createServiceCard(service) {
 
   const meta = document.createElement("div");
   meta.className = "service-meta";
-  for (const [label, value] of [["HEALTH", health], ["WARM", warmup], ["PID", pid], ["PORT", port]]) {
-    const cell = document.createElement("div");
-    cell.className = "meta-cell";
-    const span = document.createElement("span");
-    span.textContent = label;
-    const strong = document.createElement("strong");
-    strong.textContent = String(value);
-    cell.append(span, strong);
-    meta.appendChild(cell);
-  }
+  const warmupTone = service.warmup?.state === "ready" ? "good"
+    : service.warmup?.state === "failed" ? "failed"
+      : service.warmup ? "loading" : "muted";
+  [
+    { label: "LINK", value: health.label, tone: health.tone, title: health.detail },
+    { label: "WARMUP", value: warmup, tone: warmupTone, title: warmupDetail(service.warmup) },
+    { label: "PID", value: pid, tone: service.pid ? "good" : "muted" },
+    { label: "PORT", value: port, tone: service.port_open ? "good" : "muted", title: service.health_url || "" },
+  ].forEach((item) => meta.appendChild(createMetaCell(item)));
 
   const actions = document.createElement("div");
   actions.className = "service-actions";
@@ -309,11 +308,45 @@ function serviceStateLabel(runtimeState, service) {
   return labels[runtimeState] || runtimeState || "--";
 }
 
-function serviceHealthLabel(service, payload) {
-  if (payload.ready === false && payload.status) return payload.status;
-  if (!service.health) return "--";
-  if (service.health.ok) return "OK";
-  return service.error || service.health.error || "Fail";
+function createMetaCell({ label, value, tone = "muted", title = "" }) {
+  const cell = document.createElement("div");
+  cell.className = `meta-cell ${tone}`;
+  if (title) cell.title = title;
+  const span = document.createElement("span");
+  span.textContent = label;
+  const strong = document.createElement("strong");
+  strong.textContent = String(value || "--");
+  cell.append(span, strong);
+  return cell;
+}
+
+function serviceHealthInfo(service, payload) {
+  const rawError = service.error || service.health?.error || payload.error || "";
+  if (payload.ready === false && payload.status) {
+    return {
+      label: titleCase(payload.status),
+      tone: "loading",
+      detail: "模型正在初始化，稍后会自动刷新状态。",
+    };
+  }
+  if (!service.health) {
+    return { label: "--", tone: "muted", detail: service.health_url || "" };
+  }
+  if (service.health.ok) {
+    return { label: "OK", tone: "good", detail: service.health_url || "健康检查通过。" };
+  }
+  if (service.port_open) {
+    return {
+      label: "Port open",
+      tone: "loading",
+      detail: rawError || "端口已开放，健康接口还没有返回 ready。",
+    };
+  }
+  return {
+    label: "Offline",
+    tone: "failed",
+    detail: rawError || "健康检查未连上。",
+  };
 }
 
 function warmupLabel(warmup, payload = {}) {
@@ -329,20 +362,44 @@ function warmupLabel(warmup, payload = {}) {
   return labels[warmup.state] || warmup.state || "--";
 }
 
+function warmupDetail(warmup) {
+  if (!warmup) return "预热会在服务启动后执行。";
+  if (warmup.error) return warmup.error;
+  if (warmup.state === "ready") return "模型预热已完成。";
+  if (warmup.state === "queued") return "预热任务已排队。";
+  if (warmup.state === "warming") return "正在发送轻量请求让模型进入可用状态。";
+  return String(warmup.state || "");
+}
+
+function friendlyServiceError(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const lower = text.toLowerCase();
+  if (lower.includes("all connection attempts failed")) return "健康检查未连上，服务可能还没启动。";
+  if (lower.includes("connection refused")) return "端口暂未监听。";
+  if (lower.includes("timed out") || lower.includes("timeout")) return "健康检查超时。";
+  return shortText(text, 64);
+}
+
+function titleCase(value) {
+  const text = String(value || "");
+  return text ? text.slice(0, 1).toUpperCase() + text.slice(1) : "--";
+}
+
 function serviceDescription(service, runtimeState, payload) {
   const base = service.description || "";
   if (service.warmup?.state === "retrying" && service.warmup?.error) {
-    return `预热重试中：${shortText(service.warmup.error, 48)}`;
+    return `预热重试中：${friendlyServiceError(service.warmup.error)}`;
   }
   if (service.warmup?.state === "failed" && service.warmup?.error) {
-    return `预热失败：${shortText(service.warmup.error, 48)}`;
+    return `预热失败：${friendlyServiceError(service.warmup.error)}`;
   }
   if (payload.ready === false && payload.status) {
-    return `模型${payload.status} · ${base}`;
+    return `模型 ${titleCase(payload.status)} · ${base}`;
   }
   if (runtimeState === "starting") return `服务启动中 · ${base}`;
   if (runtimeState === "warming") return `模型预热中 · ${base}`;
-  if (runtimeState === "failed" && service.error) return `异常：${shortText(service.error, 56)}`;
+  if (runtimeState === "failed" && service.error) return `异常：${friendlyServiceError(service.error)}`;
   return base;
 }
 
