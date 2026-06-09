@@ -61,6 +61,7 @@ export async function initSettings() {
 
   const configResult = await loadConfig();
   await Promise.allSettled([loadToolConfig(), loadBotProfiles()]);
+  syncToolProviderDraft();
   fillConfig(configResult.config);
   renderToolProviders();
   // 即使 loadConfig 失败也调 fillConfig(DEFAULT_CONFIG)
@@ -335,7 +336,6 @@ function renderToolProviders() {
   const host = $("#toolProviderGrid");
   if (!host) return;
   host.innerHTML = "";
-  toolProviderDraft = structuredCloneSafe(state.toolConfig || {});
   for (const key of Object.keys(PROVIDER_FIELDS)) {
     const provider = toolProviderDraft[key] || {};
     const card = document.createElement("section");
@@ -371,8 +371,16 @@ function collectToolConfig() {
     timeout: Number(value("toolsTimeout", state.currentConfig.tools_timeout || 12)),
     max_result_chars: Number(value("toolsMaxResultChars", state.currentConfig.tools_max_result_chars || 4000)),
   };
-  for (const key of Object.keys(PROVIDER_FIELDS)) result[key] = { ...(toolProviderDraft[key] || {}) };
+  for (const key of Object.keys(PROVIDER_FIELDS)) {
+    const provider = structuredCloneSafe(toolProviderDraft[key] || {});
+    stripProviderRuntimeFields(provider);
+    result[key] = provider;
+  }
   return result;
+}
+
+function syncToolProviderDraft() {
+  toolProviderDraft = structuredCloneSafe(state.toolConfig || {});
 }
 
 function openToolProviderModal(key) {
@@ -418,7 +426,7 @@ function openToolProviderModal(key) {
   renderIcons();
 }
 
-function applyToolProviderModal() {
+async function applyToolProviderModal() {
   if (!editingToolProvider) return;
   const next = normalizeProviderDraft(editingToolProvider, toolProviderDraft[editingToolProvider] || {});
   document.querySelectorAll("#toolProviderModalFields [data-provider-field]").forEach((input) => {
@@ -429,10 +437,18 @@ function applyToolProviderModal() {
     else if (field === "api_key" || field.includes("webhook")) delete next[field];
   });
   applyProviderDefaults(editingToolProvider, next);
-  stripProviderRuntimeFields(next);
   toolProviderDraft[editingToolProvider] = next;
   closeToolProviderModal();
   renderToolProviders();
+  if (state.previewMode) return;
+  try {
+    await saveToolConfig(collectToolConfig());
+    syncToolProviderDraft();
+    renderToolProviders();
+    showToast("工具配置已保存", "success");
+  } catch (e) {
+    showToast(`工具配置保存失败：${e.message}`, "error");
+  }
 }
 
 function applyProviderDefaults(key, next) {
@@ -455,7 +471,6 @@ function normalizeProviderDraft(key, provider) {
   const next = { ...(provider || {}) };
   const options = PROVIDER_OPTIONS[key] || [];
   if (!next.provider && options.length) next.provider = options[0][0];
-  stripProviderRuntimeFields(next);
   return next;
 }
 
@@ -592,6 +607,7 @@ async function saveSettingsPage() {
     await saveBotProfiles();
     for (const s of state.services) { await updateServiceConfig(s.id, collectProfileConfig(s.id)); }
     await Promise.allSettled([loadConfig(), loadToolConfig(), loadBotProfiles()]);
+    syncToolProviderDraft();
     fillConfig(state.currentConfig);
     renderToolProviders();
     await loadServices(); renderProfileList();
