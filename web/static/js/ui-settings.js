@@ -45,6 +45,7 @@ const SETTINGS_SECTION_LABELS = {
   vad: "语音检测",
   commands: "服务命令",
 };
+const MODAL_SETTING_SECTIONS = new Set(["proactive", "botProfiles", "prompt", "tts", "vad", "commands"]);
 const CHAT_IDENTITY = {
   user: {
     nameKey: "web_user_name",
@@ -107,8 +108,8 @@ function setupSettingsEvents() {
     return;
   }
   eventsBound = true;
-  $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
-  $("#settingsSectionSaveBtn")?.addEventListener("click", saveSettingsPage);
+  $("#saveAllBtn")?.addEventListener("click", () => saveSettingsPage({ closeModal: false }));
+  $("#settingsSectionSaveBtn")?.addEventListener("click", () => saveSettingsPage({ closeModal: true }));
   $("#settingsSectionCancelBtn")?.addEventListener("click", closeSettingsSectionModal);
   document.querySelector("#settingsSectionModal .modal-close")?.addEventListener("click", closeSettingsSectionModal);
   $("#settingsSectionModal")?.addEventListener("click", (event) => {
@@ -174,14 +175,21 @@ function highlightNavSection() {
 
 function prepareSettingsSectionModal() {
   document.querySelectorAll(".settings-content > .theme-section[id], .settings-content > .settings-panel[id]").forEach((section) => {
-    section.classList.add("settings-section-detached");
+    section.classList.toggle("settings-section-detached", MODAL_SETTING_SECTIONS.has(section.id));
   });
 }
 
 function openSettingsSectionModal(id) {
   const section = document.getElementById(id);
   const body = $("#settingsSectionModalBody");
-  if (!section || !body) return;
+  if (!section) return;
+  if (!MODAL_SETTING_SECTIONS.has(id)) {
+    activeSettingsSection = id;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    highlightNavSection();
+    return;
+  }
+  if (!body) return;
   activeSettingsSection = id;
   setText("settingsSectionModalTitle", SETTINGS_SECTION_LABELS[id] || "配置");
   body.innerHTML = "";
@@ -216,6 +224,8 @@ function restoreSettingsSectionOrder() {
   for (const id of Object.keys(SETTINGS_SECTION_LABELS)) {
     const section = document.getElementById(id);
     if (!section || section.parentElement !== content) continue;
+    if (MODAL_SETTING_SECTIONS.has(id)) section.classList.add("settings-section-detached");
+    else section.classList.remove("settings-section-detached");
     anchor.after(section);
     anchor = section;
   }
@@ -947,7 +957,7 @@ function escapeAttr(value) {
 
 /* ---- save ---- */
 
-async function saveSettingsPage() {
+async function saveSettingsPage(options = {}) {
   if (state.previewMode) { showToast("预览模式：无法保存", "info"); return; }
   try {
     await saveConfig(collectConfig());
@@ -966,6 +976,7 @@ async function saveSettingsPage() {
     renderBotProfiles();
     refreshSettingsOverview();
     window.dispatchEvent(new CustomEvent("branchwhisper:appearance-updated"));
+    if (options.closeModal) closeSettingsSectionModal();
     showToast("配置已应用", "success");
   } catch (e) { showToast(`保存失败：${e.message}`, "error"); }
 }

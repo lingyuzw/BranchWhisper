@@ -167,4 +167,7 @@ export const state = {
   proactiveEvents: [],
   conversationFilter: "",
   conversationArchivedMode: "active",
+  conversationScope: "recent",
+  memoryPage: 1,
+  memoryPageSize: 30,
 };

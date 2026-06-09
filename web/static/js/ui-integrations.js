@@ -185,9 +185,9 @@ function createIntegrationCard(integration) {
   const dot = document.createElement("span");
   dot.className = "status-dot";
   const name = document.createElement("strong");
-  name.textContent = integration.id;
+  name.textContent = integration.chat_name || integration.id;
   const desc = document.createElement("small");
-  desc.textContent = `微信个人号 · OpenClaw ${integration.openclaw_profile || "branchwhisper"} · Bot ${integration.bot_profile_id || "default"}`;
+  desc.textContent = `微信个人号 · ${integration.id} · OpenClaw ${integration.openclaw_profile || "branchwhisper"}`;
   title.append(dot, name, document.createElement("br"), desc);
   const badge = document.createElement("span");
   badge.className = `service-badge ${statusClass(integration.status)}`;
@@ -388,7 +388,7 @@ function renderAccountList(selected) {
   const my = document.createElement("div");
   my.className = `integration-account-item ${mySession.bound ? "" : "muted"}`;
   const reachable = mySession.reachable ? `可主动触达 · ${formatReachable(mySession.reachable_remaining_sec)}` : "等待你从微信发消息绑定";
-  my.innerHTML = `<span>我的微信会话</span><strong>${escapeHtml(mySession.bound ? reachable : "未绑定")}</strong><small>${escapeHtml(mySession.sender_id || "请先在微信里给 BranchWhisper 发一条消息")}</small>`;
+  my.innerHTML = `<span>${escapeHtml(selected.chat_name || "我的微信聊天")}</span><strong>${escapeHtml(mySession.bound ? reachable : "未绑定")}</strong><small>${escapeHtml(mySession.sender_id || "请先在微信里给 BranchWhisper 发一条消息")}</small>`;
   host.appendChild(my);
   const accounts = Array.isArray(selected.accounts) ? selected.accounts : [];
   if (!accounts.length) {
@@ -526,6 +526,7 @@ function openIntegrationModal(integration = null) {
     idInput.value = integration?.id || "weixin_personal";
     idInput.disabled = Boolean(integration);
   }
+  if ($("#integrationChatNameInput")) $("#integrationChatNameInput").value = integration?.chat_name || "我的微信聊天";
   if ($("#integrationProfileInput")) $("#integrationProfileInput").value = integration?.openclaw_profile || "branchwhisper";
   if ($("#integrationBotProfileInput")) $("#integrationBotProfileInput").value = integration?.bot_profile_id || "default";
   if ($("#integrationReplyMode")) $("#integrationReplyMode").value = integration?.reply_mode || "text";
@@ -557,6 +558,7 @@ async function saveIntegrationForm(event) {
   event.preventDefault();
   const payload = {
     id: $("#integrationIdInput")?.value.trim() || "weixin_personal",
+    chat_name: $("#integrationChatNameInput")?.value.trim() || "我的微信聊天",
     enabled: Boolean($("#integrationEnabledInput")?.checked),
     openclaw_profile: $("#integrationProfileInput")?.value.trim() || "branchwhisper",
     bot_profile_id: $("#integrationBotProfileInput")?.value.trim() || "default",

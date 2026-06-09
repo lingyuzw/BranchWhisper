@@ -431,9 +431,9 @@ function serviceActionButton(className, icon, label) {
 
 /* ---- actions ---- */
 
-async function handleStart(id) { setBusy(id, "启动中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await startService(id); await loadServices(); renderServiceCards(); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
-async function handleStop(id)  { setBusy(id, "停止中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await stopService(id); await loadServices(); renderServiceCards(); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
-async function handleRestart(id) { setBusy(id, "重启中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await stopService(id); await startService(id); await loadServices(); renderServiceCards(); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
+async function handleStart(id) { setBusy(id, "启动中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await startService(id); await refreshServicesBurst({ rounds: 5, delayMs: 900 }); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
+async function handleStop(id)  { setBusy(id, "停止中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await stopService(id); await refreshServicesBurst({ rounds: 3, delayMs: 700 }); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
+async function handleRestart(id) { setBusy(id, "重启中..."); if (state.previewMode) return showToast("预览模式", "info"); try { await stopService(id); await startService(id); await refreshServicesBurst({ rounds: 6, delayMs: 900 }); } catch (e) { showToast(`失败：${e.message}`, "error"); setBusy(id, ""); } }
 
 function setBusy(id, label) {
   const card = document.querySelector(`[data-service-card="${id}"]`);
@@ -444,22 +444,36 @@ function setBusy(id, label) {
 async function handleStartAll() {
   if (state.previewMode) return showToast("预览模式", "info");
   showLog("启动 ASR...\nASR OK\n启动 LLM...\nLLM OK\n启动 TTS...");
-  try { await startAllServices(); await loadServices(); renderServiceCards(); showLog("启动流程已提交。"); }
+  try { await startAllServices(); showLog("启动流程已提交，正在刷新服务状态..."); await refreshServicesBurst({ rounds: 8, delayMs: 900 }); }
   catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
 async function handleStopAll() {
   if (state.previewMode) return showToast("预览模式", "info");
   showLog("stopping all services...");
-  try { await stopAllServices(); await loadServices(); renderServiceCards(); }
+  try { await stopAllServices(); await refreshServicesBurst({ rounds: 4, delayMs: 700 }); }
   catch (e) { showToast(`失败：${e.message}`, "error"); }
 }
 
 async function handleRestartAll() {
   if (state.previewMode) return showToast("预览模式", "info");
   showLog("停止全部...\n重新启动...");
-  try { await stopAllServices(); await startAllServices(); await loadServices(); renderServiceCards(); }
+  try { await stopAllServices(); await startAllServices(); await refreshServicesBurst({ rounds: 9, delayMs: 900 }); }
   catch (e) { showToast(`失败：${e.message}`, "error"); }
+}
+
+async function refreshServicesBurst({ rounds = 4, delayMs = 900 } = {}) {
+  for (let i = 0; i < rounds; i += 1) {
+    await Promise.all([
+      loadServices(),
+      refreshResources({ quiet: true }),
+      logLiveRefresh ? refreshLogs(state.selectedLogService, { quiet: true, preserveScroll: true }) : Promise.resolve(),
+    ]);
+    renderServiceCards();
+    renderLogTabs();
+    setText("topStatus", serviceSummaryText());
+    if (i < rounds - 1) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+  }
 }
 
 async function handleClearAllLogs() {

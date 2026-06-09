@@ -39,8 +39,15 @@
               <input id="conversationSearchInput" type="search" placeholder="搜索对话" autocomplete="off" />
               <button class="icon-button" id="archiveModeBtn" type="button" title="查看归档"><i data-lucide="archive"></i></button>
             </div>
+            <div class="conversation-tabs" id="conversationTabs">
+              <button class="active" type="button" data-conversation-scope="recent"><i data-lucide="clock-3"></i>最近</button>
+              <button type="button" data-conversation-scope="weixin"><i data-lucide="message-circle"></i>微信聊天</button>
+            </div>
             <div class="conversation-rail">
-              <p class="eyebrow rail-label">Sessions</p>
+              <div class="rail-head">
+                <p class="eyebrow rail-label" id="conversationRailLabel">最近</p>
+                <span id="conversationRailCount">0</span>
+              </div>
               <div class="conversation-list" id="conversationList"></div>
             </div>
             <div class="sidebar-scope">
@@ -117,6 +124,11 @@
               <button class="primary-action" id="memoryAddPageBtn" type="button"><i data-lucide="plus"></i>添加</button>
             </div>
             <div class="memory-page-list" id="memoryPageList"></div>
+            <div class="memory-pagination">
+              <button class="secondary-action" id="memoryPrevPageBtn" type="button"><i data-lucide="chevron-left"></i>上一页</button>
+              <span id="memoryPageInfo">第 1 页</span>
+              <button class="secondary-action" id="memoryNextPageBtn" type="button">下一页<i data-lucide="chevron-right"></i></button>
+            </div>
           </section>
         </div>
       </main>
@@ -423,6 +435,7 @@
         <form class="modal-body" id="integrationForm">
           <div class="form-grid">
             <label><span>实例名</span><input id="integrationIdInput" type="text" autocomplete="off" placeholder="weixin_personal" /></label>
+            <label><span>微信聊天名称</span><input id="integrationChatNameInput" type="text" autocomplete="off" placeholder="我的微信聊天" /></label>
             <label><span>OpenClaw Profile</span><input id="integrationProfileInput" type="text" autocomplete="off" placeholder="branchwhisper" /></label>
             <label><span>Bot Profile ID</span><input id="integrationBotProfileInput" type="text" autocomplete="off" placeholder="default" /></label>
             <label><span>回复模式</span><select id="integrationReplyMode"><option value="text">默认文字</option><option value="voice">默认语音</option></select></label>

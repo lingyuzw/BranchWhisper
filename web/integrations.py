@@ -180,6 +180,7 @@ class IntegrationManager:
                     "id": "weixin_personal",
                     "type": "weixin_oc",
                     "enabled": False,
+                    "chat_name": "我的微信聊天",
                     "openclaw_profile": "branchwhisper",
                     "reply_mode": "text",
                     "voice_trigger_keywords": list(DEFAULT_VOICE_TRIGGERS),
@@ -235,6 +236,7 @@ class IntegrationManager:
             "id": integration_id,
             "type": integration_type,
             "enabled": bool(item.get("enabled", False)),
+            "chat_name": compact_text(str(item.get("chat_name") or "我的微信聊天"), 48),
             "openclaw_profile": safe_id(str(item.get("openclaw_profile") or "branchwhisper"), fallback="branchwhisper"),
             "bot_profile_id": safe_id(str(item.get("bot_profile_id") or "default"), fallback="default"),
             "reply_mode": str(item.get("reply_mode") or "text") if str(item.get("reply_mode") or "text") in {"text", "voice"} else "text",
@@ -987,8 +989,13 @@ class IntegrationManager:
         key = compact_text(raw_key, 180)
         existing_id = data["sessions"].get(key)
         if existing_id and store.load(existing_id):
+            integration = self.get_integration(platform) or {}
+            chat_name = compact_text(str(integration.get("chat_name") or ""), 48)
+            if chat_name:
+                store.update(existing_id, {"title": chat_name})
             return existing_id
-        title = compact_text(f"{platform} / {sender_id or session_id or '外部会话'}", 36)
+        integration = self.get_integration(platform) or {}
+        title = compact_text(str(integration.get("chat_name") or "我的微信聊天"), 48)
         conversation = store.create(title)
         data["sessions"][key] = conversation["id"]
         self.save_config(data)

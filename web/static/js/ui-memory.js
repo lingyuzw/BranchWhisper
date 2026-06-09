@@ -23,14 +23,28 @@ function setupMemoryEvents() {
   if (eventsBound) return;
   eventsBound = true;
   $("#memoryRefreshPageBtn")?.addEventListener("click", () => refreshMemoryPage());
-  $("#memoryLayerFilter")?.addEventListener("change", () => renderMemoryPage());
+  $("#memoryLayerFilter")?.addEventListener("change", () => {
+    state.memoryPage = 1;
+    renderMemoryPage();
+  });
   $("#memorySearchInput")?.addEventListener("input", () => {
     window.clearTimeout(memorySearchTimer);
-    memorySearchTimer = window.setTimeout(renderMemoryPage, 160);
+    memorySearchTimer = window.setTimeout(() => {
+      state.memoryPage = 1;
+      renderMemoryPage();
+    }, 160);
   });
   $("#memoryAddPageBtn")?.addEventListener("click", handleAddMemory);
   $("#memoryAddPageInput")?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") handleAddMemory();
+  });
+  $("#memoryPrevPageBtn")?.addEventListener("click", () => {
+    state.memoryPage = Math.max(1, Number(state.memoryPage || 1) - 1);
+    renderMemoryPage();
+  });
+  $("#memoryNextPageBtn")?.addEventListener("click", () => {
+    state.memoryPage = Number(state.memoryPage || 1) + 1;
+    renderMemoryPage();
   });
 }
 
@@ -80,13 +94,11 @@ function renderMemoryList() {
   const host = $("#memoryPageList");
   if (!host) return;
   host.innerHTML = "";
-  const query = ($("#memorySearchInput")?.value || "").trim().toLowerCase();
-  const layer = $("#memoryLayerFilter")?.value || "";
-  const items = (state.memories || []).filter((item) => {
-    if (layer && item.layer !== layer) return false;
-    if (!query) return true;
-    return `${item.key || ""} ${item.value || ""}`.toLowerCase().includes(query);
-  });
+  const items = filteredMemories();
+  const pageSize = Number(state.memoryPageSize || 30);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  state.memoryPage = Math.max(1, Math.min(Number(state.memoryPage || 1), pageCount));
+  updateMemoryPagination(items.length, pageCount);
   if (!items.length) {
     const empty = document.createElement("p");
     empty.className = "conversation-empty memory-empty";
@@ -94,7 +106,27 @@ function renderMemoryList() {
     host.appendChild(empty);
     return;
   }
-  for (const item of items) host.appendChild(createMemoryRow(item));
+  const start = (state.memoryPage - 1) * pageSize;
+  for (const item of items.slice(start, start + pageSize)) host.appendChild(createMemoryRow(item));
+}
+
+function filteredMemories() {
+  const query = ($("#memorySearchInput")?.value || "").trim().toLowerCase();
+  const layer = $("#memoryLayerFilter")?.value || "";
+  return (state.memories || []).filter((item) => {
+    if (layer && item.layer !== layer) return false;
+    if (!query) return true;
+    return `${item.key || ""} ${item.value || ""}`.toLowerCase().includes(query);
+  });
+}
+
+function updateMemoryPagination(total, pageCount) {
+  const page = Number(state.memoryPage || 1);
+  setText("memoryPageInfo", `${total} 条 · 第 ${page} / ${pageCount} 页`);
+  const prev = $("#memoryPrevPageBtn");
+  const next = $("#memoryNextPageBtn");
+  if (prev) prev.disabled = page <= 1;
+  if (next) next.disabled = page >= pageCount;
 }
 
 function createMemoryRow(item) {

@@ -18,7 +18,7 @@ class ConversationStore:
             self._write_json(self.index_path, [])
 
     def list(self, query: str = "", archived: str = "active") -> list[dict]:
-        items = self._read_index()
+        items = [self._hydrate_summary(item) for item in self._read_index()]
         if archived == "active":
             items = [item for item in items if not item.get("archived")]
         elif archived == "archived":
@@ -36,6 +36,17 @@ class ConversationStore:
         items.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
         items.sort(key=lambda item: bool(item.get("favorite")), reverse=True)
         return items
+
+    def _hydrate_summary(self, item: dict) -> dict:
+        if item.get("platform_id") or item.get("source"):
+            return item
+        conversation_id = str(item.get("id") or "")
+        if not conversation_id:
+            return item
+        conversation = self.load(conversation_id)
+        if not conversation:
+            return item
+        return {**item, **self._summary(conversation)}
 
     def create(self, title: str | None = None) -> dict:
         items = self._read_index()
@@ -178,6 +189,14 @@ class ConversationStore:
         conversation = self._normalize_conversation(conversation)
         messages = conversation.get("messages") or []
         last = messages[-1] if messages else {}
+        source_message = next(
+            (
+                item
+                for item in reversed(messages)
+                if item.get("platform_id") or item.get("sender_id") or item.get("source")
+            ),
+            {},
+        )
         return self._normalize_summary(
             {
                 "id": conversation.get("id"),
@@ -190,6 +209,9 @@ class ConversationStore:
                 "summary": conversation.get("summary") or self._auto_summary(messages),
                 "message_count": len(messages),
                 "last_message": (last.get("content") or "")[:80],
+                "source": conversation.get("source") or source_message.get("source") or "",
+                "platform_id": conversation.get("platform_id") or source_message.get("platform_id") or "",
+                "sender_id": conversation.get("sender_id") or source_message.get("sender_id") or "",
             }
         )
 
@@ -199,6 +221,9 @@ class ConversationStore:
         item.setdefault("summary", "")
         item.setdefault("message_count", 0)
         item.setdefault("last_message", "")
+        item.setdefault("source", "")
+        item.setdefault("platform_id", "")
+        item.setdefault("sender_id", "")
         return item
 
     def _write_json(self, path: Path, data) -> None:

@@ -60,6 +60,8 @@
 .memory-page-list {
   display: grid;
   gap: 8px;
+  min-height: 360px;
+  align-content: start;
 }
 
 .memory-row {
@@ -110,12 +112,42 @@
   background: var(--surface-muted);
 }
 
+.memory-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 2px;
+}
+.memory-pagination span {
+  min-width: 150px;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  font-weight: 700;
+  text-align: center;
+}
+.memory-pagination button {
+  min-height: 36px;
+}
+.memory-pagination button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 @media (max-width: 980px) {
   .memory-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .memory-toolbar {
     grid-template-columns: 1fr;
+  }
+  .memory-pagination {
+    justify-content: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .memory-pagination span {
+    min-width: 0;
   }
 }
 

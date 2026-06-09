@@ -1079,7 +1079,9 @@ class DialogSession:
         self.memory_store = memory_store
         self.tool_manager = tool_manager
         self.followup_policy = followup_policy
-        self.conversation = conversation_store.get_or_create(conversation_id)
+        self.conversation = conversation_store.load(conversation_id) if conversation_id else None
+        if not self.conversation:
+            self.conversation = self.draft_conversation()
         self.messages = self.build_llm_messages(self.conversation)
         self.vad_load_task: asyncio.Task | None = None
         self.send_lock = asyncio.Lock()
@@ -1163,7 +1165,7 @@ class DialogSession:
             await self.interrupt_current_turn(notify=False)
             # Reset means "new chat" rather than deleting the old one. The old
             # conversation stays on disk and can be reopened from the sidebar.
-            self.conversation = self.conversation_store.create()
+            self.conversation = self.draft_conversation()
             self.messages = self.build_llm_messages(self.conversation)
             if self.vad_session:
                 self.vad_session.reset()
@@ -1391,7 +1393,23 @@ class DialogSession:
                 messages.append({"role": role, "content": content})
         return messages
 
+    def draft_conversation(self) -> dict:
+        now = time.strftime("%Y-%m-%d %H:%M:%S")
+        return {
+            "id": "",
+            "title": "新的对话",
+            "created_at": now,
+            "updated_at": now,
+            "archived": False,
+            "favorite": False,
+            "summary": "",
+            "messages": [],
+            "draft": True,
+        }
+
     def persist_messages(self, messages: list[dict], title_hint: str | None = None) -> None:
+        if not self.conversation.get("id"):
+            self.conversation = self.conversation_store.create(title_hint)
         self.conversation = self.conversation_store.append_messages(
             self.conversation["id"],
             messages,

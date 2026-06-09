@@ -26,6 +26,62 @@
   background: var(--surface-muted);
 }
 
+.conversation-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-muted) 76%, transparent);
+}
+.conversation-tabs button {
+  min-width: 0;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  font-weight: 650;
+  background: transparent;
+}
+.conversation-tabs button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.conversation-tabs button.active {
+  color: var(--text);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 18%, var(--surface) 82%), var(--surface));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, var(--shadow-sm);
+}
+.conversation-tabs svg {
+  width: 15px;
+  height: 15px;
+}
+
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 2px 6px;
+}
+.rail-head span {
+  min-width: 24px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: var(--font-xs);
+  font-weight: 800;
+}
+
 .conversation-item {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
   align-items: center; gap: 1px; padding: 7px 8px;

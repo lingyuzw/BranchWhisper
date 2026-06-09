@@ -10,7 +10,6 @@ import {
   loadConfig,
   loadServices,
   loadConversations,
-  createConversation,
   deleteConversation,
   updateConversation,
 } from "./api.js";
@@ -71,6 +70,9 @@ function setupDashboardEvents() {
   $("#newConversationBtn")?.addEventListener("click", newConversation);
   $("#conversationSearchInput")?.addEventListener("input", handleConversationSearch);
   $("#archiveModeBtn")?.addEventListener("click", toggleArchiveMode);
+  document.querySelectorAll("[data-conversation-scope]").forEach((button) => {
+    button.addEventListener("click", () => switchConversationScope(button.dataset.conversationScope || "recent"));
+  });
   setupTtsToggle();
 }
 
@@ -186,17 +188,23 @@ function updatePipelineCompact(stage, label) {
 }
 
 function renderConversationList() {
+  return renderScopedConversationList();
+}
+
+function renderScopedConversationList() {
   const host = $("#conversationList");
   if (!host) return;
   host.innerHTML = "";
-  const conversations = state.conversations.slice(0, 30);
+  const conversations = visibleConversations().slice(0, 40);
+  updateConversationScopeUi(conversations.length);
   if (!conversations.length) {
-    const p = document.createElement("p");
-    p.className = "conversation-empty";
-    p.textContent = state.conversationArchivedMode === "archived" ? "暂无归档对话" : "还没有保存的对话";
-    host.appendChild(p);
+    const empty = document.createElement("p");
+    empty.className = "conversation-empty";
+    empty.textContent = emptyConversationText();
+    host.appendChild(empty);
     return;
   }
+
   for (const conversation of conversations) {
     const item = document.createElement("div");
     item.className = `conversation-item ${conversation.id === state.activeConversationId ? "active" : ""}`;
@@ -209,7 +217,7 @@ function renderConversationList() {
     const preview = document.createElement("span");
     preview.textContent = conversation.summary || conversation.last_message || "空会话";
     const meta = document.createElement("small");
-    meta.textContent = `${conversation.favorite ? "★ " : ""}${formatConversationMeta(conversation)}`;
+    meta.textContent = `${conversation.favorite ? "★ " : ""}${conversationMetaLabel(conversation)}`;
     openBtn.append(title, preview, meta);
     openBtn.addEventListener("click", () => selectConversation(conversation.id));
 
@@ -226,6 +234,47 @@ function renderConversationList() {
     host.appendChild(item);
   }
   renderIcons();
+}
+
+function visibleConversations() {
+  if (state.conversationArchivedMode === "archived") return state.conversations || [];
+  const scope = state.conversationScope || "recent";
+  return (state.conversations || []).filter((conversation) => {
+    const external = isWeixinConversation(conversation);
+    return scope === "weixin" ? external : !external;
+  });
+}
+
+function isWeixinConversation(conversation) {
+  const text = `${conversation.platform_id || ""} ${conversation.source || ""}`.toLowerCase();
+  return text.includes("weixin");
+}
+
+function conversationMetaLabel(conversation) {
+  const prefix = isWeixinConversation(conversation) ? "微信 · " : "";
+  return `${prefix}${formatConversationMeta(conversation)}`;
+}
+
+function emptyConversationText() {
+  if (state.conversationArchivedMode === "archived") return "暂无归档对话";
+  if (state.conversationScope === "weixin") return "还没有微信聊天。先在接入页给微信发一条消息。";
+  return "还没有保存的对话。发送第一条消息后会出现在这里。";
+}
+
+function switchConversationScope(scope) {
+  state.conversationScope = scope === "weixin" ? "weixin" : "recent";
+  renderConversationList();
+}
+
+function updateConversationScopeUi(count) {
+  document.querySelectorAll("[data-conversation-scope]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.conversationScope === state.conversationScope);
+  });
+  const label = state.conversationArchivedMode === "archived"
+    ? "归档"
+    : state.conversationScope === "weixin" ? "微信聊天" : "最近";
+  setText("conversationRailLabel", label);
+  setText("conversationRailCount", String(count));
 }
 
 function conversationIcon(icon, title, handler, tone = "") {
@@ -258,23 +307,15 @@ async function toggleArchiveMode() {
 }
 
 async function newConversation() {
-  if (state.previewMode) {
-    clearTranscript();
-    syncChatView();
-    showToast("预览模式：已清空", "info");
-    return;
-  }
-  try {
-    const conversation = await createConversation();
-    state.activeConversationId = conversation.id;
-    localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversation.id);
-    await loadConversations();
-    renderConversationList();
-    reconnectDialog();
-    syncChatView();
-  } catch (error) {
-    showToast(`新建失败：${error.message}`, "error");
-  }
+  state.activeConversationId = "";
+  state.activeConversation = null;
+  localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+  clearTranscript();
+  resetPipelineCompact();
+  renderConversationList();
+  reconnectDialog();
+  syncChatView();
+  setText("topStatus", "新对话");
 }
 
 async function handleRenameConversation(conversation) {
