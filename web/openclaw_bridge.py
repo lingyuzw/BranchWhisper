@@ -283,8 +283,14 @@ def call_branchwhisper(branchwhisper_url: str, integration_id: str, account_id: 
             "create_time_ms": msg.get("create_time_ms"),
         },
     }
+    url = f"{branchwhisper_url.rstrip('/')}/api/integrations/dialog"
     with httpx.Client(timeout=120) as client:
-        resp = client.post(f"{branchwhisper_url.rstrip('/')}/api/integrations/dialog", json=payload)
+        try:
+            resp = client.post(url, json=payload)
+        except httpx.ConnectError as exc:
+            raise RuntimeError(f"BranchWhisper dialog endpoint refused connection: {url}") from exc
+        except httpx.TimeoutException as exc:
+            raise RuntimeError(f"BranchWhisper dialog endpoint timed out: {url}") from exc
     resp.raise_for_status()
     return resp.json()
 
@@ -407,7 +413,10 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     state_dir = resolve_state_dir(args.profile, args.state_dir)
-    log(f"bridge starting integration={args.integration_id} profile={args.profile} state_dir={state_dir}")
+    log(
+        f"bridge starting integration={args.integration_id} profile={args.profile} "
+        f"state_dir={state_dir} branchwhisper_url={args.branchwhisper_url.rstrip('/')}"
+    )
     accounts = choose_accounts(state_dir, args.account_id)
     if not accounts:
         log(

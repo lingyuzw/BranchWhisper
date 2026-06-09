@@ -33,7 +33,20 @@ def direct_answer_from_tool(tool_result: dict | None) -> str:
         return "，".join(parts) + "。"
     if tool_id == "map":
         kind = result.get("kind") or ""
-        if kind in {"place_search", "geocode"}:
+        if kind == "geocode":
+            items = result.get("results") or []
+            if not items:
+                return "没有查到明确的地点结果。"
+            item = items[0]
+            query = result.get("query") or "这个地方"
+            province = item.get("province") or ""
+            city = item.get("city") or ""
+            district = item.get("district") or ""
+            location = item.get("location") or ""
+            area = "".join(part for part in [province, city, district] if isinstance(part, str) and part)
+            suffix = f"，坐标 {location}" if location else ""
+            return f"{query}属于{area}{suffix}。" if area else f"查到的位置是：{item.get('formatted_address') or query}{suffix}。"
+        if kind == "place_search":
             items = result.get("results") or []
             if not items:
                 return "没有查到明确的地点结果。"

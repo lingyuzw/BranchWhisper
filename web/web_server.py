@@ -141,6 +141,14 @@ def require_integration_dialog_access(request: Request) -> None:
     )
 
 
+def local_branchwhisper_url(request: Request) -> str:
+    server = request.scope.get("server") or ("", 7860)
+    port = request.url.port
+    if port is None and isinstance(server, (tuple, list)) and len(server) > 1:
+        port = server[1]
+    return f"http://127.0.0.1:{int(port or 7860)}"
+
+
 def service_warmup_key(service_id: str, settings: SessionSettings) -> str:
     if service_id == "asr":
         return f"asr:{settings.asr_url}:{settings.asr_model}"
@@ -498,12 +506,17 @@ def create_app(args) -> FastAPI:
         call = app.state.tool_manager.suggest_from_text(text)
         result = None
         if call:
-            result = await app.state.tool_manager.execute(
-                str(call.get("id") or ""),
-                call.get("arguments") if isinstance(call.get("arguments"), dict) else {},
-                timeout=app.state.settings.tools_timeout,
-                max_chars=app.state.settings.tools_max_result_chars,
-            )
+            tool_id = str(call.get("id") or "")
+            arguments = call.get("arguments") if isinstance(call.get("arguments"), dict) else {}
+            try:
+                result = await app.state.tool_manager.execute(
+                    tool_id,
+                    arguments,
+                    timeout=app.state.settings.tools_timeout,
+                    max_chars=app.state.settings.tools_max_result_chars,
+                )
+            except Exception as exc:
+                result = {"ok": False, "tool": tool_id, "error": str(exc)}
         return {"tool_call": call, "result": result, "direct_answer": direct_answer_from_tool({"tool": call.get("id"), "result": result} if call else None)}
 
     @app.get("/api/health")
@@ -623,7 +636,7 @@ def create_app(args) -> FastAPI:
         try:
             result = await app.state.integration_manager.start_bridge(
                 integration_id,
-                branchwhisper_url=str(request.base_url).rstrip("/"),
+                branchwhisper_url=local_branchwhisper_url(request),
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Integration not found") from exc
@@ -642,7 +655,7 @@ def create_app(args) -> FastAPI:
         try:
             result = await app.state.integration_manager.start_bridge(
                 integration_id,
-                branchwhisper_url=str(request.base_url).rstrip("/"),
+                branchwhisper_url=local_branchwhisper_url(request),
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Integration not found") from exc

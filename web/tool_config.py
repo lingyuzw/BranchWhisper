@@ -5,11 +5,16 @@ from pathlib import Path
 from typing import Any
 
 
+GAODE_BASE_URL = "https://restapi.amap.com/v3"
+DEFAULT_TOOL_PROVIDER_VERSION = 2
+
+
 DEFAULT_TOOL_PROVIDER_CONFIG: dict[str, Any] = {
     "enabled": True,
     "auto_call": True,
     "timeout": 12.0,
     "max_result_chars": 4000,
+    "_provider_defaults_version": DEFAULT_TOOL_PROVIDER_VERSION,
     "url_fetch": {
         "enabled": True,
         "user_agent": "Mozilla/5.0 BranchWhisper/1.0",
@@ -17,15 +22,15 @@ DEFAULT_TOOL_PROVIDER_CONFIG: dict[str, Any] = {
     },
     "weather": {
         "enabled": True,
-        "provider": "wttr",
-        "base_url": "https://wttr.in",
+        "provider": "gaode",
+        "base_url": GAODE_BASE_URL,
         "api_key": "",
         "default_location": "北京",
     },
     "search": {
         "enabled": True,
-        "provider": "duckduckgo",
-        "base_url": "https://duckduckgo.com/html/",
+        "provider": "gaode",
+        "base_url": GAODE_BASE_URL,
         "api_key": "",
         "limit": 5,
     },
@@ -44,9 +49,9 @@ DEFAULT_TOOL_PROVIDER_CONFIG: dict[str, Any] = {
         "api_key": "",
     },
     "map": {
-        "enabled": False,
+        "enabled": True,
         "provider": "gaode",
-        "base_url": "https://restapi.amap.com/v3",
+        "base_url": GAODE_BASE_URL,
         "api_key": "",
     },
     "reminder": {
@@ -94,7 +99,8 @@ class ToolProviderConfig:
             data = {}
         if not isinstance(data, dict):
             data = {}
-        return deep_merge(DEFAULT_TOOL_PROVIDER_CONFIG, self._drop_runtime_fields(data))
+        data = self._migrate_defaults(self._drop_runtime_fields(data))
+        return deep_merge(DEFAULT_TOOL_PROVIDER_CONFIG, data)
 
     def public(self) -> dict:
         return self._mask(self.load())
@@ -149,3 +155,23 @@ class ToolProviderConfig:
         if isinstance(value, list):
             return [self._drop_runtime_fields(item) for item in value]
         return value
+
+    def _migrate_defaults(self, data: dict) -> dict:
+        result = dict(data or {})
+        try:
+            version = int(result.get("_provider_defaults_version") or 0)
+        except (TypeError, ValueError):
+            version = 0
+        if version >= DEFAULT_TOOL_PROVIDER_VERSION:
+            return result
+
+        for key in ("weather", "search", "map"):
+            provider = dict(result.get(key) or {})
+            provider["enabled"] = True
+            provider["provider"] = "gaode"
+            provider["base_url"] = GAODE_BASE_URL
+            result[key] = provider
+        result["_provider_defaults_version"] = DEFAULT_TOOL_PROVIDER_VERSION
+        result["enabled"] = True
+        result["auto_call"] = True
+        return result

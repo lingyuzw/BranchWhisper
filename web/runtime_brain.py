@@ -21,6 +21,7 @@ from tool_config import DEFAULT_TOOL_PROVIDER_CONFIG, deep_merge
 
 SECONDS_PER_DAY = 86400
 MEMORY_LAYERS = {"short", "mid", "long"}
+TOOL_DEFAULTS_VERSION = 2
 
 
 def now_ts() -> float:
@@ -814,7 +815,7 @@ def parse_coordinate_pair(text: str) -> str:
 
 def clean_place_query(text: str) -> str:
     cleaned = re.sub(
-        r"(地图|地址|位置|在哪(?:里)?|在哪里|附近|周边|路线|导航|怎么走|距离|查一下|帮我查|搜索|找一下|请问)",
+        r"(地图|地址|位置|在那个城市|在哪个城市|在哪个省份|在哪个省|在哪个区|在哪个县|在哪里|在哪(?:里)?|属于哪个城市|属于哪个省份|属于哪个省|属于哪里|属于哪|哪个城市|哪个省份|哪个省|哪个区|哪个县|附近|周边|路线|导航|怎么走|距离|查一下|帮我查|搜索|找一下|请问)",
         " ",
         str(text or ""),
     )
@@ -843,11 +844,30 @@ def looks_like_geo_question(text: str) -> bool:
             "属于哪里",
             "属于哪",
             "哪个城市",
+            "哪个省份",
             "哪个省",
             "哪个区",
             "哪个县",
             "地理位置",
             "位置",
+        ),
+    )
+
+
+def looks_like_admin_area_question(text: str) -> bool:
+    return has_any(
+        text,
+        (
+            "哪个城市",
+            "那个城市",
+            "哪个省份",
+            "哪个省",
+            "哪个区",
+            "哪个县",
+            "属于哪里",
+            "属于哪",
+            "行政区",
+            "省份",
         ),
     )
 
@@ -912,8 +932,9 @@ class ToolManager:
 
     def default_config(self) -> dict:
         return {
+            "_tool_defaults_version": TOOL_DEFAULTS_VERSION,
             "builtins": {
-                tool["id"]: {"enabled": tool["id"] != "map"}
+                tool["id"]: {"enabled": True}
                 for tool in self.BUILTIN_TOOLS
             },
             "custom_tools": [],
@@ -926,6 +947,14 @@ class ToolManager:
             data = self.default_config()
         base = self.default_config()
         base["builtins"].update(data.get("builtins") or {})
+        try:
+            version = int(data.get("_tool_defaults_version") or 0)
+        except (AttributeError, TypeError, ValueError):
+            version = 0
+        if version < TOOL_DEFAULTS_VERSION:
+            for tool in self.BUILTIN_TOOLS:
+                base["builtins"][tool["id"]] = {"enabled": True}
+        base["_tool_defaults_version"] = TOOL_DEFAULTS_VERSION
         base["custom_tools"] = [tool for tool in data.get("custom_tools") or [] if isinstance(tool, dict)]
         return base
 
@@ -933,6 +962,7 @@ class ToolManager:
         builtins = data.get("builtins") or {}
         custom_tools = data.get("custom_tools") or []
         payload = {
+            "_tool_defaults_version": TOOL_DEFAULTS_VERSION,
             "builtins": builtins,
             "custom_tools": [self.normalize_custom_tool(tool) for tool in custom_tools if isinstance(tool, dict)],
         }
@@ -1017,8 +1047,8 @@ class ToolManager:
         if has_any(text, ("天气", "下雨", "气温", "温度", "冷不冷", "热不热", "降雨", "空气质量")) and self.tool_exists("weather"):
             location = re.sub(r"(天气|下雨|气温|温度|今天|现在|查一下|怎么样|如何)", "", text).strip(" ，。？?")
             return {"id": "weather", "arguments": {"location": location or "北京"}}
-        if looks_like_geo_question(text) and self.tool_exists("map"):
-            return {"id": "map", "arguments": {"query": text}}
+        if looks_like_geo_question(text):
+            return {"id": "map", "arguments": {"query": text}} if self.tool_exists("map") else {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         if re.search(r"(股票|股价|汇率|币价|价格|金价|美股|基金|btc|eth|usd|cny|人民币|美元|港币)", lowered) and self.tool_exists("finance"):
             return {"id": "finance", "arguments": {"query": text}}
         if (has_any(text, ("搜索", "查一下", "帮我查", "网上", "资料", "最新", "现在", "当前", "实时", "官网", "多少钱", "哪里买", "评价", "怎么样")) or looks_like_geo_question(text)) and self.tool_exists("web_search"):
@@ -1029,28 +1059,35 @@ class ToolManager:
         args = arguments or {}
         config = self.load_config()
         providers = self.providers()
-        if not providers.get("enabled", True):
-            return truncate_result({"ok": False, "tool": tool_id, "error": "tools are disabled"}, max_chars)
-        if tool_id == "time":
-            result = self.local_time()
-        elif tool_id == "web_search":
-            result = await self.web_search(str(args.get("query") or ""), int(args.get("limit") or 5), timeout, providers)
-        elif tool_id == "hot_news":
-            result = await self.hot_news(str(args.get("topic") or ""), str(args.get("region") or "CN"), int(args.get("limit") or 6), timeout, providers)
-        elif tool_id == "url_fetch":
-            result = await self.url_fetch(str(args.get("url") or ""), timeout, providers)
-        elif tool_id == "weather":
-            result = await self.weather(str(args.get("location") or "北京"), timeout, providers)
-        elif tool_id == "finance":
-            result = await self.web_search(str(args.get("query") or ""), int(args.get("limit") or 5), timeout, providers)
-            result["kind"] = "finance_search"
-        elif tool_id == "map":
-            result = await self.map_query(str(args.get("query") or ""), timeout, providers)
-        else:
-            custom = next((tool for tool in config["custom_tools"] if tool.get("id") == tool_id and tool.get("enabled", True)), None)
-            if not custom:
-                raise KeyError(f"Unknown or disabled tool: {tool_id}")
-            result = await self.custom_api(custom, args, timeout)
+        try:
+            if not providers.get("enabled", True):
+                return truncate_result({"ok": False, "tool": tool_id, "error": "tools are disabled"}, max_chars)
+            if tool_id == "time":
+                result = self.local_time()
+            elif tool_id == "web_search":
+                result = await self.web_search(str(args.get("query") or ""), int(args.get("limit") or 5), timeout, providers)
+            elif tool_id == "hot_news":
+                result = await self.hot_news(str(args.get("topic") or ""), str(args.get("region") or "CN"), int(args.get("limit") or 6), timeout, providers)
+            elif tool_id == "url_fetch":
+                result = await self.url_fetch(str(args.get("url") or ""), timeout, providers)
+            elif tool_id == "weather":
+                result = await self.weather(str(args.get("location") or "北京"), timeout, providers)
+            elif tool_id == "finance":
+                result = await self.web_search(str(args.get("query") or ""), int(args.get("limit") or 5), timeout, providers)
+                result["kind"] = "finance_search"
+            elif tool_id == "map":
+                result = await self.map_query(str(args.get("query") or ""), timeout, providers)
+            else:
+                custom = next((tool for tool in config["custom_tools"] if tool.get("id") == tool_id and tool.get("enabled", True)), None)
+                if not custom:
+                    return truncate_result({"ok": False, "tool": tool_id, "error": f"Unknown or disabled tool: {tool_id}"}, max_chars)
+                result = await self.custom_api(custom, args, timeout)
+        except httpx.TimeoutException as exc:
+            return truncate_result({"ok": False, "tool": tool_id, "error": f"tool request timeout: {exc.__class__.__name__}"}, max_chars)
+        except httpx.HTTPError as exc:
+            return truncate_result({"ok": False, "tool": tool_id, "error": f"tool request failed: {exc.__class__.__name__}: {exc}"}, max_chars)
+        except Exception as exc:
+            return truncate_result({"ok": False, "tool": tool_id, "error": str(exc)}, max_chars)
 
         return truncate_result(result, max_chars)
 
@@ -1219,7 +1256,7 @@ class ToolManager:
             if route.get("ok"):
                 return route
         query_text = clean_place_query(text)
-        if re.search(r"(地理编码|经纬度|坐标)", text) and not re.search(r"(附近|周边|搜索)", text):
+        if (looks_like_admin_area_question(text) or re.search(r"(地理编码|经纬度|坐标)", text)) and not re.search(r"(附近|周边|搜索)", text):
             geo = await self.gaode_geocode(query_text, timeout, providers)
             if geo.get("ok"):
                 return geo

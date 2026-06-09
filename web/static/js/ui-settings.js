@@ -287,12 +287,12 @@ const PROVIDER_LABELS = {
 
 const PROVIDER_OPTIONS = {
   weather: [
-    ["wttr", "wttr.in 免密天气"],
     ["gaode", "高德天气"],
+    ["wttr", "wttr.in 免密天气"],
   ],
   search: [
-    ["duckduckgo", "DuckDuckGo 网页搜索"],
     ["gaode", "高德地点搜索"],
+    ["duckduckgo", "DuckDuckGo 网页搜索"],
   ],
   news: [
     ["google_rss", "Google News RSS"],
