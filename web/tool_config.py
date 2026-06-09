@@ -128,6 +128,8 @@ class ToolProviderConfig:
             return patch
         result = {}
         for key, value in patch.items():
+            if key.endswith("_set") or key.endswith("_masked"):
+                continue
             if isinstance(value, dict):
                 result[key] = self._strip_masked_secrets(value, (current or {}).get(key, {}) if isinstance(current, dict) else {})
                 continue

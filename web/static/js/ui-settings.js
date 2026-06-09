@@ -310,6 +310,27 @@ const PROVIDER_OPTIONS = {
   ],
 };
 
+const PROVIDER_DEFAULTS = {
+  weather: {
+    wttr: { base_url: "https://wttr.in" },
+    gaode: { base_url: "https://restapi.amap.com/v3" },
+  },
+  search: {
+    duckduckgo: { base_url: "https://duckduckgo.com/html/" },
+    gaode: { base_url: "https://restapi.amap.com/v3" },
+  },
+  news: {
+    google_rss: { base_url: "https://news.google.com/rss" },
+    search: { base_url: "" },
+  },
+  finance: {
+    search: { base_url: "" },
+  },
+  map: {
+    gaode: { base_url: "https://restapi.amap.com/v3" },
+  },
+};
+
 function renderToolProviders() {
   const host = $("#toolProviderGrid");
   if (!host) return;
@@ -356,7 +377,7 @@ function collectToolConfig() {
 
 function openToolProviderModal(key) {
   editingToolProvider = key;
-  const provider = toolProviderDraft[key] || {};
+  const provider = normalizeProviderDraft(key, toolProviderDraft[key] || {});
   setText("toolProviderModalTitle", `${PROVIDER_LABELS[key] || key}配置`);
   const summary = $("#toolProviderModalSummary");
   if (summary) {
@@ -380,6 +401,7 @@ function openToolProviderModal(key) {
         const options = PROVIDER_OPTIONS[key] || [["default", "默认"]];
         input.innerHTML = options.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join("");
         input.value = String(current || options[0]?.[0] || "default");
+        input.addEventListener("change", () => applyProviderSelectionDefaults(key, input.value));
       } else if (input.tagName === "SELECT") {
         input.innerHTML = `<option value="true">启用</option><option value="false">关闭</option>`;
         input.value = String(current ?? true);
@@ -398,38 +420,48 @@ function openToolProviderModal(key) {
 
 function applyToolProviderModal() {
   if (!editingToolProvider) return;
-  const next = { ...(toolProviderDraft[editingToolProvider] || {}) };
+  const next = normalizeProviderDraft(editingToolProvider, toolProviderDraft[editingToolProvider] || {});
   document.querySelectorAll("#toolProviderModalFields [data-provider-field]").forEach((input) => {
     const field = input.dataset.providerField;
     if (field === "provider") next[field] = input.value;
     else if (input.tagName === "SELECT") next[field] = input.value === "true";
     else if (input.value.trim()) next[field] = input.value.trim();
+    else if (field === "api_key" || field.includes("webhook")) delete next[field];
   });
   applyProviderDefaults(editingToolProvider, next);
+  stripProviderRuntimeFields(next);
   toolProviderDraft[editingToolProvider] = next;
   closeToolProviderModal();
   renderToolProviders();
 }
 
 function applyProviderDefaults(key, next) {
-  if (key === "weather") {
-    if (next.provider === "gaode" && (!next.base_url || next.base_url === "https://wttr.in")) {
-      next.base_url = "https://restapi.amap.com/v3";
-    }
-    if (next.provider === "wttr" && (!next.base_url || next.base_url === "https://restapi.amap.com/v3")) {
-      next.base_url = "https://wttr.in";
-    }
+  const defaults = PROVIDER_DEFAULTS[key]?.[next.provider];
+  if (defaults && "base_url" in defaults) {
+    next.base_url = defaults.base_url;
   }
-  if (key === "search") {
-    if (next.provider === "gaode" && (!next.base_url || next.base_url === "https://duckduckgo.com/html/")) {
-      next.base_url = "https://restapi.amap.com/v3";
-    }
-    if (next.provider === "duckduckgo" && (!next.base_url || next.base_url === "https://restapi.amap.com/v3")) {
-      next.base_url = "https://duckduckgo.com/html/";
-    }
+}
+
+function applyProviderSelectionDefaults(key, provider) {
+  const defaults = PROVIDER_DEFAULTS[key]?.[provider];
+  if (!defaults) return;
+  for (const [field, val] of Object.entries(defaults)) {
+    const input = document.querySelector(`#toolProviderModalFields [data-provider-field="${field}"]`);
+    if (input) input.value = val;
   }
-  if (key === "map" && next.provider === "gaode" && !next.base_url) {
-    next.base_url = "https://restapi.amap.com/v3";
+}
+
+function normalizeProviderDraft(key, provider) {
+  const next = { ...(provider || {}) };
+  const options = PROVIDER_OPTIONS[key] || [];
+  if (!next.provider && options.length) next.provider = options[0][0];
+  stripProviderRuntimeFields(next);
+  return next;
+}
+
+function stripProviderRuntimeFields(provider) {
+  for (const key of Object.keys(provider)) {
+    if (key.endsWith("_set") || key.endsWith("_masked")) delete provider[key];
   }
 }
 
