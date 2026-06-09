@@ -281,8 +281,6 @@ def call_branchwhisper(branchwhisper_url: str, integration_id: str, account_id: 
             "client_id": msg.get("client_id"),
             "context_token": msg.get("context_token") or "",
             "create_time_ms": msg.get("create_time_ms"),
-            "display_name": msg.get("display_name") or msg.get("nickname") or msg.get("nick_name") or "",
-            "avatar_url": msg.get("avatar_url") or msg.get("head_img_url") or msg.get("portrait") or "",
         },
     }
     with httpx.Client(timeout=120) as client:

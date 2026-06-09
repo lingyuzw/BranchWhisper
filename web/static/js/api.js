@@ -262,14 +262,6 @@ export async function clearIntegrationLogs(id) {
   return fetchJson(`/api/integrations/${encodeURIComponent(id)}/logs`, { method: "DELETE" });
 }
 
-export async function updateIntegrationContact(integrationId, senderId, data) {
-  return fetchJson(`/api/integrations/${encodeURIComponent(integrationId)}/contacts/${encodeURIComponent(senderId)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-}
-
 export async function testIntegrationDialog(id, text) {
   return fetchJson("/api/integrations/dialog", {
     method: "POST",

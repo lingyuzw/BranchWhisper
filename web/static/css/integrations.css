@@ -3,13 +3,13 @@
    BranchWhisper
    ============================================================ */
 
-.integrations-page { gap: 14px; }
+.integrations-page { gap: 16px; }
 
 .integration-env,
 .integration-panel {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface) 94%, var(--success) 6%);
@@ -62,14 +62,14 @@
 
 .integration-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 12px;
+  grid-template-columns: minmax(520px, 1fr) minmax(420px, 480px);
+  gap: 16px;
   align-items: start;
 }
 
 .integration-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -77,8 +77,9 @@
 
 .integration-card {
   display: grid;
-  gap: 10px;
-  padding: 14px 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background:
@@ -139,9 +140,10 @@
 .integration-card.failed .status-dot { background: var(--danger); }
 
 .integration-meta {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 }
 .integration-meta .meta-cell strong {
   min-width: 0;
@@ -151,6 +153,7 @@
 }
 
 .integration-actions {
+  grid-column: 1 / -1;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
@@ -220,7 +223,6 @@
   display: grid;
   gap: 6px;
 }
-
 .integration-log-toolbar {
   display: flex;
   align-items: center;
@@ -241,14 +243,17 @@
   background: var(--danger-soft);
 }
 
-.integration-timing-list,
-.integration-contact-list {
+.integration-timing-list {
   display: grid;
   gap: 7px;
 }
 
-.integration-timing-item,
-.integration-contact-item {
+.integration-timing-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.integration-timing-summary span {
   min-width: 0;
   display: grid;
   gap: 2px;
@@ -257,8 +262,26 @@
   border-radius: var(--radius-sm);
   background: var(--surface-muted);
 }
-.integration-timing-item strong,
-.integration-contact-item strong {
+.integration-timing-summary b {
+  color: var(--text);
+  font-size: var(--font-sm);
+  font-weight: 700;
+}
+.integration-timing-summary small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+}
+
+.integration-timing-item {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+.integration-timing-item strong {
   min-width: 0;
   color: var(--text);
   font-size: var(--font-sm);
@@ -267,56 +290,8 @@
   white-space: nowrap;
 }
 .integration-timing-item span,
-.integration-timing-item small,
-.integration-contact-item small {
+.integration-timing-item small {
   color: var(--text-muted);
-  font-size: var(--font-xs);
-}
-
-.integration-contact-item {
-  grid-template-columns: 34px minmax(120px, 0.65fr) minmax(180px, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-.integration-contact-avatar {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  background: var(--surface);
-  font-size: var(--font-xs);
-  font-weight: 800;
-}
-.integration-contact-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.integration-contact-body {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-.integration-contact-edit {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.8fr) auto;
-  gap: 6px;
-  align-items: center;
-}
-.integration-contact-edit input[type="text"],
-.integration-contact-edit input[type="file"] {
-  min-width: 0;
-  height: 34px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  background: var(--surface);
   font-size: var(--font-xs);
 }
 .compact-action {
@@ -400,15 +375,14 @@
 @media (max-width: 1180px) {
   .integration-shell { grid-template-columns: 1fr; }
   .integration-env-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .integration-timing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
   .integration-list,
   .integration-env-grid { grid-template-columns: 1fr; }
-  .integration-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .integration-meta,
+  .integration-timing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .integration-test-row { grid-template-columns: 1fr; }
   .integration-qr { align-items: flex-start; flex-direction: column; }
-  .integration-contact-item,
-  .integration-contact-edit { grid-template-columns: 1fr; }
-  .integration-contact-avatar { display: none; }
 }

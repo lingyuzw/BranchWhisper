@@ -19,8 +19,6 @@ import {
   stopIntegration,
   testIntegrationDialog,
   updateIntegration,
-  updateIntegrationContact,
-  uploadAvatar,
 } from "./api.js";
 import { $, createIcon, renderIcons, setText, showConfirm, showSkeleton, showToast } from "./utils.js";
 
@@ -285,8 +283,7 @@ function renderSelectedPanel() {
   setText("selectedIntegrationBadge", selected?.id || "--");
   renderLoginBox(selected);
   renderAccountList(selected);
-  renderTimingList(selected);
-  renderContactList(selected);
+  renderTimingSummary(selected);
 }
 
 function renderLoginBox(selected) {
@@ -297,11 +294,13 @@ function renderLoginBox(selected) {
     box.textContent = "请选择一个接入实例。";
     return;
   }
-  const session = state.integrationLoginSession?.integrationId === selected.id ? state.integrationLoginSession : null;
-  if (selected.status === "logged_in" && !session) {
+  const isReady = selected.status === "logged_in" || selected.status === "running";
+  const session = isReady ? null : (state.integrationLoginSession?.integrationId === selected.id ? state.integrationLoginSession : null);
+  if (isReady) {
+    if (state.integrationLoginSession?.integrationId === selected.id) state.integrationLoginSession = null;
     const text = document.createElement("div");
     text.className = "integration-login-placeholder";
-    text.innerHTML = `<strong>${escapeHtml(selected.id)}</strong><span>已登录。二维码会在扫码成功后自动隐藏。</span>`;
+    text.innerHTML = `<strong>${escapeHtml(statusText(selected.status))}</strong><span>${selected.status === "running" ? "桥接进程正在运行，可直接从微信发送消息测试。" : "账号已登录。需要收发消息时点击“启动桥接”。"}</span>`;
     box.appendChild(text);
     return;
   }
@@ -340,96 +339,28 @@ function renderLoginBox(selected) {
   box.appendChild(meta);
 }
 
-function renderTimingList(selected) {
-  const host = $("#integrationTimingList");
+function renderTimingSummary(selected) {
+  const host = $("#integrationTimingSummary");
   if (!host) return;
   host.innerHTML = "";
   const items = selected?.recent_timings || [];
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "integration-empty compact";
-    empty.textContent = "还没有消息耗时。";
+    empty.textContent = "暂无消息耗时。";
     host.appendChild(empty);
     return;
   }
-  for (const item of items.slice(0, 10)) {
-    const row = document.createElement("div");
-    row.className = "integration-timing-item";
-    const total = Number(item.bridge_ms || item.total_ms || 0);
-    row.innerHTML = `
-      <strong>${escapeHtml(item.text || item.trace_id || "--")}</strong>
-      <span>总耗时 ${total}ms${item.send_status ? ` · ${escapeHtml(item.send_status)}` : ""}</span>
-      <small>receive ${Number(item.receive_ms || 0)} · tool ${Number(item.tool_ms || 0)} · llm ${Number(item.llm_ms || 0)} · tts ${Number(item.tts_ms || 0)} · send ${Number(item.send_ms || 0)}</small>
-    `;
-    host.appendChild(row);
-  }
-}
-
-function renderContactList(selected) {
-  const host = $("#integrationContactList");
-  if (!host) return;
-  host.innerHTML = "";
-  const contacts = selected?.contacts || [];
-  if (!contacts.length) {
-    const empty = document.createElement("div");
-    empty.className = "integration-empty compact";
-    empty.textContent = "收到微信消息后会自动出现联系人。";
-    host.appendChild(empty);
-    return;
-  }
-  for (const contact of contacts.slice(0, 12)) {
-    const row = document.createElement("div");
-    row.className = "integration-contact-item";
-    const avatar = document.createElement("div");
-    avatar.className = "integration-contact-avatar";
-    const avatarUrl = contact.avatar_url || contact.auto_avatar_url || "";
-    if (avatarUrl) {
-      const img = document.createElement("img");
-      img.src = avatarUrl;
-      avatar.appendChild(img);
-    } else {
-      avatar.textContent = "微";
-    }
-    const body = document.createElement("div");
-    body.className = "integration-contact-body";
-    body.innerHTML = `<strong>${escapeHtml(contact.remark_name || contact.display_name || contact.sender_id || "--")}</strong><small>${escapeHtml(contact.sender_id || "")}</small>`;
-    const edit = document.createElement("div");
-    edit.className = "integration-contact-edit";
-    const remark = document.createElement("input");
-    remark.type = "text";
-    remark.placeholder = "联系人备注";
-    remark.value = contact.remark_name || "";
-    const file = document.createElement("input");
-    file.type = "file";
-    file.accept = "image/png,image/jpeg,image/webp,image/gif";
-    const save = document.createElement("button");
-    save.className = "secondary-action compact-action";
-    save.type = "button";
-    save.append(createIcon("save"), document.createTextNode("保存"));
-    save.addEventListener("click", () => saveContactProfile(selected.id, contact, remark, file));
-    edit.append(remark, file, save);
-    row.append(avatar, body, edit);
-    host.appendChild(row);
-  }
-}
-
-async function saveContactProfile(integrationId, contact, remarkInput, fileInput) {
-  try {
-    let avatarUrl = contact.avatar_url || "";
-    if (fileInput?.files?.[0]) {
-      const uploaded = await uploadAvatar(await fileToDataUrl(fileInput.files[0]));
-      avatarUrl = uploaded.asset?.url || avatarUrl;
-    }
-    await updateIntegrationContact(integrationId, contact.sender_id, {
-      account_id: contact.account_id || "",
-      remark_name: remarkInput?.value.trim() || "",
-      avatar_url: avatarUrl,
-    });
-    await refreshIntegrations({ quiet: true });
-    showToast("联系人资料已保存", "success");
-  } catch (error) {
-    showToast(`联系人保存失败：${error.message}`, "error");
-  }
+  const avg = (field) => Math.round(items.reduce((sum, item) => sum + Number(item[field] || 0), 0) / items.length);
+  const summary = document.createElement("div");
+  summary.className = "integration-timing-summary";
+  summary.innerHTML = `
+    <span><b>${items.length}</b><small>条记录</small></span>
+    <span><b>${avg("bridge_ms") || avg("total_ms")}ms</b><small>平均总耗时</small></span>
+    <span><b>${avg("llm_ms")}ms</b><small>平均 LLM</small></span>
+    <span><b>${avg("send_ms")}ms</b><small>平均发送</small></span>
+  `;
+  host.appendChild(summary);
 }
 
 function renderAccountList(selected) {
@@ -672,15 +603,6 @@ function loginStatusText(status) {
 
 function compact(text, limit) {
   return text.length > limit ? `${text.slice(0, limit - 3)}...` : text;
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(reader.error || new Error("文件读取失败"));
-    reader.readAsDataURL(file);
-  });
 }
 
 function escapeHtml(value) {

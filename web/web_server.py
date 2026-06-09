@@ -711,22 +711,6 @@ def create_app(args) -> FastAPI:
         require_local_service_control(request)
         return app.state.integration_manager.clear_logs(integration_id)
 
-    @app.get("/api/integrations/{integration_id}/contacts")
-    async def integration_contacts(integration_id: str, request: Request):
-        require_local_service_control(request)
-        return {"contacts": app.state.integration_manager.integration_contacts(integration_id)}
-
-    @app.patch("/api/integrations/{integration_id}/contacts/{sender_id:path}")
-    async def update_integration_contact(integration_id: str, sender_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        contact = app.state.integration_manager.update_contact(
-            integration_id,
-            sender_id,
-            payload or {},
-            account_id=str((payload or {}).get("account_id") or ""),
-        )
-        return {"contact": contact, "contacts": app.state.integration_manager.integration_contacts(integration_id)}
-
     @app.post("/api/integrations/{integration_id}/timings/{trace_id}")
     async def update_integration_timing(integration_id: str, trace_id: str, request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)

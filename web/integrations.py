@@ -185,7 +185,6 @@ class IntegrationManager:
                 }
             ],
             "sessions": {},
-            "contacts": {},
         }
 
     def load_config(self) -> dict:
@@ -202,16 +201,12 @@ class IntegrationManager:
         sessions = data.get("sessions")
         if isinstance(sessions, dict):
             base["sessions"] = {str(k): str(v) for k, v in sessions.items() if k and v}
-        contacts = data.get("contacts")
-        if isinstance(contacts, dict):
-            base["contacts"] = {str(k): self.normalize_contact(v) for k, v in contacts.items() if isinstance(v, dict)}
         return base
 
     def save_config(self, data: dict) -> dict:
         payload = {
             "integrations": [self.normalize_integration(item) for item in data.get("integrations", []) if isinstance(item, dict)],
             "sessions": data.get("sessions") if isinstance(data.get("sessions"), dict) else {},
-            "contacts": data.get("contacts") if isinstance(data.get("contacts"), dict) else {},
         }
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
@@ -292,7 +287,6 @@ class IntegrationManager:
         item["account"] = runtime.get("account") or (accounts[0]["id"] if accounts else "")
         item["last_message_at"] = runtime.get("last_message_at") or ""
         item["recent_timings"] = runtime.get("recent_timings") or []
-        item["contacts"] = self.integration_contacts(item["id"])
         return item
 
     def weixin_accounts(self, integration: dict) -> list[dict]:
@@ -366,76 +360,6 @@ class IntegrationManager:
         self.save_config(data)
         self.append_log(integration_id, "[config] deleted integration")
         return True
-
-    def contact_key(self, integration_id: str, sender_id: str, account_id: str = "") -> str:
-        return f"{safe_id(integration_id)}:{safe_id(account_id or 'account')}:{str(sender_id or 'unknown')}"
-
-    def normalize_contact(self, item: dict) -> dict:
-        return {
-            "sender_id": str(item.get("sender_id") or ""),
-            "account_id": str(item.get("account_id") or ""),
-            "remark_name": str(item.get("remark_name") or ""),
-            "display_name": str(item.get("display_name") or item.get("nickname") or ""),
-            "avatar_url": str(item.get("avatar_url") or ""),
-            "auto_avatar_url": str(item.get("auto_avatar_url") or ""),
-            "updated_at": str(item.get("updated_at") or now_text()),
-        }
-
-    def integration_contacts(self, integration_id: str) -> list[dict]:
-        data = self.load_config()
-        prefix = f"{safe_id(integration_id)}:"
-        items = []
-        for key, item in (data.get("contacts") or {}).items():
-            if str(key).startswith(prefix):
-                items.append({"key": key, **self.normalize_contact(item)})
-        items.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
-        return items
-
-    def get_contact(self, integration_id: str, sender_id: str, account_id: str = "") -> dict:
-        data = self.load_config()
-        key = self.contact_key(integration_id, sender_id, account_id)
-        return self.normalize_contact((data.get("contacts") or {}).get(key, {"sender_id": sender_id, "account_id": account_id}))
-
-    def update_contact(self, integration_id: str, sender_id: str, payload: dict, account_id: str = "") -> dict:
-        data = self.load_config()
-        key = self.contact_key(integration_id, sender_id, account_id or str(payload.get("account_id") or ""))
-        current = self.normalize_contact((data.get("contacts") or {}).get(key, {"sender_id": sender_id, "account_id": account_id}))
-        updated = self.normalize_contact({**current, **payload, "sender_id": sender_id, "updated_at": now_text()})
-        data.setdefault("contacts", {})[key] = updated
-        self.save_config(data)
-        return {"key": key, **updated}
-
-    def touch_contact_from_message(self, integration_id: str, sender_id: str, metadata: dict, account_id: str = "") -> dict:
-        data = self.load_config()
-        key = self.contact_key(integration_id, sender_id, account_id)
-        current = self.normalize_contact((data.get("contacts") or {}).get(key, {"sender_id": sender_id, "account_id": account_id}))
-        display_name = str(
-            metadata.get("display_name")
-            or metadata.get("nickname")
-            or metadata.get("nick_name")
-            or current.get("display_name")
-            or ""
-        )
-        auto_avatar_url = str(
-            metadata.get("avatar_url")
-            or metadata.get("head_img_url")
-            or metadata.get("portrait")
-            or current.get("auto_avatar_url")
-            or ""
-        )
-        updated = self.normalize_contact(
-            {
-                **current,
-                "sender_id": sender_id,
-                "account_id": account_id or current.get("account_id") or "",
-                "display_name": display_name,
-                "auto_avatar_url": auto_avatar_url,
-                "updated_at": now_text(),
-            }
-        )
-        data.setdefault("contacts", {})[key] = updated
-        self.save_config(data)
-        return {"key": key, **updated}
 
     def record_message_timing(self, integration_id: str, timing: dict) -> None:
         runtime = self.runtime.setdefault(safe_id(integration_id), {})
@@ -945,9 +869,6 @@ class ExternalDialogEngine:
         keywords = (integration or {}).get("voice_trigger_keywords") or DEFAULT_VOICE_TRIGGERS
         bot_profile = self.bot_profiles.get((integration or {}).get("bot_profile_id") or "default")
         runtime_settings = self.settings_for_profile(settings, bot_profile)
-        metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
-        account_id = str(metadata.get("account_id") or "")
-        contact = self.integration_manager.touch_contact_from_message(platform_id, sender_id, metadata, account_id)
         conversation_id = self.integration_manager.session_conversation_id(platform_id, session_id, sender_id, self.conversation_store)
         conversation = self.conversation_store.load(conversation_id) or self.conversation_store.create(f"{platform_id} / {sender_id}")
 
@@ -967,16 +888,12 @@ class ExternalDialogEngine:
                     "source": platform_id,
                     "platform_id": platform_id,
                     "sender_id": sender_id,
-                    "display_name": contact.get("remark_name") or contact.get("display_name") or sender_id,
-                    "avatar_url": contact.get("avatar_url") or contact.get("auto_avatar_url") or "",
                 },
                 {
                     "role": "assistant",
                     "content": reply_text,
                     "source": platform_id,
                     "platform_id": platform_id,
-                    "display_name": bot_profile.get("name") or "枝语",
-                    "avatar_url": bot_profile.get("avatar_url") or "",
                     "bot_profile_id": bot_profile.get("id") or "default",
                 },
             ],

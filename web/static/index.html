@@ -149,6 +149,7 @@
                 <div class="panel-head"><div><p class="eyebrow">Login & Logs</p><h2>登录与日志</h2></div><span class="soft-badge" id="selectedIntegrationBadge">--</span></div>
                 <div class="integration-qr" id="integrationLoginBox">选择实例后点击“扫码登录”，二维码或登录提示会写入日志。</div>
                 <div class="integration-account-list" id="integrationAccountList"></div>
+                <div class="integration-timing-list" id="integrationTimingSummary"></div>
                 <div class="inline-actions">
                   <button class="secondary-action" id="integrationLoginBtn" type="button"><i data-lucide="scan-line"></i>扫码登录</button>
                   <button class="secondary-action" id="integrationInstallBtn" type="button"><i data-lucide="package-plus"></i>安装适配器</button>
@@ -162,14 +163,6 @@
                   <button class="icon-button danger" id="integrationClearLogsBtn" type="button" title="清空日志"><i data-lucide="trash-2"></i></button>
                 </div>
                 <div class="log-viewer integration-log" id="integrationLogOutput" role="log" aria-live="polite">暂无日志。</div>
-              </section>
-              <section class="integration-panel">
-                <div class="panel-head"><div><p class="eyebrow">Latency</p><h2>最近耗时</h2></div></div>
-                <div class="integration-timing-list" id="integrationTimingList"></div>
-              </section>
-              <section class="integration-panel">
-                <div class="panel-head"><div><p class="eyebrow">Contacts</p><h2>联系人</h2></div></div>
-                <div class="integration-contact-list" id="integrationContactList"></div>
               </section>
               <section class="integration-panel">
                 <div class="panel-head"><div><p class="eyebrow">Dialog Probe</p><h2>链路测试</h2></div></div>
