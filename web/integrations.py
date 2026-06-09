@@ -114,6 +114,10 @@ def derive_raw_account_id(account_id: str) -> str | None:
     return None
 
 
+def ilink_endpoint(base_url: str, path: str) -> str:
+    return f"{str(base_url or DEFAULT_WEIXIN_OC_BASE_URL).rstrip('/')}/{path.lstrip('/')}"
+
+
 def is_story_request(text: str) -> bool:
     return any(keyword in text for keyword in ("故事", "睡前", "童话"))
 
@@ -317,6 +321,106 @@ class IntegrationManager:
             )
         return accounts
 
+    def weixin_account_credentials(self, integration: dict, account_id: str = "") -> dict:
+        accounts = self.weixin_accounts(integration)
+        selected = next((item for item in accounts if item.get("id") == account_id), None) if account_id else (accounts[0] if accounts else None)
+        if not selected:
+            return {}
+        data = read_json_file(Path(selected.get("path") or ""), {})
+        if not isinstance(data, dict):
+            return {}
+        token = str(data.get("token") or "").strip()
+        if not token:
+            return {}
+        return {
+            "id": selected.get("id") or account_id,
+            "token": token,
+            "base_url": str(data.get("baseUrl") or data.get("base_url") or selected.get("base_url") or DEFAULT_WEIXIN_OC_BASE_URL),
+            "user_id": str(data.get("userId") or data.get("user_id") or selected.get("user_id") or ""),
+        }
+
+    def context_tokens_path(self, integration: dict, account_id: str) -> Path:
+        state_dir = openclaw_state_dir(integration.get("openclaw_profile") or "branchwhisper")
+        return state_dir / "openclaw-weixin" / "accounts" / f"{account_id}.context-tokens.json"
+
+    def recent_weixin_targets(self, integration_id: str, within_hours: float = 24.0) -> list[dict]:
+        integration = self.get_integration(integration_id)
+        if not integration:
+            return []
+        targets: list[dict] = []
+        for account in self.weixin_accounts(integration):
+            account_id = str(account.get("id") or "")
+            if not account_id:
+                continue
+            credentials = self.weixin_account_credentials(integration, account_id)
+            if not credentials:
+                continue
+            token_path = self.context_tokens_path(integration, account_id)
+            data = read_json_file(token_path, {})
+            if not isinstance(data, dict):
+                continue
+            modified_at = token_path.stat().st_mtime if token_path.exists() else 0
+            age_hours = (time.time() - modified_at) / 3600 if modified_at else 999999
+            if age_hours > within_hours:
+                continue
+            for sender_id, context_token in data.items():
+                sender = str(sender_id or "")
+                token = str(context_token or "")
+                if sender and token:
+                    targets.append(
+                        {
+                            "account_id": account_id,
+                            "sender_id": sender,
+                            "context_token": token,
+                            "base_url": credentials["base_url"],
+                            "token": credentials["token"],
+                            "age_hours": round(age_hours, 2),
+                        }
+                    )
+        return targets
+
+    async def send_weixin_text(self, integration_id: str, text: str, sender_id: str = "", account_id: str = "") -> dict:
+        integration = self.require_integration(integration_id)
+        target = None
+        if sender_id:
+            for item in self.recent_weixin_targets(integration_id):
+                if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
+                    target = item
+                    break
+        if not target:
+            targets = self.recent_weixin_targets(integration_id)
+            target = targets[0] if targets else None
+        if not target:
+            error = "没有 24 小时内可主动触达的微信联系人；需要对方先发一条消息。"
+            self.append_log(integration_id, f"[proactive] send skipped: {error}")
+            return {"ok": False, "error": error}
+
+        client_id = f"branchwhisper-proactive-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}"
+        payload = {
+            "msg": {
+                "from_user_id": "",
+                "to_user_id": target["sender_id"],
+                "client_id": client_id,
+                "message_type": 2,
+                "message_state": 2,
+                "item_list": [{"type": 1, "text_item": {"text": str(text or "")}}],
+                "context_token": target["context_token"],
+            },
+            "base_info": {"channel_version": "branchwhisper-server", "bot_agent": "BranchWhisper/1.0 (proactive)"},
+        }
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                ilink_endpoint(target["base_url"], "ilink/bot/sendmessage"),
+                json=payload,
+                headers=weixin_api_headers(target["token"]),
+            )
+            resp.raise_for_status()
+        self.append_log(
+            integration_id,
+            f"[proactive] sent text account={target['account_id']} to={target['sender_id']} client_id={client_id}",
+        )
+        return {"ok": True, "client_id": client_id, "account_id": target["account_id"], "sender_id": target["sender_id"]}
+
     def get_integration(self, integration_id: str) -> dict | None:
         integration_id = safe_id(integration_id)
         for item in self.load_config()["integrations"]:
@@ -414,6 +518,8 @@ class IntegrationManager:
         self.runtime.setdefault(integration_id, {})["status"] = status
         if error:
             self.runtime[integration_id]["last_error"] = error
+        if status in RUNNING_STATES:
+            self.runtime[integration_id]["manual_stop"] = False
 
     def environment_status(self) -> dict:
         if self._environment_cache and now_ts() - self._environment_cache_at < 180:
@@ -582,6 +688,7 @@ class IntegrationManager:
         stream.close()
         self.processes[integration_id] = proc
         self.runtime.setdefault(integration_id, {})["status"] = status
+        self.runtime[integration_id]["manual_stop"] = False
         self.runtime[integration_id]["started_at"] = now_text()
         self.runtime[integration_id]["command"] = command
         self.mark_status(integration_id, status)
@@ -592,6 +699,7 @@ class IntegrationManager:
         integration_id = safe_id(integration_id)
         proc = self.processes.get(integration_id)
         if not proc or proc.poll() is not None:
+            self.runtime.setdefault(integration_id, {})["manual_stop"] = True
             self.mark_status(integration_id, "stopped")
             return {"ok": True, "status": "stopped"}
         proc.terminate()
@@ -601,6 +709,7 @@ class IntegrationManager:
             proc.kill()
             proc.wait(timeout=5)
         self.mark_status(integration_id, "stopped")
+        self.runtime.setdefault(integration_id, {})["manual_stop"] = True
         self.append_log(integration_id, "[process] stopped")
         return {"ok": True, "status": "stopped"}
 

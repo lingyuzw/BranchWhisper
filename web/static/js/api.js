@@ -110,6 +110,14 @@ export async function resolveTool(text) {
   });
 }
 
+export async function testTool(tool, argumentsData = {}) {
+  return fetchJson("/api/tools/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tool, arguments: argumentsData }),
+  });
+}
+
 /* ---- services ---- */
 
 export async function loadServices() {
@@ -285,7 +293,10 @@ function syncIntegrations(data) {
 /* ---- conversations ---- */
 
 export async function loadConversations() {
-  const data = await fetchJson("/api/conversations");
+  const params = new URLSearchParams();
+  if (state.conversationFilter) params.set("query", state.conversationFilter);
+  if (state.conversationArchivedMode) params.set("archived", state.conversationArchivedMode);
+  const data = await fetchJson(`/api/conversations${params.toString() ? `?${params}` : ""}`);
   state.conversations = data.conversations || [];
   return state.conversations;
 }
@@ -301,6 +312,20 @@ export async function createConversation() {
 
 export async function deleteConversation(conversationId) {
   return fetchJson(`/api/conversations/${encodeURIComponent(conversationId)}`, { method: "DELETE" });
+}
+
+export async function updateConversation(conversationId, data) {
+  const result = await fetchJson(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  state.conversations = result.conversations || state.conversations;
+  return result.conversation;
+}
+
+export function conversationExportUrl(conversationId) {
+  return `/api/conversations/${encodeURIComponent(conversationId)}/export.md`;
 }
 
 /* ---- memory ---- */
@@ -345,4 +370,44 @@ export async function deleteReminder(id) {
   const result = await fetchJson(`/api/reminders/${encodeURIComponent(id)}`, { method: "DELETE" });
   state.reminders = result.reminders || state.reminders;
   return result.ok;
+}
+
+/* ---- proactive ---- */
+
+export async function loadProactiveConfig() {
+  const data = await fetchJson("/api/proactive/config");
+  state.proactiveConfig = data.config || {};
+  return state.proactiveConfig;
+}
+
+export async function saveProactiveConfig(config) {
+  const data = await fetchJson("/api/proactive/config", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  state.proactiveConfig = data.config || {};
+  return state.proactiveConfig;
+}
+
+export async function loadProactiveEvents() {
+  const data = await fetchJson("/api/proactive/events");
+  state.proactiveEvents = data.events || [];
+  return state.proactiveEvents;
+}
+
+export async function testProactiveMessage(content = "") {
+  const data = await fetchJson("/api/proactive/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  state.proactiveEvents = data.events || state.proactiveEvents;
+  return data.event;
+}
+
+export async function dismissProactiveEvent(id) {
+  const data = await fetchJson(`/api/proactive/events/${encodeURIComponent(id)}/dismiss`, { method: "POST" });
+  state.proactiveEvents = data.events || state.proactiveEvents;
+  return data.ok;
 }

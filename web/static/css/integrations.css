@@ -142,7 +142,7 @@
 .integration-meta {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 .integration-meta .meta-cell strong {
@@ -157,6 +157,41 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.integration-state-note {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+}
+.integration-state-note .lucide {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+.integration-state-note.active {
+  border-color: rgba(120,199,122,0.24);
+  color: color-mix(in srgb, var(--success) 82%, var(--text) 18%);
+  background: var(--success-soft);
+}
+.integration-state-note.loading {
+  border-color: rgba(232,184,91,0.28);
+  color: color-mix(in srgb, var(--warning) 82%, var(--text) 18%);
+  background: var(--warning-soft);
+}
+.integration-state-note.failed {
+  border-color: rgba(231,104,104,0.24);
+  color: color-mix(in srgb, var(--danger) 82%, var(--text) 18%);
+  background: var(--danger-soft);
 }
 
 .integration-empty {

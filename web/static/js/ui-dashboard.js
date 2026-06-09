@@ -1,18 +1,38 @@
 /* ============================================================
-   ui-dashboard.js — ChatGPT-style chat dashboard
-   BranchWhisper · Precision Console
+   ui-dashboard.js - Chat dashboard
+   BranchWhisper
    ============================================================ */
 
 import { state, ACTIVE_CONVERSATION_KEY } from "./state.js";
 import { $, setText, renderIcons, formatConversationMeta, showToast, showSkeleton, showConfirm, createIcon } from "./utils.js";
-import { loadConfig, loadServices, loadConversations, createConversation, deleteConversation, loadMemory, addMemory, deleteMemory } from "./api.js";
-import { bindAppearanceRefresh, connectSocket, reconnectDialog, clearTranscript, selectConversation, resizeComposerInput, interruptAssistant, setTranscriptCallback, setPipelineUpdater } from "./dialog.js";
+import {
+  conversationExportUrl,
+  loadConfig,
+  loadServices,
+  loadConversations,
+  createConversation,
+  deleteConversation,
+  updateConversation,
+  loadMemory,
+  addMemory,
+  deleteMemory,
+} from "./api.js";
+import {
+  bindAppearanceRefresh,
+  connectSocket,
+  reconnectDialog,
+  clearTranscript,
+  selectConversation,
+  resizeComposerInput,
+  interruptAssistant,
+  setTranscriptCallback,
+  setPipelineUpdater,
+} from "./dialog.js";
 import { startMic, stopMic, sendMicSamples, shouldTriggerBargeIn } from "./audio.js";
 
 let hasMessages = false;
 let eventsBound = false;
-
-/* ---- init ---- */
+let conversationSearchTimer = 0;
 
 export async function initDashboard() {
   showSkeleton("conversationList", 5);
@@ -28,11 +48,17 @@ export async function initDashboard() {
   renderConversationList();
   resetPipelineCompact();
   setPipelineUpdater((stage, label) => updatePipelineCompact(stage, label));
-  setTranscriptCallback(() => { renderConversationList(); syncChatView(); });
+  setTranscriptCallback(() => {
+    loadConversations().then(() => {
+      renderConversationList();
+      syncChatView();
+    });
+  });
   bindAppearanceRefresh();
   connectSocket();
   drawScope();
   setupDashboardEvents();
+  await refreshMemoryInsight({ quiet: true });
 
   setText("topStatus", "待机");
   setupMemoryModal();
@@ -48,6 +74,9 @@ function setupDashboardEvents() {
   bindComposer("micBtn", "sendBtn", "interruptBtn", "resetBtn", "textInput");
   bindComposer("micBtnWelcome", "sendBtnWelcome", "interruptBtnWelcome", "resetBtnWelcome", "textInputWelcome");
   $("#newConversationBtn")?.addEventListener("click", newConversation);
+  $("#conversationSearchInput")?.addEventListener("input", handleConversationSearch);
+  $("#archiveModeBtn")?.addEventListener("click", toggleArchiveMode);
+  $("#memoryInsightRefreshBtn")?.addEventListener("click", () => refreshMemoryInsight());
   setupTtsToggle();
 }
 
@@ -59,11 +88,14 @@ function bindComposer(micId, sendId, intrId, resetId, inputId) {
 
   const input = $(`#${inputId}`);
   input?.addEventListener("input", () => resizeComposerInput(input));
-  input?.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendText(inputId); }});
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendText(inputId);
+    }
+  });
   resizeComposerInput(input);
 }
-
-/* ---- TTS toggle ---- */
 
 function setupTtsToggle() {
   const buttons = document.querySelectorAll("#ttsToggleBtn, #ttsToggleBtnWelcome");
@@ -89,10 +121,8 @@ function updateTtsToggleIcon() {
     btn.title = label;
     btn.classList.toggle("off", !state.ttsEnabled);
   });
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons();
 }
-
-/* ---- empty ↔ messages toggle ---- */
 
 function syncChatView() {
   const msgs = document.querySelectorAll("#transcript .message");
@@ -113,22 +143,18 @@ function syncChatView() {
   }
 }
 
-/* ---- text send ---- */
-
 function sendText(inputId) {
-  // use the visible input
   const input = $(`#${inputId}`);
   const text = input?.value.trim();
   if (!text) return;
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-    showToast("对话后端未连接", "error"); return;
+    showToast("对话后端未连接", "error");
+    return;
   }
   if (state.busy && state.assistantActive) interruptAssistant("text");
   state.busy = true;
 
-  // also clear the other input
-  const otherId = inputId === "textInput" ? "textInputWelcome" : "textInput";
-  const other = $(`#${otherId}`);
+  const other = $(`#${inputId === "textInput" ? "textInputWelcome" : "textInput"}`);
   if (other) other.value = "";
 
   setText("topStatus", "发送");
@@ -136,16 +162,13 @@ function sendText(inputId) {
   state.ws.send(JSON.stringify({ type: "text", text }));
   input.value = "";
   resizeComposerInput(input);
-
-  // show message area after first send
   if (!hasMessages) syncChatView();
 }
 
-/* ---- pipeline ---- */
-
 function resetPipelineCompact() {
-  document.querySelectorAll("#pipelineCompact .pipeline-row").forEach((r) => {
-    r.classList.remove("active", "done"); r.querySelector("small").textContent = "--";
+  document.querySelectorAll("#pipelineCompact .pipeline-row").forEach((row) => {
+    row.classList.remove("active", "done");
+    row.querySelector("small").textContent = "--";
   });
 }
 
@@ -153,52 +176,156 @@ function updatePipelineCompact(stage, label) {
   const steps = ["vad", "asr", "llm", "tts"];
   const index = steps.indexOf(stage);
   const rows = document.querySelectorAll("#pipelineCompact .pipeline-row");
-  rows.forEach((r, i) => { r.classList.remove("active", "done"); });
-  if (stage === "idle") { rows.forEach((r) => { r.querySelector("small").textContent = "--"; }); return; }
-  rows.forEach((r, i) => {
-    if (i < index) r.classList.add("done");
-    else if (i === index) r.classList.add("active");
+  rows.forEach((row) => row.classList.remove("active", "done"));
+  if (stage === "idle") {
+    rows.forEach((row) => { row.querySelector("small").textContent = "--"; });
+    return;
+  }
+  rows.forEach((row, i) => {
+    if (i < index) row.classList.add("done");
+    else if (i === index) row.classList.add("active");
   });
-  if (label && index >= 0) { const row = rows[index]; if (row) row.querySelector("small").textContent = label; }
+  if (label && index >= 0) {
+    const row = rows[index];
+    if (row) row.querySelector("small").textContent = label;
+  }
 }
 
-/* ---- conversation list ---- */
-
 function renderConversationList() {
-  const host = $("#conversationList"); if (!host) return;
+  const host = $("#conversationList");
+  if (!host) return;
   host.innerHTML = "";
-  const conversations = state.conversations.slice(0, 24);
-  if (!conversations.length) { const p = document.createElement("p"); p.className = "conversation-empty"; p.textContent = "还没有保存的对话"; host.appendChild(p); return; }
-  for (const c of conversations) {
+  const conversations = state.conversations.slice(0, 30);
+  if (!conversations.length) {
+    const p = document.createElement("p");
+    p.className = "conversation-empty";
+    p.textContent = state.conversationArchivedMode === "archived" ? "暂无归档对话" : "还没有保存的对话";
+    host.appendChild(p);
+    return;
+  }
+  for (const conversation of conversations) {
     const item = document.createElement("div");
-    item.className = `conversation-item ${c.id === state.activeConversationId ? "active" : ""}`;
+    item.className = `conversation-item ${conversation.id === state.activeConversationId ? "active" : ""}`;
+
     const openBtn = document.createElement("button");
     openBtn.type = "button";
     openBtn.className = "conversation-open";
     const title = document.createElement("strong");
-    title.textContent = c.title || "新的对话";
+    title.textContent = conversation.title || "新的对话";
     const preview = document.createElement("span");
-    preview.textContent = c.last_message || "空会话";
+    preview.textContent = conversation.summary || conversation.last_message || "空会话";
     const meta = document.createElement("small");
-    meta.textContent = formatConversationMeta(c);
+    meta.textContent = `${conversation.favorite ? "★ " : ""}${formatConversationMeta(conversation)}`;
     openBtn.append(title, preview, meta);
-    openBtn.addEventListener("click", () => selectConversation(c.id));
-    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.className = "conversation-delete"; delBtn.title = "删除";
-    delBtn.append(createIcon("trash-2"));
-    delBtn.addEventListener("click", () => handleDeleteConversation(c));
-    item.append(openBtn, delBtn); host.appendChild(item);
+    openBtn.addEventListener("click", () => selectConversation(conversation.id));
+
+    const actions = document.createElement("div");
+    actions.className = "conversation-actions";
+    actions.append(
+      conversationIcon("star", conversation.favorite ? "取消收藏" : "收藏", () => handleFavoriteConversation(conversation)),
+      conversationIcon("pencil", "重命名", () => handleRenameConversation(conversation)),
+      conversationIcon(conversation.archived ? "archive-restore" : "archive", conversation.archived ? "取消归档" : "归档", () => handleArchiveConversation(conversation)),
+      conversationIcon("download", "导出", () => handleExportConversation(conversation)),
+      conversationIcon("trash-2", "删除", () => handleDeleteConversation(conversation), "danger"),
+    );
+    item.append(openBtn, actions);
+    host.appendChild(item);
   }
   renderIcons();
 }
 
+function conversationIcon(icon, title, handler, tone = "") {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `conversation-icon ${tone}`;
+  btn.title = title;
+  btn.append(createIcon(icon));
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    handler();
+  });
+  return btn;
+}
+
+function handleConversationSearch(event) {
+  window.clearTimeout(conversationSearchTimer);
+  state.conversationFilter = event.target.value.trim();
+  conversationSearchTimer = window.setTimeout(async () => {
+    await loadConversations();
+    renderConversationList();
+  }, 180);
+}
+
+async function toggleArchiveMode() {
+  state.conversationArchivedMode = state.conversationArchivedMode === "archived" ? "active" : "archived";
+  $("#archiveModeBtn")?.classList.toggle("active", state.conversationArchivedMode === "archived");
+  await loadConversations();
+  renderConversationList();
+}
+
 async function newConversation() {
-  if (state.previewMode) { clearTranscript(); syncChatView(); showToast("预览模式：已清空", "info"); return; }
-  try {
-    const c = await createConversation();
-    state.activeConversationId = c.id; localStorage.setItem(ACTIVE_CONVERSATION_KEY, c.id);
-    await loadConversations(); renderConversationList(); reconnectDialog();
+  if (state.previewMode) {
+    clearTranscript();
     syncChatView();
-  } catch (e) { showToast(`新建失败：${e.message}`, "error"); }
+    showToast("预览模式：已清空", "info");
+    return;
+  }
+  try {
+    const conversation = await createConversation();
+    state.activeConversationId = conversation.id;
+    localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversation.id);
+    await loadConversations();
+    renderConversationList();
+    reconnectDialog();
+    syncChatView();
+  } catch (error) {
+    showToast(`新建失败：${error.message}`, "error");
+  }
+}
+
+async function handleRenameConversation(conversation) {
+  const title = prompt("新的会话名称", conversation.title || "");
+  if (title === null) return;
+  try {
+    await updateConversation(conversation.id, { title: title.trim() || conversation.title || "新的对话" });
+    await loadConversations();
+    renderConversationList();
+  } catch (error) {
+    showToast(`重命名失败：${error.message}`, "error");
+  }
+}
+
+async function handleFavoriteConversation(conversation) {
+  try {
+    await updateConversation(conversation.id, { favorite: !conversation.favorite });
+    await loadConversations();
+    renderConversationList();
+  } catch (error) {
+    showToast(`收藏失败：${error.message}`, "error");
+  }
+}
+
+async function handleArchiveConversation(conversation) {
+  try {
+    await updateConversation(conversation.id, { archived: !conversation.archived });
+    if (conversation.id === state.activeConversationId && !conversation.archived) {
+      state.activeConversationId = "";
+      state.activeConversation = null;
+      localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+      clearTranscript();
+      reconnectDialog();
+    }
+    await loadConversations();
+    renderConversationList();
+    syncChatView();
+  } catch (error) {
+    showToast(`归档失败：${error.message}`, "error");
+  }
+}
+
+function handleExportConversation(conversation) {
+  if (!conversation?.id) return;
+  window.open(conversationExportUrl(conversation.id), "_blank");
 }
 
 async function handleDeleteConversation(conversation) {
@@ -207,75 +334,138 @@ async function handleDeleteConversation(conversation) {
   const wasActive = conversation.id === state.activeConversationId;
   try {
     await deleteConversation(conversation.id);
-    if (wasActive) { state.activeConversationId = ""; state.activeConversation = null; localStorage.removeItem(ACTIVE_CONVERSATION_KEY); clearTranscript(); syncChatView(); }
-    await loadConversations(); renderConversationList();
+    if (wasActive) {
+      state.activeConversationId = "";
+      state.activeConversation = null;
+      localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+      clearTranscript();
+      syncChatView();
+    }
+    await loadConversations();
+    renderConversationList();
     if (wasActive) reconnectDialog();
-  } catch (e) { showToast(`删除失败：${e.message}`, "error"); }
-}
-
-/* ---- mic ---- */
-
-async function toggleMic() {
-  if (state.micActive) { stopMic(); setText("topStatus", "待机"); updatePipelineCompact("idle"); }
-  else {
-    if (!state.connected) { showToast("对话通道未连接", "error"); return; }
-    await startMic({ onSendSamples: (samples) => {
-      if (state.busy && state.assistantActive && shouldTriggerBargeIn()) interruptAssistant("voice");
-      if (state.busy) return;
-      sendMicSamples(samples);
-    }});
-    setText("topStatus", "监听中"); updatePipelineCompact("vad", "listening");
+  } catch (error) {
+    showToast(`删除失败：${error.message}`, "error");
   }
 }
 
-/* ---- waveform (sidebar) ---- */
+async function toggleMic() {
+  if (state.micActive) {
+    stopMic();
+    setText("topStatus", "待机");
+    updatePipelineCompact("idle");
+    return;
+  }
+  if (!state.connected) {
+    showToast("对话通道未连接", "error");
+    return;
+  }
+  await startMic({
+    onSendSamples: (samples) => {
+      if (state.busy && state.assistantActive && shouldTriggerBargeIn()) interruptAssistant("voice");
+      if (state.busy) return;
+      sendMicSamples(samples);
+    },
+  });
+  setText("topStatus", "监听中");
+  updatePipelineCompact("vad", "listening");
+}
 
 function drawScope() {
-  const canvas = $("#scopeCanvas"); if (!canvas) return;
+  const canvas = $("#scopeCanvas");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   const width = canvas.clientWidth || 280;
   const height = canvas.clientHeight || 70;
   if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
-    canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#0d1117";
   ctx.fillRect(0, 0, width, height);
 
-  // small grid
-  ctx.strokeStyle = "rgba(255,255,255,0.03)"; ctx.lineWidth = 0.5;
-  for (let x = 0; x < width; x += 14) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+  ctx.strokeStyle = "rgba(255,255,255,0.03)";
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < width; x += 14) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
 
-  state.levels.push(state.latestLevel); state.levels.shift();
+  state.levels.push(state.latestLevel);
+  state.levels.shift();
   ctx.beginPath();
   state.levels.forEach((level, i) => {
     const x = (i / (state.levels.length - 1)) * width;
     const y = height / 2 - level * height * 0.42;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   });
   const lineColor = state.busy ? "#d29922" : state.micActive ? "#d4a853" : "rgba(88,166,255,0.4)";
-  ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5; ctx.shadowColor = lineColor; ctx.shadowBlur = 6; ctx.stroke();
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = lineColor;
+  ctx.shadowBlur = 6;
+  ctx.stroke();
   ctx.shadowBlur = 0;
 
   requestAnimationFrame(drawScope);
 }
 
-/* ---- memory modal ---- */
-
 function setupMemoryModal() {
   $("#memoryTriggerBtn")?.addEventListener("click", openMemoryModal);
   document.querySelector("#memoryModal .modal-close")?.addEventListener("click", () => { $("#memoryModal").hidden = true; });
-  $("#memoryModal")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) $("#memoryModal").hidden = true; });
+  $("#memoryModal")?.addEventListener("click", (event) => { if (event.target === event.currentTarget) $("#memoryModal").hidden = true; });
   $("#memoryAddBtn")?.addEventListener("click", handleMemoryAdd);
-  $("#memoryAddInput")?.addEventListener("keydown", (e) => { if (e.key === "Enter") handleMemoryAdd(); });
+  $("#memoryAddInput")?.addEventListener("keydown", (event) => { if (event.key === "Enter") handleMemoryAdd(); });
 }
 
-async function openMemoryModal() { $("#memoryModal").hidden = false; await loadMemory(); renderMemoryModalList(); }
+async function refreshMemoryInsight(options = {}) {
+  try {
+    await loadMemory();
+    renderMemoryInsight();
+  } catch (error) {
+    if (!options.quiet) showToast(`记忆读取失败：${error.message}`, "error");
+  }
+}
+
+function renderMemoryInsight() {
+  const host = $("#memoryInsightList");
+  if (!host) return;
+  host.innerHTML = "";
+  const items = state.memories || [];
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "conversation-empty";
+    empty.textContent = "暂无记忆";
+    host.appendChild(empty);
+    return;
+  }
+  for (const item of items.slice(0, 4)) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "memory-insight-item";
+    row.title = item.value || item.key || "";
+    row.innerHTML = `<strong>${escapeHtml(item.key || "记忆")}</strong><span>${escapeHtml(item.value || "")}</span>`;
+    row.addEventListener("click", openMemoryModal);
+    host.appendChild(row);
+  }
+}
+
+async function openMemoryModal() {
+  $("#memoryModal").hidden = false;
+  await loadMemory();
+  renderMemoryModalList();
+  renderMemoryInsight();
+}
 
 function renderMemoryModalList() {
-  const host = $("#memoryModalList"); if (!host) return;
+  const host = $("#memoryModalList");
+  if (!host) return;
   host.innerHTML = "";
   if (!state.memories.length) {
     const empty = document.createElement("p");
@@ -285,7 +475,8 @@ function renderMemoryModalList() {
     return;
   }
   for (const item of state.memories) {
-    const div = document.createElement("div"); div.className = "memory-item";
+    const div = document.createElement("div");
+    div.className = "memory-item";
     const body = document.createElement("div");
     const key = document.createElement("strong");
     key.textContent = item.key || "--";
@@ -294,21 +485,47 @@ function renderMemoryModalList() {
     const meta = document.createElement("small");
     meta.textContent = `${item.layer} · ${item.count || 0} 次`;
     body.append(key, document.createElement("br"), value, document.createElement("br"), meta);
-    const delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.appendChild(createIcon("trash-2"));
-    delBtn.addEventListener("click", () => handleMemoryDelete(item.id)); div.appendChild(delBtn); host.appendChild(div);
-    div.prepend(body);
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.appendChild(createIcon("trash-2"));
+    delBtn.addEventListener("click", () => handleMemoryDelete(item.id));
+    div.append(body, delBtn);
+    host.appendChild(div);
   }
   renderIcons();
 }
 
 async function handleMemoryAdd() {
-  const input = $("#memoryAddInput"); const val = input?.value.trim(); if (!val) return;
-  try { await addMemory(val); input.value = ""; await loadMemory(); renderMemoryModalList(); showToast("已添加", "success"); }
-  catch (e) { showToast(e.message, "error"); }
+  const input = $("#memoryAddInput");
+  const val = input?.value.trim();
+  if (!val) return;
+  try {
+    await addMemory(val);
+    input.value = "";
+    await loadMemory();
+    renderMemoryModalList();
+    renderMemoryInsight();
+    showToast("已添加", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  }
 }
 
 async function handleMemoryDelete(id) {
   if (!(await showConfirm("删除这条记忆？"))) return;
-  try { await deleteMemory(id); await loadMemory(); renderMemoryModalList(); showToast("已删除", "success"); }
-  catch (e) { showToast(e.message, "error"); }
+  try {
+    await deleteMemory(id);
+    await loadMemory();
+    renderMemoryModalList();
+    renderMemoryInsight();
+    showToast("已删除", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, (char) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]
+  ));
 }

@@ -17,9 +17,24 @@ class ConversationStore:
         if not self.index_path.exists():
             self._write_json(self.index_path, [])
 
-    def list(self) -> list[dict]:
+    def list(self, query: str = "", archived: str = "active") -> list[dict]:
         items = self._read_index()
+        if archived == "active":
+            items = [item for item in items if not item.get("archived")]
+        elif archived == "archived":
+            items = [item for item in items if item.get("archived")]
+        if query:
+            q = query.lower()
+            items = [
+                item
+                for item in items
+                if q in str(item.get("title") or "").lower()
+                or q in str(item.get("last_message") or "").lower()
+                or q in str(item.get("summary") or "").lower()
+            ]
+        items.sort(key=lambda item: (not item.get("favorite"), item.get("updated_at", "")), reverse=False)
         items.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
+        items.sort(key=lambda item: bool(item.get("favorite")), reverse=True)
         return items
 
     def create(self, title: str | None = None) -> dict:
@@ -33,6 +48,9 @@ class ConversationStore:
             "sequence": sequence,
             "created_at": now,
             "updated_at": now,
+            "archived": False,
+            "favorite": False,
+            "summary": "",
             "messages": [],
         }
         self._write_conversation(conversation)
@@ -44,7 +62,7 @@ class ConversationStore:
         if conversation_id:
             loaded = self.load(conversation_id)
             if loaded:
-                return loaded
+                return self._normalize_conversation(loaded)
         return self.create()
 
     def load(self, conversation_id: str) -> dict | None:
@@ -53,7 +71,11 @@ class ConversationStore:
         path = self.root / f"{conversation_id}.json"
         if not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+        return self._normalize_conversation(data) if isinstance(data, dict) else None
 
     def append_messages(self, conversation_id: str, messages: list[dict], title_hint: str | None = None) -> dict:
         conversation = self.get_or_create(conversation_id)
@@ -83,28 +105,61 @@ class ConversationStore:
         self._upsert_summary(conversation)
         return conversation
 
+    def update(self, conversation_id: str, payload: dict) -> dict | None:
+        conversation = self.load(conversation_id)
+        if not conversation:
+            return None
+        for key in ("title", "summary"):
+            if key in payload and payload[key] is not None:
+                conversation[key] = str(payload[key]).strip()[:240]
+        for key in ("archived", "favorite"):
+            if key in payload:
+                conversation[key] = bool(payload[key])
+        conversation["updated_at"] = self._now()
+        self._write_conversation(conversation)
+        self._upsert_summary(conversation)
+        return conversation
+
     def delete(self, conversation_id: str) -> bool:
         conversation = self.load(conversation_id)
         if not conversation:
             return False
-
         path = self.root / f"{conversation_id}.json"
         try:
-            try:
-                path.unlink()
-            except FileNotFoundError:
-                pass
+            path.unlink(missing_ok=True)
         except OSError:
             return False
-
         items = [item for item in self._read_index() if item.get("id") != conversation_id]
         self._write_index(items)
         return True
 
+    def export_markdown(self, conversation_id: str) -> str:
+        conversation = self.load(conversation_id)
+        if not conversation:
+            return ""
+        lines = [f"# {conversation.get('title') or conversation_id}", ""]
+        if conversation.get("summary"):
+            lines.extend([f"> {conversation.get('summary')}", ""])
+        for message in conversation.get("messages") or []:
+            role = message.get("role") or "message"
+            created = message.get("created_at") or ""
+            content = message.get("content") or ""
+            lines.extend([f"## {role} {created}".strip(), "", content, ""])
+        return "\n".join(lines).strip() + "\n"
+
+    def _normalize_conversation(self, conversation: dict) -> dict:
+        conversation.setdefault("archived", False)
+        conversation.setdefault("favorite", False)
+        conversation.setdefault("summary", "")
+        conversation.setdefault("messages", [])
+        return conversation
+
     def _read_index(self) -> list[dict]:
         try:
             data = json.loads(self.index_path.read_text(encoding="utf-8"))
-            return data if isinstance(data, list) else []
+            if not isinstance(data, list):
+                return []
+            return [self._normalize_summary(item) for item in data if isinstance(item, dict)]
         except Exception:
             return []
 
@@ -120,17 +175,31 @@ class ConversationStore:
         self._write_index(items)
 
     def _summary(self, conversation: dict) -> dict:
+        conversation = self._normalize_conversation(conversation)
         messages = conversation.get("messages") or []
         last = messages[-1] if messages else {}
-        return {
-            "id": conversation.get("id"),
-            "title": conversation.get("title"),
-            "sequence": conversation.get("sequence"),
-            "created_at": conversation.get("created_at"),
-            "updated_at": conversation.get("updated_at"),
-            "message_count": len(messages),
-            "last_message": (last.get("content") or "")[:80],
-        }
+        return self._normalize_summary(
+            {
+                "id": conversation.get("id"),
+                "title": conversation.get("title"),
+                "sequence": conversation.get("sequence"),
+                "created_at": conversation.get("created_at"),
+                "updated_at": conversation.get("updated_at"),
+                "archived": bool(conversation.get("archived")),
+                "favorite": bool(conversation.get("favorite")),
+                "summary": conversation.get("summary") or self._auto_summary(messages),
+                "message_count": len(messages),
+                "last_message": (last.get("content") or "")[:80],
+            }
+        )
+
+    def _normalize_summary(self, item: dict) -> dict:
+        item.setdefault("archived", False)
+        item.setdefault("favorite", False)
+        item.setdefault("summary", "")
+        item.setdefault("message_count", 0)
+        item.setdefault("last_message", "")
+        return item
 
     def _write_json(self, path: Path, data) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,8 +211,19 @@ class ConversationStore:
         return time.strftime("%Y-%m-%d %H:%M:%S")
 
     def _is_default_title(self, title: str) -> bool:
-        return bool(re.match(r"^对话\s+\d+$", title or ""))
+        return bool(re.match(r"^(对话|瀵硅瘽)\s+\d+$", title or ""))
 
     def _make_title(self, text: str) -> str:
         text = re.sub(r"\s+", " ", text).strip()
         return text[:18] or "新的对话"
+
+    def _auto_summary(self, messages: list[dict]) -> str:
+        useful = [
+            str(item.get("content") or "").strip()
+            for item in messages
+            if item.get("role") in {"user", "assistant"} and item.get("content")
+        ]
+        if not useful:
+            return ""
+        text = re.sub(r"\s+", " ", useful[-1]).strip()
+        return text[:96]

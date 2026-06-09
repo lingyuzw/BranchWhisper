@@ -3,7 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#d4a853" />
     <title>枝语 BranchWhisper</title>
+    <link rel="manifest" href="/static/manifest.webmanifest" />
     <link rel="stylesheet" href="/static/styles.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
     <script type="module" src="/static/js/main.js" defer></script>
@@ -33,9 +35,17 @@
         <div class="voice-console">
           <aside class="sidebar">
             <button class="primary-action full" id="newConversationBtn" type="button"><i data-lucide="plus"></i> 新建对话</button>
+            <div class="conversation-tools">
+              <input id="conversationSearchInput" type="search" placeholder="搜索对话" autocomplete="off" />
+              <button class="icon-button" id="archiveModeBtn" type="button" title="查看归档"><i data-lucide="archive"></i></button>
+            </div>
             <div class="conversation-rail">
               <p class="eyebrow rail-label">Sessions</p>
               <div class="conversation-list" id="conversationList"></div>
+            </div>
+            <div class="memory-insight" id="memoryInsight">
+              <div class="memory-insight-head"><span>记忆</span><button class="icon-button" id="memoryInsightRefreshBtn" type="button" title="刷新记忆"><i data-lucide="refresh-cw"></i></button></div>
+              <div class="memory-insight-list" id="memoryInsightList"></div>
             </div>
             <div class="sidebar-scope">
               <div class="scope-header"><span id="vadLabel">idle</span><span id="levelText">0%</span></div>
@@ -186,6 +196,7 @@
             <a data-setting-nav="appearance"><i data-lucide="palette"></i>外观</a>
             <a data-setting-nav="engine"><i data-lucide="cpu"></i>模型引擎</a>
             <a data-setting-nav="tools"><i data-lucide="globe-2"></i>联网工具</a>
+            <a data-setting-nav="proactive"><i data-lucide="sparkles"></i>主动性</a>
             <a data-setting-nav="botProfiles"><i data-lucide="bot"></i>Bot Profile</a>
             <a data-setting-nav="prompt"><i data-lucide="message-square-text"></i>Prompt</a>
             <a data-setting-nav="tts"><i data-lucide="volume-2"></i>语音合成</a>
@@ -268,6 +279,69 @@
                 <button class="secondary-action" id="toolResolveClearBtn" type="button"><i data-lucide="eraser"></i>清空</button>
               </div>
               <pre class="tool-resolve-result" id="toolResolveResult">等待测试。</pre>
+            </article>
+            <article class="settings-panel proactive-panel" id="proactive">
+              <div class="panel-head">
+                <div><p class="eyebrow">Proactive Intelligence</p><h2>主动性</h2></div>
+                <button class="secondary-action" id="proactiveTestBtn" type="button"><i data-lucide="send"></i>测试主动消息</button>
+              </div>
+              <div class="proactive-layout">
+                <section class="proactive-card">
+                  <div class="appearance-card-head"><strong>主动触达</strong><small>默认关闭，开启后按规则生成消息</small></div>
+                  <div class="form-grid compact">
+                    <label><span>总开关</span><select id="proactiveEnabled"><option value="false">关闭</option><option value="true">开启</option></select></label>
+                    <label><span>每日上限</span><input id="proactiveDailyLimit" type="number" min="1" max="20" step="1" /></label>
+                    <label><span>语气</span><select id="proactiveTone"><option value="warm">温柔</option><option value="brief">简短</option><option value="natural">自然</option><option value="serious">严肃</option></select></label>
+                    <label><span>追问强度</span><select id="followupLevel"><option value="restrained">克制</option><option value="normal">正常</option><option value="active">积极</option><option value="off">关闭</option></select></label>
+                  </div>
+                  <div class="toggle-row">
+                    <label><input id="askFollowupEnabled" type="checkbox" /> 主动追问</label>
+                    <label><input id="proactiveWebChannel" type="checkbox" /> Web</label>
+                    <label><input id="proactiveWeixinChannel" type="checkbox" /> 微信</label>
+                  </div>
+                </section>
+                <section class="proactive-card">
+                  <div class="appearance-card-head"><strong>安静时间</strong><small>避免晚上打扰</small></div>
+                  <div class="form-grid compact">
+                    <label><span>启用</span><select id="quietHoursEnabled"><option value="true">启用</option><option value="false">关闭</option></select></label>
+                    <label><span>开始</span><input id="quietStart" type="time" /></label>
+                    <label><span>结束</span><input id="quietEnd" type="time" /></label>
+                  </div>
+                </section>
+                <section class="proactive-card wide">
+                  <div class="appearance-card-head"><strong>日常问候</strong><small>早安、午间、晚安和久未联系</small></div>
+                  <div class="greeting-grid">
+                    <label><input id="greetingsEnabled" type="checkbox" /> 启用问候</label>
+                    <label><input id="morningEnabled" type="checkbox" /> 早安</label>
+                    <label><span>早安开始</span><input id="morningStart" type="time" /></label>
+                    <label><span>早安结束</span><input id="morningEnd" type="time" /></label>
+                    <label><input id="morningWeather" type="checkbox" /> 带天气</label>
+                    <label><input id="morningReminders" type="checkbox" /> 带今日提醒</label>
+                    <label><input id="noonEnabled" type="checkbox" /> 午间问候</label>
+                    <label><input id="nightEnabled" type="checkbox" /> 晚安</label>
+                    <label><input id="absenceEnabled" type="checkbox" /> 久未联系</label>
+                  </div>
+                  <label class="wide"><span>自定义早安文案</span><textarea id="morningMessage" placeholder="留空则使用默认问候"></textarea></label>
+                </section>
+                <section class="proactive-card wide">
+                  <div class="appearance-card-head"><strong>定时提醒</strong><small>到点后写入 Web 会话；微信只在 24 小时可触达窗口内发送</small></div>
+                  <div class="reminder-editor">
+                    <input id="reminderTitleInput" type="text" placeholder="提醒标题，例如：喝水" autocomplete="off" />
+                    <input id="reminderTimeInput" type="datetime-local" />
+                    <select id="reminderChannelInput">
+                      <option value="web">Web</option>
+                      <option value="weixin">微信</option>
+                      <option value="all">Web + 微信</option>
+                    </select>
+                    <button class="secondary-action" id="createReminderBtn" type="button"><i data-lucide="alarm-plus"></i>添加提醒</button>
+                  </div>
+                  <div class="reminder-list" id="reminderList"></div>
+                </section>
+                <section class="proactive-card wide">
+                  <div class="appearance-card-head"><strong>主动事件</strong><small>最近生成、发送或等待的主动消息</small></div>
+                  <div class="proactive-events" id="proactiveEvents"></div>
+                </section>
+              </div>
             </article>
             <article class="settings-panel" id="botProfiles">
               <div class="panel-head"><div><p class="eyebrow">Bot Profiles</p><h2>Bot 人格</h2></div><button class="secondary-action" id="addBotProfileBtn" type="button"><i data-lucide="plus"></i>新增</button></div>

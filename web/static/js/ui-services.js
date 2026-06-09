@@ -266,7 +266,10 @@ function createServiceCard(service) {
   const stopBtn = serviceActionButton("stop", "square", "停止");
   const restartBtn = serviceActionButton("restart", "refresh-ccw", "重启");
   actions.append(startBtn, stopBtn, restartBtn);
-  card.append(head, meta, actions);
+  const advice = document.createElement("div");
+  advice.className = "service-advice";
+  advice.textContent = serviceAdvice(service, runtimeState, healthPayload);
+  card.append(head, meta, advice, actions);
   card.querySelector(".start").addEventListener("click", () => handleStart(service.id));
   card.querySelector(".stop").addEventListener("click", () => handleStop(service.id));
   card.querySelector(".restart").addEventListener("click", () => handleRestart(service.id));
@@ -401,6 +404,16 @@ function serviceDescription(service, runtimeState, payload) {
   if (runtimeState === "warming") return `模型预热中 · ${base}`;
   if (runtimeState === "failed" && service.error) return `异常：${friendlyServiceError(service.error)}`;
   return base;
+}
+
+function serviceAdvice(service, runtimeState, payload) {
+  if (runtimeState === "stopped") return "启动后才会预热模型。";
+  if (runtimeState === "starting") return "正在等待端口和健康接口响应。";
+  if (runtimeState === "warming") return "模型预热中，第一句延迟会在预热后降低。";
+  if (runtimeState === "failed") return friendlyServiceError(service.error || service.health?.error || payload.error) || "服务异常，请查看本次日志。";
+  if (service.warmup?.state === "ready") return "服务可用，模型已预热。";
+  if (runtimeState === "active") return "服务在线。";
+  return "状态会自动刷新。";
 }
 
 function shortText(value, length) {

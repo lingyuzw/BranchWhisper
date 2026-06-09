@@ -290,3 +290,159 @@
     max-width: none;
   }
 }
+
+.tool-provider-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tool-provider-actions .secondary-action {
+  min-height: 34px;
+}
+
+.proactive-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.proactive-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 55%, transparent), transparent 120px),
+    var(--surface);
+}
+
+.proactive-card.wide {
+  grid-column: 1 / -1;
+}
+
+.toggle-row,
+.greeting-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.toggle-row label,
+.greeting-grid label {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text-soft);
+  font-size: var(--font-sm);
+}
+
+.greeting-grid label:has(input[type="time"]) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.proactive-events {
+  display: grid;
+  gap: 8px;
+}
+
+.proactive-event {
+  display: grid;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.proactive-event.done {
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+}
+
+.proactive-event.failed {
+  border-color: color-mix(in srgb, var(--danger) 32%, var(--border));
+}
+
+.proactive-event div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.proactive-event strong,
+.proactive-event span,
+.proactive-event small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proactive-event span,
+.proactive-event small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+}
+
+.reminder-editor {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(190px, 0.9fr) minmax(120px, 0.45fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.reminder-editor input,
+.reminder-editor select {
+  min-width: 0;
+}
+
+.reminder-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reminder-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.reminder-item div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.reminder-item strong,
+.reminder-item small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reminder-item small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+}
+
+@media (max-width: 860px) {
+  .proactive-layout {
+    grid-template-columns: 1fr;
+  }
+  .reminder-editor {
+    grid-template-columns: 1fr;
+  }
+}

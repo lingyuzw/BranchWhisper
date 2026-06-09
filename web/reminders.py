@@ -67,7 +67,7 @@ class ReminderStore:
 
     def create(self, payload: dict) -> dict:
         now = self._now()
-        due_at = str(payload.get("due_at") or "").strip()
+        due_at = normalize_due_at(payload.get("due_at"))
         if not due_at:
             due_at = parse_due_at(str(payload.get("text") or payload.get("content") or ""))
         if not due_at:
@@ -125,7 +125,7 @@ class ReminderStore:
         next_item = dict(existing)
         for key in allowed:
             if key in payload and payload[key] is not None:
-                next_item[key] = str(payload[key])
+                next_item[key] = normalize_due_at(payload[key]) if key == "due_at" else str(payload[key])
         next_item["updated_at"] = self._now()
         with self.session() as conn:
             conn.execute(
@@ -201,3 +201,15 @@ def parse_due_at(text: str) -> str:
     if due < now and day.date() == now.date():
         due += timedelta(days=1)
     return due.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def normalize_due_at(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace("T", " ")
+    if len(text) == 16 and re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", text):
+        return f"{text}:00"
+    if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", text):
+        return text
+    return text

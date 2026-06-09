@@ -14,7 +14,7 @@ from pathlib import Path
 import httpx
 import numpy as np
 from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from assets import AvatarStore
@@ -40,6 +40,7 @@ from conversations import ConversationStore
 from direct_answers import direct_answer_from_tool
 from integrations import ExternalDialogEngine, IntegrationManager
 from profiles import BotProfileStore
+from proactive import FollowupPolicy, ProactiveStore
 from reminders import ReminderStore
 from runtime_brain import MemoryStore, ToolManager, parse_tool_call
 from services import ServiceManager, check_service, health_url_from
@@ -68,6 +69,8 @@ INTEGRATION_MEDIA_DIR = RUNTIME_DIR / "integration_media"
 TOOL_PROVIDERS_CONFIG = RUNTIME_DIR / "tool_providers.json"
 BOT_PROFILES_CONFIG = RUNTIME_DIR / "bot_profiles.json"
 REMINDERS_DB = RUNTIME_DIR / "reminders.sqlite3"
+PROACTIVE_CONFIG = RUNTIME_DIR / "proactive_config.json"
+PROACTIVE_DB = RUNTIME_DIR / "proactive.sqlite3"
 UPLOAD_DIR = RUNTIME_DIR / "uploads"
 AVATAR_DIR = UPLOAD_DIR / "avatars"
 
@@ -340,12 +343,20 @@ async def reminder_loop(app: FastAPI) -> None:
             for reminder in app.state.reminder_store.due():
                 content = f"提醒：{reminder.get('content') or reminder.get('title')}"
                 try:
-                    conversation = app.state.conversation_store.create(reminder.get("title") or "提醒")
-                    app.state.conversation_store.append_messages(
-                        conversation["id"],
-                        [{"role": "assistant", "content": content, "source": "reminder", "display_name": "枝语"}],
+                    result = await deliver_proactive_text(
+                        app,
+                        title=reminder.get("title") or "提醒",
+                        content=content,
+                        channel=reminder.get("channel") or "web",
+                        source="reminder",
+                        platform_id=reminder.get("platform_id") or "",
+                        sender_id=reminder.get("sender_id") or "",
                     )
-                    app.state.reminder_store.mark_fired(reminder["id"], "done")
+                    app.state.reminder_store.mark_fired(
+                        reminder["id"],
+                        "done" if result.get("ok") else "failed",
+                        result.get("error", ""),
+                    )
                 except Exception as exc:
                     app.state.reminder_store.mark_fired(reminder["id"], "failed", str(exc))
             await asyncio.sleep(15)
@@ -354,6 +365,126 @@ async def reminder_loop(app: FastAPI) -> None:
         except Exception as exc:
             print(f"[reminder] loop error: {exc}", flush=True)
             await asyncio.sleep(15)
+
+
+async def proactive_loop(app: FastAPI) -> None:
+    while True:
+        try:
+            app.state.proactive_store.maybe_create_greetings()
+            for event in app.state.proactive_store.due_pending_events():
+                try:
+                    result = await deliver_proactive_text(
+                        app,
+                        title=event.get("title") or "主动消息",
+                        content=event.get("content") or "",
+                        channel=event.get("channel") or "web",
+                        source="proactive",
+                        platform_id=event.get("platform_id") or "",
+                        sender_id=event.get("sender_id") or "",
+                    )
+                    app.state.proactive_store.update_event(
+                        event["id"],
+                        {
+                            "status": "done" if result.get("ok") else "failed",
+                            "fired_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            "conversation_id": result.get("conversation_id", ""),
+                            "last_error": result.get("error", ""),
+                        },
+                    )
+                except Exception as exc:
+                    app.state.proactive_store.update_event(event["id"], {"status": "failed", "last_error": str(exc)})
+            await asyncio.sleep(20)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            print(f"[proactive] loop error: {exc}", flush=True)
+            await asyncio.sleep(20)
+
+
+def preferred_integration_id(app: FastAPI, explicit: str = "") -> str:
+    if explicit:
+        return explicit
+    for integration in app.state.integration_manager.list_integrations().get("integrations", []):
+        if integration.get("enabled") and integration.get("accounts"):
+            return str(integration.get("id") or "")
+    return ""
+
+
+async def deliver_proactive_text(
+    app: FastAPI,
+    *,
+    title: str,
+    content: str,
+    channel: str = "web",
+    source: str = "proactive",
+    platform_id: str = "",
+    sender_id: str = "",
+) -> dict:
+    channel = str(channel or "web")
+    content = str(content or "").strip()
+    if not content:
+        return {"ok": False, "error": "消息内容为空。"}
+
+    result: dict[str, Any] = {"ok": False, "error": "", "conversation_id": ""}
+    errors = []
+
+    if channel in {"web", "all"}:
+        conversation = app.state.conversation_store.create(title or "主动消息")
+        app.state.conversation_store.append_messages(
+            conversation["id"],
+            [
+                {
+                    "role": "assistant",
+                    "content": content,
+                    "source": source,
+                    "display_name": app.state.settings.web_assistant_name or "枝语",
+                }
+            ],
+        )
+        result["ok"] = True
+        result["conversation_id"] = conversation["id"]
+
+    if channel in {"weixin", "all"}:
+        integration_id = preferred_integration_id(app, platform_id)
+        if not integration_id:
+            errors.append("没有可用的微信接入实例。")
+        else:
+            try:
+                sent = await app.state.integration_manager.send_weixin_text(integration_id, content, sender_id=sender_id)
+                if sent.get("ok"):
+                    result["ok"] = True
+                else:
+                    errors.append(sent.get("error") or "微信发送失败。")
+            except Exception as exc:
+                errors.append(str(exc))
+
+    if not result["ok"] and not errors:
+        errors.append(f"不支持的触达通道：{channel}")
+    result["error"] = "；".join(item for item in errors if item)
+    return result
+
+
+async def integration_watchdog_loop(app: FastAPI) -> None:
+    while True:
+        try:
+            for integration in app.state.integration_manager.list_integrations().get("integrations", []):
+                runtime = integration.get("runtime") or {}
+                if not integration.get("enabled"):
+                    continue
+                if runtime.get("manual_stop"):
+                    continue
+                if not integration.get("accounts"):
+                    continue
+                if integration.get("status") in {"failed", "stopped", "logged_in"}:
+                    branchwhisper_url = f"http://127.0.0.1:{int(getattr(app.state, 'server_port', 7860) or 7860)}"
+                    await app.state.integration_manager.start_bridge(integration["id"], branchwhisper_url=branchwhisper_url)
+                    app.state.integration_manager.append_log(integration["id"], "[watchdog] bridge restart requested")
+            await asyncio.sleep(25)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            print(f"[integration-watchdog] loop error: {exc}", flush=True)
+            await asyncio.sleep(25)
 
 
 def create_app(args) -> FastAPI:
@@ -375,6 +506,8 @@ def create_app(args) -> FastAPI:
     app.state.bot_profiles = BotProfileStore(BOT_PROFILES_CONFIG, app.state.settings.system)
     app.state.avatar_store = AvatarStore(AVATAR_DIR)
     app.state.reminder_store = ReminderStore(REMINDERS_DB)
+    app.state.proactive_store = ProactiveStore(PROACTIVE_CONFIG, PROACTIVE_DB)
+    app.state.followup_policy = FollowupPolicy(app.state.proactive_store)
     app.state.integration_manager = IntegrationManager(INTEGRATIONS_CONFIG, LOG_DIR, INTEGRATION_MEDIA_DIR)
     app.state.external_dialog_engine = ExternalDialogEngine(
         app.state.integration_manager,
@@ -385,6 +518,8 @@ def create_app(args) -> FastAPI:
         INTEGRATION_MEDIA_DIR,
     )
     app.state.reminder_task = None
+    app.state.proactive_task = None
+    app.state.integration_watchdog_task = None
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/runtime/uploads", StaticFiles(directory=UPLOAD_DIR), name="runtime_uploads")
 
@@ -399,14 +534,16 @@ def create_app(args) -> FastAPI:
     @app.on_event("startup")
     async def start_reminder_loop():
         app.state.reminder_task = asyncio.create_task(reminder_loop(app))
+        app.state.proactive_task = asyncio.create_task(proactive_loop(app))
+        app.state.integration_watchdog_task = asyncio.create_task(integration_watchdog_loop(app))
 
     @app.on_event("shutdown")
     async def stop_reminder_loop():
-        task = app.state.reminder_task
-        if task and not task.done():
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+        for task in (app.state.reminder_task, app.state.proactive_task, app.state.integration_watchdog_task):
+            if task and not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
 
     @app.get("/")
     async def index():
@@ -498,6 +635,41 @@ def create_app(args) -> FastAPI:
         require_local_service_control(request)
         return {"ok": app.state.reminder_store.delete(reminder_id), "reminders": app.state.reminder_store.list()}
 
+    @app.get("/api/proactive/config")
+    async def proactive_config(request: Request):
+        require_local_service_control(request)
+        return {"config": app.state.proactive_store.public_config()}
+
+    @app.patch("/api/proactive/config")
+    async def update_proactive_config(request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        return {"config": app.state.proactive_store.update_config(payload or {})}
+
+    @app.get("/api/proactive/events")
+    async def proactive_events(request: Request, status: str = "", limit: int = 80):
+        require_local_service_control(request)
+        return {"events": app.state.proactive_store.list_events(status=status, limit=limit)}
+
+    @app.post("/api/proactive/test")
+    async def proactive_test(request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        payload = payload or {}
+        event = app.state.proactive_store.create_event(
+            {
+                "kind": "test",
+                "title": payload.get("title") or "主动消息测试",
+                "content": payload.get("content") or "这是一条主动消息测试。保存后会出现在对话列表里。",
+                "channel": payload.get("channel") or "web",
+                "status": "pending",
+            }
+        )
+        return {"event": event, "events": app.state.proactive_store.list_events()}
+
+    @app.post("/api/proactive/events/{event_id}/dismiss")
+    async def dismiss_proactive_event(event_id: str, request: Request):
+        require_local_service_control(request)
+        return {"ok": app.state.proactive_store.dismiss_event(event_id), "events": app.state.proactive_store.list_events()}
+
     @app.get("/api/memory")
     async def memory_items(limit: int = 200, query: str = "", layer: str = ""):
         return {
@@ -532,17 +704,21 @@ def create_app(args) -> FastAPI:
         return app.state.tool_manager.update_config(payload or {})
 
     @app.post("/api/tools/test")
-    async def test_tool(payload: dict | None = Body(default=None)):
+    async def test_tool(request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
         payload = payload or {}
-        tool_id = str(payload.get("id") or "")
+        tool_id = str(payload.get("tool") or payload.get("id") or "")
         arguments = payload.get("arguments") if isinstance(payload.get("arguments"), dict) else {}
+        if not tool_id:
+            raise HTTPException(status_code=400, detail="tool is required")
+        started = time.perf_counter()
         result = await app.state.tool_manager.execute(
             tool_id,
             arguments,
             timeout=app.state.settings.tools_timeout,
             max_chars=app.state.settings.tools_max_result_chars,
         )
-        return {"id": tool_id, "result": result}
+        return {"id": tool_id, "arguments": arguments, "elapsed_ms": int((time.perf_counter() - started) * 1000), "result": result}
 
     @app.post("/api/tools/resolve")
     async def resolve_tool(request: Request, payload: dict | None = Body(default=None)):
@@ -792,8 +968,8 @@ def create_app(args) -> FastAPI:
             raise HTTPException(status_code=500, detail=f"Integration dialog failed: {exc}") from exc
 
     @app.get("/api/conversations")
-    async def conversations():
-        return {"conversations": app.state.conversation_store.list()}
+    async def conversations(query: str = "", archived: str = "active"):
+        return {"conversations": app.state.conversation_store.list(query=query, archived=archived)}
 
     @app.post("/api/conversations")
     async def create_conversation(payload: dict | None = Body(default=None)):
@@ -806,6 +982,24 @@ def create_app(args) -> FastAPI:
         if not loaded:
             return {"conversation": None}
         return {"conversation": loaded}
+
+    @app.patch("/api/conversations/{conversation_id}")
+    async def update_conversation(conversation_id: str, payload: dict | None = Body(default=None)):
+        updated = app.state.conversation_store.update(conversation_id, payload or {})
+        if not updated:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return {"conversation": updated, "conversations": app.state.conversation_store.list()}
+
+    @app.get("/api/conversations/{conversation_id}/export.md")
+    async def export_conversation_markdown(conversation_id: str):
+        text = app.state.conversation_store.export_markdown(conversation_id)
+        if not text:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return PlainTextResponse(
+            text,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{conversation_id}.md"'},
+        )
 
     @app.delete("/api/conversations/{conversation_id}")
     async def delete_conversation(conversation_id: str):
@@ -822,6 +1016,7 @@ def create_app(args) -> FastAPI:
             app.state.conversation_store,
             app.state.memory_store,
             app.state.tool_manager,
+            app.state.followup_policy,
             websocket.query_params.get("conversation_id"),
         )
         await session.run()
@@ -844,6 +1039,7 @@ class DialogSession:
         conversation_store: ConversationStore,
         memory_store: MemoryStore,
         tool_manager: ToolManager,
+        followup_policy: FollowupPolicy | None,
         conversation_id: str | None,
     ):
         self.websocket = websocket
@@ -853,6 +1049,7 @@ class DialogSession:
         self.conversation_store = conversation_store
         self.memory_store = memory_store
         self.tool_manager = tool_manager
+        self.followup_policy = followup_policy
         self.conversation = conversation_store.get_or_create(conversation_id)
         self.messages = self.build_llm_messages(self.conversation)
         self.vad_load_task: asyncio.Task | None = None
@@ -1076,6 +1273,19 @@ class DialogSession:
                 self.messages.append({"role": "user", "content": user_text})
                 self.messages.append({"role": "assistant", "content": repeat_text})
                 self.persist_messages([{"role": "assistant", "content": repeat_text}])
+                await self.send_event("conversation_saved", conversation=self.conversation)
+                self.trim_history()
+                return
+
+            followup = self.followup_policy.maybe_question(user_text) if self.followup_policy else None
+            if followup:
+                question = followup["question"]
+                self.trace_log(trace_id, f"followup:{followup.get('id')}")
+                await self.send_event("assistant_start")
+                await self.send_event("llm_delta", text=question)
+                self.messages.append({"role": "user", "content": user_text})
+                self.messages.append({"role": "assistant", "content": question})
+                self.persist_messages([{"role": "assistant", "content": question, "source": "followup"}])
                 await self.send_event("conversation_saved", conversation=self.conversation)
                 self.trim_history()
                 return

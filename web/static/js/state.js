@@ -163,4 +163,8 @@ export const state = {
   botProfiles: [],
   toolConfig: {},
   reminders: [],
+  proactiveConfig: {},
+  proactiveEvents: [],
+  conversationFilter: "",
+  conversationArchivedMode: "active",
 };

@@ -202,10 +202,15 @@ function createIntegrationCard(integration) {
     ["回复", integration.reply_mode || "text"],
     ["账号", integration.runtime?.account_count ?? 0],
     ["PID", integration.pid || "--"],
+    ["守护", integration.runtime?.manual_stop ? "手动停止" : "自动恢复"],
     ["提示", humanError(lastError)],
   ]) {
     meta.appendChild(metaCell(label, value));
   }
+
+  const note = document.createElement("div");
+  note.className = `integration-state-note ${statusClass(integration.status)}`;
+  note.append(createIcon(statusIcon(integration.status)), document.createTextNode(integrationHint(integration)));
 
   const actions = document.createElement("div");
   actions.className = "integration-actions";
@@ -217,7 +222,7 @@ function createIntegrationCard(integration) {
     actionButton("删除", "trash-2", () => handleDelete(integration.id)),
   );
 
-  card.append(head, meta, actions);
+  card.append(head, meta, note, actions);
   return card;
 }
 
@@ -296,6 +301,13 @@ function renderLoginBox(selected) {
   }
   const isReady = selected.status === "logged_in" || selected.status === "running";
   const session = isReady ? null : (state.integrationLoginSession?.integrationId === selected.id ? state.integrationLoginSession : null);
+  if (selected.runtime?.manual_stop) {
+    const text = document.createElement("div");
+    text.className = "integration-login-placeholder";
+    text.innerHTML = `<strong>已手动停止</strong><span>后台守护不会自动重启这个实例。需要继续接收微信消息时，点击左侧卡片里的“启动桥接”。</span>`;
+    box.appendChild(text);
+    return;
+  }
   if (isReady) {
     if (state.integrationLoginSession?.integrationId === selected.id) state.integrationLoginSession = null;
     const text = document.createElement("div");
@@ -574,6 +586,44 @@ function statusText(status) {
     failed: "失败",
     stopped: "已停止",
   }[status] || "未知";
+}
+
+function statusIcon(status) {
+  return {
+    running: "radio",
+    login: "scan-line",
+    logged_in: "check-circle-2",
+    starting: "loader-2",
+    installing: "package-plus",
+    failed: "circle-alert",
+    stopped: "circle-pause",
+  }[status] || "info";
+}
+
+function integrationHint(integration) {
+  const lastError = integration.last_error || integration.runtime?.last_error || "";
+  if (integration.runtime?.manual_stop) {
+    return "这是你手动停止的实例，后台守护不会自动拉起。";
+  }
+  if (integration.status === "running") {
+    return "桥接进程运行中，微信消息会直接进入 BranchWhisper。";
+  }
+  if (integration.status === "logged_in") {
+    return "账号已保存，点击“启动桥接”后开始收发消息。";
+  }
+  if (integration.status === "login") {
+    return "正在等待微信扫码；成功后二维码会自动隐藏。";
+  }
+  if (integration.status === "failed") {
+    if (String(lastError).includes("Connection refused") || String(lastError).includes("refused connection")) {
+      return "桥接无法连到主服务，请确认 BranchWhisper 后端正在当前端口运行。";
+    }
+    return humanError(lastError) || "接入出现错误，查看日志能看到具体原因。";
+  }
+  if (integration.enabled && integration.accounts?.length) {
+    return "已启用并检测到账号，后台守护会尝试自动恢复桥接。";
+  }
+  return "首次使用先扫码登录；容器环境不用启动 OpenClaw Gateway。";
 }
 
 function humanError(text) {

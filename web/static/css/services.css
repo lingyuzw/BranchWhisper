@@ -243,3 +243,16 @@
   .service-head { grid-template-columns: 8px minmax(0, 1fr); }
   .service-badge { grid-column: 2; justify-self: start; }
 }
+
+.service-advice {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+}

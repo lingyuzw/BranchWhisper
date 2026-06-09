@@ -6,15 +6,23 @@
 import { state, DEFAULT_CONFIG } from "./state.js";
 import { $, setValue, value, setText, setPlaceholder, renderIcons, showToast, createIcon, safePort } from "./utils.js";
 import {
+  createReminder,
   createBotProfile,
   deleteBotProfile,
+  deleteReminder,
   loadBotProfiles,
   loadConfig,
+  loadProactiveConfig,
+  loadProactiveEvents,
+  loadReminders,
   loadServices,
   loadToolConfig,
   resolveTool,
   saveConfig,
+  saveProactiveConfig,
   saveToolConfig,
+  testProactiveMessage,
+  testTool,
   updateBotProfile,
   updateServiceConfig,
   uploadAvatar,
@@ -60,10 +68,13 @@ export async function initSettings() {
   });
 
   const configResult = await loadConfig();
-  await Promise.allSettled([loadToolConfig(), loadBotProfiles()]);
+  await Promise.allSettled([loadToolConfig(), loadBotProfiles(), loadProactiveConfig(), loadProactiveEvents(), loadReminders()]);
   syncToolProviderDraft();
   fillConfig(configResult.config);
   renderToolProviders();
+  fillProactiveConfig();
+  renderProactiveEvents();
+  renderReminders();
   // 即使 loadConfig 失败也调 fillConfig(DEFAULT_CONFIG)
   if (!configResult.ok) fillConfig(configResult.config);
   await loadServices();
@@ -85,6 +96,8 @@ function setupSettingsEvents() {
   $("#saveAllBtn")?.addEventListener("click", saveSettingsPage);
   $("#toolResolveBtn")?.addEventListener("click", runToolResolve);
   $("#toolResolveClearBtn")?.addEventListener("click", clearToolResolve);
+  $("#proactiveTestBtn")?.addEventListener("click", runProactiveTest);
+  $("#createReminderBtn")?.addEventListener("click", handleCreateReminder);
   $("#addBotProfileBtn")?.addEventListener("click", addBotProfile);
   bindChatIdentityEvents();
   $("#toolProviderCancelBtn")?.addEventListener("click", closeToolProviderModal);
@@ -359,7 +372,15 @@ function renderToolProviders() {
     action.type = "button";
     action.append(createIcon("sliders-horizontal"), document.createTextNode("配置"));
     action.addEventListener("click", () => openToolProviderModal(key));
-    card.append(head, status, action);
+    const test = document.createElement("button");
+    test.className = "secondary-action tool-provider-test";
+    test.type = "button";
+    test.append(createIcon("activity"), document.createTextNode("测试"));
+    test.addEventListener("click", () => runProviderTest(key));
+    const actions = document.createElement("div");
+    actions.className = "tool-provider-actions";
+    actions.append(action, test);
+    card.append(head, status, actions);
     host.appendChild(card);
   }
   renderIcons();
@@ -565,6 +586,207 @@ function clearToolResolve() {
   setText("toolResolveResult", "等待测试。");
 }
 
+async function runProviderTest(key) {
+  const providerArgs = {
+    weather: { location: toolProviderDraft.weather?.default_location || "北京" },
+    search: { query: "漳州", limit: 3 },
+    news: { topic: "科技", region: "CN", limit: 3 },
+    finance: { query: "人民币 美元 汇率", limit: 3 },
+    map: { query: "漳州在哪个省份" },
+    url_fetch: { url: "https://example.com" },
+    reminder: {},
+  };
+  const toolByProvider = {
+    weather: "weather",
+    search: "web_search",
+    news: "hot_news",
+    finance: "finance",
+    map: "map",
+    url_fetch: "url_fetch",
+    reminder: "time",
+  };
+  const tool = toolByProvider[key] || key;
+  setText("toolResolveResult", `正在测试 ${tool} ...`);
+  try {
+    const result = await testTool(tool, providerArgs[key] || {});
+    setText("toolResolveResult", JSON.stringify(result, null, 2));
+  } catch (e) {
+    setText("toolResolveResult", `测试失败：${e.message}`);
+  }
+}
+
+function fillProactiveConfig() {
+  const cfg = state.proactiveConfig || {};
+  const greetings = cfg.greetings || {};
+  const morning = greetings.good_morning || {};
+  setValue("proactiveEnabled", String(cfg.enabled === true));
+  setValue("proactiveDailyLimit", cfg.daily_limit || 3);
+  setValue("proactiveTone", cfg.tone || "warm");
+  setValue("followupLevel", cfg.followup_level || "restrained");
+  setChecked("askFollowupEnabled", cfg.ask_followup_enabled !== false);
+  setChecked("proactiveWebChannel", (cfg.channels || {}).web !== false);
+  setChecked("proactiveWeixinChannel", (cfg.channels || {}).weixin === true);
+  setValue("quietHoursEnabled", String(cfg.quiet_hours_enabled !== false));
+  setValue("quietStart", cfg.quiet_start || "23:00");
+  setValue("quietEnd", cfg.quiet_end || "08:00");
+  setChecked("greetingsEnabled", greetings.enabled === true);
+  setChecked("morningEnabled", morning.enabled !== false);
+  setValue("morningStart", morning.window_start || "07:00");
+  setValue("morningEnd", morning.window_end || "09:30");
+  setChecked("morningWeather", morning.with_weather === true);
+  setChecked("morningReminders", morning.with_reminders === true);
+  setChecked("noonEnabled", (greetings.noon || {}).enabled === true);
+  setChecked("nightEnabled", (greetings.good_night || {}).enabled === true);
+  setChecked("absenceEnabled", (greetings.long_absence || {}).enabled === true);
+  setValue("morningMessage", morning.message || "");
+}
+
+function collectProactiveConfig() {
+  const current = structuredCloneSafe(state.proactiveConfig || {});
+  current.enabled = value("proactiveEnabled", "false") === "true";
+  current.daily_limit = Number(value("proactiveDailyLimit", 3)) || 3;
+  current.tone = value("proactiveTone", "warm");
+  current.followup_level = value("followupLevel", "restrained");
+  current.ask_followup_enabled = isChecked("askFollowupEnabled");
+  current.channels = { web: isChecked("proactiveWebChannel"), weixin: isChecked("proactiveWeixinChannel") };
+  current.quiet_hours_enabled = value("quietHoursEnabled", "true") === "true";
+  current.quiet_start = value("quietStart", "23:00");
+  current.quiet_end = value("quietEnd", "08:00");
+  current.greetings = current.greetings || {};
+  current.greetings.enabled = isChecked("greetingsEnabled");
+  current.greetings.good_morning = {
+    ...(current.greetings.good_morning || {}),
+    enabled: isChecked("morningEnabled"),
+    window_start: value("morningStart", "07:00"),
+    window_end: value("morningEnd", "09:30"),
+    with_weather: isChecked("morningWeather"),
+    with_reminders: isChecked("morningReminders"),
+    message: value("morningMessage", ""),
+  };
+  current.greetings.noon = { ...(current.greetings.noon || {}), enabled: isChecked("noonEnabled") };
+  current.greetings.good_night = { ...(current.greetings.good_night || {}), enabled: isChecked("nightEnabled") };
+  current.greetings.long_absence = { ...(current.greetings.long_absence || {}), enabled: isChecked("absenceEnabled") };
+  return current;
+}
+
+function renderProactiveEvents() {
+  const host = $("#proactiveEvents");
+  if (!host) return;
+  host.innerHTML = "";
+  const events = state.proactiveEvents || [];
+  if (!events.length) {
+    const empty = document.createElement("p");
+    empty.className = "conversation-empty";
+    empty.textContent = "暂无主动事件。";
+    host.appendChild(empty);
+    return;
+  }
+  for (const event of events.slice(0, 8)) {
+    const item = document.createElement("div");
+    item.className = `proactive-event ${event.status || "pending"}`;
+    const body = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = event.title || event.kind || "主动事件";
+    const content = document.createElement("span");
+    content.textContent = event.content || "";
+    const meta = document.createElement("small");
+    meta.textContent = `${event.status || "pending"} · ${event.created_at || ""}`;
+    body.append(title, content, meta);
+    item.appendChild(body);
+    host.appendChild(item);
+  }
+}
+
+async function runProactiveTest() {
+  try {
+    await testProactiveMessage("这是一条主动消息测试。它会作为枝语的主动消息出现在对话列表里。");
+    await loadProactiveEvents();
+    renderProactiveEvents();
+    showToast("主动消息已创建", "success");
+  } catch (e) {
+    showToast(`主动消息测试失败：${e.message}`, "error");
+  }
+}
+
+function renderReminders() {
+  const host = $("#reminderList");
+  if (!host) return;
+  host.innerHTML = "";
+  const reminders = (state.reminders || []).filter((item) => item.status === "pending").slice(0, 8);
+  if (!reminders.length) {
+    const empty = document.createElement("p");
+    empty.className = "conversation-empty";
+    empty.textContent = "暂无待触发提醒。";
+    host.appendChild(empty);
+    return;
+  }
+  for (const reminder of reminders) {
+    const item = document.createElement("div");
+    item.className = "reminder-item";
+    const body = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = reminder.title || "提醒";
+    const meta = document.createElement("small");
+    meta.textContent = `${formatReminderTime(reminder.due_at)} · ${reminder.channel || "web"}`;
+    body.append(title, meta);
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "icon-button";
+    del.title = "删除提醒";
+    del.append(createIcon("trash-2"));
+    del.addEventListener("click", () => handleDeleteReminder(reminder.id));
+    item.append(body, del);
+    host.appendChild(item);
+  }
+  renderIcons();
+}
+
+async function handleCreateReminder() {
+  const title = value("reminderTitleInput", "").trim();
+  const dueAt = value("reminderTimeInput", "").trim();
+  const channel = value("reminderChannelInput", "web");
+  if (!title || !dueAt) {
+    showToast("请填写提醒内容和时间", "error");
+    return;
+  }
+  try {
+    await createReminder({ title, content: title, due_at: dueAt, channel });
+    setValue("reminderTitleInput", "");
+    setValue("reminderTimeInput", "");
+    await loadReminders();
+    renderReminders();
+    showToast("提醒已添加", "success");
+  } catch (e) {
+    showToast(`添加提醒失败：${e.message}`, "error");
+  }
+}
+
+async function handleDeleteReminder(id) {
+  if (!id) return;
+  try {
+    await deleteReminder(id);
+    await loadReminders();
+    renderReminders();
+    showToast("提醒已删除", "success");
+  } catch (e) {
+    showToast(`删除提醒失败：${e.message}`, "error");
+  }
+}
+
+function formatReminderTime(value) {
+  const text = String(value || "");
+  return text ? text.replace("T", " ").slice(0, 16) : "--";
+}
+
+function setChecked(id, checked) {
+  const el = document.getElementById(id);
+  if (el) el.checked = Boolean(checked);
+}
+
+function isChecked(id) {
+  return Boolean(document.getElementById(id)?.checked);
+}
+
 function renderBotProfiles() {
   const host = $("#botProfileList");
   if (!host) return;
@@ -652,12 +874,16 @@ async function saveSettingsPage() {
   try {
     await saveConfig(collectConfig());
     await saveToolConfig(collectToolConfig());
+    await saveProactiveConfig(collectProactiveConfig());
     await saveBotProfiles();
     for (const s of state.services) { await updateServiceConfig(s.id, collectProfileConfig(s.id)); }
-    await Promise.allSettled([loadConfig(), loadToolConfig(), loadBotProfiles()]);
+    await Promise.allSettled([loadConfig(), loadToolConfig(), loadBotProfiles(), loadProactiveConfig(), loadProactiveEvents(), loadReminders()]);
     syncToolProviderDraft();
     fillConfig(state.currentConfig);
     renderToolProviders();
+    fillProactiveConfig();
+    renderProactiveEvents();
+    renderReminders();
     await loadServices(); renderProfileList();
     renderBotProfiles();
     window.dispatchEvent(new CustomEvent("branchwhisper:appearance-updated"));

@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderIcons();
   setupNav();
   loadTheme();
+  registerServiceWorker();
 
   const initial = pageFromHash() || document.body.dataset.page || "dashboard";
   await switchPage(initial, false);
@@ -180,3 +181,9 @@ window.__branchwhisper = {
   getTheme: readTheme,
 };
 window.__lovechoice = window.__branchwhisper;
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
+  navigator.serviceWorker.register("/static/sw.js").catch(() => {});
+}
