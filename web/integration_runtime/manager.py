@@ -39,8 +39,12 @@ DEFAULT_VOICE_TRIGGERS = [
     "发语音",
     "发条语音",
     "发句语音",
+    "说话",
+    "你说话",
+    "说两句",
     "说句话",
     "讲句话",
+    "想听你说",
     "念给我听",
     "读出来",
     "语音回复",
@@ -50,15 +54,20 @@ DEFAULT_VOICE_TRIGGERS = [
 VOICE_INTENT_RE = re.compile(
     r"(发|来|给我|要|想听)(一|1)?(条|段|句)?语音"
     r"|(一|1)?(条|段|句)语音"
+    r"|再(发|来|说|讲)(一|1)?(条|段|句)?"
+    r"|(我)?想听(你|妳)?(说|讲|念|读)"
     r"|语音回复"
-    r"|说(句|句话|一下|给我听)"
-    r"|讲(句|句话|一下)"
+    r"|(你|妳)?(快点|快|赶紧|马上)?说话"
+    r"|(你|妳)?(快点|快|赶紧|马上)?说(句|句话|一句|一段|两句|几句|一下|给我听|呀|啊|嘛|吗|吧)"
+    r"|说(给我听|我听着|出来)"
+    r"|讲(句|句话|一句|一段|两句|几句|一下|给我听)"
     r"|念(一下|给我听)?"
     r"|读出来"
     r"|开口(说话)?"
     r"|出声"
     r"|听听$"
 )
+VOICE_NEGATIVE_RE = re.compile(r"(别|不要|不用|不想|先别|别再)(发语音|语音|说话|开口|出声)")
 DEFAULT_WEIXIN_OC_BASE_URL = "https://ilinkai.weixin.qq.com"
 DEFAULT_WEIXIN_CDN_BASE_URL = "https://novac2c.cdn.weixin.qq.com/c2c"
 DEFAULT_WEIXIN_OC_BOT_TYPE = "3"
@@ -1608,13 +1617,15 @@ class ExternalDialogEngine:
         if (integration or {}).get("reply_mode") == "voice":
             return True
         normalized = re.sub(r"\s+", "", user_text or "")
+        if VOICE_NEGATIVE_RE.search(normalized):
+            return False
         for keyword in keywords:
             normalized_keyword = re.sub(r"\s+", "", str(keyword))
-            if not normalized_keyword or normalized_keyword == "说话":
+            if not normalized_keyword:
                 continue
             if normalized_keyword in normalized:
                 return True
-        if normalized in {"语音", "说话", "你说话", "说两句"}:
+        if normalized in {"语音", "说话", "你说话", "说两句", "说一句", "说呀", "说嘛", "说吗", "快说", "那你快说呀"}:
             return True
         return bool(VOICE_INTENT_RE.search(normalized))
 
