@@ -247,7 +247,7 @@ def merge_reply_clauses(clauses: list[str], *, max_chars: int) -> list[str]:
         clause = clause.strip()
         if not clause:
             continue
-        candidate = f"{current} {clause}".strip() if current else clause
+        candidate = join_reply_parts(current, clause) if current else clause
         if current and len(candidate) > max_chars and len(current) >= min_chars:
             merged.append(current)
             current = clause
@@ -262,10 +262,41 @@ def trim_reply_part(text: str, limit: int) -> str:
     text = text.strip()
     if len(text) <= limit:
         return text
-    cut = max(text.rfind("，", 0, limit), text.rfind(",", 0, limit), text.rfind("、", 0, limit), text.rfind(" ", 0, limit))
+    cut = max(
+        text.rfind("。", 0, limit),
+        text.rfind("！", 0, limit),
+        text.rfind("？", 0, limit),
+        text.rfind("!", 0, limit),
+        text.rfind("?", 0, limit),
+        text.rfind("，", 0, limit),
+        text.rfind(",", 0, limit),
+        text.rfind("、", 0, limit),
+        text.rfind("；", 0, limit),
+        text.rfind(";", 0, limit),
+        text.rfind(" ", 0, limit),
+    )
     if cut >= max(12, int(limit * 0.55)):
-        return text[:cut].strip()
-    return text[:limit].strip()
+        return text[: cut + 1].strip()
+    return text
+
+
+def join_reply_parts(left: str, right: str) -> str:
+    left = left.strip()
+    right = right.strip()
+    if not left:
+        return right
+    if not right:
+        return left
+    if re.search(r"[\u4e00-\u9fff。！？~～，、；：]$", left) and re.search(r"^[\u4e00-\u9fff“‘（《]", right):
+        return left + right
+    return f"{left} {right}".strip()
+
+
+def voice_fallback_reply(user_text: str) -> str:
+    normalized = re.sub(r"\s+", "", user_text or "")
+    if normalized in {"说话", "你说话", "发语音", "语音", "说两句"}:
+        return "我在呢，听得到的话我们继续聊。"
+    return "我在呢，这句我直接说给你听。"
 
 
 class IntegrationManager:
@@ -1196,31 +1227,36 @@ class ExternalDialogEngine:
         timings = {"receive_ms": 0, "tool_ms": 0, "llm_ms": 0, "tts_ms": 0, "send_ms": 0, "total_ms": 0}
         self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] recv sender={sender_id} text={compact_text(text, 220)}")
         voice_requested = self.should_send_voice(text, keywords, integration)
-        reply_text, tool_result, direct_answer, tool_ms, llm_ms = await self.reply_text(runtime_settings, conversation, text, voice_requested=voice_requested)
+        reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(runtime_settings, conversation, text, voice_requested=voice_requested)
+        if voice_requested and not clean_for_tts(reply_text):
+            reply_text = voice_fallback_reply(text)
+            reply_diag["voice_empty_fallback"] = True
+            self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] voice reply fallback used after empty cleanup")
         reply_parts = split_reply_messages(reply_text)
         timings["tool_ms"] = tool_ms
         timings["llm_ms"] = llm_ms
-        self.conversation_store.append_messages(
-            conversation["id"],
-            [
-                {
-                    "role": "user",
-                    "content": text,
-                    "source": platform_id,
-                    "platform_id": platform_id,
-                    "sender_id": sender_id,
-                },
+        messages_to_store = [
+            {
+                "role": "user",
+                "content": text,
+                "source": platform_id,
+                "platform_id": platform_id,
+                "sender_id": sender_id,
+            }
+        ]
+        if reply_text.strip():
+            messages_to_store.append(
                 {
                     "role": "assistant",
                     "content": reply_text,
                     "source": platform_id,
                     "platform_id": platform_id,
                     "bot_profile_id": bot_profile.get("id") or "default",
-                },
-            ],
-            title_hint=text,
-        )
-        await self.remember_turn(runtime_settings, text, reply_text)
+                }
+            )
+        self.conversation_store.append_messages(conversation["id"], messages_to_store, title_hint=text)
+        if reply_text.strip():
+            await self.remember_turn(runtime_settings, text, reply_text)
 
         send_voice = voice_requested
         voice_file = ""
@@ -1252,7 +1288,7 @@ class ExternalDialogEngine:
         )
         self.integration_manager.append_log(
             platform_id,
-            f"[dialog:{trace_id}] reply text_len={len(reply_text)} tool={(tool_result or {}).get('tool') or '-'} direct={bool(direct_answer)} timings={timings} voice_requested={voice_requested} send_voice={send_voice} voice_file={voice_file} voice_error={voice_error[:180]}",
+            f"[dialog:{trace_id}] reply text_len={len(reply_text)} parts={len(reply_parts)} clean_len={len(clean_for_tts(reply_text))} diag={reply_diag} tool={(tool_result or {}).get('tool') or '-'} direct={bool(direct_answer)} timings={timings} voice_requested={voice_requested} send_voice={send_voice} voice_file={voice_file} voice_error={voice_error[:180]}",
         )
         return {
             "ok": True,
@@ -1282,11 +1318,12 @@ class ExternalDialogEngine:
             snapshot.tools_enabled = False
         return snapshot
 
-    async def reply_text(self, settings: SessionSettings, conversation: dict, user_text: str, *, voice_requested: bool = False) -> tuple[str, dict | None, str, int, int]:
+    async def reply_text(self, settings: SessionSettings, conversation: dict, user_text: str, *, voice_requested: bool = False) -> tuple[str, dict | None, str, int, int, dict]:
+        diag: dict[str, Any] = {}
         repeat_text = extract_repeat_text(user_text)
         if repeat_text:
             reply = format_reply_paragraphs(clean_for_tts(repeat_text) or repeat_text)
-            return reply, None, "", 0, 0
+            return reply, None, "", 0, 0, diag
 
         request_text = self.build_request_text(user_text, conversation)
         if voice_requested:
@@ -1297,7 +1334,7 @@ class ExternalDialogEngine:
         direct_answer = direct_answer_from_tool(tool_result)
         if direct_answer:
             reply = format_reply_paragraphs(clean_for_tts(direct_answer) or direct_answer)
-            return reply, tool_result, direct_answer, tool_ms, 0
+            return reply, tool_result, direct_answer, tool_ms, 0, diag
         if tool_result:
             request_text += (
                 "\n\n联网/API 工具结果如下。请基于结果回答用户；如果结果不足或失败，要自然说明不确定，不要编造：\n"
@@ -1305,10 +1342,14 @@ class ExternalDialogEngine:
             )
         messages = self.build_messages(settings, conversation, user_text, request_text, voice_requested=voice_requested)
         llm_started = time.perf_counter()
-        answer = await self.complete_llm_text(settings, messages, temperature=active_temperature(settings), max_tokens=active_max_tokens(settings))
+        answer = await self.complete_llm_text(settings, messages, temperature=active_temperature(settings), max_tokens=active_max_tokens(settings), diag=diag)
         llm_ms = int((time.perf_counter() - llm_started) * 1000)
         reply = format_reply_paragraphs(clean_for_tts(answer) or answer.strip())
-        return reply, tool_result, "", tool_ms, llm_ms
+        if voice_requested and not clean_for_tts(reply):
+            reply = voice_fallback_reply(user_text)
+            diag["voice_empty_fallback"] = True
+        diag["reply_clean_len"] = len(clean_for_tts(reply))
+        return reply, tool_result, "", tool_ms, llm_ms, diag
 
     def build_messages(self, settings: SessionSettings, conversation: dict, user_text: str, request_text: str, *, voice_requested: bool = False) -> list[dict[str, str]]:
         messages = [{"role": "system", "content": settings.system}]
@@ -1399,6 +1440,7 @@ class ExternalDialogEngine:
         temperature: float = 0.0,
         max_tokens: int = 260,
         timeout: float | None = None,
+        diag: dict | None = None,
     ) -> str:
         settings_snapshot = SessionSettings(**asdict(settings))
         payload = {
@@ -1408,14 +1450,25 @@ class ExternalDialogEngine:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        if getattr(settings_snapshot, "thinking_enabled", False):
+        thinking_requested = bool(getattr(settings_snapshot, "thinking_enabled", False))
+        if thinking_requested:
             payload["enable_thinking"] = True
         async with httpx.AsyncClient(timeout=timeout or settings_snapshot.tools_timeout) as client:
             resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
                 resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
-        resp.raise_for_status()
-        return strip_reasoning_text(extract_chat_message_text(resp.json()))
+            resp.raise_for_status()
+            text = strip_reasoning_text(extract_chat_message_text(resp.json()))
+            if thinking_requested and not clean_for_tts(text):
+                if diag is not None:
+                    diag["thinking_empty_retry"] = True
+                payload.pop("enable_thinking", None)
+                resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
+                resp.raise_for_status()
+                text = strip_reasoning_text(extract_chat_message_text(resp.json()))
+        if diag is not None:
+            diag["llm_clean_len"] = len(clean_for_tts(text))
+        return text
 
     def should_send_voice(self, user_text: str, keywords: list[str], integration: dict | None) -> bool:
         if (integration or {}).get("reply_mode") == "voice":

@@ -384,7 +384,7 @@ def merge_reply_clauses(clauses: list[str], *, max_chars: int) -> list[str]:
         clause = clause.strip()
         if not clause:
             continue
-        candidate = f"{current} {clause}".strip() if current else clause
+        candidate = join_reply_parts(current, clause) if current else clause
         if current and len(candidate) > max_chars and len(current) >= min_chars:
             merged.append(current)
             current = clause
@@ -399,10 +399,34 @@ def trim_reply_part(text: str, limit: int) -> str:
     text = text.strip()
     if len(text) <= limit:
         return text
-    cut = max(text.rfind("，", 0, limit), text.rfind(",", 0, limit), text.rfind("、", 0, limit), text.rfind(" ", 0, limit))
+    cut = max(
+        text.rfind("。", 0, limit),
+        text.rfind("！", 0, limit),
+        text.rfind("？", 0, limit),
+        text.rfind("!", 0, limit),
+        text.rfind("?", 0, limit),
+        text.rfind("，", 0, limit),
+        text.rfind(",", 0, limit),
+        text.rfind("、", 0, limit),
+        text.rfind("；", 0, limit),
+        text.rfind(";", 0, limit),
+        text.rfind(" ", 0, limit),
+    )
     if cut >= max(12, int(limit * 0.55)):
-        return text[:cut].strip()
-    return text[:limit].strip()
+        return text[: cut + 1].strip()
+    return text
+
+
+def join_reply_parts(left: str, right: str) -> str:
+    left = left.strip()
+    right = right.strip()
+    if not left:
+        return right
+    if not right:
+        return left
+    if re.search(r"[\u4e00-\u9fff。！？~～，、；：]$", left) and re.search(r"^[\u4e00-\u9fff“‘（《]", right):
+        return left + right
+    return f"{left} {right}".strip()
 
 
 def send_voice_reply(
