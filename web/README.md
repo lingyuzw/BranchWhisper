@@ -9,12 +9,13 @@ Browser UI
   -> Qwen3-ASR -> llama.cpp -> CosyVoice3 -> Browser audio
 ```
 
-页面分成四个入口：
+页面使用单页应用入口，通过 hash 切换：
 
-- 对话：`/static/index.html`，只放实时对话、麦克风、波形和延迟指标。
-- 服务：`/static/services.html`，放 ASR/LLM/TTS 状态、一键启动/停止、单服务启动/停止和日志。
-- 接入：`/static/index.html#integrations`，放微信个人号实例、OpenClaw 环境检查、登录、日志和链路测试。
-- 配置：`/static/settings.html`，放 ASR/LLM/TTS 路由、生成参数、VAD 参数、服务启动命令。
+- 对话：`/`
+- 服务：`/#services`
+- 接入：`/#integrations`
+- 记忆：`/#memory`
+- 配置：`/#settings`
 
 ## 1. 只需要先启动 Web 控制台
 
@@ -39,7 +40,7 @@ http://127.0.0.1:7860
 服务页面：
 
 ```text
-http://127.0.0.1:7860/static/services.html
+http://127.0.0.1:7860#services
 ```
 
 ## 2. 一键启动做了什么
@@ -93,7 +94,7 @@ python /mnt/c/Users/Me/Documents/Codex/2026-06-04/cosyvoice3-llama-cpp-qwen3-5-9
 也可以直接打开配置中心：
 
 ```text
-http://127.0.0.1:7860/static/settings.html
+http://127.0.0.1:7860#settings
 ```
 
 在配置中心里改 Working Directory、Health URL、Start Command，然后点“应用配置”。
@@ -262,4 +263,4 @@ web/static/js/utils/    DOM 和 UI 辅助函数
 web/static/js/pages/dashboard/ 对话页局部模块，如会话刷新控制
 ```
 
-`web/static/js/ui-settings.js` 等旧文件目前保留为 re-export 兼容入口，方便迁移期间旧 import 继续工作。
+旧的 `ui-*.js` 兼容入口已经移除，页面由 `web/static/js/main.js` 直接加载 `pages/` 下的模块。

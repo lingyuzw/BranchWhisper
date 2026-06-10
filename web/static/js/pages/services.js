@@ -1,5 +1,5 @@
 /* ============================================================
-   ui-services.js — Service orchestration page (services.html)
+   pages/services.js — Service orchestration page
    BranchWhisper · Precision Console
    ============================================================ */
 

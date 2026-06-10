@@ -6,7 +6,6 @@ import hashlib
 import json
 import os
 import random
-import re
 import signal
 import sys
 import time
@@ -16,6 +15,11 @@ from typing import Any
 
 import httpx
 
+APP_DIR = Path(__file__).resolve().parents[1]
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from core.text_utils import split_reply_messages
 from weixin_media import WeixinVoiceSendError, send_weixin_voice
 
 
@@ -330,103 +334,6 @@ def voice_fallback_text(result: dict, voice_error: str = "") -> str:
     if error:
         return f"语音暂时发不出来：{error[:120]}。我先把文字版发给你。"
     return ""
-
-
-def split_reply_messages(text: str, *, max_parts: int = 4, max_chars: int = 60) -> list[str]:
-    text = str(text or "").strip()
-    if not text:
-        return []
-    clauses = natural_reply_clauses(text)
-    merged = merge_reply_clauses(clauses, max_chars=max_chars)
-    if len(merged) <= max_parts:
-        return merged
-    head = merged[: max_parts - 1]
-    tail = " ".join(merged[max_parts - 1 :]).strip()
-    if tail:
-        head.append(trim_reply_part(tail, max_chars * 2))
-    return [item for item in head if item]
-
-
-def natural_reply_clauses(text: str) -> list[str]:
-    clauses: list[str] = []
-    for line in re.split(r"\r?\n+", text):
-        line = line.strip()
-        if not line:
-            continue
-        start = 0
-        for match in re.finditer(r"[。！？!?~～]+", line):
-            end = match.end()
-            part = line[start:end].strip()
-            if part:
-                clauses.append(part)
-            start = end
-        rest = line[start:].strip()
-        if rest:
-            clauses.extend(split_long_clause(rest))
-    return clauses or [text]
-
-
-def split_long_clause(text: str, *, soft_limit: int = 46) -> list[str]:
-    text = text.strip()
-    if len(text) <= soft_limit:
-        return [text]
-    pieces = [part.strip() for part in re.split(r"(?<=[，,、；;])", text) if part.strip()]
-    if len(pieces) <= 1:
-        return [trim_reply_part(text, soft_limit * 2)]
-    return pieces
-
-
-def merge_reply_clauses(clauses: list[str], *, max_chars: int) -> list[str]:
-    merged: list[str] = []
-    current = ""
-    min_chars = min(18, max_chars)
-    for clause in clauses:
-        clause = clause.strip()
-        if not clause:
-            continue
-        candidate = join_reply_parts(current, clause) if current else clause
-        if current and len(candidate) > max_chars and len(current) >= min_chars:
-            merged.append(current)
-            current = clause
-        else:
-            current = candidate
-    if current:
-        merged.append(current)
-    return [trim_reply_part(item, max_chars) if len(item) > max_chars + 8 else item for item in merged]
-
-
-def trim_reply_part(text: str, limit: int) -> str:
-    text = text.strip()
-    if len(text) <= limit:
-        return text
-    cut = max(
-        text.rfind("。", 0, limit),
-        text.rfind("！", 0, limit),
-        text.rfind("？", 0, limit),
-        text.rfind("!", 0, limit),
-        text.rfind("?", 0, limit),
-        text.rfind("，", 0, limit),
-        text.rfind(",", 0, limit),
-        text.rfind("、", 0, limit),
-        text.rfind("；", 0, limit),
-        text.rfind(";", 0, limit),
-        text.rfind(" ", 0, limit),
-    )
-    if cut >= max(12, int(limit * 0.55)):
-        return text[: cut + 1].strip()
-    return text
-
-
-def join_reply_parts(left: str, right: str) -> str:
-    left = left.strip()
-    right = right.strip()
-    if not left:
-        return right
-    if not right:
-        return left
-    if re.search(r"[\u4e00-\u9fff。！？~～，、；：]$", left) and re.search(r"^[\u4e00-\u9fff“‘（《]", right):
-        return left + right
-    return f"{left} {right}".strip()
 
 
 def send_voice_reply(

@@ -85,7 +85,7 @@ async function switchPage(page, pushState = true) {
   // dashboard and services are heavy (websocket, polling) so only init once
   try {
     if (page === "dashboard") {
-      const dashboardModule = await import("./ui-dashboard.js");
+      const dashboardModule = await import("./pages/dashboard.js");
       if (!dashboardInitialized) {
         await dashboardModule.initDashboard();
         dashboardInitialized = true;
@@ -94,7 +94,7 @@ async function switchPage(page, pushState = true) {
       }
       currentLeave = dashboardModule.leaveDashboard || null;
     } else if (page === "services") {
-      const servicesModule = await import("./ui-services.js");
+      const servicesModule = await import("./pages/services.js");
       if (!servicesInitialized) {
         servicesModule.initServices();
         servicesInitialized = true;
@@ -102,7 +102,7 @@ async function switchPage(page, pushState = true) {
       servicesModule.enterServices?.();
       currentLeave = servicesModule.leaveServices || null;
     } else if (page === "integrations") {
-      const integrationsModule = await import("./ui-integrations.js");
+      const integrationsModule = await import("./pages/integrations.js");
       if (!integrationsInitialized) {
         integrationsModule.initIntegrations();
         integrationsInitialized = true;
@@ -110,7 +110,7 @@ async function switchPage(page, pushState = true) {
       integrationsModule.enterIntegrations?.();
       currentLeave = integrationsModule.leaveIntegrations || null;
     } else if (page === "memory") {
-      const memoryModule = await import("./ui-memory.js");
+      const memoryModule = await import("./pages/memory.js");
       if (!memoryInitialized) {
         await memoryModule.initMemoryPage();
         memoryInitialized = true;
@@ -118,7 +118,7 @@ async function switchPage(page, pushState = true) {
         await memoryModule.enterMemoryPage?.();
       }
     } else if (page === "settings") {
-      const settingsModule = await import("./ui-settings.js");
+      const settingsModule = await import("./pages/settings/index.js");
       await settingsModule.initSettings();
       currentLeave = settingsModule.leaveSettings || null;
     }

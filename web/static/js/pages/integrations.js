@@ -1,5 +1,5 @@
 /* ============================================================
-   ui-integrations.js — OpenClaw / channel bot management
+   pages/integrations.js — OpenClaw / channel bot management
    BranchWhisper
    ============================================================ */
 

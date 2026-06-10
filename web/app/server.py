@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import json
 import os
 import contextlib
 import time
@@ -12,8 +11,8 @@ import sys
 
 import httpx
 import numpy as np
-from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -25,10 +24,12 @@ from api.profiles import create_profiles_router
 from api.assets import create_assets_router
 from api.engagement import create_engagement_router
 from api.services import create_services_router
+from api.memory import create_memory_router
+from api.tools import create_tools_router
+from api.conversations import create_conversations_router
+from api.integrations import create_integrations_router
 from api.dependencies import (
     local_branchwhisper_url,
-    require_integration_dialog_access,
-    require_local_service_control,
     unique_urls,
 )
 from domain.paths import (
@@ -447,6 +448,10 @@ def create_app(args) -> FastAPI:
     app.include_router(create_profiles_router())
     app.include_router(create_assets_router())
     app.include_router(create_engagement_router(deliver_proactive_text))
+    app.include_router(create_memory_router())
+    app.include_router(create_tools_router())
+    app.include_router(create_conversations_router())
+    app.include_router(create_integrations_router(resolve_branchwhisper_url, preferred_integration_id))
     app.include_router(
         create_services_router(
             attach_service_warmups,
@@ -482,305 +487,6 @@ def create_app(args) -> FastAPI:
     @app.get("/")
     async def index():
         return FileResponse(STATIC_DIR / "index.html")
-
-    @app.get("/api/memory")
-    async def memory_items(limit: int = 200, query: str = "", layer: str = "", mode: str = ""):
-        return {
-            "items": app.state.memory_store.list_memories(app.state.settings, limit=limit, query=query, layer=layer, mode=mode),
-            "db_path": str(MEMORY_DB),
-            "mode": mode or getattr(app.state.settings, "dialog_mode", "local"),
-        }
-
-    @app.post("/api/memory")
-    async def create_memory_item(payload: dict | None = Body(default=None)):
-        payload = payload or {}
-        item = app.state.memory_store.create_memory(payload, mode=payload.get("mode") or getattr(app.state.settings, "dialog_mode", "local"))
-        return {"item": item}
-
-    @app.patch("/api/memory/{memory_id}")
-    async def update_memory_item(memory_id: str, payload: dict | None = Body(default=None)):
-        item = app.state.memory_store.update_memory(memory_id, payload or {})
-        return {"item": item}
-
-    @app.delete("/api/memory/{memory_id}")
-    async def delete_memory_item(memory_id: str):
-        return {"ok": app.state.memory_store.delete_memory(memory_id)}
-
-    @app.post("/api/memory/decay")
-    async def decay_memory(payload: dict | None = Body(default=None)):
-        payload = payload or {}
-        return app.state.memory_store.apply_decay(app.state.settings, mode=payload.get("mode"))
-
-    @app.get("/api/tools")
-    async def tools_config():
-        return app.state.tool_manager.get_config()
-
-    @app.patch("/api/tools")
-    async def update_tools_config(payload: dict | None = Body(default=None)):
-        return app.state.tool_manager.update_config(payload or {})
-
-    @app.post("/api/tools/test")
-    async def test_tool(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        payload = payload or {}
-        tool_id = str(payload.get("tool") or payload.get("id") or "")
-        arguments = payload.get("arguments") if isinstance(payload.get("arguments"), dict) else {}
-        if not tool_id:
-            raise HTTPException(status_code=400, detail="tool is required")
-        started = time.perf_counter()
-        result = await app.state.tool_manager.execute(
-            tool_id,
-            arguments,
-            timeout=app.state.settings.tools_timeout,
-            max_chars=app.state.settings.tools_max_result_chars,
-        )
-        return {"id": tool_id, "arguments": arguments, "elapsed_ms": int((time.perf_counter() - started) * 1000), "result": result}
-
-    @app.post("/api/tools/resolve")
-    async def resolve_tool(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        text = str((payload or {}).get("text") or "")
-        call = app.state.tool_manager.suggest_from_text(text)
-        result = None
-        if call:
-            tool_id = str(call.get("id") or "")
-            arguments = call.get("arguments") if isinstance(call.get("arguments"), dict) else {}
-            try:
-                result = await app.state.tool_manager.execute(
-                    tool_id,
-                    arguments,
-                    timeout=app.state.settings.tools_timeout,
-                    max_chars=app.state.settings.tools_max_result_chars,
-                )
-            except Exception as exc:
-                result = {"ok": False, "tool": tool_id, "error": str(exc)}
-        return {"tool_call": call, "result": result, "direct_answer": direct_answer_from_tool({"tool": call.get("id"), "result": result} if call else None)}
-
-    @app.get("/api/integrations")
-    async def integrations(request: Request):
-        require_local_service_control(request)
-        return app.state.integration_manager.list_integrations()
-
-    @app.get("/api/integrations/weixin/my-session")
-    async def my_weixin_session(request: Request):
-        require_local_service_control(request)
-        integration_id = preferred_integration_id(app)
-        return {
-            "integration_id": integration_id,
-            "session": app.state.integration_manager.my_weixin_session(integration_id) if integration_id else {},
-        }
-
-    @app.post("/api/integrations")
-    async def create_integration(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            item = app.state.integration_manager.create_integration(payload or {})
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=409,
-                detail="\u63a5\u5165\u5b9e\u4f8b\u5df2\u5b58\u5728\uff0c\u8bf7\u7f16\u8f91\u5df2\u6709\u5b9e\u4f8b\u6216\u6362\u4e00\u4e2a\u5b9e\u4f8b\u540d\u3002",
-            ) from exc
-        return {"integration": item, **app.state.integration_manager.list_integrations()}
-
-    @app.patch("/api/integrations/{integration_id}")
-    async def update_integration(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            item = app.state.integration_manager.update_integration(integration_id, payload or {})
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"integration": item, **app.state.integration_manager.list_integrations()}
-
-    @app.delete("/api/integrations/{integration_id}")
-    async def delete_integration(integration_id: str, request: Request):
-        require_local_service_control(request)
-        ok = app.state.integration_manager.delete_integration(integration_id)
-        return {"ok": ok, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/install")
-    async def install_integration(integration_id: str, request: Request):
-        require_local_service_control(request)
-        try:
-            result = await app.state.integration_manager.install_weixin_cli(integration_id)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/start")
-    async def start_integration(integration_id: str, request: Request):
-        require_local_service_control(request)
-        try:
-            branchwhisper_url = await resolve_branchwhisper_url(request)
-            result = await app.state.integration_manager.start_bridge(
-                integration_id,
-                branchwhisper_url=branchwhisper_url,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/stop")
-    async def stop_integration(integration_id: str, request: Request):
-        require_local_service_control(request)
-        process_result = app.state.integration_manager.stop_process(integration_id)
-        return {"result": {"process": process_result}, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/restart")
-    async def restart_integration(integration_id: str, request: Request):
-        require_local_service_control(request)
-        app.state.integration_manager.stop_process(integration_id)
-        try:
-            branchwhisper_url = await resolve_branchwhisper_url(request)
-            result = await app.state.integration_manager.start_bridge(
-                integration_id,
-                branchwhisper_url=branchwhisper_url,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/login")
-    async def login_integration(integration_id: str, request: Request):
-        require_local_service_control(request)
-        try:
-            result = await app.state.integration_manager.login(integration_id)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/login/qr")
-    async def start_integration_qr_login(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            result = await app.state.integration_manager.request_weixin_login_qr(
-                integration_id,
-                force=bool((payload or {}).get("force", False)),
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/login/poll")
-    async def poll_integration_qr_login(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            result = await app.state.integration_manager.poll_weixin_login(
-                integration_id,
-                verify_code=str((payload or {}).get("verify_code") or ""),
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.post("/api/integrations/{integration_id}/bridge/start")
-    async def start_integration_bridge(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        payload = payload or {}
-        branchwhisper_url = await resolve_branchwhisper_url(
-            request,
-            str(payload.get("branchwhisper_url") or payload.get("buding_url") or ""),
-        )
-        try:
-            result = await app.state.integration_manager.start_bridge(
-                integration_id,
-                branchwhisper_url=branchwhisper_url,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        return {"result": result, **app.state.integration_manager.list_integrations()}
-
-    @app.get("/api/integrations/{integration_id}/logs")
-    async def integration_logs(integration_id: str, request: Request, max_bytes: int = 36000, scope: str = "all"):
-        require_local_service_control(request)
-        return {
-            "id": integration_id,
-            "scope": scope,
-            "logs": app.state.integration_manager.read_logs_scoped(integration_id, max_bytes=max_bytes, scope=scope),
-        }
-
-    @app.delete("/api/integrations/{integration_id}/logs")
-    async def clear_integration_logs(integration_id: str, request: Request):
-        require_local_service_control(request)
-        return app.state.integration_manager.clear_logs(integration_id)
-
-    @app.post("/api/integrations/{integration_id}/timings/{trace_id}")
-    async def update_integration_timing(integration_id: str, trace_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            timing = app.state.integration_manager.update_message_timing(integration_id, trace_id, payload or {})
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {"timing": timing}
-
-    @app.post("/api/integrations/{integration_id}/voice-test")
-    async def integration_voice_test(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        payload = payload or {}
-        try:
-            return await app.state.external_dialog_engine.voice_test(
-                integration_id,
-                app.state.settings,
-                str(payload.get("text") or ""),
-                sender_id=str(payload.get("sender_id") or ""),
-                account_id=str(payload.get("account_id") or ""),
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Integration not found") from exc
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Integration voice test failed: {exc}") from exc
-
-    @app.post("/api/integrations/dialog")
-    async def integration_dialog(request: Request, payload: dict | None = Body(default=None)):
-        require_integration_dialog_access(request)
-        try:
-            return await app.state.external_dialog_engine.handle(payload or {}, app.state.settings)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Integration dialog failed: {exc}") from exc
-
-    @app.get("/api/conversations")
-    async def conversations(query: str = "", archived: str = "active"):
-        return {"conversations": app.state.conversation_store.list(query=query, archived=archived)}
-
-    @app.post("/api/conversations")
-    async def create_conversation(payload: dict | None = Body(default=None)):
-        conversation = app.state.conversation_store.create((payload or {}).get("title"))
-        return {"conversation": conversation}
-
-    @app.get("/api/conversations/{conversation_id}")
-    async def conversation(conversation_id: str):
-        loaded = app.state.conversation_store.load(conversation_id)
-        if not loaded:
-            return {"conversation": None}
-        return {"conversation": loaded}
-
-    @app.patch("/api/conversations/{conversation_id}")
-    async def update_conversation(conversation_id: str, payload: dict | None = Body(default=None)):
-        updated = app.state.conversation_store.update(conversation_id, payload or {})
-        if not updated:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        return {"conversation": updated, "conversations": app.state.conversation_store.list()}
-
-    @app.get("/api/conversations/{conversation_id}/export.md")
-    async def export_conversation_markdown(conversation_id: str):
-        text = app.state.conversation_store.export_markdown(conversation_id)
-        if not text:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        return PlainTextResponse(
-            text,
-            media_type="text/markdown; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{conversation_id}.md"'},
-        )
-
-    @app.delete("/api/conversations/{conversation_id}")
-    async def delete_conversation(conversation_id: str):
-        deleted = app.state.conversation_store.delete(conversation_id)
-        if deleted:
-            app.state.integration_manager.forget_conversation(conversation_id)
-        return {"ok": deleted, "conversations": app.state.conversation_store.list()}
 
     @app.websocket("/ws/dialog")
     async def dialog_socket(websocket: WebSocket):

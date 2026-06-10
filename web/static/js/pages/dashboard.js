@@ -1,5 +1,5 @@
 /* ============================================================
-   ui-dashboard.js - Chat dashboard
+   pages/dashboard.js - Chat dashboard
    BranchWhisper
    ============================================================ */
 

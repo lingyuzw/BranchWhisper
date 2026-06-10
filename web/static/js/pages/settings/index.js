@@ -1,5 +1,5 @@
 /* ============================================================
-   ui-settings.js — Configuration page (settings.html)
+   pages/settings/index.js — Configuration page
    BranchWhisper · Precision Console
    ============================================================ */
 

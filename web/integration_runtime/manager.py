@@ -33,6 +33,9 @@ from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
 from integration_runtime.weixin_media import WeixinVoiceSendError, send_weixin_voice
+from core.io_utils import read_json_file
+from core.text_utils import compact_text, extract_repeat_text, format_reply_paragraphs, is_story_request, split_reply_messages
+from core.time_utils import now_text, now_ts
 
 
 DEFAULT_VOICE_TRIGGERS = [
@@ -77,22 +80,9 @@ SUPPORTED_TYPES = {"weixin_oc"}
 RUNNING_STATES = {"starting", "running", "login"}
 
 
-def now_text() -> str:
-    return time.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def now_ts() -> float:
-    return time.time()
-
-
 def safe_id(value: str, fallback: str = "weixin_personal") -> str:
     value = re.sub(r"[^a-zA-Z0-9_\-]", "_", str(value or "")).strip("_")
     return value[:48] or fallback
-
-
-def compact_text(text: str, limit: int = 600) -> str:
-    text = re.sub(r"\s+", " ", str(text or "")).strip()
-    return text if len(text) <= limit else text[: limit - 1].rstrip() + "..."
 
 
 def openclaw_state_dir(profile: str) -> Path:
@@ -103,13 +93,6 @@ def openclaw_state_dir(profile: str) -> Path:
     if profile and profile not in {"default", "main"}:
         return Path.home() / f".openclaw-{profile}"
     return Path.home() / ".openclaw"
-
-
-def read_json_file(path: Path, fallback):
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return fallback
 
 
 def build_client_version(version: str) -> int:
@@ -161,31 +144,6 @@ def ilink_endpoint(base_url: str, path: str) -> str:
     return f"{str(base_url or DEFAULT_WEIXIN_OC_BASE_URL).rstrip('/')}/{path.lstrip('/')}"
 
 
-def is_story_request(text: str) -> bool:
-    return any(keyword in text for keyword in ("故事", "睡前", "童话"))
-
-
-def extract_repeat_text(text: str) -> str | None:
-    prefixes = (
-        "跟着我说",
-        "跟我说",
-        "跟我念",
-        "照着我说",
-        "复读",
-        "重复",
-        "请你重复",
-        "请你跟着我说",
-        "你跟着我说",
-    )
-    for prefix in prefixes:
-        index = text.find(prefix)
-        if index == -1:
-            continue
-        value = text[index + len(prefix) :].strip().lstrip("\u3000 \t\r\n，,:：")
-        return value or None
-    return None
-
-
 def wav_bytes_from_pcm16(pcm: bytes, sample_rate: int) -> bytes:
     buffer = bytearray()
     import io
@@ -198,109 +156,6 @@ def wav_bytes_from_pcm16(pcm: bytes, sample_rate: int) -> bytes:
         wav.writeframes(pcm)
     buffer.extend(stream.getvalue())
     return bytes(buffer)
-
-
-def format_reply_paragraphs(text: str) -> str:
-    text = strip_reasoning_text(text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def split_reply_messages(text: str, *, max_parts: int = 4, max_chars: int = 60) -> list[str]:
-    text = strip_reasoning_text(str(text or "")).strip()
-    if not text:
-        return []
-    clauses = natural_reply_clauses(text)
-    merged = merge_reply_clauses(clauses, max_chars=max_chars)
-    if len(merged) <= max_parts:
-        return merged
-    head = merged[: max_parts - 1]
-    tail = " ".join(merged[max_parts - 1 :]).strip()
-    if tail:
-        head.append(trim_reply_part(tail, max_chars * 2))
-    return [item for item in head if item]
-
-
-def natural_reply_clauses(text: str) -> list[str]:
-    clauses: list[str] = []
-    for line in re.split(r"\r?\n+", text):
-        line = line.strip()
-        if not line:
-            continue
-        start = 0
-        for match in re.finditer(r"[。！？!?~～]+", line):
-            end = match.end()
-            part = line[start:end].strip()
-            if part:
-                clauses.append(part)
-            start = end
-        rest = line[start:].strip()
-        if rest:
-            clauses.extend(split_long_clause(rest))
-    return clauses or [text]
-
-
-def split_long_clause(text: str, *, soft_limit: int = 46) -> list[str]:
-    text = text.strip()
-    if len(text) <= soft_limit:
-        return [text]
-    pieces = [part.strip() for part in re.split(r"(?<=[，,、；;])", text) if part.strip()]
-    if len(pieces) <= 1:
-        return [trim_reply_part(text, soft_limit * 2)]
-    return pieces
-
-
-def merge_reply_clauses(clauses: list[str], *, max_chars: int) -> list[str]:
-    merged: list[str] = []
-    current = ""
-    min_chars = min(18, max_chars)
-    for clause in clauses:
-        clause = clause.strip()
-        if not clause:
-            continue
-        candidate = join_reply_parts(current, clause) if current else clause
-        if current and len(candidate) > max_chars and len(current) >= min_chars:
-            merged.append(current)
-            current = clause
-        else:
-            current = candidate
-    if current:
-        merged.append(current)
-    return [trim_reply_part(item, max_chars) if len(item) > max_chars + 8 else item for item in merged]
-
-
-def trim_reply_part(text: str, limit: int) -> str:
-    text = text.strip()
-    if len(text) <= limit:
-        return text
-    cut = max(
-        text.rfind("。", 0, limit),
-        text.rfind("！", 0, limit),
-        text.rfind("？", 0, limit),
-        text.rfind("!", 0, limit),
-        text.rfind("?", 0, limit),
-        text.rfind("，", 0, limit),
-        text.rfind(",", 0, limit),
-        text.rfind("、", 0, limit),
-        text.rfind("；", 0, limit),
-        text.rfind(";", 0, limit),
-        text.rfind(" ", 0, limit),
-    )
-    if cut >= max(12, int(limit * 0.55)):
-        return text[: cut + 1].strip()
-    return text
-
-
-def join_reply_parts(left: str, right: str) -> str:
-    left = left.strip()
-    right = right.strip()
-    if not left:
-        return right
-    if not right:
-        return left
-    if re.search(r"[\u4e00-\u9fff。！？~～，、；：]$", left) and re.search(r"^[\u4e00-\u9fff“‘（《]", right):
-        return left + right
-    return f"{left} {right}".strip()
 
 
 def voice_fallback_reply(user_text: str) -> str:
