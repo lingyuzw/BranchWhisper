@@ -349,10 +349,14 @@
                 <input id="dialogMode" type="hidden" value="local" />
                 <label class="thinking-toggle"><input id="thinkingEnabled" type="checkbox" /> 启用思考模式，仅输出最终结果</label>
               </div>
-              <div class="form-grid">
+              <div class="form-grid asr-config-grid">
                 <label><span>ASR Mode</span><select id="asrMode"><option value="transcription">transcription</option><option value="chat">chat</option></select></label>
                 <label><span>ASR Model</span><input id="asrModel" type="text" /></label>
                 <label class="wide"><span>ASR URL</span><input id="asrUrl" type="text" /></label>
+              </div>
+              <section class="local-engine-card" id="localEngineCard" data-model-panel="local">
+                <div class="appearance-card-head"><strong>Local Chat Completions</strong><small>仅在本地模型模式下生效</small></div>
+                <div class="form-grid compact">
                 <label><span>本地模型别名</span><input id="llmModel" type="text" /></label>
                 <label><span>Temperature</span><input id="temperature" type="number" min="0" max="1.5" step="0.01" /></label>
                 <label><span>Max Tokens</span><input id="maxTokens" type="number" min="32" max="4096" step="1" /></label>
@@ -365,8 +369,9 @@
                     <button class="secondary-action" id="openModelFilePickerBtn" type="button"><i data-lucide="folder-search"></i>选择</button>
                   </div>
                 </label>
-              </div>
-              <section class="api-engine-card" id="apiEngineCard">
+                </div>
+              </section>
+              <section class="api-engine-card" id="apiEngineCard" data-model-panel="api">
                 <div class="appearance-card-head"><strong>OpenAI-compatible API</strong><small>DeepSeek、通义兼容接口、自建网关都可填这里</small></div>
                 <div class="form-grid compact">
                   <label class="wide"><span>API Chat Completions URL</span><input id="apiLlmUrl" type="text" placeholder="https://api.example.com/v1/chat/completions" /></label>

@@ -39,6 +39,8 @@ let toolProviderDraft = {};
 let editingToolProvider = "";
 let activeSettingsSection = "";
 let modelFileRoot = "";
+const LOCAL_DIALOG_FIELD_IDS = ["llmModel", "temperature", "maxTokens", "historyTurns", "llmUrl", "llmModelFilePath", "openModelFilePickerBtn"];
+const API_DIALOG_FIELD_IDS = ["apiLlmUrl", "apiLlmModel", "apiLlmApiKey", "apiTemperature", "apiMaxTokens", "apiHistoryTurns"];
 const SETTINGS_SECTION_LABELS = {
   appearance: "外观",
   engine: "本地模型",
@@ -290,8 +292,22 @@ function syncDialogModeUi() {
   document.querySelectorAll("[data-dialog-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.dialogMode === mode);
   });
-  const apiCard = $("#apiEngineCard");
-  if (apiCard) apiCard.classList.toggle("muted-panel", mode !== "api");
+  setModelPanelLocked("local", mode !== "local");
+  setModelPanelLocked("api", mode !== "api");
+}
+
+function setModelPanelLocked(panelMode, locked) {
+  const panel = document.querySelector(`[data-model-panel="${panelMode}"]`);
+  if (!panel) return;
+  panel.classList.toggle("model-panel-locked", locked);
+  panel.setAttribute("aria-disabled", locked ? "true" : "false");
+  panel.dataset.lockedLabel = panelMode === "local" ? "API 模式下本地对话模型不会生效" : "本地模式下 API 配置不会生效";
+  const fieldIds = panelMode === "local" ? LOCAL_DIALOG_FIELD_IDS : API_DIALOG_FIELD_IDS;
+  for (const id of fieldIds) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.disabled = locked;
+  }
 }
 
 /* ---- config form ---- */
@@ -380,6 +396,7 @@ function fillConfig(config) {
 
 function collectConfig() {
   const result = {};
+  const mode = value("dialogMode", "local") === "api" ? "api" : "local";
   for (const f of CONFIG_FIELD_MAP) {
     if (f.virtual) continue;
     if (!document.getElementById(f.id)) continue;
@@ -391,17 +408,22 @@ function collectConfig() {
     if (BOOL_FIELDS.has(f.key)) {
       result[f.key] = Boolean(el?.checked);
     } else if (NUM_FIELDS.has(f.key)) {
-      const parsed = Number(raw);
-      result[f.key] = Number.isFinite(parsed) ? parsed : DEFAULT_CONFIG[f.key];
+      const parsed = String(raw || "").trim() === "" ? Number.NaN : Number(raw);
+      result[f.key] = Number.isFinite(parsed) ? parsed : fallbackConfigValue(f.key);
     } else {
-      result[f.key] = raw || state.currentConfig[f.key] || DEFAULT_CONFIG[f.key];
+      result[f.key] = raw || fallbackConfigValue(f.key);
     }
   }
+  result.dialog_mode = mode;
   for (const def of Object.values(CHAT_IDENTITY)) {
     result[def.nameKey] = value(def.nameId, state.currentConfig[def.nameKey] || def.fallbackName).trim() || def.fallbackName;
     result[def.avatarKey] = state.currentConfig[def.avatarKey] || "";
   }
   return result;
+}
+
+function fallbackConfigValue(key) {
+  return state.currentConfig[key] ?? DEFAULT_CONFIG[key] ?? "";
 }
 
 function bindChatIdentityEvents() {
@@ -1258,7 +1280,8 @@ function escapeAttr(value) {
 async function saveSettingsPage(options = {}) {
   if (state.previewMode) { showToast("预览模式：无法保存", "info"); return; }
   try {
-    await saveConfig(collectConfig());
+    const configPayload = collectConfig();
+    await saveConfig(configPayload);
     await saveToolConfig(collectToolConfig());
     await saveProactiveConfig(collectProactiveConfig());
     await saveBotProfiles();
@@ -1275,6 +1298,9 @@ async function saveSettingsPage(options = {}) {
     renderBotProfiles();
     refreshSettingsOverview();
     window.dispatchEvent(new CustomEvent("branchwhisper:appearance-updated"));
+    window.dispatchEvent(new CustomEvent("branchwhisper:config-updated", {
+      detail: { config: state.currentConfig, reconnectDialog: true },
+    }));
     if (options.closeModal) closeSettingsSectionModal();
     showToast("配置已应用", "success");
   } catch (e) { showToast(`保存失败：${e.message}`, "error"); }

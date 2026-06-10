@@ -25,11 +25,16 @@ export function applyUiFontScale(value) {
 }
 
 export async function saveConfig(configData) {
-  return fetchJson("/api/config", {
+  const config = await fetchJson("/api/config", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(configData),
   });
+  state.previewMode = false;
+  state.currentConfig = { ...DEFAULT_CONFIG, ...state.currentConfig, ...config };
+  state.ttsSampleRate = Number(config.tts_sample_rate || state.currentConfig.tts_sample_rate || DEFAULT_CONFIG.tts_sample_rate);
+  applyUiFontScale(state.currentConfig.ui_font_scale);
+  return state.currentConfig;
 }
 
 export async function loadToolConfig() {

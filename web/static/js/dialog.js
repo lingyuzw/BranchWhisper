@@ -11,6 +11,7 @@ import { stopAssistantAudio, schedulePcm16, releaseAfterPlayback } from "./audio
 let onTranscriptUpdated = null;
 let onPipelineUpdate = null;
 let appearanceEventsBound = false;
+let configEventsBound = false;
 
 export function setTranscriptCallback(fn) { onTranscriptUpdated = fn; }
 export function setPipelineUpdater(fn) { onPipelineUpdate = fn; }
@@ -20,6 +21,22 @@ export function bindAppearanceRefresh() {
   appearanceEventsBound = true;
   window.addEventListener("branchwhisper:appearance-updated", () => {
     if (state.activeConversation) renderTranscript(state.activeConversation.messages || []);
+  });
+  bindRuntimeConfigRefresh();
+}
+
+export function bindRuntimeConfigRefresh() {
+  if (configEventsBound) return;
+  configEventsBound = true;
+  window.addEventListener("branchwhisper:config-updated", (event) => {
+    const detail = event.detail || {};
+    state.currentConfig = { ...state.currentConfig, ...(detail.config || {}) };
+    state.ttsEnabled = state.currentConfig.tts_enabled ?? state.ttsEnabled;
+    if (detail.reconnectDialog) {
+      reconnectDialog();
+      return;
+    }
+    sendRuntimeSettings();
   });
 }
 
@@ -54,6 +71,7 @@ function sendRuntimeSettings() {
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
   const settings = { ...state.currentConfig };
   delete settings.llm_api_key;
+  delete settings.api_llm_api_key;
   settings.tts_enabled = state.ttsEnabled;
   state.ws.send(JSON.stringify({ type: "settings", settings }));
 }

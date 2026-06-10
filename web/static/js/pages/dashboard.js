@@ -16,6 +16,7 @@ import {
 } from "../api/index.js";
 import {
   bindAppearanceRefresh,
+  bindRuntimeConfigRefresh,
   connectSocket,
   reconnectDialog,
   clearTranscript,
@@ -56,6 +57,7 @@ export async function initDashboard() {
     refreshConversationsNow({ reason: "transcript", force: true });
   });
   bindAppearanceRefresh();
+  bindRuntimeConfigRefresh();
   connectSocket();
   startConversationRefresh();
   drawScope();
