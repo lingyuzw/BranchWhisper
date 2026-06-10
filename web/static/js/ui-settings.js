@@ -51,7 +51,7 @@ const SETTINGS_SECTION_LABELS = {
   vad: "语音检测",
   commands: "服务命令",
 };
-const MODAL_SETTING_SECTIONS = new Set(["dialogFeatures", "proactive", "botProfiles", "prompt", "tts", "vad", "commands"]);
+const MODAL_SETTING_SECTIONS = new Set(["dialogFeatures", "proactive", "botProfiles", "prompt", "tts", "vad"]);
 const CHAT_IDENTITY = {
   user: {
     nameKey: "web_user_name",
@@ -1274,6 +1274,7 @@ function createProfileCard(service) {
 
   const details = document.createElement("details");
   details.className = "advanced-profile";
+  details.open = true;
   const summaryToggle = document.createElement("summary");
   summaryToggle.append(createIcon("sliders-horizontal"), document.createTextNode("高级启动参数"));
   const commandActions = document.createElement("div");

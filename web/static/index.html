@@ -282,7 +282,6 @@
               <article class="settings-overview-card" data-open-config="prompt"><span><i data-lucide="message-square-text"></i>Prompt</span><strong id="promptSummary">系统提示词</strong><small>主对话人格设定</small><button class="secondary-action" type="button"><i data-lucide="settings-2"></i>打开</button></article>
               <article class="settings-overview-card" data-open-config="tts"><span><i data-lucide="volume-2"></i>语音合成</span><strong id="ttsSummary">TTS</strong><small>速度、音量、采样率</small><button class="secondary-action" type="button"><i data-lucide="settings-2"></i>打开</button></article>
               <article class="settings-overview-card" data-open-config="vad"><span><i data-lucide="mic-vocal"></i>语音检测</span><strong id="vadSummary">VAD</strong><small>阈值、静音、切分</small><button class="secondary-action" type="button"><i data-lucide="settings-2"></i>打开</button></article>
-              <article class="settings-overview-card" data-open-config="commands"><span><i data-lucide="terminal"></i>服务命令</span><strong id="commandsSummary">启动参数</strong><small>ASR / LLM / TTS 命令</small><button class="secondary-action" type="button"><i data-lucide="settings-2"></i>打开</button></article>
             </section>
             <article class="theme-section" id="appearance">
               <div class="panel-head"><div><p class="eyebrow">Appearance</p><h2>外观与身份</h2></div><span class="soft-badge" id="appearanceSummary">Web 对话页生效</span></div>
@@ -520,7 +519,10 @@
               </div>
             </article>
             <article class="settings-panel" id="commands">
-              <div class="panel-head"><div><p class="eyebrow">Command Editors</p><h2>服务命令</h2></div></div>
+              <div class="panel-head">
+                <div><p class="eyebrow">Command Editors</p><h2>服务命令</h2></div>
+                <span class="soft-badge" id="commandsSummary">ASR / LLM / TTS</span>
+              </div>
               <div class="profile-list" id="profileList"></div>
             </article>
           </section>
