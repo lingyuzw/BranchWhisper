@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+APP_DIR = Path(__file__).resolve().parents[1]
+STATIC_DIR = APP_DIR / "static"
+RUNTIME_DIR = APP_DIR / "runtime"
+LOG_DIR = RUNTIME_DIR / "logs"
+CONVERSATION_DIR = RUNTIME_DIR / "conversations"
+SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
+SERVICE_PROFILES_CONFIG = RUNTIME_DIR / "service_profiles.json"
+MEMORY_DB = RUNTIME_DIR / "memory.sqlite3"
+TOOLS_CONFIG = RUNTIME_DIR / "tools.json"
+INTEGRATIONS_CONFIG = RUNTIME_DIR / "integrations.json"
+INTEGRATION_MEDIA_DIR = RUNTIME_DIR / "integration_media"
+TOOL_PROVIDERS_CONFIG = RUNTIME_DIR / "tool_providers.json"
+BOT_PROFILES_CONFIG = RUNTIME_DIR / "bot_profiles.json"
+REMINDERS_DB = RUNTIME_DIR / "reminders.sqlite3"
+PROACTIVE_CONFIG = RUNTIME_DIR / "proactive_config.json"
+PROACTIVE_DB = RUNTIME_DIR / "proactive.sqlite3"
+UPLOAD_DIR = RUNTIME_DIR / "uploads"
+AVATAR_DIR = UPLOAD_DIR / "avatars"
+CHAT_IMAGE_DIR = UPLOAD_DIR / "chat_images"
+STICKER_DIR = UPLOAD_DIR / "stickers"
+STICKERS_CONFIG = RUNTIME_DIR / "stickers.json"

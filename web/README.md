@@ -231,3 +231,31 @@ ASR gpu-memory-utilization: 0.35 - 0.45
 LLM context: -c 4096
 TTS: --load_vllm --fp16
 ```
+
+## 6. 当前 Web 代码结构
+
+后端正在按分层结构迁移，同时保留旧入口兼容：
+
+```text
+web/app/          FastAPI app 创建、生命周期任务、静态文件挂载和暂未迁移的旧路由
+web/api/          按功能拆分的 FastAPI routers
+web/services/     与 HTTP 无关的业务辅助逻辑
+web/domain/       共享路径、常量和后续领域模型
+web/core/         配置和工具 provider 配置
+web/data/         现有数据 store
+web/repositories/ 数据访问适配入口，后续逐步承接 data 层
+web/integration_runtime/weixin_media.py        微信媒体发送 Python wrapper
+web/integration_runtime/weixin_voice_sender.mjs 微信语音转码、上传和发送 helper
+```
+
+前端正在按页面和职责拆分：
+
+```text
+web/static/js/pages/    页面控制器
+web/static/js/api/      后端 API 客户端
+web/static/js/stores/   全局状态
+web/static/js/utils/    DOM 和 UI 辅助函数
+web/static/js/pages/dashboard/ 对话页局部模块，如会话刷新控制
+```
+
+`web/static/js/ui-settings.js` 等旧文件目前保留为 re-export 兼容入口，方便迁移期间旧 import 继续工作。

@@ -9,7 +9,6 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 import sys
-import shlex
 
 import httpx
 from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -20,6 +19,39 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from api.config import create_config_router
+from api.profiles import create_profiles_router
+from api.assets import create_assets_router
+from api.engagement import create_engagement_router
+from api.services import create_services_router
+from api.dependencies import (
+    local_branchwhisper_url,
+    require_integration_dialog_access,
+    require_local_service_control,
+    unique_urls,
+)
+from domain.paths import (
+    APP_DIR,
+    AVATAR_DIR,
+    BOT_PROFILES_CONFIG,
+    CHAT_IMAGE_DIR,
+    CONVERSATION_DIR,
+    INTEGRATIONS_CONFIG,
+    INTEGRATION_MEDIA_DIR,
+    LOG_DIR,
+    MEMORY_DB,
+    PROACTIVE_CONFIG,
+    PROACTIVE_DB,
+    REMINDERS_DB,
+    SERVICE_PROFILES_CONFIG,
+    SETTINGS_CONFIG,
+    STATIC_DIR,
+    STICKER_DIR,
+    STICKERS_CONFIG,
+    TOOL_PROVIDERS_CONFIG,
+    TOOLS_CONFIG,
+    UPLOAD_DIR,
+)
 from media.avatars import AvatarStore
 from core.config import (
     SessionSettings,
@@ -27,9 +59,6 @@ from core.config import (
     enable_default_capabilities,
     llm_headers,
     load_persisted_settings,
-    public_settings,
-    save_persisted_settings,
-    update_llm_api_key,
 )
 from data.conversations import ConversationStore
 from dialog.session import DialogSession
@@ -39,9 +68,8 @@ from data.profiles import BotProfileStore
 from engagement.proactive import FollowupPolicy, ProactiveStore
 from engagement.reminders import ReminderStore
 from tools.runtime_brain import MemoryStore, ToolManager
-from service_runtime.services import ServiceManager, check_service, health_url_from
+from service_runtime.services import ServiceManager
 from media.sticker_policy import StickerPolicy
-from service_runtime.system_resources import collect_system_resources
 from core.tool_config import ToolProviderConfig
 from service_runtime.vad import VadModelStore
 
@@ -52,163 +80,10 @@ from service_runtime.vad import VadModelStore
 # 3. Each utterance is sent to Qwen3-ASR, then the text goes to llama.cpp.
 # 4. LLM text is split into small TTS segments and CosyVoice PCM is streamed
 #    back to the browser as binary WebSocket frames.
-STATIC_DIR = APP_DIR / "static"
-RUNTIME_DIR = APP_DIR / "runtime"
-LOG_DIR = RUNTIME_DIR / "logs"
-CONVERSATION_DIR = RUNTIME_DIR / "conversations"
-SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
-SERVICE_PROFILES_CONFIG = RUNTIME_DIR / "service_profiles.json"
-MEMORY_DB = RUNTIME_DIR / "memory.sqlite3"
-TOOLS_CONFIG = RUNTIME_DIR / "tools.json"
-INTEGRATIONS_CONFIG = RUNTIME_DIR / "integrations.json"
-INTEGRATION_MEDIA_DIR = RUNTIME_DIR / "integration_media"
-TOOL_PROVIDERS_CONFIG = RUNTIME_DIR / "tool_providers.json"
-BOT_PROFILES_CONFIG = RUNTIME_DIR / "bot_profiles.json"
-REMINDERS_DB = RUNTIME_DIR / "reminders.sqlite3"
-PROACTIVE_CONFIG = RUNTIME_DIR / "proactive_config.json"
-PROACTIVE_DB = RUNTIME_DIR / "proactive.sqlite3"
-UPLOAD_DIR = RUNTIME_DIR / "uploads"
-AVATAR_DIR = UPLOAD_DIR / "avatars"
-CHAT_IMAGE_DIR = UPLOAD_DIR / "chat_images"
-STICKER_DIR = UPLOAD_DIR / "stickers"
-STICKERS_CONFIG = RUNTIME_DIR / "stickers.json"
-
 SERVICE_WARMUP_LOCK = asyncio.Lock()
 SERVICE_WARMUP_TASKS: dict[str, asyncio.Task] = {}
 SERVICE_WARMUP_DONE: set[str] = set()
 SERVICE_WARMUP_STATUS: dict[str, dict] = {}
-LOCALHOST_NAMES = {"127.0.0.1", "::1", "localhost"}
-MODEL_FILE_EXTENSIONS = {".gguf", ".bin", ".safetensors", ".pt", ".pth", ".onnx"}
-
-# TTS output from the local CosyVoice endpoint is expected to be raw PCM16LE.
-# These defaults reduce clipping/pops when the HTTP stream is forwarded to the
-# browser over WebSocket. They do not change the model, only the transported PCM.
-def is_local_request(request: Request) -> bool:
-    host = request.client.host if request.client else ""
-    return host in LOCALHOST_NAMES
-
-
-def require_local_service_control(request: Request) -> None:
-    if (
-        is_local_request(request)
-        or os.environ.get("BRANCHWHISPER_ALLOW_REMOTE_SERVICE_CONTROL") == "1"
-        or os.environ.get("BUDING_ALLOW_REMOTE_SERVICE_CONTROL") == "1"
-    ):
-        return
-    raise HTTPException(
-        status_code=403,
-        detail=(
-            "Service control is restricted to localhost. "
-            "Set BRANCHWHISPER_ALLOW_REMOTE_SERVICE_CONTROL=1 to override."
-        ),
-    )
-
-
-def require_integration_dialog_access(request: Request) -> None:
-    if is_local_request(request) or os.environ.get("BRANCHWHISPER_ALLOW_REMOTE_INTEGRATION_DIALOG") == "1":
-        return
-    raise HTTPException(
-        status_code=403,
-        detail=(
-            "Integration dialog is restricted to localhost. "
-            "Set BRANCHWHISPER_ALLOW_REMOTE_INTEGRATION_DIALOG=1 to allow remote bridge calls."
-        ),
-    )
-
-
-def local_branchwhisper_url(request: Request) -> str:
-    override = (
-        os.environ.get("BRANCHWHISPER_BRIDGE_URL")
-        or os.environ.get("BUDING_BRIDGE_URL")
-        or os.environ.get("BRANCHWHISPER_PUBLIC_URL")
-        or os.environ.get("BUDING_PUBLIC_URL")
-    )
-    if override:
-        return override.rstrip("/")
-    app_port = getattr(request.app.state, "server_port", None)
-    if app_port:
-        return f"http://127.0.0.1:{int(app_port)}"
-    server = request.scope.get("server") or ("", 7860)
-    port = server[1] if isinstance(server, (tuple, list)) and len(server) > 1 else request.url.port
-    return f"http://127.0.0.1:{int(port or 7860)}"
-
-
-def unique_urls(urls: list[str]) -> list[str]:
-    seen = set()
-    result = []
-    for url in urls:
-        normalized = str(url or "").rstrip("/")
-        if normalized and normalized not in seen:
-            seen.add(normalized)
-            result.append(normalized)
-    return result
-
-
-def safe_model_browse_root(value: str, fallback: Path) -> Path:
-    raw = str(value or "").strip()
-    path = Path(raw).expanduser() if raw else fallback
-    try:
-        return path.resolve()
-    except OSError:
-        return fallback.resolve()
-
-
-def model_file_payload(path: Path) -> dict:
-    try:
-        stat = path.stat()
-        size = stat.st_size
-        updated_at = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))
-    except OSError:
-        size = 0
-        updated_at = ""
-    return {
-        "name": path.name,
-        "path": str(path),
-        "size": size,
-        "updated_at": updated_at,
-        "extension": path.suffix.lower(),
-    }
-
-
-def list_model_files(root: Path, query: str = "", limit: int = 80) -> dict:
-    query_norm = str(query or "").strip().lower()
-    files = []
-    directories = []
-    if not root.exists() or not root.is_dir():
-        return {"root": str(root), "parent": str(root.parent), "directories": [], "files": [], "exists": False}
-    try:
-        children = sorted(root.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower()))
-    except OSError:
-        children = []
-    for child in children:
-        if child.name.startswith("."):
-            continue
-        if child.is_dir():
-            directories.append({"name": child.name, "path": str(child)})
-            continue
-        if child.suffix.lower() not in MODEL_FILE_EXTENSIONS:
-            continue
-        if query_norm and query_norm not in child.name.lower() and query_norm not in str(child).lower():
-            continue
-        files.append(model_file_payload(child))
-        if len(files) >= limit:
-            break
-    return {"root": str(root), "parent": str(root.parent), "directories": directories[:80], "files": files, "exists": True}
-
-
-def extract_model_path_from_command(command: str) -> str:
-    try:
-        parts = shlex.split(str(command or ""), posix=os.name != "nt")
-    except ValueError:
-        return ""
-    for index, part in enumerate(parts):
-        if part in {"-m", "--model"} and index + 1 < len(parts):
-            return parts[index + 1]
-        if part.startswith("--model="):
-            return part.split("=", 1)[1]
-    return ""
-
-
 async def resolve_branchwhisper_url(request: Request, preferred: str = "") -> str:
     override = os.environ.get("BRANCHWHISPER_BRIDGE_URL") or os.environ.get("BUDING_BRIDGE_URL")
     if override:
@@ -564,6 +439,19 @@ def create_app(args) -> FastAPI:
     app.state.integration_watchdog_task = None
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/runtime/uploads", StaticFiles(directory=UPLOAD_DIR), name="runtime_uploads")
+    app.include_router(create_config_router())
+    app.include_router(create_profiles_router())
+    app.include_router(create_assets_router())
+    app.include_router(create_engagement_router(deliver_proactive_text))
+    app.include_router(
+        create_services_router(
+            attach_service_warmups,
+            warmup_statuses,
+            schedule_service_warmup,
+            schedule_service_warmups,
+            clear_warmup_status,
+        )
+    )
 
     @app.middleware("http")
     async def no_cache_static(request: Request, call_next):
@@ -590,191 +478,6 @@ def create_app(args) -> FastAPI:
     @app.get("/")
     async def index():
         return FileResponse(STATIC_DIR / "index.html")
-
-    @app.get("/api/config")
-    async def config():
-        return public_settings(app.state.settings)
-
-    @app.patch("/api/config")
-    async def update_config(payload: dict | None = Body(default=None)):
-        payload = dict(payload or {})
-        update_llm_api_key(app.state.settings, payload)
-        app.state.settings.update_from_dict(payload)
-        save_persisted_settings(app.state.settings, SETTINGS_CONFIG)
-        return public_settings(app.state.settings)
-
-    @app.get("/api/config/tools")
-    async def tool_provider_config(request: Request):
-        require_local_service_control(request)
-        return {"tools": app.state.tool_providers.public()}
-
-    @app.patch("/api/config/tools")
-    async def update_tool_provider_config(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        return {"tools": app.state.tool_providers.update(payload or {})}
-
-    @app.get("/api/files/models")
-    async def model_files(request: Request, root: str = "", query: str = ""):
-        require_local_service_control(request)
-        llm_service = app.state.service_manager.services.get("llm", {})
-        llm_cwd = Path(str(llm_service.get("cwd") or APP_DIR)).expanduser()
-        model_path = extract_model_path_from_command(str(llm_service.get("command") or ""))
-        default_root = (llm_cwd / model_path).parent if model_path else llm_cwd
-        browse_root = safe_model_browse_root(root, default_root)
-        return list_model_files(browse_root, query=query)
-
-    @app.get("/api/bot-profiles")
-    async def bot_profiles(request: Request):
-        require_local_service_control(request)
-        return app.state.bot_profiles.list_profiles()
-
-    @app.post("/api/bot-profiles")
-    async def create_bot_profile(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            profile = app.state.bot_profiles.create(payload or {})
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        return {"profile": profile, **app.state.bot_profiles.list_profiles()}
-
-    @app.patch("/api/bot-profiles/{profile_id}")
-    async def update_bot_profile(profile_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            profile = app.state.bot_profiles.update(profile_id, payload or {})
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Profile not found") from exc
-        return {"profile": profile, **app.state.bot_profiles.list_profiles()}
-
-    @app.delete("/api/bot-profiles/{profile_id}")
-    async def delete_bot_profile(profile_id: str, request: Request):
-        require_local_service_control(request)
-        return {"ok": app.state.bot_profiles.delete(profile_id), **app.state.bot_profiles.list_profiles()}
-
-    @app.post("/api/assets/avatar")
-    async def upload_avatar(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            return {"asset": app.state.avatar_store.save_data_url(str((payload or {}).get("data_url") or ""))}
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    @app.post("/api/assets/chat-image")
-    async def upload_chat_image(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            asset = app.state.chat_image_store.save_data_url(
-                str((payload or {}).get("data_url") or ""),
-                max_mb=float(getattr(app.state.settings, "vision_max_image_mb", 8.0)),
-            )
-            return {"asset": asset}
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    @app.get("/api/stickers")
-    async def list_stickers(request: Request):
-        require_local_service_control(request)
-        return {"stickers": app.state.sticker_store.list()}
-
-    @app.post("/api/stickers")
-    async def upload_sticker(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        payload = payload or {}
-        try:
-            sticker = app.state.sticker_store.add_data_url(
-                str(payload.get("data_url") or ""),
-                tag=str(payload.get("tag") or "榛樿"),
-                name=str(payload.get("name") or ""),
-            )
-            return {"sticker": sticker, "stickers": app.state.sticker_store.list()}
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    @app.delete("/api/stickers/{sticker_id}")
-    async def delete_sticker(sticker_id: str, request: Request):
-        require_local_service_control(request)
-        return {"ok": app.state.sticker_store.delete(sticker_id), "stickers": app.state.sticker_store.list()}
-
-    @app.get("/api/reminders")
-    async def reminders(request: Request, status: str = ""):
-        require_local_service_control(request)
-        return {"reminders": app.state.reminder_store.list(status=status)}
-
-    @app.post("/api/reminders")
-    async def create_reminder(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            reminder = app.state.reminder_store.create(payload or {})
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {"reminder": reminder, "reminders": app.state.reminder_store.list()}
-
-    @app.patch("/api/reminders/{reminder_id}")
-    async def update_reminder(reminder_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        try:
-            reminder = app.state.reminder_store.update(reminder_id, payload or {})
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Reminder not found") from exc
-        return {"reminder": reminder, "reminders": app.state.reminder_store.list()}
-
-    @app.delete("/api/reminders/{reminder_id}")
-    async def delete_reminder(reminder_id: str, request: Request):
-        require_local_service_control(request)
-        return {"ok": app.state.reminder_store.delete(reminder_id), "reminders": app.state.reminder_store.list()}
-
-    @app.get("/api/proactive/config")
-    async def proactive_config(request: Request):
-        require_local_service_control(request)
-        return {"config": app.state.proactive_store.public_config()}
-
-    @app.patch("/api/proactive/config")
-    async def update_proactive_config(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        return {"config": app.state.proactive_store.update_config(payload or {})}
-
-    @app.get("/api/proactive/events")
-    async def proactive_events(request: Request, status: str = "", limit: int = 80):
-        require_local_service_control(request)
-        return {"events": app.state.proactive_store.list_events(status=status, limit=limit)}
-
-    @app.post("/api/proactive/test")
-    async def proactive_test(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        payload = payload or {}
-        config = app.state.proactive_store.load_config()
-        channel = str(payload.get("channel") or app.state.proactive_store.default_channel(config) or "web")
-        event = app.state.proactive_store.create_event(
-            {
-                "kind": "test",
-                "title": payload.get("title") or "\u4e3b\u52a8\u6d88\u606f\u6d4b\u8bd5",
-                "content": payload.get("content") or "\u8fd9\u662f\u4e00\u6761\u4e3b\u52a8\u6d88\u606f\u6d4b\u8bd5\u3002\u4fdd\u5b58\u540e\u4f1a\u51fa\u73b0\u5728\u5bf9\u8bdd\u5217\u8868\u91cc\u3002",
-                "channel": channel,
-                "status": "pending",
-            }
-        )
-        result = await deliver_proactive_text(
-            app,
-            title=event["title"],
-            content=event["content"],
-            channel=event["channel"],
-            source="proactive_test",
-        )
-        app.state.proactive_store.update_event(
-            event["id"],
-            {
-                "status": "done" if result.get("ok") else "failed",
-                "fired_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "conversation_id": result.get("conversation_id", ""),
-                "last_error": result.get("error", ""),
-            },
-        )
-        return {"event": app.state.proactive_store.get_event(event["id"]) or event, "result": result, "events": app.state.proactive_store.list_events()}
-
-    @app.post("/api/proactive/events/{event_id}/dismiss")
-    async def dismiss_proactive_event(event_id: str, request: Request):
-        require_local_service_control(request)
-        return {"ok": app.state.proactive_store.dismiss_event(event_id), "events": app.state.proactive_store.list_events()}
 
     @app.get("/api/memory")
     async def memory_items(limit: int = 200, query: str = "", layer: str = ""):
@@ -845,79 +548,6 @@ def create_app(args) -> FastAPI:
             except Exception as exc:
                 result = {"ok": False, "tool": tool_id, "error": str(exc)}
         return {"tool_call": call, "result": result, "direct_answer": direct_answer_from_tool({"tool": call.get("id"), "result": result} if call else None)}
-
-    @app.get("/api/health")
-    async def health():
-        settings = app.state.settings
-        checks = await asyncio.gather(
-            check_service("asr", health_url_from(settings.asr_url)),
-            check_service("llm", health_url_from(settings.llm_url)),
-            check_service("tts", health_url_from(settings.tts_url)),
-            return_exceptions=True,
-        )
-        return {
-            "vad": {"ok": True, "device": app.state.vad_store.device},
-            "services": [item for item in checks if isinstance(item, dict)],
-            "warmups": warmup_statuses(),
-        }
-
-    @app.get("/api/services")
-    async def services():
-        return {"services": attach_service_warmups(await app.state.service_manager.status_all())}
-
-    @app.get("/api/system/resources")
-    async def system_resources():
-        return collect_system_resources()
-
-    @app.post("/api/services/start-all")
-    async def start_all_services(request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        overrides = (payload or {}).get("services") or {}
-        services = await app.state.service_manager.start_all(overrides, allow_config_update=True)
-        await schedule_service_warmups(app.state.settings)
-        return {"services": attach_service_warmups(services)}
-
-    @app.post("/api/services/stop-all")
-    async def stop_all_services(request: Request):
-        require_local_service_control(request)
-        clear_warmup_status()
-        return {"services": await app.state.service_manager.stop_all()}
-
-    @app.post("/api/services/{service_id}/start")
-    async def start_service(service_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        service = await app.state.service_manager.start(service_id, payload or {}, allow_config_update=True)
-        if service_id in {"asr", "llm"}:
-            await schedule_service_warmup(service_id, app.state.settings)
-        service = attach_service_warmups([service])[0]
-        return {"service": service}
-
-    @app.post("/api/services/{service_id}/stop")
-    async def stop_service(service_id: str, request: Request):
-        require_local_service_control(request)
-        clear_warmup_status(service_id)
-        service = await app.state.service_manager.stop(service_id)
-        return {"service": service}
-
-    @app.patch("/api/services/{service_id}")
-    async def update_service(service_id: str, request: Request, payload: dict | None = Body(default=None)):
-        require_local_service_control(request)
-        service = app.state.service_manager.update_service(service_id, payload or {})
-        return {"service": service}
-
-    @app.get("/api/services/{service_id}/logs")
-    async def service_logs(service_id: str, max_bytes: int = 24000):
-        return {"id": service_id, "logs": app.state.service_manager.read_logs(service_id, max_bytes=max_bytes)}
-
-    @app.delete("/api/services/logs")
-    async def clear_all_service_logs(request: Request):
-        require_local_service_control(request)
-        return app.state.service_manager.clear_logs()
-
-    @app.delete("/api/services/{service_id}/logs")
-    async def clear_service_logs(service_id: str, request: Request):
-        require_local_service_control(request)
-        return app.state.service_manager.clear_logs(service_id)
 
     @app.get("/api/integrations")
     async def integrations(request: Request):

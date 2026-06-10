@@ -15,8 +15,11 @@ from typing import Any
 
 import httpx
 
+from weixin_media import WeixinVoiceSendError, send_weixin_voice
+
 
 DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com"
+DEFAULT_CDN_BASE_URL = "https://novac2c.cdn.weixin.qq.com/c2c"
 DEFAULT_POLL_TIMEOUT_MS = 35_000
 OPENCLAW_WEIXIN_VERSION = "2.4.4"
 ILINK_APP_ID = "bot"
@@ -115,10 +118,18 @@ def load_account(state_dir: Path, account_id: str) -> dict:
                 "account_id": account_id,
                 "token": str(data.get("token") or ""),
                 "base_url": str(data.get("baseUrl") or data.get("base_url") or DEFAULT_BASE_URL),
+                "cdn_base_url": str(data.get("cdnBaseUrl") or data.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
                 "user_id": str(data.get("userId") or data.get("user_id") or ""),
                 "path": str(path),
             }
-    return {"account_id": account_id, "token": "", "base_url": DEFAULT_BASE_URL, "user_id": "", "path": ""}
+    return {
+        "account_id": account_id,
+        "token": "",
+        "base_url": DEFAULT_BASE_URL,
+        "cdn_base_url": DEFAULT_CDN_BASE_URL,
+        "user_id": "",
+        "path": "",
+    }
 
 
 def sync_path(state_dir: Path, account_id: str) -> Path:
@@ -311,6 +322,73 @@ def report_branchwhisper_timing(branchwhisper_url: str, integration_id: str, tra
         log(f"timing report failed trace={trace_id}: {exc}")
 
 
+def voice_fallback_text(result: dict, voice_error: str = "") -> str:
+    if not result.get("voice_requested"):
+        return ""
+    error = str(voice_error or result.get("voice_error") or "").strip()
+    if error:
+        return f"语音暂时发不出来：{error[:120]}。我先把文字版发给你。"
+    return ""
+
+
+def send_voice_reply(
+    *,
+    branchwhisper_url: str,
+    integration_id: str,
+    trace_id: str,
+    account: dict,
+    to_user_id: str,
+    context_token: str,
+    result: dict,
+) -> bool:
+    if not result.get("send_voice") or not result.get("voice_file"):
+        return False
+    started = time.perf_counter()
+    try:
+        sent = send_weixin_voice(
+            base_url=account["base_url"],
+            token=account["token"],
+            to_user_id=to_user_id,
+            voice_file=str(result.get("voice_file") or ""),
+            text=str(result.get("reply_text") or "")[:240],
+            context_token=context_token,
+            cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
+        )
+        voice_send_ms = int((time.perf_counter() - started) * 1000)
+        report_branchwhisper_timing(
+            branchwhisper_url,
+            integration_id,
+            trace_id,
+            {
+                "voice_send_ms": voice_send_ms,
+                "voice_send_status": "sent",
+                "voice_message_id": str(sent.get("message_id") or ""),
+            },
+        )
+        log(
+            f"sent voice account={account['account_id']} to={to_user_id} "
+            f"message_id={sent.get('message_id') or ''} voice_send_ms={voice_send_ms} "
+            f"playtime_ms={sent.get('playtime_ms') or 0}"
+        )
+        return True
+    except (WeixinVoiceSendError, Exception) as exc:
+        voice_send_ms = int((time.perf_counter() - started) * 1000)
+        error = str(exc)
+        report_branchwhisper_timing(
+            branchwhisper_url,
+            integration_id,
+            trace_id,
+            {
+                "voice_send_ms": voice_send_ms,
+                "voice_send_status": "failed",
+                "voice_error": error[:240],
+            },
+        )
+        result["voice_error"] = error
+        log(f"voice send failed account={account['account_id']} to={to_user_id} err={error[:240]}")
+        return False
+
+
 def message_fingerprint(account_id: str, msg: dict, text: str) -> str:
     material = "|".join(
         [
@@ -385,10 +463,26 @@ def process_message(
                 {"dialog_ms": branch_ms, "send_ms": send_ms, "send_status": "failed", "send_error": str(exc)[:240]},
             )
             raise
-    if result.get("send_voice") and result.get("voice_file"):
+    voice_sent = send_voice_reply(
+        branchwhisper_url=branchwhisper_url,
+        integration_id=integration_id,
+        trace_id=trace_id,
+        account=account,
+        to_user_id=from_user_id,
+        context_token=context_token,
+        result=result,
+    )
+    voice_notice = "" if voice_sent else voice_fallback_text(result)
+    if voice_notice:
+        try:
+            notice_id = send_text(client, account, from_user_id, voice_notice, context_token=context_token)
+            log(f"sent voice fallback notice account={account['account_id']} to={from_user_id} client_id={notice_id}")
+        except Exception as exc:
+            log(f"voice fallback notice failed account={account['account_id']} to={from_user_id} err={exc}")
+    if result.get("send_voice") and result.get("voice_file") and not voice_sent:
         log(
-            "voice reply generated but not sent as media yet: "
-            f"{result.get('voice_file')} (requires Weixin CDN upload support)"
+            "voice reply generated but media send failed: "
+            f"{result.get('voice_file')} error={result.get('voice_error') or '-'}"
         )
 
 

@@ -92,6 +92,7 @@ async function switchPage(page, pushState = true) {
       } else {
         await dashboardModule.enterDashboard?.();
       }
+      currentLeave = dashboardModule.leaveDashboard || null;
     } else if (page === "services") {
       const servicesModule = await import("./ui-services.js");
       if (!servicesInitialized) {

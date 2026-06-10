@@ -5,7 +5,7 @@
 
 import { state, PIPELINE_STEPS, ACTIVE_CONVERSATION_KEY } from "./state.js";
 import { $, setText, showToast } from "./utils.js";
-import { loadConversations } from "./api.js";
+import { loadConversation, loadConversations } from "./api.js";
 import { stopAssistantAudio, schedulePcm16, releaseAfterPlayback } from "./audio.js";
 
 let onTranscriptUpdated = null;
@@ -279,16 +279,31 @@ function applyConversation(conversation, renderMessages) {
   loadConversations().then(() => { if (onTranscriptUpdated) onTranscriptUpdated(); });
 }
 
-export async function selectConversation(conversationId) {
-  if (!conversationId || conversationId === state.activeConversationId) return;
-  const conversation = (state.conversations || []).find((item) => item.id === conversationId);
+export function renderExternalConversation(conversation) {
+  if (!conversation || conversation.id !== state.activeConversationId) return;
+  state.activeConversation = conversation;
+  setText("topStatus", conversation.title || "新的对话");
+  renderTranscript(conversation.messages || []);
+}
+
+export async function selectConversation(conversationId, options = {}) {
+  if (!conversationId) return;
+  if (conversationId === state.activeConversationId && !options.force) return;
+  const summary = (state.conversations || []).find((item) => item.id === conversationId);
+  let conversation = null;
+  try {
+    conversation = await loadConversation(conversationId);
+  } catch {
+    conversation = null;
+  }
   state.activeConversationId = conversationId;
   localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversationId);
-  if (conversation) {
+  if (conversation || summary) {
+    conversation = conversation || summary;
     applyConversation(conversation, true);
     scrollTranscriptToBottom();
   }
-  reconnectDialog();
+  if (!options.skipReconnect) reconnectDialog();
 }
 
 /* ---- text ---- */

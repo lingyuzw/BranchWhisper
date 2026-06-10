@@ -25,7 +25,30 @@ from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
 
 
-DEFAULT_VOICE_TRIGGERS = ["发语音", "说话", "念给我听", "语音回复", "我想听你说话"]
+DEFAULT_VOICE_TRIGGERS = [
+    "发语音",
+    "发条语音",
+    "发句语音",
+    "说句话",
+    "讲句话",
+    "念给我听",
+    "读出来",
+    "语音回复",
+    "我想听你说话",
+    "听听",
+]
+VOICE_INTENT_RE = re.compile(
+    r"(发|来|给我|要|想听)(一|1)?(条|段|句)?语音"
+    r"|(一|1)?(条|段|句)语音"
+    r"|语音回复"
+    r"|说(句|句话|一下|给我听)"
+    r"|讲(句|句话|一下)"
+    r"|念(一下|给我听)?"
+    r"|读出来"
+    r"|开口(说话)?"
+    r"|出声"
+    r"|听听$"
+)
 DEFAULT_WEIXIN_OC_BASE_URL = "https://ilinkai.weixin.qq.com"
 DEFAULT_WEIXIN_OC_BOT_TYPE = "3"
 DEFAULT_WEIXIN_OC_VERSION = "2.4.4"
@@ -536,6 +559,10 @@ class IntegrationManager:
             "bridge_ms",
             "send_status",
             "send_error",
+            "voice_send_ms",
+            "voice_send_status",
+            "voice_error",
+            "voice_message_id",
         }
         sanitized = {
             key: value
@@ -1074,7 +1101,8 @@ class ExternalDialogEngine:
         )
         await self.remember_turn(runtime_settings, text, reply_text)
 
-        send_voice = self.should_send_voice(text, keywords, integration)
+        voice_requested = self.should_send_voice(text, keywords, integration)
+        send_voice = voice_requested
         voice_file = ""
         voice_error = ""
         if send_voice:
@@ -1104,7 +1132,7 @@ class ExternalDialogEngine:
         )
         self.integration_manager.append_log(
             platform_id,
-            f"[dialog:{trace_id}] reply text_len={len(reply_text)} tool={(tool_result or {}).get('tool') or '-'} direct={bool(direct_answer)} timings={timings} send_voice={send_voice} voice_file={voice_file}",
+            f"[dialog:{trace_id}] reply text_len={len(reply_text)} tool={(tool_result or {}).get('tool') or '-'} direct={bool(direct_answer)} timings={timings} voice_requested={voice_requested} send_voice={send_voice} voice_file={voice_file}",
         )
         return {
             "ok": True,
@@ -1115,8 +1143,10 @@ class ExternalDialogEngine:
             "conversation_id": conversation["id"],
             "reply_text": reply_text,
             "attachments": [],
+            "voice_requested": voice_requested,
             "send_voice": send_voice,
             "voice_file": voice_file,
+            "voice_format": "wav" if voice_file else "",
             "voice_error": voice_error,
             "tool_used": (tool_result or {}).get("tool") or "",
             "direct_answer": bool(direct_answer),
@@ -1248,7 +1278,16 @@ class ExternalDialogEngine:
     def should_send_voice(self, user_text: str, keywords: list[str], integration: dict | None) -> bool:
         if (integration or {}).get("reply_mode") == "voice":
             return True
-        return any(keyword and keyword in user_text for keyword in keywords)
+        normalized = re.sub(r"\s+", "", user_text or "")
+        for keyword in keywords:
+            normalized_keyword = re.sub(r"\s+", "", str(keyword))
+            if not normalized_keyword or normalized_keyword == "说话":
+                continue
+            if normalized_keyword in normalized:
+                return True
+        if normalized in {"语音", "说话", "你说话", "说两句"}:
+            return True
+        return bool(VOICE_INTENT_RE.search(normalized))
 
     async def synthesize_voice(self, settings: SessionSettings, text: str, trace_id: str) -> str:
         text = clean_for_tts(text)
