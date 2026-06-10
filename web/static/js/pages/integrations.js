@@ -387,7 +387,9 @@ function renderTimingSummary(selected) {
 function voiceStatusLabel(items) {
   const latest = (items || []).find((item) => item.voice_send_status);
   if (!latest) return "--";
-  return latest.voice_send_status === "sent" ? "已发送" : "失败";
+  if (latest.voice_send_status === "accepted") return "接口已接受";
+  if (latest.voice_send_status === "sent") return "已发送";
+  return "失败";
 }
 
 function renderAccountList(selected) {

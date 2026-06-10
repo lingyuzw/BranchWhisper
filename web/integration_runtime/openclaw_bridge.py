@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import signal
 import sys
 import time
@@ -331,6 +332,33 @@ def voice_fallback_text(result: dict, voice_error: str = "") -> str:
     return ""
 
 
+def split_reply_messages(text: str, *, max_parts: int = 4, max_chars: int = 60) -> list[str]:
+    text = str(text or "").strip()
+    if not text:
+        return []
+    chunks: list[str] = []
+    for line in re.split(r"\r?\n+", text):
+        line = line.strip()
+        if not line:
+            continue
+        pieces = [part.strip() for part in re.split(r"(?<=[。！？!?~～])\s*", line) if part.strip()]
+        if not pieces:
+            pieces = [line]
+        for piece in pieces:
+            while len(piece) > max_chars:
+                chunks.append(piece[:max_chars].strip())
+                piece = piece[max_chars:].strip()
+            if piece:
+                chunks.append(piece)
+    if len(chunks) <= max_parts:
+        return chunks
+    head = chunks[: max_parts - 1]
+    tail = " ".join(chunks[max_parts - 1 :]).strip()
+    if tail:
+        head.append(tail[: max_chars * 2].strip())
+    return [item for item in head if item]
+
+
 def send_voice_reply(
     *,
     branchwhisper_url: str,
@@ -361,9 +389,9 @@ def send_voice_reply(
             trace_id,
             {
                 "voice_send_ms": voice_send_ms,
-                "voice_send_status": "sent",
+                "voice_send_status": "accepted",
                 "voice_message_id": str(sent.get("message_id") or ""),
-                "voice_stage": str(sent.get("stage") or "sent"),
+                "voice_stage": str(sent.get("stage") or "accepted"),
                 "voice_format": str(sent.get("transcode_format") or ""),
                 "voice_diagnostic": json.dumps(
                     {
@@ -378,10 +406,10 @@ def send_voice_reply(
             },
         )
         log(
-            f"sent voice account={account['account_id']} to={to_user_id} "
+            f"voice api accepted account={account['account_id']} to={to_user_id} "
             f"message_id={sent.get('message_id') or ''} voice_send_ms={voice_send_ms} "
             f"playtime_ms={sent.get('playtime_ms') or 0} format={sent.get('transcode_format') or ''} "
-            f"encode_type={sent.get('encode_type') or ''}"
+            f"encode_type={sent.get('encode_type') or ''} client_delivery=unconfirmed"
         )
         return True
     except (WeixinVoiceSendError, Exception) as exc:
@@ -451,21 +479,34 @@ def process_message(
     result = call_branchwhisper(branchwhisper_url, integration_id, account["account_id"], msg, text)
     branch_ms = int((time.perf_counter() - branch_started) * 1000)
     reply = str(result.get("reply_text") or "").strip()
+    reply_parts = [str(part).strip() for part in (result.get("reply_parts") or []) if str(part).strip()]
+    if not reply_parts and reply:
+        reply_parts = split_reply_messages(reply)
     trace_id = str(result.get("trace_id") or "")
-    if reply:
+    if reply_parts:
         send_started = time.perf_counter()
         try:
-            message_id = send_text(client, account, from_user_id, reply, context_token=context_token)
+            message_ids: list[str] = []
+            for index, part in enumerate(reply_parts):
+                message_ids.append(send_text(client, account, from_user_id, part, context_token=context_token))
+                if index < len(reply_parts) - 1:
+                    time.sleep(0.18)
             send_ms = int((time.perf_counter() - send_started) * 1000)
             total_ms = int((time.perf_counter() - branch_started) * 1000)
             report_branchwhisper_timing(
                 branchwhisper_url,
                 integration_id,
                 trace_id,
-                {"dialog_ms": branch_ms, "send_ms": send_ms, "bridge_ms": total_ms, "send_status": "sent"},
+                {
+                    "dialog_ms": branch_ms,
+                    "send_ms": send_ms,
+                    "bridge_ms": total_ms,
+                    "send_status": "sent",
+                    "text_parts": len(reply_parts),
+                },
             )
             log(
-                f"sent text account={account['account_id']} to={from_user_id} client_id={message_id} "
+                f"sent text account={account['account_id']} to={from_user_id} parts={len(reply_parts)} client_ids={','.join(message_ids)} "
                 f"branch_ms={branch_ms} send_ms={send_ms} timings={result.get('timings') or {}}"
             )
         except Exception as exc:

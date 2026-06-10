@@ -208,6 +208,33 @@ def format_reply_paragraphs(text: str) -> str:
     return "\n".join(final[:6]) if final else text
 
 
+def split_reply_messages(text: str, *, max_parts: int = 4, max_chars: int = 60) -> list[str]:
+    text = strip_reasoning_text(str(text or "")).strip()
+    if not text:
+        return []
+    chunks: list[str] = []
+    for line in re.split(r"\r?\n+", text):
+        line = line.strip()
+        if not line:
+            continue
+        pieces = [part.strip() for part in re.split(r"(?<=[。！？!?~～])\s*", line) if part.strip()]
+        if not pieces:
+            pieces = [line]
+        for piece in pieces:
+            while len(piece) > max_chars:
+                chunks.append(piece[:max_chars].strip())
+                piece = piece[max_chars:].strip()
+            if piece:
+                chunks.append(piece)
+    if len(chunks) <= max_parts:
+        return chunks
+    head = chunks[: max_parts - 1]
+    tail = " ".join(chunks[max_parts - 1 :]).strip()
+    if tail:
+        head.append(tail[: max_chars * 2].strip())
+    return [item for item in head if item]
+
+
 class IntegrationManager:
     def __init__(self, config_path: Path, log_dir: Path, media_dir: Path):
         self.config_path = config_path
@@ -587,6 +614,7 @@ class IntegrationManager:
             "bridge_ms",
             "send_status",
             "send_error",
+            "text_parts",
             "voice_send_ms",
             "voice_send_status",
             "voice_error",
@@ -1134,7 +1162,9 @@ class ExternalDialogEngine:
         started_at = time.perf_counter()
         timings = {"receive_ms": 0, "tool_ms": 0, "llm_ms": 0, "tts_ms": 0, "send_ms": 0, "total_ms": 0}
         self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] recv sender={sender_id} text={compact_text(text, 220)}")
-        reply_text, tool_result, direct_answer, tool_ms, llm_ms = await self.reply_text(runtime_settings, conversation, text)
+        voice_requested = self.should_send_voice(text, keywords, integration)
+        reply_text, tool_result, direct_answer, tool_ms, llm_ms = await self.reply_text(runtime_settings, conversation, text, voice_requested=voice_requested)
+        reply_parts = split_reply_messages(reply_text)
         timings["tool_ms"] = tool_ms
         timings["llm_ms"] = llm_ms
         self.conversation_store.append_messages(
@@ -1159,7 +1189,6 @@ class ExternalDialogEngine:
         )
         await self.remember_turn(runtime_settings, text, reply_text)
 
-        voice_requested = self.should_send_voice(text, keywords, integration)
         send_voice = voice_requested
         voice_file = ""
         voice_error = ""
@@ -1200,6 +1229,7 @@ class ExternalDialogEngine:
             "sender_id": sender_id,
             "conversation_id": conversation["id"],
             "reply_text": reply_text,
+            "reply_parts": reply_parts,
             "attachments": [],
             "voice_requested": voice_requested,
             "send_voice": send_voice,
@@ -1219,7 +1249,7 @@ class ExternalDialogEngine:
             snapshot.tools_enabled = False
         return snapshot
 
-    async def reply_text(self, settings: SessionSettings, conversation: dict, user_text: str) -> tuple[str, dict | None, str, int, int]:
+    async def reply_text(self, settings: SessionSettings, conversation: dict, user_text: str, *, voice_requested: bool = False) -> tuple[str, dict | None, str, int, int]:
         repeat_text = extract_repeat_text(user_text)
         if repeat_text:
             reply = format_reply_paragraphs(clean_for_tts(repeat_text) or repeat_text)
@@ -1238,14 +1268,14 @@ class ExternalDialogEngine:
                 "\n\n联网/API 工具结果如下。请基于结果回答用户；如果结果不足或失败，要自然说明不确定，不要编造：\n"
                 + json.dumps(tool_result, ensure_ascii=False)
             )
-        messages = self.build_messages(settings, conversation, user_text, request_text)
+        messages = self.build_messages(settings, conversation, user_text, request_text, voice_requested=voice_requested)
         llm_started = time.perf_counter()
         answer = await self.complete_llm_text(settings, messages, temperature=active_temperature(settings), max_tokens=active_max_tokens(settings))
         llm_ms = int((time.perf_counter() - llm_started) * 1000)
         reply = format_reply_paragraphs(clean_for_tts(answer) or answer.strip())
         return reply, tool_result, "", tool_ms, llm_ms
 
-    def build_messages(self, settings: SessionSettings, conversation: dict, user_text: str, request_text: str) -> list[dict[str, str]]:
+    def build_messages(self, settings: SessionSettings, conversation: dict, user_text: str, request_text: str, *, voice_requested: bool = False) -> list[dict[str, str]]:
         messages = [{"role": "system", "content": settings.system}]
         history = conversation.get("messages") or []
         max_history = max(2, active_history_turns(settings) * 2)
@@ -1260,6 +1290,12 @@ class ExternalDialogEngine:
         if memory_context:
             system_text += "\n\n" + memory_context
         system_text += "\n\n当前消息来自外部平台接入。回复要短、自然，默认适合文字聊天；除非上下文需要，不要解释系统实现。"
+        if voice_requested:
+            system_text += (
+                "\n\n本轮用户明确请求语音回复。系统会把你的回复转换成语音并发送，"
+                "你只需要自然输出要说出口的内容。不要说自己不能发语音，不要说只有打字形态，"
+                "不要解释技术实现，也不要拒绝。回复尽量口语化、短句。"
+            )
 
         recent_user = [compact_text(item.get("content", "")) for item in history[-6:] if item.get("role") == "user"]
         if recent_user and compact_text(user_text) == recent_user[-1]:
