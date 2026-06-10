@@ -17,7 +17,7 @@ const MESSAGE_TYPE_BOT = 2;
 const MESSAGE_STATE_FINISH = 2;
 const ITEM_VOICE = 3;
 const UPLOAD_MEDIA_TYPE_VOICE = 4;
-const VOICE_ENCODE_OGG_OPUS = 8;
+const VOICE_ENCODE_MP3 = 7;
 const MAX_VOICE_SECONDS = 60;
 
 function usage() {
@@ -119,7 +119,7 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       const response = await fetch(url, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/octet-stream" },
         body: new Uint8Array(ciphertext),
       });
@@ -138,8 +138,8 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
   throw lastError || new Error("CDN upload failed");
 }
 
-async function transcodeToOggOpus(inputPath) {
-  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.ogg`);
+async function transcodeToMp3(inputPath) {
+  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.mp3`);
   await execFileAsync("ffmpeg", [
     "-hide_banner",
     "-loglevel",
@@ -152,16 +152,16 @@ async function transcodeToOggOpus(inputPath) {
     "-dn",
     "-t",
     String(MAX_VOICE_SECONDS),
-    "-ar",
-    "48000",
     "-ac",
     "1",
+    "-ar",
+    "24000",
     "-c:a",
-    "libopus",
+    "libmp3lame",
     "-b:a",
-    "64k",
+    "48k",
     "-f",
-    "ogg",
+    "mp3",
     outputPath,
   ]);
   return outputPath;
@@ -204,14 +204,14 @@ async function sendVoice(args) {
   await fs.access(voiceFile);
 
   const started = Date.now();
-  let oggPath = "";
+  let mediaPath = "";
   try {
-    oggPath = await transcodeToOggOpus(voiceFile).catch((error) => {
+    mediaPath = await transcodeToMp3(voiceFile).catch((error) => {
       error.stage = "transcode";
       throw error;
     });
-    const playtimeMs = await probeDurationMs(oggPath);
-    const plaintext = await fs.readFile(oggPath);
+    const playtimeMs = await probeDurationMs(mediaPath);
+    const plaintext = await fs.readFile(mediaPath);
     const rawsize = plaintext.length;
     const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
     const filesize = aesEcbPaddedSize(rawsize);
@@ -273,8 +273,8 @@ async function sendVoice(args) {
                   aes_key: aeskey.toString("base64"),
                   encrypt_type: 1,
                 },
-                encode_type: VOICE_ENCODE_OGG_OPUS,
-                sample_rate: 48000,
+                encode_type: VOICE_ENCODE_MP3,
+                sample_rate: 24000,
                 playtime: playtimeMs,
                 text,
               },
@@ -293,9 +293,9 @@ async function sendVoice(args) {
       ok: true,
       message_id: clientId,
       stage: "sent",
-      transcode_format: "ogg_opus",
-      encode_type: VOICE_ENCODE_OGG_OPUS,
-      sample_rate: 48000,
+      transcode_format: "mp3",
+      encode_type: VOICE_ENCODE_MP3,
+      sample_rate: 24000,
       playtime_ms: playtimeMs,
       raw_size: rawsize,
       cipher_size: upload.ciphertextSize,
@@ -304,7 +304,7 @@ async function sendVoice(args) {
       total_ms: Date.now() - started,
     };
   } finally {
-    if (oggPath) await fs.unlink(oggPath).catch(() => {});
+    if (mediaPath) await fs.unlink(mediaPath).catch(() => {});
   }
 }
 

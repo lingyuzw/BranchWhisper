@@ -192,47 +192,82 @@ def wav_bytes_from_pcm16(pcm: bytes, sample_rate: int) -> bytes:
 def format_reply_paragraphs(text: str) -> str:
     text = strip_reasoning_text(text)
     text = re.sub(r"\s+", " ", text).strip()
-    if not text or "\n" in text or len(text) <= 18:
+    if not text:
         return text
-    text = re.sub(r"([。！？!?~～])", r"\1\n", text)
-    parts = [part.strip() for part in text.splitlines() if part.strip()]
-    if len(parts) <= 1:
-        parts = [part.strip() for part in re.split(r"[，,、]", text) if part.strip()]
-    final = []
-    for part in parts:
-        while len(part) > 24:
-            final.append(part[:24].strip())
-            part = part[24:].strip()
-        if part:
-            final.append(part)
-    return "\n".join(final[:6]) if final else text
+    return "\n".join(split_reply_messages(text, max_parts=4, max_chars=48)) or text
 
 
 def split_reply_messages(text: str, *, max_parts: int = 4, max_chars: int = 60) -> list[str]:
     text = strip_reasoning_text(str(text or "")).strip()
     if not text:
         return []
-    chunks: list[str] = []
+    clauses = natural_reply_clauses(text)
+    merged = merge_reply_clauses(clauses, max_chars=max_chars)
+    if len(merged) <= max_parts:
+        return merged
+    head = merged[: max_parts - 1]
+    tail = " ".join(merged[max_parts - 1 :]).strip()
+    if tail:
+        head.append(trim_reply_part(tail, max_chars * 2))
+    return [item for item in head if item]
+
+
+def natural_reply_clauses(text: str) -> list[str]:
+    clauses: list[str] = []
     for line in re.split(r"\r?\n+", text):
         line = line.strip()
         if not line:
             continue
-        pieces = [part.strip() for part in re.split(r"(?<=[。！？!?~～])\s*", line) if part.strip()]
-        if not pieces:
-            pieces = [line]
-        for piece in pieces:
-            while len(piece) > max_chars:
-                chunks.append(piece[:max_chars].strip())
-                piece = piece[max_chars:].strip()
-            if piece:
-                chunks.append(piece)
-    if len(chunks) <= max_parts:
-        return chunks
-    head = chunks[: max_parts - 1]
-    tail = " ".join(chunks[max_parts - 1 :]).strip()
-    if tail:
-        head.append(tail[: max_chars * 2].strip())
-    return [item for item in head if item]
+        start = 0
+        for match in re.finditer(r"[。！？!?~～]+", line):
+            end = match.end()
+            part = line[start:end].strip()
+            if part:
+                clauses.append(part)
+            start = end
+        rest = line[start:].strip()
+        if rest:
+            clauses.extend(split_long_clause(rest))
+    return clauses or [text]
+
+
+def split_long_clause(text: str, *, soft_limit: int = 46) -> list[str]:
+    text = text.strip()
+    if len(text) <= soft_limit:
+        return [text]
+    pieces = [part.strip() for part in re.split(r"(?<=[，,、；;])", text) if part.strip()]
+    if len(pieces) <= 1:
+        return [trim_reply_part(text, soft_limit * 2)]
+    return pieces
+
+
+def merge_reply_clauses(clauses: list[str], *, max_chars: int) -> list[str]:
+    merged: list[str] = []
+    current = ""
+    min_chars = min(18, max_chars)
+    for clause in clauses:
+        clause = clause.strip()
+        if not clause:
+            continue
+        candidate = f"{current} {clause}".strip() if current else clause
+        if current and len(candidate) > max_chars and len(current) >= min_chars:
+            merged.append(current)
+            current = clause
+        else:
+            current = candidate
+    if current:
+        merged.append(current)
+    return [trim_reply_part(item, max_chars) if len(item) > max_chars + 8 else item for item in merged]
+
+
+def trim_reply_part(text: str, limit: int) -> str:
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    cut = max(text.rfind("，", 0, limit), text.rfind(",", 0, limit), text.rfind("、", 0, limit), text.rfind(" ", 0, limit))
+    if cut >= max(12, int(limit * 0.55)):
+        return text[:cut].strip()
+    return text[:limit].strip()
 
 
 class IntegrationManager:
