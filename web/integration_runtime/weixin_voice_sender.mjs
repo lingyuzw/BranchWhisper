@@ -17,7 +17,9 @@ const MESSAGE_TYPE_BOT = 2;
 const MESSAGE_STATE_FINISH = 2;
 const ITEM_VOICE = 3;
 const UPLOAD_MEDIA_TYPE_VOICE = 4;
-const VOICE_ENCODE_MP3 = 7;
+const VOICE_ENCODE_OGG_OPUS = 8;
+const WEIXIN_VOICE_SAMPLE_RATE = 48_000;
+const WEIXIN_VOICE_BITRATE = "64k";
 const MAX_VOICE_SECONDS = 60;
 
 function usage() {
@@ -154,8 +156,8 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
   throw lastError || new Error("CDN upload failed");
 }
 
-async function transcodeToMp3(inputPath) {
-  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.mp3`);
+async function transcodeToOggOpus(inputPath) {
+  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.ogg`);
   await execFileAsync("ffmpeg", [
     "-hide_banner",
     "-loglevel",
@@ -168,16 +170,16 @@ async function transcodeToMp3(inputPath) {
     "-dn",
     "-t",
     String(MAX_VOICE_SECONDS),
+    "-ar",
+    String(WEIXIN_VOICE_SAMPLE_RATE),
     "-ac",
     "1",
-    "-ar",
-    "24000",
     "-c:a",
-    "libmp3lame",
+    "libopus",
     "-b:a",
-    "48k",
+    WEIXIN_VOICE_BITRATE,
     "-f",
-    "mp3",
+    "ogg",
     outputPath,
   ]);
   return outputPath;
@@ -222,7 +224,7 @@ async function sendVoice(args) {
   const started = Date.now();
   let mediaPath = "";
   try {
-    mediaPath = await transcodeToMp3(voiceFile).catch((error) => {
+    mediaPath = await transcodeToOggOpus(voiceFile).catch((error) => {
       error.stage = "transcode";
       throw error;
     });
@@ -286,11 +288,11 @@ async function sendVoice(args) {
               voice_item: {
                 media: {
                   encrypt_query_param: upload.downloadParam,
-                  aes_key: aeskey.toString("base64"),
+                  aes_key: Buffer.from(aeskey.toString("hex")).toString("base64"),
                   encrypt_type: 1,
                 },
-                encode_type: VOICE_ENCODE_MP3,
-                sample_rate: 24000,
+                encode_type: VOICE_ENCODE_OGG_OPUS,
+                sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
                 playtime: playtimeMs,
                 text,
               },
@@ -309,9 +311,9 @@ async function sendVoice(args) {
       ok: true,
       message_id: clientId,
       stage: "sent",
-      transcode_format: "mp3",
-      encode_type: VOICE_ENCODE_MP3,
-      sample_rate: 24000,
+      transcode_format: "ogg_opus",
+      encode_type: VOICE_ENCODE_OGG_OPUS,
+      sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
       playtime_ms: playtimeMs,
       raw_size: rawsize,
       cipher_size: upload.ciphertextSize,
