@@ -5,6 +5,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -17,11 +18,16 @@ const MESSAGE_TYPE_BOT = 2;
 const MESSAGE_STATE_FINISH = 2;
 const ITEM_VOICE = 3;
 const UPLOAD_MEDIA_TYPE_VOICE = 4;
-const VOICE_ENCODE_OGG_SPEEX = 8;
-const WEIXIN_VOICE_SAMPLE_RATE = 16_000;
-const WEIXIN_VOICE_BITRATE = "32k";
+const VOICE_ENCODE_SILK = 6;
+const WEIXIN_VOICE_SAMPLE_RATE = 24_000;
 const WEIXIN_VOICE_GAIN_DB = 8;
 const MAX_VOICE_SECONDS = 60;
+
+let silkModulePromise = null;
+
+function npmExecutable() {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
+}
 
 function usage() {
   return [
@@ -157,8 +163,56 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
   throw lastError || new Error("CDN upload failed");
 }
 
-async function transcodeToOggSpeex(inputPath) {
-  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.ogg`);
+async function loadSilkWasm() {
+  if (!silkModulePromise) {
+    silkModulePromise = import("silk-wasm").catch(async (firstError) => {
+      let lastError = firstError;
+      const candidates = [];
+      for (const entry of String(process.env.NODE_PATH || "").split(path.delimiter)) {
+        if (entry.trim()) candidates.push(entry.trim());
+      }
+      const npmPrefix = process.env.npm_config_prefix || process.env.NPM_CONFIG_PREFIX;
+      if (npmPrefix) candidates.push(path.join(npmPrefix, "node_modules"));
+      if (process.execPath) {
+        const nodeBin = path.dirname(process.execPath);
+        candidates.push(path.resolve(nodeBin, "..", "lib", "node_modules"));
+        candidates.push(path.resolve(nodeBin, "..", "node_modules"));
+      }
+      try {
+        const { stdout } = await execFileAsync(npmExecutable(), ["root", "-g"]);
+        const globalRoot = stdout.trim();
+        if (globalRoot) candidates.push(globalRoot);
+      } catch {
+        // npm may be missing from PATH even when node is available; keep the import error as the primary hint.
+      }
+      try {
+        const { stdout } = await execFileAsync(npmExecutable(), ["config", "get", "prefix"]);
+        const prefix = stdout.trim();
+        if (prefix && prefix !== "undefined" && prefix !== "null") {
+          candidates.push(path.join(prefix, "node_modules"));
+        }
+      } catch {
+        // Same as above: package import failure is more actionable than a secondary npm lookup failure.
+      }
+      for (const root of [...new Set(candidates)]) {
+        const modulePath = path.join(root, "silk-wasm", "lib", "index.mjs");
+        try {
+          await fs.access(modulePath);
+          return await import(pathToFileURL(modulePath).href);
+        } catch (error) {
+          if (error?.code !== "ENOENT") lastError = error;
+        }
+      }
+      const error = new Error(`silk-wasm is not available: ${(lastError || firstError).message}. Install it with: npm install -g silk-wasm`);
+      error.stage = "silk_import";
+      throw error;
+    });
+  }
+  return silkModulePromise;
+}
+
+async function transcodeToPcm(inputPath) {
+  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.pcm`);
   await execFileAsync("ffmpeg", [
     "-hide_banner",
     "-loglevel",
@@ -177,12 +231,8 @@ async function transcodeToOggSpeex(inputPath) {
     String(WEIXIN_VOICE_SAMPLE_RATE),
     "-ac",
     "1",
-    "-c:a",
-    "libspeex",
-    "-b:a",
-    WEIXIN_VOICE_BITRATE,
     "-f",
-    "ogg",
+    "s16le",
     outputPath,
   ]);
   return outputPath;
@@ -221,6 +271,35 @@ async function probeAudioStats(filePath) {
   };
 }
 
+async function probePcmStats(filePath, sampleRate) {
+  const { size } = await fs.stat(filePath);
+  const durationMs = size > 0 ? Math.round((size / 2 / sampleRate) * 1000) : 0;
+  const volume = await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-nostats",
+    "-f",
+    "s16le",
+    "-ar",
+    String(sampleRate),
+    "-ac",
+    "1",
+    "-i",
+    filePath,
+    "-af",
+    "volumedetect",
+    "-f",
+    "null",
+    "-",
+  ]).then(({ stderr }) => parseVolumeDetect(stderr)).catch(() => ({}));
+  return {
+    codec: "pcm_s16le",
+    sample_rate: sampleRate,
+    channels: 1,
+    duration_ms: durationMs,
+    ...volume,
+  };
+}
+
 function parseVolumeDetect(text) {
   const mean = String(text || "").match(/mean_volume:\s*(-?[\d.]+)\s*dB/i);
   const max = String(text || "").match(/max_volume:\s*(-?[\d.]+)\s*dB/i);
@@ -230,19 +309,42 @@ function parseVolumeDetect(text) {
   };
 }
 
-async function probeDurationMs(filePath) {
-  const { stdout } = await execFileAsync("ffprobe", [
-    "-v",
-    "error",
-    "-show_entries",
-    "format=duration",
-    "-of",
-    "default=noprint_wrappers=1:nokey=1",
-    filePath,
-  ]);
-  const seconds = Number.parseFloat(stdout.trim());
-  if (!Number.isFinite(seconds) || seconds <= 0) throw new Error("ffprobe returned invalid duration");
-  return Math.max(1, Math.round(seconds * 1000));
+async function encodePcmToSilk(pcmPath) {
+  const { encode, getDuration } = await loadSilkWasm();
+  if (typeof encode !== "function") {
+    const error = new Error("silk-wasm does not export encode()");
+    error.stage = "silk_encode";
+    throw error;
+  }
+  const pcm = await fs.readFile(pcmPath);
+  const encoded = await encode(pcm, WEIXIN_VOICE_SAMPLE_RATE).catch((error) => {
+    error.stage = "silk_encode";
+    throw error;
+  });
+  const data = Buffer.from(encoded?.data?.buffer || encoded?.data || [], encoded?.data?.byteOffset || 0, encoded?.data?.byteLength || 0);
+  if (!data.length) {
+    const error = new Error("silk-wasm returned empty encoded data");
+    error.stage = "silk_encode";
+    throw error;
+  }
+  let durationMs = Number(encoded?.duration || 0);
+  if ((!Number.isFinite(durationMs) || durationMs <= 0) && typeof getDuration === "function") {
+    durationMs = Number(getDuration(data) || 0);
+  }
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    durationMs = Math.max(1, Math.round((pcm.length / 2 / WEIXIN_VOICE_SAMPLE_RATE) * 1000));
+  }
+  return { data, durationMs: Math.round(durationMs) };
+}
+
+function makeSelfTestPcm() {
+  const samples = Math.floor(WEIXIN_VOICE_SAMPLE_RATE / 10);
+  const buffer = Buffer.alloc(samples * 2);
+  for (let i = 0; i < samples; i += 1) {
+    const value = Math.round(Math.sin((2 * Math.PI * 440 * i) / WEIXIN_VOICE_SAMPLE_RATE) * 12000);
+    buffer.writeInt16LE(value, i * 2);
+  }
+  return buffer;
 }
 
 async function selfTest() {
@@ -250,7 +352,26 @@ async function selfTest() {
   encryptAesEcb(Buffer.from("ok"), key);
   await execFileAsync("ffmpeg", ["-hide_banner", "-version"]);
   await execFileAsync("ffprobe", ["-hide_banner", "-version"]);
-  return { ok: true, ffmpeg: true, ffprobe: true, aes_128_ecb: true };
+  let silkWasm = false;
+  let silkError = "";
+  try {
+    const { encode } = await loadSilkWasm();
+    const encoded = await encode(makeSelfTestPcm(), WEIXIN_VOICE_SAMPLE_RATE);
+    silkWasm = Boolean(encoded?.data?.byteLength || encoded?.data?.length);
+  } catch (error) {
+    silkError = error?.message || String(error);
+  }
+  return {
+    ok: true,
+    ffmpeg: true,
+    ffprobe: true,
+    aes_128_ecb: true,
+    silk_wasm: silkWasm,
+    silk_error: silkError,
+    voice_format: "silk",
+    encode_type: VOICE_ENCODE_SILK,
+    sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
+  };
 }
 
 async function sendVoice(args) {
@@ -267,16 +388,22 @@ async function sendVoice(args) {
   await fs.access(voiceFile);
 
   const started = Date.now();
-  let mediaPath = "";
+  let pcmPath = "";
   try {
     const sourceStats = await probeAudioStats(voiceFile);
-    mediaPath = await transcodeToOggSpeex(voiceFile).catch((error) => {
+    pcmPath = await transcodeToPcm(voiceFile).catch((error) => {
       error.stage = "transcode";
       throw error;
     });
-    const playtimeMs = await probeDurationMs(mediaPath);
-    const transcodeStats = await probeAudioStats(mediaPath);
-    const plaintext = await fs.readFile(mediaPath);
+    const pcmStats = await probePcmStats(pcmPath, WEIXIN_VOICE_SAMPLE_RATE);
+    const silk = await encodePcmToSilk(pcmPath);
+    const playtimeMs = silk.durationMs;
+    const transcodeStats = {
+      ...pcmStats,
+      codec: "silk",
+      duration_ms: playtimeMs,
+    };
+    const plaintext = silk.data;
     const rawsize = plaintext.length;
     const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
     const filesize = aesEcbPaddedSize(rawsize);
@@ -338,7 +465,7 @@ async function sendVoice(args) {
                   aes_key: Buffer.from(aeskey.toString("hex")).toString("base64"),
                   encrypt_type: 1,
                 },
-                encode_type: VOICE_ENCODE_OGG_SPEEX,
+                encode_type: VOICE_ENCODE_SILK,
                 sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
                 playtime: playtimeMs,
                 text,
@@ -358,8 +485,8 @@ async function sendVoice(args) {
       ok: true,
       message_id: clientId,
       stage: "sent",
-      transcode_format: "ogg_speex",
-      encode_type: VOICE_ENCODE_OGG_SPEEX,
+      transcode_format: "silk",
+      encode_type: VOICE_ENCODE_SILK,
       sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
       gain_db: WEIXIN_VOICE_GAIN_DB,
       playtime_ms: playtimeMs,
@@ -374,7 +501,7 @@ async function sendVoice(args) {
       total_ms: Date.now() - started,
     };
   } finally {
-    if (mediaPath) await fs.unlink(mediaPath).catch(() => {});
+    if (pcmPath) await fs.unlink(pcmPath).catch(() => {});
   }
 }
 

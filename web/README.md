@@ -182,8 +182,11 @@ ffmpeg -version
 ```bash
 npm install -g openclaw
 npm install -g @tencent-weixin/openclaw-weixin-cli
+npm install -g silk-wasm
 openclaw --version
 ```
+
+`silk-wasm` 用于微信语音发送，把 TTS 生成的 WAV 转成客户端可播放的 SILK。
 
 如果 `node/npm/openclaw` 在终端里可用，但接入页仍显示未检测到，通常是启动 Web 控制台的 shell 没有继承 Node 的 PATH。请在启动枝语前先确认：
 
@@ -193,6 +196,7 @@ node -v
 npm -v
 npx --version
 openclaw --version
+npm list -g silk-wasm --depth=0
 ```
 
 进入页面：
@@ -205,7 +209,7 @@ http://127.0.0.1:7860#integrations
 
 1. 点击“添加微信个人号”。
 2. 保持默认 `openclaw_profile=buding` 或填写自己的 profile。
-3. 点击环境检查，确认 `node/npm/openclaw/ffmpeg` 可用。
+3. 点击环境检查，确认 `node/npm/openclaw/ffmpeg/silk-wasm` 可用。
 4. 点击扫码登录。
 5. 登录成功后启动实例和桥接进程。
 

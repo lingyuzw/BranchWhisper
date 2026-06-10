@@ -33,7 +33,7 @@ let logScope = "current";
 export function initIntegrations() {
   setupIntegrationEvents();
   showSkeleton("integrationCards", 2);
-  showSkeleton("integrationEnvGrid", 4);
+  showSkeleton("integrationEnvGrid", 5);
   refreshIntegrations({ quiet: true });
 }
 
@@ -135,7 +135,7 @@ function renderEnvironment() {
   const env = state.integrationEnv;
   setText("integrationEnvBadge", env?.ready ? "环境可用" : "需要配置");
   const tools = env?.tools || {};
-  for (const name of ["node", "npm", "openclaw", "ffmpeg"]) {
+  for (const name of ["node", "npm", "openclaw", "ffmpeg", "silk-wasm"]) {
     host.appendChild(createEnvCard(name, tools[name]));
   }
   renderIcons();

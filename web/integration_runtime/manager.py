@@ -728,7 +728,7 @@ class IntegrationManager:
             self.runtime[integration_id]["manual_stop"] = False
 
     def environment_status(self) -> dict:
-        if self._environment_cache and now_ts() - self._environment_cache_at < 180:
+        if self._environment_cache and now_ts() - self._environment_cache_at < 15:
             return self._environment_cache
         tools = {}
         for name in ("node", "npm", "openclaw", "ffmpeg"):
@@ -738,10 +738,16 @@ class IntegrationManager:
                 "path": path or "",
                 "version": self.tool_version(name) if path else "",
             }
+        silk_version = self.npm_installed_package_version("silk-wasm")
+        tools["silk-wasm"] = {
+            "available": bool(silk_version),
+            "path": "npm package" if silk_version else "",
+            "version": silk_version,
+        }
         package = self.npm_package_version("@tencent-weixin/openclaw-weixin")
         cli_package = self.npm_package_version("@tencent-weixin/openclaw-weixin-cli")
-        ready = all(tools[name]["available"] for name in ("node", "npm", "openclaw", "ffmpeg"))
-        data = {"ready": ready, "tools": tools, "packages": {"openclaw_weixin": package, "openclaw_weixin_cli": cli_package}}
+        ready = all(tools[name]["available"] for name in ("node", "npm", "openclaw", "ffmpeg", "silk-wasm"))
+        data = {"ready": ready, "tools": tools, "packages": {"openclaw_weixin": package, "openclaw_weixin_cli": cli_package, "silk_wasm": silk_version}}
         self._environment_cache = data
         self._environment_cache_at = now_ts()
         return data
@@ -772,6 +778,37 @@ class IntegrationManager:
         if result.returncode != 0:
             return ""
         return (result.stdout or "").strip().splitlines()[0] if (result.stdout or "").strip() else ""
+
+    def npm_installed_package_version(self, package_name: str) -> str:
+        if not shutil.which("npm"):
+            return ""
+        commands = [
+            ["npm", "list", "-g", package_name, "--depth=0", "--json"],
+            ["npm", "list", package_name, "--depth=0", "--json"],
+        ]
+        for command in commands:
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=8,
+                )
+            except Exception:
+                continue
+            text = (result.stdout or "").strip()
+            if not text:
+                continue
+            try:
+                data = json.loads(text)
+            except Exception:
+                continue
+            version = str((data.get("dependencies") or {}).get(package_name, {}).get("version") or "")
+            if version:
+                return version
+        return ""
 
     def log_path(self, integration_id: str) -> Path:
         return self.log_dir / f"integration-{safe_id(integration_id)}.log"

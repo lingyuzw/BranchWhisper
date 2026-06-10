@@ -60,8 +60,11 @@ ffmpeg -version
 ```bash
 npm install -g openclaw
 npm install -g @tencent-weixin/openclaw-weixin-cli
+npm install -g silk-wasm
 openclaw --version
 ```
+
+`silk-wasm` 用于把枝语生成的 TTS 音频转成微信语音可播放的 SILK 格式；如果缺少它，接入页的语音自检会显示 `silk_wasm:false`。
 
 如果是在 AutoDL、容器或自定义 Node 目录里安装，需要确保启动枝语的同一个 shell 里能找到 `node/npm/npx/openclaw`。例如：
 
@@ -71,6 +74,7 @@ node -v
 npm -v
 npx --version
 openclaw --version
+npm list -g silk-wasm --depth=0
 ```
 
 然后进入接入页添加微信个人号实例，按页面提示扫码登录并启动桥接。
