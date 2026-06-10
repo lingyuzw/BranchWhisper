@@ -712,6 +712,25 @@ def create_app(args) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"timing": timing}
 
+    @app.post("/api/integrations/{integration_id}/voice-test")
+    async def integration_voice_test(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        payload = payload or {}
+        try:
+            return await app.state.external_dialog_engine.voice_test(
+                integration_id,
+                app.state.settings,
+                str(payload.get("text") or ""),
+                sender_id=str(payload.get("sender_id") or ""),
+                account_id=str(payload.get("account_id") or ""),
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Integration not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Integration voice test failed: {exc}") from exc
+
     @app.post("/api/integrations/dialog")
     async def integration_dialog(request: Request, payload: dict | None = Body(default=None)):
         require_integration_dialog_access(request)

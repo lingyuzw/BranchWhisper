@@ -394,6 +394,15 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.integration-test-result.compact {
+  min-height: 68px;
+  font-size: var(--font-xs);
+}
+.compact-head {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
 
 .integration-modal-panel { width: min(620px, calc(100vw - 40px)); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }

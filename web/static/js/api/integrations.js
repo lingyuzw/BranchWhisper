@@ -103,6 +103,14 @@ export async function testIntegrationDialog(id, text) {
   });
 }
 
+export async function testIntegrationVoice(id, text) {
+  return fetchJson(`/api/integrations/${encodeURIComponent(id)}/voice-test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+}
+
 function syncIntegrations(data) {
   state.integrations = data.integrations || state.integrations;
   state.integrationEnv = data.environment || state.integrationEnv;

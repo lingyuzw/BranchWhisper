@@ -18,6 +18,7 @@ import {
   startIntegrationQrLogin,
   stopIntegration,
   testIntegrationDialog,
+  testIntegrationVoice,
   updateIntegration,
 } from "../api/index.js";
 import { $, createIcon, renderIcons, setText, showConfirm, showSkeleton, showToast } from "../utils/dom.js";
@@ -66,6 +67,13 @@ function setupIntegrationEvents() {
     if (event.key === "Enter") {
       event.preventDefault();
       runDialogProbe();
+    }
+  });
+  $("#integrationVoiceTestBtn")?.addEventListener("click", runVoiceProbe);
+  $("#integrationVoiceTestInput")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      runVoiceProbe();
     }
   });
   $("#integrationForm")?.addEventListener("submit", saveIntegrationForm);
@@ -533,6 +541,45 @@ async function runDialogProbe() {
     if (resultBox) resultBox.textContent = `失败：${error.message}`;
     showToast(`测试失败：${error.message}`, "error");
   }
+}
+
+async function runVoiceProbe() {
+  const selected = selectedIntegration();
+  const text = $("#integrationVoiceTestInput")?.value.trim();
+  if (!selected || !text) {
+    showToast("请选择实例并输入测试语音文本", "error");
+    return;
+  }
+  const resultBox = $("#integrationVoiceTestResult");
+  if (resultBox) resultBox.textContent = "正在合成并发送...";
+  try {
+    const result = await testIntegrationVoice(selected.id, text);
+    if (resultBox) resultBox.textContent = formatVoiceProbeResult(result);
+    await refreshIntegrations({ quiet: true });
+    await refreshSelectedLogs({ quiet: true });
+    showToast(result.ok ? "语音自检已发送，微信端请确认能否播放" : "语音自检失败，查看结果详情", result.ok ? "success" : "error");
+  } catch (error) {
+    if (resultBox) resultBox.textContent = `失败：${error.message}`;
+    showToast(`语音自检失败：${error.message}`, "error");
+  }
+}
+
+function formatVoiceProbeResult(result) {
+  const target = result.target || {};
+  const diagnostic = result.voice_diagnostic || {};
+  const lines = [
+    `状态：${result.ok ? "接口已接受，等待微信端验证播放" : "失败"}`,
+    `阶段：${result.stage || "--"}`,
+    `目标：${target.account_id || "--"} → ${target.sender_id || "--"}`,
+  ];
+  if (result.tts_done) lines.push(`TTS：完成 · ${result.tts_ms || 0}ms`);
+  if (result.voice_file) lines.push(`文件：${result.voice_file}`);
+  if (result.send_done) lines.push(`发送：完成 · ${result.send_ms || 0}ms · ${result.voice_format || "--"}`);
+  if (result.voice_message_id) lines.push(`消息：${result.voice_message_id}`);
+  if (Object.keys(diagnostic).length) lines.push(`诊断：${JSON.stringify(diagnostic, null, 2)}`);
+  if (result.client_delivery) lines.push(`客户端：${result.client_delivery === "unconfirmed" ? "未确认，请在微信端点击播放验证" : result.client_delivery}`);
+  if (result.error) lines.push(`错误：${result.error}`);
+  return lines.join("\n");
 }
 
 function openIntegrationModal(integration = null) {

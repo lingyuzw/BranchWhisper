@@ -32,6 +32,7 @@ from data.conversations import ConversationStore
 from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
+from integration_runtime.weixin_media import WeixinVoiceSendError, send_weixin_voice
 
 
 DEFAULT_VOICE_TRIGGERS = [
@@ -59,6 +60,7 @@ VOICE_INTENT_RE = re.compile(
     r"|听听$"
 )
 DEFAULT_WEIXIN_OC_BASE_URL = "https://ilinkai.weixin.qq.com"
+DEFAULT_WEIXIN_CDN_BASE_URL = "https://novac2c.cdn.weixin.qq.com/c2c"
 DEFAULT_WEIXIN_OC_BOT_TYPE = "3"
 DEFAULT_WEIXIN_OC_VERSION = "2.4.4"
 ILINK_APP_ID = "bot"
@@ -485,6 +487,7 @@ class IntegrationManager:
             "id": selected.get("id") or account_id,
             "token": token,
             "base_url": str(data.get("baseUrl") or data.get("base_url") or selected.get("base_url") or DEFAULT_WEIXIN_OC_BASE_URL),
+            "cdn_base_url": str(data.get("cdnBaseUrl") or data.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL),
             "user_id": str(data.get("userId") or data.get("user_id") or selected.get("user_id") or ""),
         }
 
@@ -522,22 +525,26 @@ class IntegrationManager:
                             "sender_id": sender,
                             "context_token": token,
                             "base_url": credentials["base_url"],
+                            "cdn_base_url": credentials.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL,
                             "token": credentials["token"],
                             "age_hours": round(age_hours, 2),
                         }
                     )
         return targets
 
-    async def send_weixin_text(self, integration_id: str, text: str, sender_id: str = "", account_id: str = "") -> dict:
-        integration = self.require_integration(integration_id)
-        target = None
+    def select_weixin_target(self, integration_id: str, sender_id: str = "", account_id: str = "") -> dict | None:
         my_session = self.my_weixin_session(integration_id)
         sender_id = sender_id or str(my_session.get("sender_id") or "")
         account_id = account_id or str(my_session.get("account_id") or "")
-        for item in self.recent_weixin_targets(integration_id):
+        targets = self.recent_weixin_targets(integration_id)
+        for item in targets:
             if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
-                target = item
-                break
+                return item
+        return targets[0] if targets else None
+
+    async def send_weixin_text(self, integration_id: str, text: str, sender_id: str = "", account_id: str = "") -> dict:
+        integration = self.require_integration(integration_id)
+        target = self.select_weixin_target(integration_id, sender_id=sender_id, account_id=account_id)
         if not target:
             error = "我的微信会话未绑定或已超过 24 小时可触达窗口；请先用你的微信给 BranchWhisper 发一条消息。"
             self.append_log(integration_id, f"[proactive] send skipped: {error}")
@@ -1317,6 +1324,93 @@ class ExternalDialogEngine:
         if profile.get("tools_enabled") is False:
             snapshot.tools_enabled = False
         return snapshot
+
+    async def voice_test(self, integration_id: str, settings: SessionSettings, text: str, sender_id: str = "", account_id: str = "") -> dict:
+        platform_id = safe_id(integration_id)
+        text = clean_for_tts(text) or str(text or "").strip()
+        if not text:
+            raise ValueError("text is required")
+        integration = self.integration_manager.require_integration(platform_id)
+        target = self.integration_manager.select_weixin_target(platform_id, sender_id=sender_id, account_id=account_id)
+        if not target:
+            error = "我的微信会话未绑定或已超过 24 小时可触达窗口；请先用你的微信给 BranchWhisper 发一条消息。"
+            self.integration_manager.append_log(platform_id, f"[voice-test] skipped: {error}")
+            return {"ok": False, "stage": "target", "error": error}
+
+        trace_id = f"voice_test_{uuid.uuid4().hex[:10]}"
+        started_at = time.perf_counter()
+        result: dict[str, Any] = {
+            "ok": False,
+            "trace_id": trace_id,
+            "stage": "start",
+            "text": text,
+            "target": {
+                "account_id": target["account_id"],
+                "sender_id": target["sender_id"],
+                "age_hours": target.get("age_hours"),
+            },
+            "tts_done": False,
+            "send_done": False,
+        }
+        self.integration_manager.append_log(platform_id, f"[voice-test:{trace_id}] start account={target['account_id']} to={target['sender_id']} text={compact_text(text, 120)}")
+        try:
+            tts_started = time.perf_counter()
+            voice_file = await self.synthesize_voice(settings, text, trace_id)
+            result.update(
+                {
+                    "stage": "tts_done",
+                    "tts_done": True,
+                    "voice_file": voice_file,
+                    "tts_ms": int((time.perf_counter() - tts_started) * 1000),
+                }
+            )
+            send_started = time.perf_counter()
+            sent = send_weixin_voice(
+                base_url=target["base_url"],
+                token=target["token"],
+                to_user_id=target["sender_id"],
+                voice_file=voice_file,
+                text=text[:240],
+                context_token=target["context_token"],
+                cdn_base_url=str(target.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL),
+            )
+            result.update(
+                {
+                    "ok": True,
+                    "stage": "accepted",
+                    "send_done": True,
+                    "send_ms": int((time.perf_counter() - send_started) * 1000),
+                    "total_ms": int((time.perf_counter() - started_at) * 1000),
+                    "voice_message_id": sent.get("message_id") or "",
+                    "voice_stage": sent.get("stage") or "accepted",
+                    "voice_format": sent.get("transcode_format") or "",
+                    "voice_diagnostic": {
+                        "encode_type": sent.get("encode_type"),
+                        "sample_rate": sent.get("sample_rate"),
+                        "playtime_ms": sent.get("playtime_ms"),
+                        "upload_ms": sent.get("upload_ms"),
+                        "upload_method": sent.get("upload_method"),
+                        "upload_url_kind": sent.get("upload_url_kind"),
+                    },
+                    "client_delivery": "unconfirmed",
+                }
+            )
+            self.integration_manager.append_log(
+                platform_id,
+                f"[voice-test:{trace_id}] voice api accepted account={target['account_id']} to={target['sender_id']} "
+                f"message_id={result['voice_message_id']} format={result['voice_format']} diagnostic={result['voice_diagnostic']}",
+            )
+            return result
+        except (WeixinVoiceSendError, Exception) as exc:
+            result.update(
+                {
+                    "ok": False,
+                    "error": str(exc),
+                    "total_ms": int((time.perf_counter() - started_at) * 1000),
+                }
+            )
+            self.integration_manager.append_log(platform_id, f"[voice-test:{trace_id}] failed stage={result.get('stage')} error={exc}")
+            return result
 
     async def reply_text(self, settings: SessionSettings, conversation: dict, user_text: str, *, voice_requested: bool = False) -> tuple[str, dict | None, str, int, int, dict]:
         diag: dict[str, Any] = {}
