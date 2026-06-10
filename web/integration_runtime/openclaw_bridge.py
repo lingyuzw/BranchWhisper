@@ -467,8 +467,13 @@ def send_voice_reply(
                     {
                         "encode_type": sent.get("encode_type"),
                         "sample_rate": sent.get("sample_rate"),
+                        "gain_db": sent.get("gain_db"),
                         "playtime_ms": sent.get("playtime_ms"),
+                        "source_audio": sent.get("source_audio"),
+                        "transcode_audio": sent.get("transcode_audio"),
                         "upload_ms": sent.get("upload_ms"),
+                        "upload_method": sent.get("upload_method"),
+                        "upload_url_kind": sent.get("upload_url_kind"),
                         "send_ms": sent.get("send_ms"),
                     },
                     ensure_ascii=False,

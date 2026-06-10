@@ -20,6 +20,7 @@ const UPLOAD_MEDIA_TYPE_VOICE = 4;
 const VOICE_ENCODE_OGG_OPUS = 8;
 const WEIXIN_VOICE_SAMPLE_RATE = 48_000;
 const WEIXIN_VOICE_BITRATE = "64k";
+const WEIXIN_VOICE_GAIN_DB = 8;
 const MAX_VOICE_SECONDS = 60;
 
 function usage() {
@@ -170,6 +171,8 @@ async function transcodeToOggOpus(inputPath) {
     "-dn",
     "-t",
     String(MAX_VOICE_SECONDS),
+    "-af",
+    `aresample=${WEIXIN_VOICE_SAMPLE_RATE}:async=1:first_pts=0,volume=${WEIXIN_VOICE_GAIN_DB}dB`,
     "-ar",
     String(WEIXIN_VOICE_SAMPLE_RATE),
     "-ac",
@@ -183,6 +186,48 @@ async function transcodeToOggOpus(inputPath) {
     outputPath,
   ]);
   return outputPath;
+}
+
+async function probeAudioStats(filePath) {
+  const [probe, volume] = await Promise.all([
+    execFileAsync("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "stream=codec_name,sample_rate,channels:format=duration",
+      "-of",
+      "json",
+      filePath,
+    ]).then(({ stdout }) => JSON.parse(stdout || "{}")).catch(() => ({})),
+    execFileAsync("ffmpeg", [
+      "-hide_banner",
+      "-nostats",
+      "-i",
+      filePath,
+      "-af",
+      "volumedetect",
+      "-f",
+      "null",
+      "-",
+    ]).then(({ stderr }) => parseVolumeDetect(stderr)).catch(() => ({})),
+  ]);
+  const stream = Array.isArray(probe.streams) ? probe.streams[0] || {} : {};
+  return {
+    codec: stream.codec_name || "",
+    sample_rate: Number(stream.sample_rate || 0) || 0,
+    channels: Number(stream.channels || 0) || 0,
+    duration_ms: Math.round((Number(probe.format?.duration || 0) || 0) * 1000),
+    ...volume,
+  };
+}
+
+function parseVolumeDetect(text) {
+  const mean = String(text || "").match(/mean_volume:\s*(-?[\d.]+)\s*dB/i);
+  const max = String(text || "").match(/max_volume:\s*(-?[\d.]+)\s*dB/i);
+  return {
+    mean_volume_db: mean ? Number(mean[1]) : null,
+    max_volume_db: max ? Number(max[1]) : null,
+  };
 }
 
 async function probeDurationMs(filePath) {
@@ -224,11 +269,13 @@ async function sendVoice(args) {
   const started = Date.now();
   let mediaPath = "";
   try {
+    const sourceStats = await probeAudioStats(voiceFile);
     mediaPath = await transcodeToOggOpus(voiceFile).catch((error) => {
       error.stage = "transcode";
       throw error;
     });
     const playtimeMs = await probeDurationMs(mediaPath);
+    const transcodeStats = await probeAudioStats(mediaPath);
     const plaintext = await fs.readFile(mediaPath);
     const rawsize = plaintext.length;
     const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
@@ -314,7 +361,10 @@ async function sendVoice(args) {
       transcode_format: "ogg_opus",
       encode_type: VOICE_ENCODE_OGG_OPUS,
       sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
+      gain_db: WEIXIN_VOICE_GAIN_DB,
       playtime_ms: playtimeMs,
+      source_audio: sourceStats,
+      transcode_audio: transcodeStats,
       raw_size: rawsize,
       cipher_size: upload.ciphertextSize,
       upload_method: upload.uploadMethod,
