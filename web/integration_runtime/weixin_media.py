@@ -150,11 +150,11 @@ def download_weixin_media(
         "--download-media",
         "--encrypt-query-param",
         encrypt_query_param,
-        "--aes-key",
-        aes_key,
         "--output-file",
         output_file,
     ]
+    if aes_key:
+        command.extend(["--aes-key", aes_key])
     if cdn_base_url:
         command.extend(["--cdn-base-url", cdn_base_url])
     try:

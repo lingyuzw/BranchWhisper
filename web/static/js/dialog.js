@@ -162,6 +162,7 @@ function setMetric(name, value) {
 
 function addMsg(role, text, meta = {}) {
   const t = $("#transcript"); if (!t) return null;
+  const shouldFollow = isTranscriptNearBottom(t);
   const row = document.createElement("div");
   row.className = `message-row ${role}`;
   const avatar = document.createElement("div");
@@ -190,7 +191,7 @@ function addMsg(role, text, meta = {}) {
   if (attachmentsNode) body.appendChild(attachmentsNode);
   row.append(avatar, body);
   t.appendChild(row);
-  scrollTranscript();
+  if (shouldFollow) scrollTranscriptToBottom({ smooth: false });
   return node;
 }
 
@@ -221,29 +222,45 @@ function firstIdentityChar(name, fallback) {
   const chars = Array.from(String(name || "").trim());
   return chars[0] || fallback;
 }
-function appendAssistant(text) { if (!state.currentAssistant) state.currentAssistant = addMsg("assistant", ""); if (state.currentAssistant) state.currentAssistant.textContent += text; scrollTranscript(); }
+function appendAssistant(text) {
+  const t = $("#transcript");
+  const shouldFollow = isTranscriptNearBottom(t);
+  if (!state.currentAssistant) state.currentAssistant = addMsg("assistant", "");
+  if (state.currentAssistant) state.currentAssistant.textContent += text;
+  if (shouldFollow) scrollTranscriptToBottom({ smooth: false });
+}
 function appendAssistantAttachments(attachments) {
   if (!attachments?.length) return;
+  const t = $("#transcript");
+  const shouldFollow = isTranscriptNearBottom(t);
   if (!state.currentAssistant) state.currentAssistant = addMsg("assistant", "");
   const body = state.currentAssistant?.closest(".message-body");
   if (!body) return;
   const node = renderMessageAttachments(attachments);
   if (node) body.appendChild(node);
-  scrollTranscript();
+  if (shouldFollow) scrollTranscriptToBottom({ smooth: false });
 }
 export function clearTranscript() {
   const t = $("#transcript");
   if (t) t.replaceChildren();
   state.currentAssistant = null;
 }
+function isTranscriptNearBottom(t = $("#transcript"), threshold = 96) {
+  if (!t) return true;
+  return t.scrollHeight - t.scrollTop - t.clientHeight <= threshold;
+}
 function scrollTranscript() { const t = $("#transcript"); if (t) t.scrollTop = t.scrollHeight; }
-export function scrollTranscriptToBottom() {
-  scrollTranscript();
-  requestAnimationFrame(() => {
-    scrollTranscript();
-    window.setTimeout(scrollTranscript, 80);
-    window.setTimeout(scrollTranscript, 220);
-  });
+export function scrollTranscriptToBottom(options = {}) {
+  const smooth = Boolean(options.smooth);
+  const run = () => {
+    const t = $("#transcript");
+    if (!t) return;
+    if (smooth && typeof t.scrollTo === "function") t.scrollTo({ top: t.scrollHeight, behavior: "smooth" });
+    else t.scrollTop = t.scrollHeight;
+  };
+  run();
+  requestAnimationFrame(run);
+  window.setTimeout(run, 80);
 }
 function renderTranscript(msgs) {
   clearTranscript();

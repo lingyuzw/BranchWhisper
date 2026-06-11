@@ -122,6 +122,13 @@ function setupSettingsEvents() {
   $("#settingsSectionModal")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeSettingsSectionModal();
   });
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("#page-settings [data-nav='assets']");
+    if (!target) return;
+    event.preventDefault();
+    closeSettingsSectionModal();
+    window.dispatchEvent(new CustomEvent("branchwhisper:navigate", { detail: { page: "assets" } }));
+  }, true);
   document.querySelectorAll("[data-open-config]").forEach((card) => {
     card.addEventListener("click", () => openSettingsSectionModal(card.dataset.openConfig));
   });

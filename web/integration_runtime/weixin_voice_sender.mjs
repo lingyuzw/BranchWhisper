@@ -133,7 +133,13 @@ function parseAesKey(value) {
   if (/^[0-9a-fA-F]{32}$/.test(raw)) return Buffer.from(raw, "hex");
   const decoded = Buffer.from(raw, "base64");
   if (decoded.length === 16) return decoded;
+  const decodedText = decoded.toString("utf8").trim();
+  if (/^[0-9a-fA-F]{32}$/.test(decodedText)) return Buffer.from(decodedText, "hex");
   throw new Error("invalid aes key length");
+}
+
+function mediaAesKeyValue(aeskey) {
+  return Buffer.from(aeskey.toString("hex"), "utf8").toString("base64");
 }
 
 function buildCdnUploadUrl({ cdnBaseUrl, uploadParam, filekey }) {
@@ -173,7 +179,7 @@ function compactResponseShape(value, depth = 0) {
   return result;
 }
 
-async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, cdnBaseUrl, aeskey, label = "media" }) {
+async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, cdnBaseUrl, aeskey, label = "media", methods = ["POST"] }) {
   const ciphertext = encryptAesEcb(buffer, aeskey);
   const urls = [];
   if (uploadFullUrl?.trim()) urls.push(uploadFullUrl.trim());
@@ -181,7 +187,6 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
   if (!urls.length) throw new Error("CDN upload missing upload URL");
   let lastError = null;
   for (const url of [...new Set(urls)]) {
-    const methods = url.includes("/upload?") ? ["POST", "PUT"] : ["PUT", "POST"];
     for (const method of methods) {
       for (let attempt = 1; attempt <= 2; attempt += 1) {
         try {
@@ -220,7 +225,8 @@ async function downloadMedia(args) {
   const outputFile = String(args.outputFile || "").trim();
   if (!encryptQueryParam) throw new Error("missing --encrypt-query-param");
   if (!outputFile) throw new Error("missing --output-file");
-  const aeskey = parseAesKey(args.aesKey || args.aeskey || "");
+  const rawAesKey = String(args.aesKey || args.aeskey || "").trim();
+  const aeskey = rawAesKey ? parseAesKey(rawAesKey) : null;
   const url = buildCdnDownloadUrl({ cdnBaseUrl: args.cdnBaseUrl || DEFAULT_CDN_BASE_URL, downloadParam: encryptQueryParam });
   const started = Date.now();
   const response = await fetch(url, { method: "GET" });
@@ -232,7 +238,7 @@ async function downloadMedia(args) {
   }
   const ciphertext = Buffer.from(await response.arrayBuffer());
   if (!ciphertext.length) throw new Error("downloaded media is empty");
-  const plaintext = decryptAesEcb(ciphertext, aeskey);
+  const plaintext = aeskey ? decryptAesEcb(ciphertext, aeskey) : ciphertext;
   await fs.mkdir(path.dirname(outputFile), { recursive: true });
   await fs.writeFile(outputFile, plaintext);
   return {
@@ -241,6 +247,7 @@ async function downloadMedia(args) {
     output_file: outputFile,
     ciphertext_size: ciphertext.length,
     plaintext_size: plaintext.length,
+    decrypted: Boolean(aeskey),
     download_url_kind: /^https?:\/\//i.test(encryptQueryParam) ? "full" : "param",
     download_ms: Date.now() - started,
   };
@@ -675,7 +682,6 @@ async function sendImage(args) {
 
   const started = Date.now();
   let normalizedPath = "";
-  let thumbPath = "";
   try {
     const source = await fs.readFile(imageFile);
     if (!source.length) throw new Error("image file is empty");
@@ -685,21 +691,12 @@ async function sendImage(args) {
       error.stage = "image_transcode";
       throw error;
     });
-    thumbPath = await transcodeImageThumbForWeixin(normalizedPath).catch((error) => {
-      error.stage = "thumb_transcode";
-      throw error;
-    });
 
     const plaintext = await fs.readFile(normalizedPath);
-    const thumbPlaintext = await fs.readFile(thumbPath);
     const stats = await probeImageStats(normalizedPath);
-    const thumbStats = await probeImageStats(thumbPath);
     const rawsize = plaintext.length;
     const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
     const filesize = aesEcbPaddedSize(rawsize);
-    const thumbRawsize = thumbPlaintext.length;
-    const thumbRawfilemd5 = crypto.createHash("md5").update(thumbPlaintext).digest("hex");
-    const thumbFilesize = aesEcbPaddedSize(thumbRawsize);
     const filekey = crypto.randomBytes(16).toString("hex");
     const aeskey = crypto.randomBytes(16);
     const uploadStart = Date.now();
@@ -715,13 +712,8 @@ async function sendImage(args) {
         rawfilemd5,
         filesize,
         aeskey: aeskey.toString("hex"),
-        no_need_thumb: false,
-        thumb_rawsize: thumbRawsize,
-        thumb_rawfilemd5: thumbRawfilemd5,
-        thumb_filesize: thumbFilesize,
-        thumbnail_rawsize: thumbRawsize,
-        thumbnail_rawfilemd5: thumbRawfilemd5,
-        thumbnail_filesize: thumbFilesize,
+        no_need_thumb: true,
+        base_info: buildBaseInfo(),
       },
     }).catch((error) => {
       error.stage = "getuploadurl";
@@ -729,44 +721,13 @@ async function sendImage(args) {
     });
 
     const nestedImage = uploadUrlResp.image || uploadUrlResp.media || uploadUrlResp.main || uploadUrlResp.file || {};
-    const nestedThumb = uploadUrlResp.thumb || uploadUrlResp.thumbnail || uploadUrlResp.thumb_media || uploadUrlResp.thumbMedia || {};
     const uploadFullUrl = String(firstValue(uploadUrlResp.upload_full_url, uploadUrlResp.uploadFullUrl, nestedImage.upload_full_url, nestedImage.uploadFullUrl) || "").trim();
     const uploadParam = firstValue(uploadUrlResp.upload_param, uploadUrlResp.uploadParam, nestedImage.upload_param, nestedImage.uploadParam);
-    const thumbUploadFullUrl = String(
-      firstValue(
-        uploadUrlResp.thumb_upload_full_url,
-        uploadUrlResp.thumbUploadFullUrl,
-        uploadUrlResp.thumb_full_url,
-        uploadUrlResp.thumbFullUrl,
-        uploadUrlResp.thumbnail_upload_full_url,
-        uploadUrlResp.thumbnailUploadFullUrl,
-        uploadUrlResp.thumbnail_full_url,
-        uploadUrlResp.thumbnailFullUrl,
-        nestedThumb.upload_full_url,
-        nestedThumb.uploadFullUrl,
-        nestedThumb.full_url,
-        nestedThumb.fullUrl,
-      ) || "",
-    ).trim();
-    const thumbUploadParam = firstValue(
-      uploadUrlResp.thumb_upload_param,
-      uploadUrlResp.thumbUploadParam,
-      uploadUrlResp.thumb_param,
-      uploadUrlResp.thumbParam,
-      uploadUrlResp.thumbnail_upload_param,
-      uploadUrlResp.thumbnailUploadParam,
-      uploadUrlResp.thumbnail_param,
-      uploadUrlResp.thumbnailParam,
-      nestedThumb.upload_param,
-      nestedThumb.uploadParam,
-      nestedThumb.param,
-    );
     if (!uploadFullUrl && !uploadParam) {
       const error = new Error("getuploadurl returned no image upload URL");
       error.response_shape = compactResponseShape(uploadUrlResp);
       throw error;
     }
-    const canUploadThumb = Boolean(thumbUploadFullUrl || thumbUploadParam);
 
     const upload = await uploadBufferToCdn({
       buffer: plaintext,
@@ -780,21 +741,6 @@ async function sendImage(args) {
       error.stage = "cdn_upload";
       throw error;
     });
-    let thumbUpload = null;
-    if (canUploadThumb) {
-      thumbUpload = await uploadBufferToCdn({
-        buffer: thumbPlaintext,
-        uploadFullUrl: thumbUploadFullUrl,
-        uploadParam: thumbUploadParam,
-        filekey,
-        cdnBaseUrl,
-        aeskey,
-        label: "thumbnail",
-      }).catch((error) => {
-        error.stage = "thumb_cdn_upload";
-        throw error;
-      });
-    }
     const uploadMs = Date.now() - uploadStart;
     const sendStart = Date.now();
     const clientId = `branchwhisper-image-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
@@ -802,30 +748,14 @@ async function sendImage(args) {
       media: {
         encrypt_query_param: upload.downloadParam,
         encrypted_query_param: upload.downloadParam,
-        aes_key: aeskey.toString("base64"),
-        aeskey: aeskey.toString("base64"),
+        aes_key: mediaAesKeyValue(aeskey),
+        aeskey: mediaAesKeyValue(aeskey),
         encrypt_type: 1,
       },
-      filekey,
-      rawsize,
-      rawfilemd5,
-      filesize,
+      mid_size: upload.ciphertextSize,
       width: stats.width,
       height: stats.height,
     };
-    if (thumbUpload) {
-      imageItem.thumb_media = {
-        encrypt_query_param: thumbUpload.downloadParam,
-        encrypted_query_param: thumbUpload.downloadParam,
-        aes_key: aeskey.toString("base64"),
-        aeskey: aeskey.toString("base64"),
-        encrypt_type: 1,
-      };
-      imageItem.thumb_filekey = filekey;
-      imageItem.thumb_rawsize = thumbRawsize;
-      imageItem.thumb_rawfilemd5 = thumbRawfilemd5;
-      imageItem.thumb_filesize = thumbFilesize;
-    }
     await postJson({
       baseUrl,
       apiPath: "ilink/bot/sendmessage",
@@ -860,16 +790,17 @@ async function sendImage(args) {
       image_format: "png",
       source_image: sourceStats,
       image: stats,
-      thumbnail: thumbStats,
+      thumbnail: null,
       raw_size: rawsize,
-      thumb_raw_size: thumbRawsize,
+      filekey,
+      rawfilemd5,
+      mid_size: upload.ciphertextSize,
       cipher_size: upload.ciphertextSize,
-      thumb_cipher_size: thumbUpload?.ciphertextSize || 0,
       upload_method: upload.uploadMethod,
       upload_url_kind: upload.uploadUrlKind,
-      thumb_upload_method: thumbUpload?.uploadMethod || "",
-      thumb_upload_url_kind: thumbUpload?.uploadUrlKind || "",
-      thumbnail_skipped: !thumbUpload,
+      thumbnail_skipped: true,
+      media_aes_key_format: "base64_hex_text",
+      image_item_shape: compactResponseShape(imageItem),
       getuploadurl_shape: compactResponseShape(uploadUrlResp),
       upload_ms: uploadMs,
       send_ms: Date.now() - sendStart,
@@ -877,7 +808,6 @@ async function sendImage(args) {
     };
   } finally {
     if (normalizedPath) await fs.unlink(normalizedPath).catch(() => {});
-    if (thumbPath) await fs.unlink(thumbPath).catch(() => {});
   }
 }
 

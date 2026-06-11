@@ -204,12 +204,21 @@
             <div class="asset-bulk-actions">
               <button class="secondary-action" id="assetSelectAllBtn" type="button"><i data-lucide="check-square"></i>全选当前</button>
               <button class="secondary-action" id="assetBulkReanalyzeBtn" type="button"><i data-lucide="scan-eye"></i>识别选中</button>
+              <button class="secondary-action danger" id="assetBulkStopBtn" type="button" disabled><i data-lucide="pause-circle"></i>停止识别</button>
               <button class="secondary-action" id="assetBulkApproveBtn" type="button"><i data-lucide="badge-check"></i>通过选中</button>
               <button class="secondary-action danger" id="assetBulkDeleteBtn" type="button"><i data-lucide="trash-2"></i>删除选中</button>
               <button class="secondary-action" id="assetBulkReanalyzeAllBtn" type="button"><i data-lucide="sparkles"></i>识别当前筛选</button>
               <button class="secondary-action" id="assetBulkApproveAllBtn" type="button"><i data-lucide="check-check"></i>通过当前筛选</button>
               <button class="secondary-action danger" id="assetBulkDeleteAllBtn" type="button"><i data-lucide="trash"></i>删除当前筛选</button>
             </div>
+          </section>
+          <section class="asset-progress-panel" id="assetProgressPanel" hidden>
+            <div class="asset-progress-head">
+              <strong id="assetProgressTitle">识别准备中</strong>
+              <span id="assetProgressCount">0 / 0</span>
+            </div>
+            <div class="asset-progress-track"><span id="assetProgressBar"></span></div>
+            <small id="assetProgressDetail">等待任务开始。</small>
           </section>
           <section class="asset-workbench">
             <aside class="asset-sidebar">

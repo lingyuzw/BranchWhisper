@@ -57,6 +57,11 @@ function setupNav() {
     const page = pageFromHash();
     if (page && page !== currentPage) switchPage(page, false);
   });
+
+  window.addEventListener("branchwhisper:navigate", (event) => {
+    const page = event.detail?.page;
+    if (page) switchPage(page);
+  });
 }
 
 async function switchPage(page, pushState = true) {

@@ -205,11 +205,14 @@ def body_from_items(items: list[dict] | None) -> str:
     return ""
 
 
-def image_media_from_item(item: dict) -> dict:
+def image_media_candidates_from_item(item: dict) -> list[dict]:
     image_item = item.get("image_item") if isinstance(item.get("image_item"), dict) else {}
-    media = image_item.get("media") if isinstance(image_item.get("media"), dict) else {}
-    thumb = image_item.get("thumb_media") if isinstance(image_item.get("thumb_media"), dict) else {}
-    return media or thumb or {}
+    candidates = []
+    for key in ("media", "mid_media", "mid_size", "thumb_media", "thumbnail_media", "thumb"):
+        media = image_item.get(key)
+        if isinstance(media, dict):
+            candidates.append({"kind": key, "media": media})
+    return candidates
 
 
 def extract_image_items(items: list[dict] | None) -> list[dict]:
@@ -217,35 +220,52 @@ def extract_image_items(items: list[dict] | None) -> list[dict]:
     for item in items or []:
         if item.get("type") != ITEM_IMAGE:
             continue
-        media = image_media_from_item(item)
-        if media:
-            result.append({"item": item, "media": media})
+        candidates = image_media_candidates_from_item(item)
+        if candidates:
+            result.append({"item": item, "candidates": candidates})
     return result
 
 
 def download_inbound_images(state_dir: Path, account: dict, msg: dict) -> list[dict]:
     images = []
     for index, entry in enumerate(extract_image_items(msg.get("item_list"))[:4]):
-        media = entry["media"]
-        query = str(media.get("encrypt_query_param") or media.get("encrypted_query_param") or "").strip()
-        aes_key = str(media.get("aes_key") or media.get("aeskey") or "").strip()
         item_id = str(msg.get("message_id") or msg.get("client_id") or uuid.uuid4().hex[:12])
         output = state_dir / "branchwhisper-inbound-media" / f"{account['account_id']}-{item_id}-{index}.jpg"
-        info = {"ok": False, "path": str(output), "mime": "image/jpeg", "index": index, "error": ""}
-        if not query or not aes_key:
-            info["error"] = "incoming image media is missing encrypt_query_param or aes_key"
-            images.append(info)
-            continue
-        try:
-            downloaded = download_weixin_media(
-                encrypt_query_param=query,
-                aes_key=aes_key,
-                output_file=str(output),
-                cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
-            )
-            info.update({"ok": True, "download": downloaded})
-        except Exception as exc:
-            info["error"] = str(exc)
+        info = {"ok": False, "path": str(output), "mime": "image/jpeg", "index": index, "error": "", "attempts": []}
+        for candidate in entry.get("candidates") or []:
+            media = candidate.get("media") or {}
+            query = str(media.get("encrypt_query_param") or media.get("encrypted_query_param") or "").strip()
+            aes_key = str(media.get("aes_key") or media.get("aeskey") or "").strip()
+            attempt = {"kind": candidate.get("kind") or "media", "has_query": bool(query), "has_aes_key": bool(aes_key)}
+            if not query:
+                attempt["error"] = "missing encrypt_query_param"
+                info["attempts"].append(attempt)
+                continue
+            try:
+                if aes_key:
+                    downloaded = download_weixin_media(
+                        encrypt_query_param=query,
+                        aes_key=aes_key,
+                        output_file=str(output),
+                        cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
+                    )
+                else:
+                    downloaded = download_weixin_media(
+                        encrypt_query_param=query,
+                        aes_key="",
+                        output_file=str(output),
+                        cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
+                    )
+                attempt["ok"] = True
+                info.update({"ok": True, "download": downloaded, "media_kind": candidate.get("kind") or "media", "error": ""})
+                info["attempts"].append(attempt)
+                break
+            except Exception as exc:
+                attempt["error"] = str(exc)
+                info["error"] = str(exc)
+                info["attempts"].append(attempt)
+        if not info.get("ok") and not info.get("error"):
+            info["error"] = "incoming image media has no downloadable candidate"
         images.append(info)
     return images
 

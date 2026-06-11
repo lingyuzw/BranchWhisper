@@ -17,6 +17,7 @@ import { $, createIcon, renderIcons, setValue, showConfirm, showToast, value } f
 let bound = false;
 let selectedStickerId = "";
 const selectedIds = new Set();
+let recognitionJob = null;
 
 const STICKER_CONFIG_FIELDS = [
   ["stickers_enabled", "assetStickersEnabled", "bool"],
@@ -62,6 +63,7 @@ function bindEvents() {
   $("#assetBulkReanalyzeAllBtn")?.addEventListener("click", () => runBulk("reanalyze", true));
   $("#assetBulkApproveAllBtn")?.addEventListener("click", () => runBulk("approve", true));
   $("#assetBulkDeleteAllBtn")?.addEventListener("click", () => runBulk("delete", true));
+  $("#assetBulkStopBtn")?.addEventListener("click", stopRecognitionJob);
 }
 
 function fillAssetConfig() {
@@ -271,7 +273,13 @@ async function uploadFiles(event) {
   try {
     setBusy(button, `正在入库 ${valid.length} 张...`);
     const payload = [];
-    for (const file of valid.slice(0, 120)) payload.push({ name: file.name, data_url: await fileToDataUrl(file) });
+    const limited = valid.slice(0, 120);
+    updateProgress("正在读取素材", 0, limited.length, 0, "准备读取文件。");
+    for (const [index, file] of limited.entries()) {
+      payload.push({ name: file.name, data_url: await fileToDataUrl(file) });
+      updateProgress("正在读取素材", index + 1, limited.length, 0, file.name);
+    }
+    updateProgress("正在提交入库", 0, payload.length, 0, "后端会保存素材并尝试自动识别。");
     const result = await uploadStickerBatch(payload, "all");
     const ok = (result.results || []).filter((item) => item.ok).length;
     const pending = (result.results || []).filter((item) => item.ok && item.analyzed === false && !item.duplicate).length;
@@ -281,6 +289,7 @@ async function uploadFiles(event) {
     await refreshAssets();
   } finally {
     clearBusy(button, '<i data-lucide="image-plus"></i>批量上传');
+    window.setTimeout(hideProgress, 1200);
     event.target.value = "";
   }
 }
@@ -307,9 +316,7 @@ async function approveAndRefresh(id) {
 }
 
 async function reanalyzeAndRefresh(id) {
-  showToast("正在重新识别...", "info");
-  await reanalyzeSticker(id);
-  await refreshAssets();
+  await runRecognitionQueue([id], "单张素材");
 }
 
 async function deleteAndRefresh(id) {
@@ -332,6 +339,15 @@ async function runBulk(action, includeFiltered) {
     const ok = await showConfirm(`删除${scopeText}？这个操作会移除素材文件。`);
     if (!ok) return;
   }
+  if (action === "reanalyze") {
+    const targets = includeFiltered ? (state.stickers || []).map((item) => item.id).filter(Boolean) : ids;
+    if (!targets.length) {
+      showToast("当前没有可识别的素材", "info");
+      return;
+    }
+    await runRecognitionQueue(targets, includeFiltered ? "当前筛选结果" : "选中素材");
+    return;
+  }
   const button = bulkButton(action, includeFiltered);
   try {
     setBusy(button, actionBusyText(action));
@@ -345,6 +361,91 @@ async function runBulk(action, includeFiltered) {
   } finally {
     clearBusy(button, button?.dataset.label || "");
   }
+}
+
+async function runRecognitionQueue(ids, label) {
+  if (recognitionJob?.running) {
+    showToast("已有识别任务正在运行", "info");
+    return;
+  }
+  const queue = Array.from(new Set((ids || []).filter(Boolean)));
+  if (!queue.length) return;
+  recognitionJob = { running: true, cancelled: false, total: queue.length, done: 0, failed: 0 };
+  setRecognitionControls(true);
+  updateProgress(`正在识别${label}`, 0, queue.length, 0, "准备开始。");
+  try {
+    for (const id of queue) {
+      if (recognitionJob.cancelled) break;
+      const sticker = (state.stickers || []).find((item) => item.id === id);
+      updateProgress(`正在识别${label}`, recognitionJob.done, queue.length, recognitionJob.failed, sticker?.name || id);
+      try {
+        await reanalyzeSticker(id);
+      } catch (error) {
+        recognitionJob.failed += 1;
+      } finally {
+        recognitionJob.done += 1;
+        updateProgress(`正在识别${label}`, recognitionJob.done, queue.length, recognitionJob.failed, sticker?.name || id);
+      }
+    }
+    const stopped = recognitionJob.cancelled;
+    showToast(
+      stopped
+        ? `识别已停止：完成 ${recognitionJob.done}/${recognitionJob.total}，失败 ${recognitionJob.failed}`
+        : `识别完成：完成 ${recognitionJob.done}/${recognitionJob.total}，失败 ${recognitionJob.failed}`,
+      recognitionJob.failed ? "info" : "success",
+    );
+  } finally {
+    if (recognitionJob) recognitionJob.running = false;
+    setRecognitionControls(false);
+    await refreshAssets();
+    window.setTimeout(() => {
+      if (!recognitionJob || !recognitionJob.running) hideProgress();
+    }, 1200);
+    recognitionJob = null;
+  }
+}
+
+function stopRecognitionJob() {
+  if (!recognitionJob?.running) return;
+  recognitionJob.cancelled = true;
+  const stop = $("#assetBulkStopBtn");
+  if (stop) {
+    stop.disabled = true;
+    stop.textContent = "正在停止...";
+  }
+  updateProgress("正在停止识别", recognitionJob.done, recognitionJob.total, recognitionJob.failed, "当前素材完成后停止。");
+}
+
+function setRecognitionControls(running) {
+  for (const id of ["assetBulkReanalyzeBtn", "assetBulkReanalyzeAllBtn", "assetStickerVisionTestBtn"]) {
+    const button = $(`#${id}`);
+    if (button) button.disabled = running;
+  }
+  const stop = $("#assetBulkStopBtn");
+  if (stop) {
+    stop.disabled = !running;
+    stop.innerHTML = '<i data-lucide="pause-circle"></i>停止识别';
+  }
+  renderIcons();
+}
+
+function updateProgress(title, done, total, failed, detail) {
+  const panel = $("#assetProgressPanel");
+  if (panel) panel.hidden = false;
+  const percent = total ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
+  const bar = $("#assetProgressBar");
+  if (bar) bar.style.width = `${percent}%`;
+  const titleNode = $("#assetProgressTitle");
+  if (titleNode) titleNode.textContent = title;
+  const count = $("#assetProgressCount");
+  if (count) count.textContent = `${done} / ${total}${failed ? ` · 失败 ${failed}` : ""}`;
+  const detailNode = $("#assetProgressDetail");
+  if (detailNode) detailNode.textContent = detail || "正在处理。";
+}
+
+function hideProgress() {
+  const panel = $("#assetProgressPanel");
+  if (panel) panel.hidden = true;
 }
 
 function bulkButton(action, includeFiltered) {
