@@ -23,11 +23,12 @@ DEFAULT_SERVICE_PROFILES = {
         "command": (
             "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
             "/root/miniconda3/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B "
-            "--served-model-name qwen3-asr --gpu-memory-utilization 0.28 --max-model-len 4096 --max-num-seqs 1 "
+            "--served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 2048 --max-num-seqs 1 "
             "--enforce-eager --host 0.0.0.0 --port 8001"
         ),
         "health_url": "http://127.0.0.1:8001/health",
         "startup_wait_sec": 0,
+        "startup_ready_timeout_sec": 120,
     },
     "llm": {
         "label": "llama.cpp Qwen3.5",
@@ -39,6 +40,7 @@ DEFAULT_SERVICE_PROFILES = {
         ),
         "health_url": "http://127.0.0.1:8080/health",
         "startup_wait_sec": 5,
+        "startup_ready_timeout_sec": 90,
     },
     "tts": {
         "label": "CosyVoice3 TTS",
@@ -53,6 +55,7 @@ DEFAULT_SERVICE_PROFILES = {
         ),
         "health_url": "http://127.0.0.1:50000/health",
         "startup_wait_sec": 0,
+        "startup_ready_timeout_sec": 60,
     },
 }
 
@@ -84,9 +87,11 @@ class ServiceManager:
         for key in ("label", "description", "cwd", "command", "health_url"):
             if key in patch and patch[key] is not None:
                 service[key] = str(patch[key])
-        if "startup_wait_sec" in patch and patch["startup_wait_sec"] is not None:
+        for numeric_key in ("startup_wait_sec", "startup_ready_timeout_sec"):
+            if numeric_key not in patch or patch[numeric_key] is None:
+                continue
             try:
-                service["startup_wait_sec"] = float(patch["startup_wait_sec"])
+                service[numeric_key] = float(patch[numeric_key])
             except (TypeError, ValueError):
                 pass
         self.save_profiles()
@@ -142,7 +147,7 @@ class ServiceManager:
             **service,
             "running": running,
             "state": runtime_state,
-            "error": service_runtime_error(health, returncode),
+            "error": service_runtime_error(health, returncode, self.latest_log_error(service_id)),
             "external": external_running and not tracked_running,
             "port_open": port_open,
             "pid": tracked_pid if tracked_running else None,
@@ -247,10 +252,24 @@ class ServiceManager:
         for index, service_id in enumerate(service_ids):
             service_overrides = (overrides or {}).get(service_id)
             results.append(await self.start(service_id, service_overrides, allow_config_update=allow_config_update))
+            timeout_sec = float(self.services[service_id].get("startup_ready_timeout_sec", 0) or 0)
+            if timeout_sec > 0 and index < len(service_ids) - 1:
+                await self.wait_until_startup_settled(service_id, timeout_sec=timeout_sec)
             wait_sec = float(self.services[service_id].get("startup_wait_sec", 0) or 0)
             if wait_sec > 0 and index < len(service_ids) - 1:
                 await asyncio.sleep(wait_sec)
         return results
+
+    async def wait_until_startup_settled(self, service_id: str, *, timeout_sec: float) -> dict:
+        deadline = time.time() + max(0.0, timeout_sec)
+        last_status: dict = {}
+        while time.time() < deadline:
+            last_status = await self.status(service_id)
+            state = str(last_status.get("state") or "")
+            if state in {"ready", "failed", "stopped"}:
+                return last_status
+            await asyncio.sleep(1.5)
+        return last_status or await self.status(service_id)
 
     async def stop_all(self) -> list[dict]:
         results = []
@@ -285,6 +304,13 @@ class ServiceManager:
             log_file.write_text("", encoding="utf-8")
             cleared.append({"id": sid, "log_file": str(log_file)})
         return {"cleared": cleared}
+
+    def latest_log_error(self, service_id: str, max_bytes: int = 16000) -> str:
+        try:
+            text = self.read_logs(service_id, max_bytes=max_bytes)
+        except Exception:
+            return ""
+        return extract_service_log_error(text)
 
     def _terminate_process(self, process: subprocess.Popen) -> None:
         pid = process.pid
@@ -369,16 +395,55 @@ def service_runtime_state(
     return "stopped"
 
 
-def service_runtime_error(health: dict | None, returncode: int | None) -> str:
+def service_runtime_error(health: dict | None, returncode: int | None, log_error: str = "") -> str:
     payload = normalized_health_payload(health)
     error = payload.get("error") or (health or {}).get("error")
     if error:
-        return str(error)
+        return friendly_service_error(str(error))
+    if log_error:
+        return friendly_service_error(log_error)
     if health and health.get("ok") is False and health.get("status"):
         return f"HTTP {health.get('status')}"
     if returncode is not None:
         return f"exit {returncode}"
     return ""
+
+
+def extract_service_log_error(text: str) -> str:
+    if not text:
+        return ""
+    lower = text.lower()
+    markers = (
+        "no available memory for the cache blocks",
+        "available kv cache memory",
+        "cuda out of memory",
+        "outofmemoryerror",
+        "address already in use",
+        "port already in use",
+        "no such file or directory",
+    )
+    for marker in markers:
+        index = lower.rfind(marker)
+        if index >= 0:
+            start = max(0, text.rfind("\n", 0, index - 1))
+            end = text.find("\n", index)
+            if end < 0:
+                end = min(len(text), index + 260)
+            return text[start:end].strip()
+    return ""
+
+
+def friendly_service_error(text: str) -> str:
+    lower = str(text or "").lower()
+    if "no available memory for the cache blocks" in lower or "available kv cache memory" in lower:
+        return "ASR vLLM KV cache 显存不足：启动全部时可能和 LLM/TTS 抢显存。建议串行启动、使用 --gpu-memory-utilization 0.60 和 --max-model-len 2048，仍失败再降到 1024。"
+    if "cuda out of memory" in lower or "outofmemoryerror" in lower:
+        return "CUDA 显存不足：请先停止其他模型服务，或降低模型长度/显存占用后重试。"
+    if "address already in use" in lower or "port already in use" in lower:
+        return "端口已被占用：请停止旧服务或修改端口。"
+    if "no such file or directory" in lower or "does not exist" in lower:
+        return "路径不存在：请检查服务命令里的模型路径、conda 路径或工作目录。"
+    return str(text or "")
 
 
 def normalized_health_payload(health: dict | None) -> dict:
@@ -394,13 +459,18 @@ def normalized_health_payload(health: dict | None) -> dict:
 
 
 def tune_start_command(service_id: str, command: str) -> str:
-    if service_id != "asr" or "--gpu-memory-utilization" not in command:
+    if service_id != "asr":
         return command
-    safe_util = safe_gpu_memory_utilization(default=0.28)
-    return re.sub(r"--gpu-memory-utilization\s+\S+", f"--gpu-memory-utilization {safe_util:.2f}", command)
+    safe_util, model_len = safe_asr_vllm_profile()
+    command = replace_or_append_arg(command, "--gpu-memory-utilization", f"{safe_util:.2f}")
+    command = replace_or_append_arg(command, "--max-model-len", str(model_len))
+    command = replace_or_append_arg(command, "--max-num-seqs", "1")
+    command = normalize_conda_env_threads(command)
+    return command
 
 
-def safe_gpu_memory_utilization(default: float = 0.28) -> float:
+def safe_asr_vllm_profile() -> tuple[float, int]:
+    default = (0.60, 2048)
     try:
         result = subprocess.run(
             [
@@ -430,11 +500,29 @@ def safe_gpu_memory_utilization(default: float = 0.28) -> float:
             continue
         if total_mb <= 0:
             continue
-        # vLLM refuses to start when requested total memory is higher than
-        # currently free memory. Keep a small buffer for LLM/TTS coexistence.
-        utilization = max(0.18, min(default, (free_mb / total_mb) - 0.03))
-        return round(utilization, 2)
+        free_ratio = free_mb / total_mb
+        if free_ratio < 0.35:
+            return (0.70, 1024)
+        if free_ratio < 0.55:
+            return (0.65, 1536)
+        return default
     return default
+
+
+def replace_or_append_arg(command: str, name: str, value: str) -> str:
+    pattern = rf"({re.escape(name)})(?:=|\s+)\S+"
+    replacement = f"{name} {value}"
+    if re.search(pattern, command):
+        return re.sub(pattern, replacement, command)
+    return f"{command.strip()} {replacement}".strip()
+
+
+def normalize_conda_env_threads(command: str) -> str:
+    prefix = "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1"
+    stripped = command.strip()
+    if stripped.startswith("env ") or " OMP_NUM_THREADS=" in stripped:
+        return stripped
+    return f"{prefix} {stripped}"
 
 
 async def check_service(name: str, url: str) -> dict:

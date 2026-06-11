@@ -4,9 +4,10 @@
       "label": "Qwen3-ASR vLLM",
       "description": "Qwen3-ASR service started with qwen-asr-serve and vLLM.",
       "cwd": "/root/autodl-tmp/project",
-      "command": "/opt/miniconda/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B --served-model-name qwen3-asr --gpu-memory-utilization 0.28 --max-model-len 4096 --max-num-seqs 1 --enforce-eager --host 0.0.0.0 --port 8001",
+      "command": "/opt/miniconda/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B --served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 2048 --max-num-seqs 1 --enforce-eager --host 0.0.0.0 --port 8001",
       "health_url": "http://127.0.0.1:8001/health",
-      "startup_wait_sec": 0
+      "startup_wait_sec": 0,
+      "startup_ready_timeout_sec": 120
     },
     "llm": {
       "label": "llama.cpp Qwen3.5",
@@ -14,7 +15,8 @@
       "cwd": "/root/autodl-tmp/project/llama.cpp",
       "command": "./build-cuda/bin/llama-server -m /root/autodl-tmp/project/llama.cpp/Qwen3.5-9B.Q8_0.gguf --alias qwen3.5-9b --host 0.0.0.0 --port 8080 -ngl 99 -c 4096 --jinja --reasoning off",
       "health_url": "http://127.0.0.1:8080/health",
-      "startup_wait_sec": 5
+      "startup_wait_sec": 5,
+      "startup_ready_timeout_sec": 90
     },
     "tts": {
       "label": "CosyVoice3 TTS",
@@ -22,7 +24,8 @@
       "cwd": "/root/autodl-tmp/project/CosyVoice",
       "command": "/opt/miniconda/bin/conda run --no-capture-output -n cosyvoice_vllm python -u /root/autodl-tmp/project/LoveChoice/tts/trained_tts_server.py --repo_dir /root/autodl-tmp/project/CosyVoice --model_dir /root/autodl-tmp/project/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000",
       "health_url": "http://127.0.0.1:50000/health",
-      "startup_wait_sec": 0
+      "startup_wait_sec": 0,
+      "startup_ready_timeout_sec": 60
     }
   }
 }

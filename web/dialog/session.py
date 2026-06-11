@@ -33,10 +33,11 @@ from media.sticker_policy import StickerPolicy
 from service_runtime.audio_pipeline import (
     ReasoningStreamFilter,
     clean_for_tts,
+    clean_reply_text,
     extract_chat_message_text,
+    extract_finish_reason,
     extract_llm_delta,
     should_flush_tts,
-    strip_reasoning_text,
     transcribe_audio,
     wav_bytes_from_float32,
 )
@@ -86,34 +87,7 @@ def attachment_text(attachments: list[dict]) -> str:
 
 
 def format_reply_paragraphs(text: str) -> str:
-    text = strip_reasoning_text(text)
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text or "\n" in text:
-        return text
-    if len(text) <= 18:
-        return text
-    protected = re.sub(r"([。！？!?~～])", r"\1\n", text)
-    parts = [part.strip() for part in protected.splitlines() if part.strip()]
-    if len(parts) <= 1:
-        words = re.split(r"([，,、])", text)
-        merged = []
-        current = ""
-        for part in words:
-            current += part
-            if len(current) >= 10 and part in {"，", ",", "、"}:
-                merged.append(current.strip())
-                current = ""
-        if current.strip():
-            merged.append(current.strip())
-        parts = merged if len(merged) > 1 else [text]
-    final = []
-    for part in parts:
-        while len(part) > 24:
-            final.append(part[:24].strip())
-            part = part[24:].strip()
-        if part:
-            final.append(part)
-    return "\n".join(final[:6])
+    return clean_reply_text(text)
 
 
 class DialogSession:
@@ -833,7 +807,34 @@ class DialogSession:
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
                 resp = await client.post(active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
         resp.raise_for_status()
-        return strip_reasoning_text(extract_chat_message_text(resp.json()))
+        data = resp.json()
+        text = clean_reply_text(extract_chat_message_text(data))
+        return text
+
+    async def complete_llm_continuation(
+        self,
+        messages: list[dict[str, str]],
+        partial_text: str,
+        temperature: float = 0.0,
+        timeout: float | None = None,
+    ) -> str:
+        if not partial_text:
+            return ""
+        retry_messages = list(messages) + [
+            {"role": "assistant", "content": partial_text},
+            {"role": "user", "content": "上一条回复在中间断掉了。请只从断掉处继续补完最后一句，不要重复前文。"},
+        ]
+        payload = {
+            "model": active_llm_model(self.settings),
+            "messages": retry_messages,
+            "stream": False,
+            "temperature": temperature,
+            "max_tokens": min(220, max(80, active_max_tokens(self.settings))),
+        }
+        async with httpx.AsyncClient(timeout=timeout or self.settings.tools_timeout) as client:
+            resp = await client.post(active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
+        resp.raise_for_status()
+        return clean_reply_text(extract_chat_message_text(resp.json()))
 
     async def stream_llm(self, request_messages: list[dict[str, str]], text_queue: asyncio.Queue, allow_thinking: bool = True) -> str:
         # llama.cpp exposes an OpenAI-compatible SSE stream. We forward each
@@ -867,6 +868,7 @@ class DialogSession:
         first_chunk = True
         first_token = True
         started = time.perf_counter()
+        finish_reason = ""
 
         async with httpx.AsyncClient(timeout=None) as client:
             stream_response = client.stream("POST", active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
@@ -887,6 +889,10 @@ class DialogSession:
                         data = json.loads(line)
                     except json.JSONDecodeError:
                         continue
+
+                    reason = extract_finish_reason(data)
+                    if reason:
+                        finish_reason = reason
 
                     text = reasoning_filter.feed(extract_llm_delta(data))
                     if not text:
@@ -918,13 +924,30 @@ class DialogSession:
             buffer += tail_text
             await self.send_event("llm_delta", text=tail_text)
 
+        if finish_reason:
+            self.trace_log(self.current_trace_id, f"llm:finish_reason {finish_reason}")
+        if finish_reason == "length":
+            try:
+                continuation = await self.complete_llm_continuation(
+                    request_messages,
+                    clean_reply_text(full_answer),
+                    temperature=active_temperature(self.settings),
+                )
+            except Exception as exc:
+                continuation = ""
+                self.trace_log(self.current_trace_id, f"llm:continuation_failed {exc}")
+            if continuation:
+                self.trace_log(self.current_trace_id, f"llm:continuation len={len(continuation)}")
+                full_answer += continuation
+                buffer += continuation
+                await self.send_event("llm_delta", text=continuation)
+
         if buffer.strip():
             tts_text = clean_for_tts(buffer)
             if tts_text:
                 await text_queue.put(tts_text)
 
-        full_answer = strip_reasoning_text(full_answer)
-        return clean_for_tts(full_answer) or full_answer.strip()
+        return clean_reply_text(full_answer)
 
     async def tts_queue_worker(self, text_queue: asyncio.Queue) -> None:
         # TTS requests are sequential so audio order is deterministic. The

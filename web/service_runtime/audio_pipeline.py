@@ -127,6 +127,15 @@ def extract_chat_message_text(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
+def extract_finish_reason(data: dict) -> str:
+    choices = data.get("choices") or []
+    if choices:
+        reason = choices[0].get("finish_reason")
+        if isinstance(reason, str):
+            return reason
+    return ""
+
+
 def strip_reasoning_text(text: str) -> str:
     text = str(text or "")
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.I | re.S)
@@ -247,14 +256,25 @@ def should_flush_tts(text: str, first_chunk: bool) -> bool:
     return len(stripped) >= 90
 
 
-def clean_for_tts(text: str) -> str:
+def clean_reply_text(text: str) -> str:
+    """Clean text for display/storage without removing normal chat content."""
+
     text = strip_reasoning_text(text)
     if not text:
         return ""
+    text = text.replace("<s>", "").replace("</s>", "")
+    text = re.sub(r"<\|.*?\|>", "", text)
+    text = re.sub(r"(?im)^\s*(system|user|assistant)\s*[:：]\s*", "", text)
+    text = re.sub(r"(?:^|\s)END\s*$", "", text, flags=re.I)
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    text = re.sub(r" *\n+ *", "\n", text)
+    return text.strip()
 
-    for marker in ("<|endofprompt|>", "<|im_start|>assistant", "assistant:", "Assistant:"):
-        if marker in text:
-            text = text.split(marker)[-1]
+
+def clean_for_tts(text: str) -> str:
+    text = clean_reply_text(text)
+    if not text:
+        return ""
 
     text = re.sub(r"<\|.*?\|>", "", text)
 
@@ -268,7 +288,7 @@ def clean_for_tts(text: str) -> str:
         text = text.replace(fragment, "")
 
     text = re.sub(r"(^|\n)\s*(system|user|assistant)\s*[:：]\s*", "\\1", text, flags=re.I)
-    text = re.sub(r"\s*END\s*$", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"(?:^|\s)END\s*$", "", text, flags=re.IGNORECASE)
     text = text.replace("<s>", "").replace("</s>", "")
     text = re.sub(r"\s+", " ", text).strip()
 

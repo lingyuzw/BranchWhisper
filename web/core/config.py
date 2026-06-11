@@ -258,7 +258,15 @@ def load_persisted_settings(settings: SessionSettings, path: Path) -> SessionSet
                 settings.update_from_dict(data)
         except Exception:
             pass
+    migrate_legacy_defaults(settings)
     return settings
+
+
+def migrate_legacy_defaults(settings: SessionSettings) -> None:
+    if int(getattr(settings, "max_tokens", 0) or 0) == 220:
+        settings.max_tokens = 512
+    if int(getattr(settings, "api_max_tokens", 0) or 0) == 220:
+        settings.api_max_tokens = 512
 
 
 def save_persisted_settings(settings: SessionSettings, path: Path) -> None:
@@ -383,11 +391,11 @@ def add_settings_args(parser) -> None:
     parser.add_argument("--api-llm-model", default=os.environ.get("BRANCHWHISPER_API_LLM_MODEL", ""))
     parser.add_argument("--api-llm-api-key", default=os.environ.get("BRANCHWHISPER_API_LLM_API_KEY", ""))
     parser.add_argument("--api-temperature", type=float, default=0.35)
-    parser.add_argument("--api-max-tokens", type=int, default=220)
+    parser.add_argument("--api-max-tokens", type=int, default=512)
     parser.add_argument("--api-history-turns", type=int, default=8)
     parser.add_argument("--thinking-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--temperature", type=float, default=0.35)
-    parser.add_argument("--max-tokens", type=int, default=220)
+    parser.add_argument("--max-tokens", type=int, default=512)
     parser.add_argument("--history-turns", type=int, default=8)
     parser.add_argument("--system", default=DEFAULT_SYSTEM)
     parser.add_argument("--ui-font-scale", type=float, default=1.0)

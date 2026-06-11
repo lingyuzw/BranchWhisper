@@ -1201,6 +1201,7 @@ function renderStickerLibrary() {
 async function handleStickerUpload(event) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
+  const uploadButton = $("#stickerUploadBtn");
   try {
     const validFiles = files.filter((file) => {
       const type = String(file.type || "").toLowerCase();
@@ -1218,6 +1219,10 @@ async function handleStickerUpload(event) {
     for (const file of validFiles.slice(0, 80)) {
       payload.push({ name: file.name, data_url: await fileToDataUrl(file) });
     }
+    if (uploadButton) {
+      uploadButton.disabled = true;
+      uploadButton.textContent = `\u6b63\u5728\u5165\u5e93 ${payload.length} \u5f20...`;
+    }
     const channels = value("stickerChannelInput", "all") || "all";
     const result = await uploadStickerBatch(payload, channels);
     const okCount = (result.results || []).filter((item) => item.ok).length;
@@ -1227,6 +1232,11 @@ async function handleStickerUpload(event) {
   } catch (error) {
     showToast(`\u8868\u60c5\u5305\u4e0a\u4f20\u5931\u8d25\uff1a${error.message}`, "error");
   } finally {
+    if (uploadButton) {
+      uploadButton.disabled = false;
+      uploadButton.innerHTML = `<i data-lucide="image-plus"></i>\u6279\u91cf\u4e0a\u4f20`;
+      renderIcons();
+    }
     event.target.value = "";
   }
 }

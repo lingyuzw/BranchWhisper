@@ -17,7 +17,7 @@ from typing import Any
 
 import httpx
 
-from service_runtime.audio_pipeline import clean_for_tts, extract_chat_message_text, strip_reasoning_text
+from service_runtime.audio_pipeline import clean_for_tts, clean_reply_text, extract_chat_message_text, extract_finish_reason
 from core.config import (
     SessionSettings,
     active_history_turns,
@@ -1483,9 +1483,12 @@ class ExternalDialogEngine:
                         "image_format": sent.get("image_format"),
                         "source_image": sent.get("source_image"),
                         "image": sent.get("image"),
+                        "thumbnail": sent.get("thumbnail"),
                         "upload_ms": sent.get("upload_ms"),
                         "upload_method": sent.get("upload_method"),
                         "upload_url_kind": sent.get("upload_url_kind"),
+                        "thumb_upload_method": sent.get("thumb_upload_method"),
+                        "thumb_upload_url_kind": sent.get("thumb_upload_url_kind"),
                         "send_ms": sent.get("send_ms"),
                     },
                     "client_delivery": "unconfirmed",
@@ -1512,7 +1515,7 @@ class ExternalDialogEngine:
         diag: dict[str, Any] = {}
         repeat_text = extract_repeat_text(user_text)
         if repeat_text:
-            reply = format_reply_paragraphs(clean_for_tts(repeat_text) or repeat_text)
+            reply = format_reply_paragraphs(clean_reply_text(repeat_text) or repeat_text)
             return reply, None, "", 0, 0, diag
 
         request_text = self.build_request_text(user_text, conversation)
@@ -1523,7 +1526,7 @@ class ExternalDialogEngine:
         tool_ms = int((time.perf_counter() - tool_started) * 1000) if tool_result else 0
         direct_answer = direct_answer_from_tool(tool_result)
         if direct_answer:
-            reply = format_reply_paragraphs(clean_for_tts(direct_answer) or direct_answer)
+            reply = format_reply_paragraphs(clean_reply_text(direct_answer) or direct_answer)
             return reply, tool_result, direct_answer, tool_ms, 0, diag
         if tool_result:
             request_text += (
@@ -1534,10 +1537,11 @@ class ExternalDialogEngine:
         llm_started = time.perf_counter()
         answer = await self.complete_llm_text(settings, messages, temperature=active_temperature(settings), max_tokens=active_max_tokens(settings), diag=diag)
         llm_ms = int((time.perf_counter() - llm_started) * 1000)
-        reply = format_reply_paragraphs(clean_for_tts(answer) or answer.strip())
+        reply = format_reply_paragraphs(clean_reply_text(answer) or answer.strip())
         if voice_requested and not clean_for_tts(reply):
             reply = voice_fallback_reply(user_text)
             diag["voice_empty_fallback"] = True
+        diag["reply_len"] = len(reply)
         diag["reply_clean_len"] = len(clean_for_tts(reply))
         return reply, tool_result, "", tool_ms, llm_ms, diag
 
@@ -1648,17 +1652,66 @@ class ExternalDialogEngine:
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
                 resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
             resp.raise_for_status()
-            text = strip_reasoning_text(extract_chat_message_text(resp.json()))
+            data = resp.json()
+            text = clean_reply_text(extract_chat_message_text(data))
+            finish_reason = extract_finish_reason(data)
             if thinking_requested and not clean_for_tts(text):
                 if diag is not None:
                     diag["thinking_empty_retry"] = True
                 payload.pop("enable_thinking", None)
                 resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
                 resp.raise_for_status()
-                text = strip_reasoning_text(extract_chat_message_text(resp.json()))
+                data = resp.json()
+                text = clean_reply_text(extract_chat_message_text(data))
+                finish_reason = extract_finish_reason(data)
+        if finish_reason == "length":
+            try:
+                continuation = await self.complete_llm_continuation(
+                    settings_snapshot,
+                    messages,
+                    text,
+                    temperature=temperature,
+                    timeout=timeout,
+                )
+            except Exception as exc:
+                continuation = ""
+                if diag is not None:
+                    diag["finish_length_retry_error"] = str(exc)[:160]
+            if continuation:
+                text = clean_reply_text(text + continuation)
+                if diag is not None:
+                    diag["finish_length_retry"] = True
         if diag is not None:
+            diag["finish_reason"] = finish_reason or "-"
+            diag["llm_reply_len"] = len(text)
             diag["llm_clean_len"] = len(clean_for_tts(text))
         return text
+
+    async def complete_llm_continuation(
+        self,
+        settings: SessionSettings,
+        messages: list[dict[str, str]],
+        partial_text: str,
+        temperature: float = 0.0,
+        timeout: float | None = None,
+    ) -> str:
+        if not partial_text:
+            return ""
+        retry_messages = list(messages) + [
+            {"role": "assistant", "content": partial_text},
+            {"role": "user", "content": "上一条回复在中间断掉了。请只从断掉处继续补完最后一句，不要重复前文。"},
+        ]
+        payload = {
+            "model": active_llm_model(settings),
+            "messages": retry_messages,
+            "stream": False,
+            "temperature": temperature,
+            "max_tokens": min(220, max(80, active_max_tokens(settings))),
+        }
+        async with httpx.AsyncClient(timeout=timeout or settings.tools_timeout) as client:
+            resp = await client.post(active_llm_url(settings), json=payload, headers=llm_headers(settings))
+        resp.raise_for_status()
+        return clean_reply_text(extract_chat_message_text(resp.json()))
 
     def should_send_voice(self, user_text: str, keywords: list[str], integration: dict | None) -> bool:
         if (integration or {}).get("reply_mode") == "voice":
