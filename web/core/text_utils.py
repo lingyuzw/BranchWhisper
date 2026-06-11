@@ -38,7 +38,11 @@ def natural_reply_clauses(text: str) -> list[str]:
             end = match.end()
             part = line[start:end].strip()
             if part:
-                clauses.append(part)
+                spaced = split_spaced_chinese_clauses(part)
+                if len(spaced) > 1:
+                    clauses.extend(spaced)
+                else:
+                    clauses.append(part)
             start = end
         rest = line[start:].strip()
         if rest:
@@ -104,13 +108,12 @@ def split_long_clause(text: str, *, soft_limit: int = 46) -> list[str]:
 def merge_reply_clauses(clauses: list[str], *, max_chars: int, max_parts: int = 6) -> list[str]:
     merged: list[str] = []
     current = ""
-    min_chars = min(18, max_chars)
     for clause in clauses:
         clause = clause.strip()
         if not clause:
             continue
         candidate = join_reply_parts(current, clause) if current else clause
-        if current and (len(candidate) > max_chars or is_chat_pause_clause(clause, current)):
+        if current and (len(candidate) > max_chars or is_chat_pause_clause(clause, current, len(merged))):
             merged.append(current)
             current = clause
         else:
@@ -126,11 +129,27 @@ def merge_reply_clauses(clauses: list[str], *, max_chars: int, max_parts: int = 
     return [item for item in bounded if item]
 
 
-def is_chat_pause_clause(next_clause: str, current: str) -> bool:
+def is_chat_pause_clause(next_clause: str, current: str, emitted_count: int = 0) -> bool:
     next_clause = next_clause.strip()
     current = current.strip()
-    standalone_current = {"\u544a\u8f9e", "\u7b97\u4e86", "\u884c\u5427", "\u61d2\u5f97"}
+    if emitted_count >= 2 and len(current) >= 10 and len(next_clause) >= 3:
+        return True
+    if len(current) >= 14 and len(next_clause) >= 4:
+        return True
+    if re.search(r"[\uff1f?!]\s*$", current):
+        return True
+    standalone_current = {
+        "\u544a\u8f9e",
+        "\u7b97\u4e86",
+        "\u884c\u5427",
+        "\u61d2\u5f97",
+        "\u771f\u5230\u90a3\u4e00\u5929",
+        "\u6211\u731c\u5427",
+        "\u5148\u7b49\u7b49",
+    }
     if current in standalone_current:
+        return True
+    if current.endswith(("\u5427", "\u554a", "\u5462", "\u4e86", "\u5440")) and len(current) >= 3 and len(next_clause) >= 4:
         return True
     pause_starters = (
         "\u6253\u67b6",
@@ -141,6 +160,12 @@ def is_chat_pause_clause(next_clause: str, current: str) -> bool:
         "\u4f60\u627e",
         "\u5973\u7684",
         "\u7537\u7684",
+        "\u521a",
+        "\u771f\u5230",
+        "\u7136\u540e",
+        "\u5148",
+        "\u6211\u731c",
+        "ai",
     )
     if any(next_clause.startswith(prefix) for prefix in pause_starters):
         return True
