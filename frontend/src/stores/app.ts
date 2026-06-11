@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { loadConfig, type PublicConfig } from "@/api/config";
+import { loadConfig, saveConfig, type PublicConfig } from "@/api/config";
 import { loadServices, type ServiceSummary } from "@/api/services";
 
 interface AppState {
@@ -26,6 +26,19 @@ export const useAppStore = defineStore("app", {
         this.services = services.services || [];
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async saveConfig(patch: Partial<PublicConfig>) {
+      this.loading = true;
+      this.error = "";
+      try {
+        this.config = await saveConfig(patch);
+        window.dispatchEvent(new CustomEvent("branchwhisper:config-updated", { detail: { config: this.config } }));
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : String(error);
+        throw error;
       } finally {
         this.loading = false;
       }

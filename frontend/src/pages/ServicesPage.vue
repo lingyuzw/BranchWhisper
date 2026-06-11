@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { Pause, Play, RefreshCw, Square, Trash2 } from "@lucide/vue";
 import PageScaffold from "@/components/common/PageScaffold.vue";
 import { useServicesStore } from "@/stores/services";
 
 const services = useServicesStore();
+const logBox = ref<HTMLElement | null>(null);
 
 onMounted(async () => {
   await services.reload();
@@ -15,6 +16,15 @@ onMounted(async () => {
 onUnmounted(() => {
   services.stopPolling();
 });
+
+watch(
+  () => services.logs,
+  () => {
+    void nextTick(() => {
+      if (logBox.value) logBox.value.scrollTop = logBox.value.scrollHeight;
+    });
+  },
+);
 </script>
 
 <template>
@@ -68,7 +78,7 @@ onUnmounted(() => {
             <button class="icon-button danger" type="button" @click="services.clearLogs()"><Trash2 :size="16" /></button>
           </div>
         </div>
-        <pre class="log-box">{{ services.logs || "暂无日志。" }}</pre>
+        <pre ref="logBox" class="log-box">{{ services.logs || "暂无日志。" }}</pre>
       </article>
     </section>
   </PageScaffold>

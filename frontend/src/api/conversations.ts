@@ -48,6 +48,26 @@ export async function loadConversation(conversationId: string) {
   return fetchJson<{ conversation: Conversation }>(`/api/conversations/${encodeURIComponent(conversationId)}`);
 }
 
+export async function createConversation(payload: Partial<ConversationSummary> = {}) {
+  return fetchJson<{ conversation: Conversation }>("/api/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateConversation(conversationId: string, patch: Partial<ConversationSummary>) {
+  return fetchJson<{ conversation: ConversationSummary }>(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function deleteConversation(conversationId: string) {
   return fetchJson<{ ok: boolean }>(`/api/conversations/${encodeURIComponent(conversationId)}`, { method: "DELETE" });
+}
+
+export function conversationExportUrl(conversationId: string) {
+  return `/api/conversations/${encodeURIComponent(conversationId)}/export.md`;
 }

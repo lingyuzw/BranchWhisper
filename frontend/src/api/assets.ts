@@ -1,4 +1,5 @@
 import { fetchJson } from "@/api/client";
+import type { ChatAttachment } from "@/api/conversations";
 
 export interface Sticker {
   id: string;
@@ -90,4 +91,12 @@ export async function testSticker(text: string, channel = "web", replyText = "")
       body: JSON.stringify({ text, channel, reply_text: replyText }),
     },
   );
+}
+
+export async function uploadChatImage(dataUrl: string) {
+  return fetchJson<{ asset: ChatAttachment }>("/api/assets/chat-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data_url: dataUrl }),
+  });
 }

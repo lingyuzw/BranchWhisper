@@ -81,9 +81,11 @@ export const useAssetsStore = defineStore("assets", {
         const data = await uploadStickerBatch(files, "all");
         this.stickers = data.stickers || this.stickers;
         const uploaded = (data.results || []).filter((item) => item.ok && item.sticker).map((item) => item.sticker as Sticker);
+        this.selectedIds = uploaded.map((item) => item.id);
+        this.selectedId = uploaded[0]?.id || this.selectedId;
         this.progress.done = files.length;
         await this.reload(this.filters);
-        await this.recognize(uploaded.map((item) => item.id), "识别新素材");
+        if (uploaded.length) await this.recognize(uploaded.map((item) => item.id), "识别新素材");
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
       } finally {
@@ -98,6 +100,7 @@ export const useAssetsStore = defineStore("assets", {
         try {
           const data = await reanalyzeSticker(id);
           this.stickers = data.stickers || this.stickers;
+          if (data.sticker?.id) this.selectedId = data.sticker.id;
         } catch {
           this.progress.failed += 1;
         } finally {
@@ -108,19 +111,27 @@ export const useAssetsStore = defineStore("assets", {
       this.progress.active = false;
     },
     async approve(ids: string[]) {
-      for (const id of ids.filter(Boolean)) {
+      const targets = ids.filter(Boolean);
+      this.progress = { active: true, label: "通过素材", done: 0, total: targets.length, failed: 0 };
+      for (const id of targets) {
         const data = await approveSticker(id);
         this.stickers = data.stickers || this.stickers;
+        this.progress.done += 1;
       }
       await this.reload(this.filters);
+      this.progress.active = false;
     },
     async remove(ids: string[]) {
-      for (const id of ids.filter(Boolean)) {
+      const targets = ids.filter(Boolean);
+      this.progress = { active: true, label: "删除素材", done: 0, total: targets.length, failed: 0 };
+      for (const id of targets) {
         const data = await deleteSticker(id);
         this.stickers = data.stickers || this.stickers;
+        this.progress.done += 1;
       }
       this.selectedIds = [];
       await this.reload(this.filters);
+      this.progress.active = false;
     },
     async runTest() {
       this.testResult = await testSticker(this.testText || "哈哈哈哈", "web");
