@@ -27,7 +27,7 @@ onMounted(() => {
         <span class="brand-mark">BW</span>
         <span>
           <strong>BranchWhisper</strong>
-          <small>Vue migration preview</small>
+          <small>Local AI console</small>
         </span>
       </RouterLink>
 

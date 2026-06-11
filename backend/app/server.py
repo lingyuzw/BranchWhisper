@@ -11,8 +11,8 @@ import sys
 
 import httpx
 import numpy as np
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -48,7 +48,6 @@ from domain.paths import (
     REMINDERS_DB,
     SERVICE_PROFILES_CONFIG,
     SETTINGS_CONFIG,
-    STATIC_DIR,
     STICKER_DIR,
     STICKER_LIBRARY_DIR,
     STICKER_LIBRARY_INDEX,
@@ -461,7 +460,6 @@ def create_app(args) -> FastAPI:
     app.state.reminder_task = None
     app.state.proactive_task = None
     app.state.integration_watchdog_task = None
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     if FRONTEND_DIST_DIR.exists():
         app.mount("/app/assets", StaticFiles(directory=FRONTEND_DIST_DIR / "assets"), name="vue_assets")
     app.mount("/runtime/uploads", StaticFiles(directory=UPLOAD_DIR), name="runtime_uploads")
@@ -487,7 +485,7 @@ def create_app(args) -> FastAPI:
     @app.middleware("http")
     async def no_cache_static(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path == "/" or request.url.path.startswith("/static/"):
+        if request.url.path == "/" or request.url.path.startswith("/app/"):
             response.headers["Cache-Control"] = "no-store, max-age=0"
             response.headers["Pragma"] = "no-cache"
         return response
@@ -508,7 +506,10 @@ def create_app(args) -> FastAPI:
 
     @app.get("/")
     async def index():
-        return FileResponse(STATIC_DIR / "index.html")
+        index_path = FRONTEND_DIST_DIR / "index.html"
+        if index_path.exists():
+            return RedirectResponse(url="/app/")
+        raise HTTPException(status_code=503, detail="Frontend is not built. Run `cd frontend && npm run build`.")
 
     @app.get("/app")
     @app.get("/app/{path:path}")
@@ -516,7 +517,7 @@ def create_app(args) -> FastAPI:
         index_path = FRONTEND_DIST_DIR / "index.html"
         if index_path.exists():
             return FileResponse(index_path)
-        return FileResponse(STATIC_DIR / "index.html")
+        raise HTTPException(status_code=503, detail="Frontend is not built. Run `cd frontend && npm run build`.")
 
     @app.websocket("/ws/dialog")
     async def dialog_socket(websocket: WebSocket):

@@ -82,6 +82,7 @@ def create_assets_router() -> APIRouter:
         if not isinstance(files, list) or not files:
             raise HTTPException(status_code=400, detail="files is required")
         channels = payload.get("channels") or payload.get("channel") or "all"
+        should_analyze = payload.get("analyze") is not False
         analyzer = StickerVisionAnalyzer(request.app.state.settings)
         results = []
         for index, file_item in enumerate(files[:80]):
@@ -93,6 +94,10 @@ def create_assets_router() -> APIRouter:
                 preview = request.app.state.sticker_library.add_upload(data_url=data_url, name=name, channels=channels)
                 if preview.get("duplicate"):
                     results.append({"ok": True, "duplicate": True, "analyzed": False, "sticker": preview})
+                    continue
+
+                if not should_analyze:
+                    results.append({"ok": True, "analyzed": False, "sticker": preview})
                     continue
 
                 image_path = preview.get("send_path") or preview.get("path")

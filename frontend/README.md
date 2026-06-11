@@ -1,28 +1,6 @@
 # Frontend
 
-The current production frontend lives in `frontend/legacy-static/` and is still served by FastAPI at `/static`.
-The Vue migration app lives in `frontend/src/` and is served from `/app` after `npm run build`.
-
-## Current State
-
-- `legacy-static/index.html` is the current SPA shell.
-- `legacy-static/js/pages/` contains page controllers.
-- `legacy-static/js/api/` contains API clients.
-- `legacy-static/css/` contains page and layout styles.
-
-## Vue Migration Target
-
-The Vue frontend uses Vue 3, Vite, TypeScript, Pinia, Vue Router, and `@lucide/vue`.
-Until a page reaches feature parity, keep the existing legacy static page working.
-
-Do not move the voice dialog page first.
-
-The frontend should only depend on public backend boundaries:
-
-- `/api/*`
-- `/ws/dialog`
-- `/runtime/uploads/*`
-- `/runtime/stickers/*`
+BranchWhisper now uses Vue 3, Vite, TypeScript, Pinia, Vue Router, and `@lucide/vue`.
 
 ## Commands
 
@@ -44,4 +22,18 @@ Built app through FastAPI:
 
 ```text
 http://127.0.0.1:7860/app
+```
+
+The FastAPI root `/` also serves the built Vue app when `frontend/dist/index.html` exists.
+
+## Structure
+
+```text
+src/
+  api/          typed API clients
+  components/   shared layout and reusable UI
+  pages/        route-level pages
+  router/       Vue Router setup
+  stores/       Pinia stores
+  styles/       global styles and page layouts
 ```
