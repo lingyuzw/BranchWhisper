@@ -28,6 +28,7 @@ Common pages:
 - Integrations: `http://127.0.0.1:7860#integrations`
 - Memory: `http://127.0.0.1:7860#memory`
 - Settings: `http://127.0.0.1:7860#settings`
+- Vue migration preview: `http://127.0.0.1:7860/app` after `cd frontend && npm run build`
 
 ## Project Structure
 
@@ -50,6 +51,7 @@ BranchWhisper/
     tools/                    # Memory and tool runtime
   frontend/
     legacy-static/            # Existing static SPA, still served at /static
+    src/                      # Vue 3 + Vite migration app
   runtime/                    # User data and generated runtime files, ignored by Git
   services/
     tts/                      # Standalone TTS service
@@ -110,6 +112,7 @@ python -m compileall backend services
 python scripts/check_static_imports.py
 node --check frontend/legacy-static/js/main.js
 node --check backend/integration_runtime/weixin_voice_sender.mjs
+cd frontend && npm run check && npm run build
 ```
 
 ## Architecture Docs

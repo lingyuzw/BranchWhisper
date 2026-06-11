@@ -38,6 +38,7 @@ from domain.paths import (
     BOT_PROFILES_CONFIG,
     CHAT_IMAGE_DIR,
     CONVERSATION_DIR,
+    FRONTEND_DIST_DIR,
     INTEGRATIONS_CONFIG,
     INTEGRATION_MEDIA_DIR,
     LOG_DIR,
@@ -461,6 +462,8 @@ def create_app(args) -> FastAPI:
     app.state.proactive_task = None
     app.state.integration_watchdog_task = None
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    if FRONTEND_DIST_DIR.exists():
+        app.mount("/app/assets", StaticFiles(directory=FRONTEND_DIST_DIR / "assets"), name="vue_assets")
     app.mount("/runtime/uploads", StaticFiles(directory=UPLOAD_DIR), name="runtime_uploads")
     app.mount("/runtime/stickers", StaticFiles(directory=STICKER_LIBRARY_DIR), name="runtime_stickers")
     app.include_router(create_config_router())
@@ -505,6 +508,14 @@ def create_app(args) -> FastAPI:
 
     @app.get("/")
     async def index():
+        return FileResponse(STATIC_DIR / "index.html")
+
+    @app.get("/app")
+    @app.get("/app/{path:path}")
+    async def vue_app(path: str = ""):
+        index_path = FRONTEND_DIST_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
         return FileResponse(STATIC_DIR / "index.html")
 
     @app.websocket("/ws/dialog")

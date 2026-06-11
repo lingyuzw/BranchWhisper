@@ -6,6 +6,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = BACKEND_DIR.parent
 APP_DIR = BACKEND_DIR
 STATIC_DIR = PROJECT_ROOT / "frontend" / "legacy-static"
+FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 RUNTIME_DIR = PROJECT_ROOT / "runtime"
 LOG_DIR = RUNTIME_DIR / "logs"
 CONVERSATION_DIR = RUNTIME_DIR / "conversations"

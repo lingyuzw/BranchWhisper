@@ -1,6 +1,7 @@
 # Frontend
 
-The current frontend lives in `frontend/legacy-static/` and is still served by FastAPI at `/static`.
+The current production frontend lives in `frontend/legacy-static/` and is still served by FastAPI at `/static`.
+The Vue migration app lives in `frontend/src/` and is served from `/app` after `npm run build`.
 
 ## Current State
 
@@ -11,9 +12,10 @@ The current frontend lives in `frontend/legacy-static/` and is still served by F
 
 ## Vue Migration Target
 
-The planned Vue frontend should live under `frontend/src/` with Vue 3, Vite, and TypeScript. Until a page is migrated, keep the existing legacy static page working.
+The Vue frontend uses Vue 3, Vite, TypeScript, Pinia, Vue Router, and `@lucide/vue`.
+Until a page reaches feature parity, keep the existing legacy static page working.
 
-`frontend/src/README.md` is a placeholder for this migration track. Do not move the voice dialog page first.
+Do not move the voice dialog page first.
 
 The frontend should only depend on public backend boundaries:
 
@@ -21,3 +23,25 @@ The frontend should only depend on public backend boundaries:
 - `/ws/dialog`
 - `/runtime/uploads/*`
 - `/runtime/stickers/*`
+
+## Commands
+
+```bash
+cd frontend
+npm install
+npm run dev
+npm run check
+npm run build
+```
+
+Development server:
+
+```text
+http://127.0.0.1:5173
+```
+
+Built app through FastAPI:
+
+```text
+http://127.0.0.1:7860/app
+```
