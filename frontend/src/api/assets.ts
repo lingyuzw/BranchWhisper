@@ -100,3 +100,11 @@ export async function uploadChatImage(dataUrl: string) {
     body: JSON.stringify({ data_url: dataUrl }),
   });
 }
+
+export async function uploadAvatar(dataUrl: string) {
+  return fetchJson<{ asset: { url?: string; path?: string; mime?: string } }>("/api/assets/avatar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data_url: dataUrl }),
+  });
+}

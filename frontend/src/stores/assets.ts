@@ -81,6 +81,7 @@ export const useAssetsStore = defineStore("assets", {
         const data = await uploadStickerBatch(files, "all");
         this.stickers = data.stickers || this.stickers;
         const uploaded = (data.results || []).filter((item) => item.ok && item.sticker).map((item) => item.sticker as Sticker);
+        this.progress.failed = (data.results || []).filter((item) => !item.ok).length;
         this.selectedIds = uploaded.map((item) => item.id);
         this.selectedId = uploaded[0]?.id || this.selectedId;
         this.progress.done = files.length;

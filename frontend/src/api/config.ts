@@ -14,6 +14,7 @@ export interface PublicConfig {
   api_llm_api_key_masked?: string;
   api_llm_temperature?: number;
   api_llm_max_tokens?: number;
+  system_prompt?: string;
   tts_enabled?: boolean;
   tts_url?: string;
   vision_enabled?: boolean;

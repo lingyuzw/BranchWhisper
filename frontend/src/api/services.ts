@@ -7,6 +7,9 @@ export interface ServiceSummary {
   running?: boolean;
   status?: string;
   health_url?: string;
+  pid?: number | string | null;
+  port?: number | string | null;
+  health?: string | null;
 }
 
 export interface ServicesResponse {

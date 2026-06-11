@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { Archive, Download, ImagePlus, MessageSquarePlus, Mic, MicOff, Search, Send, Square, Star, Trash2, Volume2, VolumeX } from "@lucide/vue";
+import { Archive, Download, ImagePlus, Mic, MicOff, Search, Send, SquarePen, Star, Trash2, Volume2, VolumeX, XOctagon } from "@lucide/vue";
 import { uploadChatImage } from "@/api/assets";
 import { conversationExportUrl, updateConversation, type ChatAttachment, type ChatMessage, type ConversationSummary } from "@/api/conversations";
 import { useAppStore } from "@/stores/app";
@@ -72,7 +72,7 @@ watch(activeStoreKey, () => {
   if (busy.value && !isWeixinConversation(active)) return;
   const shouldFollow = isNearBottom();
   liveMessages.value = nextMessages;
-  scrollToBottom({ force: shouldFollow || isWeixinConversation(active) });
+  scrollToBottom({ force: shouldFollow });
 });
 
 function isWeixinConversation(item: ConversationSummary) {
@@ -244,7 +244,7 @@ function handleSocketEvent(data: Record<string, any>) {
     conversations.active = data.conversation;
     if (data.conversation?.messages?.length) liveMessages.value = [...data.conversation.messages];
     void conversations.reloadList(true);
-    scrollToBottom({ force: true });
+    scrollToBottom({ force: shouldFollow });
   }
   if (data.type === "trace") {
     metrics.trace = data.trace_id ? String(data.trace_id).slice(-10) : "--";
@@ -426,28 +426,34 @@ function displayName(role: string, message: ChatMessage) {
   if (message.source || message.attachments?.some((item) => item.type === "image")) return role === "user" ? "我" : app.config?.web_assistant_name || "枝语";
   return role === "user" ? app.config?.web_user_name || "我" : app.config?.web_assistant_name || "枝语";
 }
+
+function avatarUrl(role: string) {
+  return role === "user" ? app.config?.web_user_avatar_url || "" : app.config?.web_assistant_avatar_url || "";
+}
 </script>
 
 <template>
   <main class="page-view">
     <div class="voice-console">
       <aside class="sidebar">
-      <div class="conversation-top">
-        <button class="conversation-action-row" type="button" @click="newConversation">
-          <MessageSquarePlus :size="16" /> 新建对话
-        </button>
-        <label class="conversation-search-row">
-          <Search :size="16" />
-          <input v-model="conversations.query" placeholder="搜索聊天" @input="conversations.reloadList(true)" />
-        </label>
-        <div class="conversation-tabs">
-          <button type="button" :class="{ active: activeScope === 'recent' }" @click="switchScope('recent')">最近</button>
-          <button type="button" :class="{ active: activeScope === 'weixin' }" @click="switchScope('weixin')">微信聊天</button>
+        <div class="conversation-top">
+          <button class="conversation-action-row" type="button" @click="newConversation">
+            <SquarePen :size="16" />
+            <span>新建对话</span>
+          </button>
+          <label class="conversation-search-row">
+            <Search :size="16" />
+            <input v-model="conversations.query" type="search" placeholder="搜索对话" autocomplete="off" @input="conversations.reloadList(true)" />
+          </label>
+          <div class="conversation-tabs">
+            <button type="button" :class="{ active: activeScope === 'recent' }" @click="switchScope('recent')">最近</button>
+            <button type="button" :class="{ active: activeScope === 'weixin' }" @click="switchScope('weixin')">微信聊天</button>
+          </div>
+          <button class="conversation-action-row subtle" type="button">
+            <Archive :size="16" />
+            <span>归档</span>
+          </button>
         </div>
-        <button class="conversation-action-row subtle" type="button">
-          <Archive :size="16" /> 归档
-        </button>
-      </div>
 
       <div class="conversation-rail">
         <div class="rail-head">
@@ -500,19 +506,46 @@ function displayName(role: string, message: ChatMessage) {
       </section>
     </aside>
 
-    <section class="chat-area">
+      <section class="chat-area">
       <div v-if="!hasMessages" class="chat-welcome">
         <div class="welcome-brand">
           <span class="welcome-icon">BW</span>
           <h1>有什么我可以帮你的？</h1>
           <p>打开麦克风开始语音对话，或输入文字发送消息</p>
         </div>
+
+        <div v-if="pendingAttachments.length" class="attachment-preview-strip">
+          <div v-for="item in pendingAttachments" :key="item.asset_id || item.url" class="attachment-preview-chip">
+            <img :src="item.url" :alt="item.name || '图片'" />
+            <span>{{ item.name || "图片" }}</span>
+            <button type="button" @click="removeAttachment(item.asset_id)">×</button>
+          </div>
+        </div>
+
+        <div class="composer welcome-composer">
+          <button class="voice-button" :class="{ active: micActive }" type="button" title="语音输入" @click="toggleMic">
+            <component :is="micActive ? MicOff : Mic" :size="18" />
+          </button>
+          <button class="icon-button attach-image-btn" type="button" title="发送图片" @click="imageInput?.click()"><ImagePlus :size="18" /></button>
+          <textarea v-model="draft" :disabled="!connected" placeholder="输入消息..." rows="1" autocomplete="off" @keydown.enter.exact.prevent="sendText"></textarea>
+          <button class="send-button" type="button" title="发送" :disabled="!connected || (!draft.trim() && !pendingAttachments.length)" @click="sendText">
+            <Send :size="16" />
+          </button>
+          <button class="icon-button toggle-button" type="button" :class="{ off: !ttsEnabled }" :title="ttsEnabled ? '语音播报' : '语音关闭'" @click="toggleTts">
+            <component :is="ttsEnabled ? Volume2 : VolumeX" :size="18" />
+          </button>
+          <button class="icon-button" type="button" title="打断" @click="interruptAssistant('manual')"><XOctagon :size="16" /></button>
+          <button class="icon-button" type="button" title="新对话" @click="newConversation"><SquarePen :size="16" /></button>
+        </div>
       </div>
 
       <div v-show="hasMessages" class="chat-messages">
         <div ref="scroller" class="transcript">
           <article v-for="(message, index) in liveMessages" :key="message.id || `${index}-${message.role}`" class="message-row" :class="message.role">
-            <div class="message-avatar">{{ message.role === "user" ? "我" : "枝" }}</div>
+            <div class="message-avatar">
+              <img v-if="avatarUrl(message.role)" :src="avatarUrl(message.role)" :alt="displayName(message.role, message)" />
+              <span v-else>{{ message.role === "user" ? "我" : "枝" }}</span>
+            </div>
             <div class="message-body">
               <small class="message-name">{{ displayName(message.role, message) }}</small>
               <div v-if="message.content" class="message" :class="message.role">{{ message.content }}</div>
@@ -532,7 +565,7 @@ function displayName(role: string, message: ChatMessage) {
         </div>
       </div>
 
-      <footer class="chat-composer">
+      <footer v-show="hasMessages" class="chat-composer">
         <div v-if="pendingAttachments.length" class="attachment-preview-strip">
           <div v-for="item in pendingAttachments" :key="item.asset_id || item.url" class="attachment-preview-chip">
             <img :src="item.url" :alt="item.name || '图片'" />
@@ -541,22 +574,23 @@ function displayName(role: string, message: ChatMessage) {
           </div>
         </div>
         <div class="composer">
-          <button class="icon-button attach-image-btn" type="button" title="添加图片" @click="imageInput?.click()"><ImagePlus :size="18" /></button>
-          <button class="icon-button" :class="{ active: micActive }" type="button" title="语音输入" @click="toggleMic">
+          <button class="voice-button" :class="{ active: micActive }" type="button" title="语音输入" @click="toggleMic">
             <component :is="micActive ? MicOff : Mic" :size="18" />
           </button>
-          <textarea v-model="draft" :disabled="!connected" placeholder="有问题，尽管问" rows="1" @keydown.enter.exact.prevent="sendText"></textarea>
-          <button class="icon-button" type="button" :title="ttsEnabled ? '语音开启' : '语音关闭'" @click="toggleTts">
+          <button class="icon-button attach-image-btn" type="button" title="发送图片" @click="imageInput?.click()"><ImagePlus :size="18" /></button>
+          <textarea v-model="draft" :disabled="!connected" placeholder="输入消息..." rows="1" autocomplete="off" @keydown.enter.exact.prevent="sendText"></textarea>
+          <button class="send-button" type="button" title="发送" :disabled="!connected || (!draft.trim() && !pendingAttachments.length)" @click="sendText">
+            <Send :size="16" />
+          </button>
+          <button class="icon-button toggle-button" type="button" :class="{ off: !ttsEnabled }" :title="ttsEnabled ? '语音播报' : '语音关闭'" @click="toggleTts">
             <component :is="ttsEnabled ? Volume2 : VolumeX" :size="18" />
           </button>
-          <button class="icon-button" type="button" title="打断" @click="interruptAssistant('manual')"><Square :size="16" /></button>
-          <button class="primary-action send-button" type="button" :disabled="!connected || (!draft.trim() && !pendingAttachments.length)" @click="sendText">
-            <Send :size="16" /> 发送
-          </button>
+          <button class="icon-button" type="button" title="打断" @click="interruptAssistant('manual')"><XOctagon :size="16" /></button>
+          <button class="icon-button" type="button" title="新对话" @click="newConversation"><SquarePen :size="16" /></button>
         </div>
         <input ref="imageInput" type="file" accept="image/*" multiple hidden @change="handleImageSelected" />
       </footer>
-    </section>
+      </section>
     </div>
   </main>
 </template>

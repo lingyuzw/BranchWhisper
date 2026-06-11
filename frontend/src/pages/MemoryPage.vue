@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 import { Brain, ChevronLeft, ChevronRight, RefreshCw, Search, Trash2, WandSparkles } from "@lucide/vue";
-import PageScaffold from "@/components/common/PageScaffold.vue";
 import { useMemoryStore } from "@/stores/memory";
 import type { MemoryLayer } from "@/api/memory";
 
@@ -34,8 +33,22 @@ function formatTime(value?: string) {
 </script>
 
 <template>
-  <PageScaffold eyebrow="Memory" title="记忆" description="本地模型和 API 模式的记忆分开管理，点击左侧概况可以直接筛选。">
-    <main class="memory-workbench">
+  <main class="page-view">
+    <div class="ops-page memory-page">
+      <section class="page-head">
+        <div>
+          <p class="eyebrow">Memory Center</p>
+          <h1>记忆中心</h1>
+          <small>本地模型和 API 模式的记忆分开管理，点击左侧概况可以直接筛选。</small>
+        </div>
+        <div class="head-actions">
+          <button class="secondary-action" type="button" :disabled="memory.loading" @click="memory.reload">
+            <RefreshCw :size="16" /> 刷新
+          </button>
+        </div>
+      </section>
+
+      <section class="memory-workbench">
       <aside class="memory-side-panel">
         <div class="memory-side-head">
           <strong>记忆概况</strong>
@@ -145,6 +158,7 @@ function formatTime(value?: string) {
         </button>
         <pre v-if="memory.admissionResults.length">{{ JSON.stringify(memory.admissionResults, null, 2) }}</pre>
       </section>
-    </main>
-  </PageScaffold>
+      </section>
+    </div>
+  </main>
 </template>

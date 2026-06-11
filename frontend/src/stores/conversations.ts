@@ -11,6 +11,21 @@ interface ConversationState {
   pollHandle: number | null;
 }
 
+function conversationSignature(conversation: Conversation | null) {
+  if (!conversation) return "";
+  const messages = conversation.messages || [];
+  const last = messages[messages.length - 1];
+  return [
+    conversation.id,
+    conversation.updated_at || "",
+    messages.length,
+    last?.id || "",
+    last?.role || "",
+    last?.content?.length || 0,
+    last?.attachments?.length || 0,
+  ].join("|");
+}
+
 export const useConversationsStore = defineStore("conversations", {
   state: (): ConversationState => ({
     items: [],
@@ -48,6 +63,7 @@ export const useConversationsStore = defineStore("conversations", {
       this.loadingActive = true;
       try {
         const data = await loadConversation(id);
+        if (this.active?.id === id && conversationSignature(this.active) === conversationSignature(data.conversation)) return;
         this.active = data.conversation;
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
