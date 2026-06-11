@@ -48,7 +48,7 @@ DEFAULT_SERVICE_PROFILES = {
         "cwd": "/root/autodl-tmp/project/CosyVoice",
         "command": (
             "/root/miniconda3/bin/conda run --no-capture-output -n cosyvoice_vllm python -u "
-            "/root/autodl-tmp/project/LoveChoice/tts/trained_tts_server.py "
+            "/root/autodl-tmp/project/BranchWhisper/services/tts/trained_tts_server.py "
             "--repo_dir /root/autodl-tmp/project/CosyVoice "
             "--model_dir /root/autodl-tmp/project/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B "
             "--speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000"

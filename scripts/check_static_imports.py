@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STATIC_DIR = ROOT / "web" / "static"
+STATIC_DIR = ROOT / "frontend" / "legacy-static"
 IMPORT_RE = re.compile(r"""(?:import|export)\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]""")
 SCRIPT_RE = re.compile(r"""<script[^>]+src=['"]([^'"]+)['"]""", re.I)
 LINK_RE = re.compile(r"""<link[^>]+href=['"]([^'"]+)['"]""", re.I)

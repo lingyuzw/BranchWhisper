@@ -1,6 +1,6 @@
 {
-  "name": "枝语 BranchWhisper",
-  "short_name": "枝语",
+  "name": "BranchWhisper",
+  "short_name": "BranchWhisper",
   "description": "本地语音 AI 对话与微信接入控制台",
   "start_url": "/static/index.html",
   "scope": "/",

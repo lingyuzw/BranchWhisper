@@ -417,7 +417,7 @@ def create_app(args) -> FastAPI:
     # The web server is a single orchestration endpoint. The ASR/LLM/TTS models
     # still live in their own services so they can be restarted and tuned
     # independently.
-    app = FastAPI(title="鏋濊 BranchWhisper")
+    app = FastAPI(title="BranchWhisper")
     app.state.server_host = args.host
     app.state.server_port = args.port
     app.state.settings = load_persisted_settings(SessionSettings.from_args(args), SETTINGS_CONFIG)

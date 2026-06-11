@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-APP_DIR = Path(__file__).resolve().parents[1]
-STATIC_DIR = APP_DIR / "static"
-RUNTIME_DIR = APP_DIR / "runtime"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = BACKEND_DIR.parent
+APP_DIR = BACKEND_DIR
+STATIC_DIR = PROJECT_ROOT / "frontend" / "legacy-static"
+RUNTIME_DIR = PROJECT_ROOT / "runtime"
 LOG_DIR = RUNTIME_DIR / "logs"
 CONVERSATION_DIR = RUNTIME_DIR / "conversations"
 SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"
