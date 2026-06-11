@@ -22,6 +22,7 @@ const micActive = ref(false);
 const ttsEnabled = ref(true);
 const level = ref(0);
 const socket = ref<WebSocket | null>(null);
+const socketGeneration = ref(0);
 const activeScope = ref<Scope>("recent");
 const liveMessages = ref<ChatMessage[]>([]);
 const pendingAttachments = ref<ChatAttachment[]>([]);
@@ -157,17 +158,27 @@ function switchScope(scope: Scope) {
 }
 
 function connectSocket(conversationId = conversations.active?.id || "") {
+  if (socket.value && socket.value.readyState <= WebSocket.OPEN) {
+    const currentId = (socket.value as WebSocket & { datasetConversationId?: string }).datasetConversationId || "";
+    if (currentId === conversationId) return;
+    closeSocket();
+  }
+  const generation = socketGeneration.value + 1;
+  socketGeneration.value = generation;
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   const query = conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : "";
   const ws = new WebSocket(`${scheme}://${location.host}/ws/dialog${query}`);
+  (ws as WebSocket & { datasetConversationId?: string }).datasetConversationId = conversationId;
   ws.binaryType = "arraybuffer";
   socket.value = ws;
   ws.addEventListener("open", () => {
+    if (generation !== socketGeneration.value || socket.value !== ws) return;
     connected.value = true;
     metrics.status = micActive.value ? "监听中" : "待机";
     sendRuntimeSettings();
   });
   ws.addEventListener("close", () => {
+    if (generation !== socketGeneration.value || socket.value !== ws) return;
     connected.value = false;
     busy.value = false;
     assistantActive.value = false;
@@ -175,15 +186,18 @@ function connectSocket(conversationId = conversations.active?.id || "") {
     if (!manualClose.value) window.setTimeout(() => connectSocket(conversations.active?.id || ""), 1200);
   });
   ws.addEventListener("error", () => {
+    if (generation !== socketGeneration.value || socket.value !== ws) return;
     metrics.status = "连接异常";
   });
   ws.addEventListener("message", (event) => {
+    if (generation !== socketGeneration.value || socket.value !== ws) return;
     void handleSocketMessage(event);
   });
 }
 
 function closeSocket() {
   manualClose.value = true;
+  socketGeneration.value += 1;
   socket.value?.close();
   socket.value = null;
   connected.value = false;

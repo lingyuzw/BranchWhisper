@@ -357,6 +357,12 @@ textarea {
   padding: 0 12px 12px;
 }
 
+.asset-load-more {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
 .asset-card {
   position: relative;
   display: grid;

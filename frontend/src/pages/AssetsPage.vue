@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, ImagePlus, RefreshCw, ScanEye, Trash2 } from "@lucide/vue";
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import PageScaffold from "@/components/common/PageScaffold.vue";
 import { useAssetsStore } from "@/stores/assets";
 
@@ -8,10 +8,20 @@ const assets = useAssetsStore();
 
 const selected = computed(() => assets.selected);
 const checkedIds = computed(() => assets.selectedIds);
+const visibleLimit = ref(36);
+const visibleStickers = computed(() => assets.stickers.slice(0, visibleLimit.value));
+const hasMoreStickers = computed(() => visibleLimit.value < assets.stickers.length);
 
 onMounted(() => {
   void assets.reload();
 });
+
+watch(
+  () => [assets.filters.status, assets.filters.emotion, assets.filters.q],
+  () => {
+    visibleLimit.value = 36;
+  },
+);
 
 function readFile(file: File): Promise<{ name: string; data_url: string }> {
   return new Promise((resolve, reject) => {
@@ -94,13 +104,13 @@ function currentScopeIds() {
 
       <main class="asset-gallery-panel">
         <div class="asset-stats">
-          <span>当前 {{ assets.stickers.length }} 张</span>
+          <span>当前 {{ assets.stickers.length }} 张 · 已显示 {{ visibleStickers.length }} 张</span>
           <span>已选 {{ assets.selectedIds.length }} 张</span>
           <span v-if="assets.error" class="danger-text">{{ assets.error }}</span>
         </div>
         <div class="asset-gallery">
           <article
-            v-for="item in assets.stickers"
+            v-for="item in visibleStickers"
             :key="item.id"
             class="asset-card"
             :class="{ active: item.id === assets.selectedId }"
@@ -111,6 +121,9 @@ function currentScopeIds() {
             <strong>{{ item.tag || item.emotion || "默认" }}</strong>
             <small>{{ item.review_status || "pending" }} · 强度 {{ item.intensity || "-" }}</small>
           </article>
+        </div>
+        <div v-if="hasMoreStickers" class="asset-load-more">
+          <button class="secondary-action" type="button" @click="visibleLimit += 36">加载更多</button>
         </div>
       </main>
 
