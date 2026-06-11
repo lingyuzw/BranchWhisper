@@ -470,10 +470,22 @@ async function runPolicyTest() {
   const sticker = result.sticker;
   if (!host) return;
   host.className = `asset-test-result ${sticker ? "hit" : "miss"}`;
+  const diag = result.diagnostics || {};
+  const scoreText = diag.score === undefined || diag.score === null ? "--" : Number(diag.score).toFixed(2);
+  const thresholdText = diag.threshold === undefined || diag.threshold === null ? "--" : Number(diag.threshold).toFixed(2);
+  const matched = (diag.matched_fields || []).join("、") || "无";
   if (sticker) {
-    host.innerHTML = `<strong>命中</strong><span>${escapeHtml(sticker.name || sticker.id)} · ${escapeHtml(sticker.tag || sticker.emotion)}</span>`;
+    host.innerHTML = `
+      <strong>命中：${escapeHtml(sticker.name || sticker.id)}</strong>
+      <span>语境：${escapeHtml(diag.tag || sticker.tag || sticker.emotion || "")} · 分数 ${escapeHtml(scoreText)} / 阈值 ${escapeHtml(thresholdText)}</span>
+      <span>原因：${escapeHtml(matched)}</span>
+    `;
   } else {
-    host.innerHTML = `<strong>未命中</strong><span>${escapeHtml(result.intent?.reason || "unknown")}</span>`;
+    host.innerHTML = `
+      <strong>未命中</strong>
+      <span>原因：${escapeHtml(result.intent?.reason || diag.reason || "unknown")}</span>
+      <span>语境：${escapeHtml(diag.tag || "无明确语义")} · 分数 ${escapeHtml(scoreText)} / 阈值 ${escapeHtml(thresholdText)}</span>
+    `;
   }
 }
 

@@ -16,6 +16,15 @@ IMAGE_MIME_EXT = {
     "image/gif": ".gif",
 }
 
+TAG_ALIASES = {
+    "挑衅": ["挑衅", "打一架", "打架", "想打", "单挑", "欠揍", "不服"],
+    "互怼": ["互怼", "怼", "骂", "阴阳怪气", "欠欠", "sb", "傻", "笨"],
+    "开心": ["开心", "哈哈", "笑死", "好笑", "绷不住", "乐"],
+    "无语": ["无语", "离谱", "服了", "尴尬", "沉默"],
+    "安慰": ["安慰", "抱抱", "委屈", "难受", "心疼"],
+    "疑惑": ["疑惑", "什么", "为啥", "为什么", "真的假的"],
+}
+
 
 def now_text() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -196,17 +205,36 @@ class StickerStore:
             if item.get("enabled", True) and channel in item.get("channels", ["all", "web", "weixin"])
         ]
         if tag:
-            tagged = [item for item in items if item.get("tag") == tag and item.get("id") != avoid_id]
-            if tagged:
-                items = tagged
-            else:
-                items = [item for item in items if item.get("id") != avoid_id]
+            items = [item for item in items if item.get("id") != avoid_id and self.match_score(item, tag) > 0]
         else:
             items = [item for item in items if item.get("id") != avoid_id]
         if not items:
             return None
-        items.sort(key=lambda item: (int(item.get("use_count") or 0), item.get("last_used_at") or ""))
+        items.sort(key=lambda item: (-self.match_score(item, tag), int(item.get("use_count") or 0), item.get("last_used_at") or ""))
         return items[0]
+
+    def match_score(self, item: dict, tag: str) -> int:
+        tag = str(tag or "").strip()
+        if not tag:
+            return 1
+        aliases = [tag, *TAG_ALIASES.get(tag, [])]
+        haystack = " ".join(
+            str(part or "")
+            for part in [
+                item.get("tag"),
+                item.get("name"),
+                item.get("caption"),
+                item.get("ocr_text"),
+                " ".join(str(x) for x in item.get("tags", []) if x) if isinstance(item.get("tags"), list) else "",
+                " ".join(str(x) for x in item.get("scene", []) if x) if isinstance(item.get("scene"), list) else "",
+            ]
+        ).lower()
+        score = 6 if str(item.get("tag") or "") == tag else 0
+        for alias in aliases:
+            alias = str(alias or "").strip().lower()
+            if alias and alias in haystack:
+                score += 3
+        return score
 
     def normalize(self, item: dict[str, Any]) -> dict:
         return {

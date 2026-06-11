@@ -1200,11 +1200,33 @@ class ExternalDialogEngine:
         timings = {"receive_ms": 0, "tool_ms": 0, "llm_ms": 0, "tts_ms": 0, "memory_ms": 0, "send_ms": 0, "total_ms": 0}
         self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] recv sender={sender_id} text={compact_text(text, 220)}")
         image_context, image_attachments = await self.prepare_inbound_images(platform_id, trace_id, payload.get("images"), runtime_settings)
+        image_vision_failed = any(
+            item.get("ok") and str(item.get("error") or "").startswith("图片理解失败")
+            for item in image_attachments
+            if isinstance(item, dict)
+        )
+        image_has_description = any(
+            bool(item.get("description"))
+            for item in image_attachments
+            if isinstance(item, dict)
+        )
         model_text = text
         if image_context:
-            model_text = f"{text}\n\n{image_context}" if text else image_context
+            guidance = ""
+            if image_vision_failed and not image_has_description:
+                guidance = "\n\n注意：微信图片已经下载成功，但图片理解服务没有连上。请直接说明“图片已收到，但图片理解服务没连上”，不要说微信密钥不对、不要把责任推给微信官方，也不要猜图片内容。"
+            model_text = f"{text}\n\n{image_context}{guidance}" if text else f"{image_context}{guidance}"
         voice_requested = self.should_send_voice(text, keywords, integration)
-        reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(runtime_settings, conversation, model_text, voice_requested=voice_requested)
+        image_only_failed = image_vision_failed and not image_has_description and str(text or "").strip() in {"", "[图片]"}
+        if image_only_failed:
+            reply_text = "图片我已经收到了，但图片理解服务现在没连上，所以暂时看不出内容。这个不是微信密钥问题，先检查 Vision URL、模型服务和端口。"
+            tool_result = None
+            direct_answer = True
+            tool_ms = 0
+            llm_ms = 0
+            reply_diag = {"image_vision_failed_direct_reply": True}
+        else:
+            reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(runtime_settings, conversation, model_text, voice_requested=voice_requested)
         if voice_requested and not clean_for_tts(reply_text):
             reply_text = voice_fallback_reply(text)
             reply_diag["voice_empty_fallback"] = True
@@ -1230,7 +1252,7 @@ class ExternalDialogEngine:
                     "source": platform_id,
                     "platform_id": platform_id,
                     "bot_profile_id": bot_profile.get("id") or "default",
-                    "attachments": self.choose_reply_sticker(runtime_settings, conversation["id"], text, reply_text),
+                    "attachments": [] if image_vision_failed else self.choose_reply_sticker(runtime_settings, conversation["id"], text, reply_text),
                 }
             )
         self.conversation_store.append_messages(conversation["id"], messages_to_store, title_hint=text)
@@ -1368,7 +1390,7 @@ class ExternalDialogEngine:
             except Exception as exc:
                 error = f"图片理解失败：{exc}"
                 attachment["error"] = error
-                lines.append(f"第 {index} 张微信图片已下载，但{error}")
+                lines.append(f"第 {index} 张微信图片已下载，但{error}。这不是微信图片密钥问题，而是图片理解 API 未连通或不可用。")
                 self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] inbound image vision failed path={path} error={exc}")
             attachments.append(attachment)
         if not lines:
@@ -1493,9 +1515,7 @@ class ExternalDialogEngine:
                 channel="weixin",
             )
         if not sticker:
-            sticker = self.sticker_store.choose("", channel="weixin")
-        if not sticker:
-            return {"ok": False, "stage": "sticker", "intent": intent, "error": "没有可用于微信渠道的表情包素材。"}
+            return {"ok": False, "stage": "sticker", "intent": intent, "error": "没有匹配当前语境的微信表情素材。请检查素材 OCR、标签和适用场景。"}
 
         result: dict[str, Any] = {
             "ok": False,

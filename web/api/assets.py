@@ -287,11 +287,19 @@ def create_assets_router() -> APIRouter:
             )
             if not sticker:
                 intent = {**intent, "send": False, "reason": "no_channel_sticker"}
+        diagnostics = {
+            "tag": intent.get("tag") or "",
+            "reason": intent.get("reason") or "",
+            "score": intent.get("score"),
+            "threshold": (intent.get("config") or {}).get("probability") if isinstance(intent.get("config"), dict) else None,
+            "matched_fields": matched_sticker_fields(sticker, str(intent.get("tag") or "")) if sticker else [],
+        }
         return {
             "ok": True,
             "channel": channel,
             "intent": intent,
             "sticker": sticker,
+            "diagnostics": diagnostics,
             "stickers_count": len(request.app.state.sticker_store.list()),
         }
 
@@ -301,3 +309,27 @@ def create_assets_router() -> APIRouter:
         return {"ok": request.app.state.sticker_store.delete(sticker_id), "stickers": request.app.state.sticker_store.list()}
 
     return router
+
+
+def matched_sticker_fields(sticker: dict | None, tag: str) -> list[str]:
+    if not sticker or not tag:
+        return []
+    aliases = {tag}
+    aliases.update({
+        "挑衅": {"打一架", "打架", "想打", "单挑", "欠揍", "不服"},
+        "互怼": {"怼", "骂", "阴阳怪气", "欠欠", "sb", "傻", "笨"},
+    }.get(tag, set()))
+    fields = []
+    candidates = {
+        "主分类": sticker.get("emotion") or sticker.get("tag"),
+        "名称": sticker.get("name"),
+        "OCR": sticker.get("ocr_text"),
+        "说明": sticker.get("caption"),
+        "标签": " ".join(str(x) for x in sticker.get("tags", []) if x),
+        "场景": " ".join(str(x) for x in sticker.get("scene", []) if x),
+    }
+    for label, text in candidates.items():
+        lowered = str(text or "").lower()
+        if any(str(alias).lower() in lowered for alias in aliases if alias):
+            fields.append(label)
+    return fields
