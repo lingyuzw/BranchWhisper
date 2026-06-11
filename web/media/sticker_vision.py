@@ -138,19 +138,64 @@ class ChatImageAnalyzer:
     def __init__(self, settings) -> None:
         self.settings = settings
 
+    def providers(self) -> list[dict[str, Any]]:
+        candidates: list[dict[str, Any]] = []
+        if getattr(self.settings, "vision_enabled", True):
+            candidates.append(
+                {
+                    "name": "vision",
+                    "url": getattr(self.settings, "vision_url", ""),
+                    "model": getattr(self.settings, "vision_model", ""),
+                    "api_key": getattr(self.settings, "vision_api_key", ""),
+                    "timeout": float(getattr(self.settings, "vision_timeout", 45.0)),
+                    "max_tokens": 520,
+                }
+            )
+        if getattr(self.settings, "sticker_vision_enabled", True):
+            candidates.append(
+                {
+                    "name": "sticker_vision",
+                    "url": getattr(self.settings, "sticker_vision_url", ""),
+                    "model": getattr(self.settings, "sticker_vision_model", ""),
+                    "api_key": getattr(self.settings, "sticker_vision_api_key", ""),
+                    "timeout": float(getattr(self.settings, "sticker_vision_timeout", getattr(self.settings, "vision_timeout", 45.0))),
+                    "max_tokens": int(getattr(self.settings, "sticker_vision_max_tokens", 520) or 520),
+                }
+            )
+        providers: list[dict[str, Any]] = []
+        seen: set[tuple[str, str, bool]] = set()
+        for item in candidates:
+            url = str(item.get("url") or "").strip()
+            model = str(item.get("model") or "").strip()
+            key = (url.rstrip("/"), model, bool(str(item.get("api_key") or "").strip()))
+            if not url or not model or key in seen:
+                continue
+            seen.add(key)
+            providers.append(item)
+        return providers
+
     async def describe(self, image_path: Path, mime: str = "image/png") -> str:
-        if not getattr(self.settings, "vision_enabled", True):
-            raise RuntimeError("Image understanding is disabled")
-        return await call_openai_vision(
-            url=getattr(self.settings, "vision_url", ""),
-            model=getattr(self.settings, "vision_model", ""),
-            image_path=image_path,
-            prompt="请用中文简洁描述这张图片的主要内容、可见文字和用户可能想表达的意思。不要编造看不见的信息。",
-            mime=mime,
-            timeout=float(getattr(self.settings, "vision_timeout", 45.0)),
-            max_tokens=520,
-            temperature=0.1,
-        )
+        providers = self.providers()
+        if not providers:
+            raise RuntimeError("Image understanding is disabled or no Vision API is configured")
+        errors = []
+        prompt = "请用中文简洁描述这张图片的主要内容、可见文字和用户可能想表达的意思。不要编造看不见的信息。"
+        for provider in providers:
+            try:
+                return await call_openai_vision(
+                    url=str(provider.get("url") or ""),
+                    model=str(provider.get("model") or ""),
+                    image_path=image_path,
+                    prompt=prompt,
+                    mime=mime,
+                    api_key=str(provider.get("api_key") or ""),
+                    timeout=float(provider.get("timeout") or 45.0),
+                    max_tokens=int(provider.get("max_tokens") or 520),
+                    temperature=0.1,
+                )
+            except Exception as exc:
+                errors.append(f"{provider.get('name')}({provider.get('model') or '-'}) failed: {exc}")
+        raise RuntimeError("; ".join(errors) or "Vision API failed")
 
     async def test(self, image_path: Path, mime: str = "image/png") -> dict:
         return {"ok": True, "description": await self.describe(image_path, mime=mime)}
