@@ -20,7 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.text_utils import split_reply_messages
-from weixin_media import WeixinImageSendError, WeixinVoiceSendError, send_weixin_image, send_weixin_voice
+from weixin_media import WeixinImageSendError, WeixinVoiceSendError, download_weixin_media, send_weixin_image, send_weixin_voice
 
 
 DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com"
@@ -32,6 +32,7 @@ MESSAGE_TYPE_USER = 1
 MESSAGE_TYPE_BOT = 2
 MESSAGE_STATE_FINISH = 2
 ITEM_TEXT = 1
+ITEM_IMAGE = 2
 ITEM_VOICE = 3
 SESSION_EXPIRED = -14
 
@@ -197,9 +198,56 @@ def body_from_items(items: list[dict] | None) -> str:
             text = ((item.get("voice_item") or {}).get("text") or "").strip()
             if text:
                 return text
+        if item.get("type") == ITEM_IMAGE:
+            return "[图片]"
         if str(item.get("type")) not in {str(ITEM_TEXT), str(ITEM_VOICE)}:
             return "[用户发送了一条当前版本暂不能直接解析的微信媒体消息，可能是图片、表情包或文件。请自然说明你现在还看不到这张图，让用户在 Web 端上传图片，或稍后等微信图片解析接入。]"
     return ""
+
+
+def image_media_from_item(item: dict) -> dict:
+    image_item = item.get("image_item") if isinstance(item.get("image_item"), dict) else {}
+    media = image_item.get("media") if isinstance(image_item.get("media"), dict) else {}
+    thumb = image_item.get("thumb_media") if isinstance(image_item.get("thumb_media"), dict) else {}
+    return media or thumb or {}
+
+
+def extract_image_items(items: list[dict] | None) -> list[dict]:
+    result = []
+    for item in items or []:
+        if item.get("type") != ITEM_IMAGE:
+            continue
+        media = image_media_from_item(item)
+        if media:
+            result.append({"item": item, "media": media})
+    return result
+
+
+def download_inbound_images(state_dir: Path, account: dict, msg: dict) -> list[dict]:
+    images = []
+    for index, entry in enumerate(extract_image_items(msg.get("item_list"))[:4]):
+        media = entry["media"]
+        query = str(media.get("encrypt_query_param") or media.get("encrypted_query_param") or "").strip()
+        aes_key = str(media.get("aes_key") or media.get("aeskey") or "").strip()
+        item_id = str(msg.get("message_id") or msg.get("client_id") or uuid.uuid4().hex[:12])
+        output = state_dir / "branchwhisper-inbound-media" / f"{account['account_id']}-{item_id}-{index}.jpg"
+        info = {"ok": False, "path": str(output), "mime": "image/jpeg", "index": index, "error": ""}
+        if not query or not aes_key:
+            info["error"] = "incoming image media is missing encrypt_query_param or aes_key"
+            images.append(info)
+            continue
+        try:
+            downloaded = download_weixin_media(
+                encrypt_query_param=query,
+                aes_key=aes_key,
+                output_file=str(output),
+                cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
+            )
+            info.update({"ok": True, "download": downloaded})
+        except Exception as exc:
+            info["error"] = str(exc)
+        images.append(info)
+    return images
 
 
 def build_base_info() -> dict:
@@ -284,7 +332,7 @@ def send_text(client: httpx.Client, account: dict, to_user_id: str, text: str, c
     return client_id
 
 
-def call_branchwhisper(branchwhisper_url: str, integration_id: str, account_id: str, msg: dict, text: str) -> dict:
+def call_branchwhisper(branchwhisper_url: str, integration_id: str, account_id: str, msg: dict, text: str, images: list[dict] | None = None) -> dict:
     from_user_id = msg.get("from_user_id") or ""
     session_id = msg.get("session_id") or msg.get("group_id") or from_user_id or "default"
     payload = {
@@ -292,6 +340,7 @@ def call_branchwhisper(branchwhisper_url: str, integration_id: str, account_id: 
         "session_id": str(session_id),
         "sender_id": str(from_user_id),
         "text": text,
+        "images": images or [],
         "metadata": {
             "account_id": account_id,
             "channel": "openclaw-weixin",
@@ -502,9 +551,17 @@ def process_message(
     if msg.get("message_type") == MESSAGE_TYPE_BOT:
         return
     text = body_from_items(msg.get("item_list"))
+    images = download_inbound_images(state_dir, account, msg)
     if not text:
-        log(f"skip non-text message account={account['account_id']} from={msg.get('from_user_id')}")
-        return
+        if any(item.get("ok") for item in images):
+            text = "[图片]"
+        else:
+            log(f"skip non-text message account={account['account_id']} from={msg.get('from_user_id')}")
+            return
+    if images:
+        ok_images = sum(1 for item in images if item.get("ok"))
+        errors = "; ".join(str(item.get("error") or "") for item in images if item.get("error"))
+        log(f"inbound images account={account['account_id']} ok={ok_images}/{len(images)} errors={errors[:180]}")
     fingerprint = message_fingerprint(account["account_id"], msg, text)
     if fingerprint in seen:
         return
@@ -521,7 +578,7 @@ def process_message(
 
     log(f"inbound account={account['account_id']} from={from_user_id} text={text[:120]}")
     branch_started = time.perf_counter()
-    result = call_branchwhisper(branchwhisper_url, integration_id, account["account_id"], msg, text)
+    result = call_branchwhisper(branchwhisper_url, integration_id, account["account_id"], msg, text, images=images)
     branch_ms = int((time.perf_counter() - branch_started) * 1000)
     reply = str(result.get("reply_text") or "").strip()
     reply_parts = [str(part).strip() for part in (result.get("reply_parts") or []) if str(part).strip()]

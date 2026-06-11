@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
 from api.dependencies import require_local_service_control
 from media.assets import normalize_channel
+from media.sticker_processing import save_sticker_image
 from media.sticker_vision import StickerVisionAnalyzer
 
 
@@ -67,25 +69,29 @@ def create_assets_router() -> APIRouter:
                 continue
             name = str(file_item.get("name") or f"sticker_{index + 1}")
             data_url = str(file_item.get("data_url") or "")
-            preview = None
             try:
-                try:
-                    preview = request.app.state.sticker_library.add_upload(data_url=data_url, name=name, channels=channels)
-                    if preview.get("duplicate"):
-                        results.append({"ok": True, "duplicate": True, "sticker": preview})
-                        continue
-                    image_path = preview.get("send_path") or preview.get("path")
-                    analysis = await analyzer.analyze(Path(image_path), mime="image/png")
-                    sticker = request.app.state.sticker_library.update(preview["id"], analysis)
-                    results.append({"ok": True, "sticker": sticker})
+                preview = request.app.state.sticker_library.add_upload(data_url=data_url, name=name, channels=channels)
+                if preview.get("duplicate"):
+                    results.append({"ok": True, "duplicate": True, "analyzed": False, "sticker": preview})
                     continue
+
+                image_path = preview.get("send_path") or preview.get("path")
+                try:
+                    analysis = await analyzer.analyze(Path(image_path), mime="image/png")
                 except Exception as exc:
-                    error = str(exc)
-                    if isinstance(preview, dict) and preview.get("id"):
-                        sticker = request.app.state.sticker_library.update(preview["id"], {"review_status": "failed", "enabled": False, "error": error})
-                        results.append({"ok": False, "error": error, "sticker": sticker})
-                    else:
-                        raise
+                    warning = f"自动识别失败：{exc}"
+                    sticker = request.app.state.sticker_library.update(
+                        preview["id"],
+                        {"review_status": "pending", "enabled": False, "error": warning},
+                    )
+                    results.append({"ok": True, "analyzed": False, "warning": warning, "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""), "sticker": sticker})
+                    continue
+
+                sticker = request.app.state.sticker_library.update(
+                    preview["id"],
+                    {**analysis, "review_status": "pending", "enabled": False, "error": ""},
+                )
+                results.append({"ok": True, "analyzed": True, "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""), "sticker": sticker})
             except ValueError as exc:
                 results.append({"ok": False, "name": name, "error": str(exc)})
             except Exception as exc:
@@ -122,8 +128,57 @@ def create_assets_router() -> APIRouter:
             updated = request.app.state.sticker_library.update(sticker_id, {**analysis, "review_status": "pending", "enabled": False, "error": ""})
             return {"sticker": updated, "stickers": request.app.state.sticker_store.list()}
         except Exception as exc:
-            updated = request.app.state.sticker_library.update(sticker_id, {"review_status": "failed", "enabled": False, "error": str(exc)})
+            updated = request.app.state.sticker_library.update(sticker_id, {"review_status": "pending", "enabled": False, "error": f"自动识别失败：{exc}"})
             return {"sticker": updated, "stickers": request.app.state.sticker_store.list()}
+
+    @router.post("/api/stickers/vision-test")
+    async def test_sticker_vision(request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        payload = payload or {}
+        sticker_id = str(payload.get("sticker_id") or "").strip()
+        data_url = str(payload.get("data_url") or "")
+        try:
+            if sticker_id:
+                sticker = next((item for item in request.app.state.sticker_library.load() if item.get("id") == sticker_id), None)
+                if not sticker:
+                    raise HTTPException(status_code=404, detail="Sticker not found")
+                image_path = Path(sticker.get("send_path") or sticker.get("path") or "")
+            else:
+                if not data_url:
+                    raise HTTPException(status_code=400, detail="sticker_id or data_url is required")
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    processed = save_sticker_image(
+                        data_url=data_url,
+                        original_dir=root / "originals",
+                        processed_dir=root / "processed",
+                        send_dir=root / "send",
+                        thumbnail_dir=root / "thumbs",
+                        name_hint="vision_test",
+                    )
+                    analyzer = StickerVisionAnalyzer(request.app.state.settings)
+                    result = await analyzer.test(processed.send_path, mime="image/png")
+                    return {
+                        **result,
+                        "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""),
+                        "vision_url": getattr(request.app.state.settings, "sticker_vision_url", ""),
+                    }
+            analyzer = StickerVisionAnalyzer(request.app.state.settings)
+            result = await analyzer.test(image_path, mime="image/png")
+            return {
+                **result,
+                "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""),
+                "vision_url": getattr(request.app.state.settings, "sticker_vision_url", ""),
+            }
+        except HTTPException:
+            raise
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": str(exc),
+                "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""),
+                "vision_url": getattr(request.app.state.settings, "sticker_vision_url", ""),
+            }
 
     @router.post("/api/stickers/test")
     async def test_sticker(request: Request, payload: dict | None = Body(default=None)):

@@ -77,6 +77,14 @@ export async function reanalyzeSticker(stickerId) {
   return data.sticker;
 }
 
+export async function testStickerVision(payload = {}) {
+  return fetchJson("/api/stickers/vision-test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+}
+
 export async function deleteSticker(stickerId) {
   const data = await fetchJson(`/api/stickers/${encodeURIComponent(stickerId)}`, { method: "DELETE" });
   state.stickers = data.stickers || state.stickers || [];

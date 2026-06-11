@@ -10,11 +10,15 @@ SCRIPT_PATH = Path(__file__).with_name("weixin_voice_sender.mjs")
 
 
 class WeixinVoiceSendError(RuntimeError):
-    pass
+    def __init__(self, message: str, payload: dict | None = None):
+        super().__init__(message)
+        self.payload = payload or {}
 
 
 class WeixinImageSendError(RuntimeError):
-    pass
+    def __init__(self, message: str, payload: dict | None = None):
+        super().__init__(message)
+        self.payload = payload or {}
 
 
 def send_weixin_voice(
@@ -72,7 +76,7 @@ def send_weixin_voice(
     if proc.returncode != 0 or not payload.get("ok"):
         detail = str(payload.get("error") or stderr or f"exit {proc.returncode}")
         stage = str(payload.get("stage") or "unknown")
-        raise WeixinVoiceSendError(f"{stage}: {detail[:220]}")
+        raise WeixinVoiceSendError(f"{stage}: {detail[:220]}", payload=payload)
     return payload
 
 
@@ -128,7 +132,57 @@ def send_weixin_image(
     if proc.returncode != 0 or not payload.get("ok"):
         detail = str(payload.get("error") or stderr or f"exit {proc.returncode}")
         stage = str(payload.get("stage") or "unknown")
-        raise WeixinImageSendError(f"{stage}: {detail[:220]}")
+        raise WeixinImageSendError(f"{stage}: {detail[:220]}", payload=payload)
+    return payload
+
+
+def download_weixin_media(
+    *,
+    encrypt_query_param: str,
+    aes_key: str,
+    output_file: str,
+    cdn_base_url: str = "",
+    timeout: float = 60.0,
+) -> dict:
+    command = [
+        "node",
+        str(SCRIPT_PATH),
+        "--download-media",
+        "--encrypt-query-param",
+        encrypt_query_param,
+        "--aes-key",
+        aes_key,
+        "--output-file",
+        output_file,
+    ]
+    if cdn_base_url:
+        command.extend(["--cdn-base-url", cdn_base_url])
+    try:
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise WeixinImageSendError("node is not available in PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise WeixinImageSendError("media downloader timed out") from exc
+
+    stdout = (proc.stdout or "").strip()
+    stderr = (proc.stderr or "").strip()
+    try:
+        payload = json.loads(stdout) if stdout else {}
+    except json.JSONDecodeError as exc:
+        detail = stderr or stdout or f"exit {proc.returncode}"
+        raise WeixinImageSendError(f"media downloader returned invalid JSON: {detail[:240]}") from exc
+    if proc.returncode != 0 or not payload.get("ok"):
+        detail = str(payload.get("error") or stderr or f"exit {proc.returncode}")
+        stage = str(payload.get("stage") or "unknown")
+        raise WeixinImageSendError(f"{stage}: {detail[:220]}", payload=payload)
     return payload
 
 

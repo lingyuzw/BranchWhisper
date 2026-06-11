@@ -23,6 +23,7 @@
           <a data-nav="services"><i data-lucide="activity"></i>服务</a>
           <a data-nav="integrations"><i data-lucide="bot"></i>接入</a>
           <a data-nav="memory"><i data-lucide="brain"></i>记忆</a>
+          <a data-nav="assets"><i data-lucide="library"></i>素材库</a>
           <a data-nav="settings"><i data-lucide="settings-2"></i>配置</a>
         </nav>
         <div class="topbar-status">
@@ -162,6 +163,52 @@
                 <button class="secondary-action" id="memoryNextPageBtn" type="button">下一页<i data-lucide="chevron-right"></i></button>
               </div>
             </section>
+          </section>
+        </div>
+      </main>
+
+
+      <!-- page: assets -->
+      <main class="page-view" id="page-assets" style="display:none">
+        <div class="ops-page assets-page">
+          <section class="page-head assets-head">
+            <div><p class="eyebrow">Asset Library</p><h1>素材库</h1><small>表情包上传、识别、审核和微信发送自检都在这里处理。</small></div>
+            <div class="head-actions">
+              <input class="visually-hidden" id="assetStickerFileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+              <button class="primary-action" id="assetStickerUploadBtn" type="button"><i data-lucide="image-plus"></i>批量上传</button>
+              <button class="secondary-action" id="assetStickerVisionTestBtn" type="button"><i data-lucide="scan-eye"></i>识别自检</button>
+              <button class="icon-button" id="assetStickerRefreshBtn" type="button" title="刷新"><i data-lucide="refresh-cw"></i></button>
+            </div>
+          </section>
+          <section class="asset-config-strip">
+            <label><span>自动识别</span><select id="assetStickerVisionEnabled"><option value="true">启用</option><option value="false">关闭</option></select></label>
+            <label><span>识别 URL</span><input id="assetStickerVisionUrl" type="text" placeholder="https://.../v1/chat/completions" /></label>
+            <label><span>模型</span><input id="assetStickerVisionModel" type="text" placeholder="qwen-vl / gpt-4.1-mini" /></label>
+            <label><span>API Key</span><input id="assetStickerVisionApiKey" type="password" placeholder="留空不修改" /></label>
+            <label><span>超时秒</span><input id="assetStickerVisionTimeout" type="number" min="5" max="180" step="1" /></label>
+            <label><span>Max Tokens</span><input id="assetStickerVisionMaxTokens" type="number" min="128" max="4096" step="64" /></label>
+            <button class="secondary-action" id="assetStickerConfigSaveBtn" type="button"><i data-lucide="save"></i>保存识别配置</button>
+          </section>
+          <section class="asset-stats-grid" id="assetStatsGrid"></section>
+          <section class="asset-workbench">
+            <aside class="asset-sidebar">
+              <div class="asset-filter-card">
+                <label><span>状态</span><select id="assetStickerStatusFilter"><option value="">全部</option><option value="pending">待审核</option><option value="approved">已通过</option><option value="failed">失败</option><option value="disabled">停用</option></select></label>
+                <label><span>分类</span><select id="assetStickerEmotionFilter"><option value="">全部分类</option><option value="laugh">laugh</option><option value="smug">smug</option><option value="angry">angry</option><option value="sad">sad</option><option value="comfort">comfort</option><option value="confused">confused</option><option value="shock">shock</option><option value="sleepy">sleepy</option><option value="cute">cute</option><option value="bye">bye</option><option value="silent">silent</option><option value="agree">agree</option><option value="reject">reject</option></select></label>
+                <label class="wide"><span>搜索</span><input id="assetStickerSearchInput" type="search" placeholder="标签 / OCR / 场景" /></label>
+              </div>
+              <div class="asset-test-card">
+                <strong>策略测试</strong>
+                <input id="assetStickerTestInput" type="text" placeholder="哈哈哈哈 / 无语了 / 有点难过" />
+                <select id="assetStickerTestChannel"><option value="web">Web</option><option value="weixin">微信</option></select>
+                <button class="secondary-action" id="assetStickerTestBtn" type="button"><i data-lucide="sparkles"></i>测试命中</button>
+                <div class="asset-test-result" id="assetStickerTestResult">等待测试。</div>
+              </div>
+            </aside>
+            <section class="asset-gallery-panel">
+              <div class="asset-gallery" id="assetStickerGallery"></div>
+            </section>
+            <aside class="asset-detail-panel" id="assetStickerDetail">选择一张素材后，可以复核分类、标签和适用场景。</aside>
           </section>
         </div>
       </main>
@@ -423,6 +470,17 @@
                     <label><span>超时秒</span><input id="visionTimeout" type="number" min="5" max="180" step="1" /></label>
                     <label><span>图片上限 MB</span><input id="visionMaxImageMb" type="number" min="1" max="30" step="1" /></label>
                     <label><span>图片入记忆</span><select id="visionMemoryExtractEnabled"><option value="false">默认不记</option><option value="true">允许准入</option></select></label>
+                  </div>
+                </section>
+                <section class="dialog-feature-card compact-feature-card">
+                  <div class="appearance-card-head"><strong>素材识别 API</strong><small>表情包入库专用，不占用本地对话模型</small></div>
+                  <div class="form-grid compact">
+                    <label><span>启用</span><select id="stickerVisionEnabled"><option value="true">启用</option><option value="false">关闭</option></select></label>
+                    <label><span>模型</span><input id="stickerVisionModel" type="text" placeholder="qwen-vl / gpt-4.1-mini" /></label>
+                    <label class="wide"><span>接口地址</span><input id="stickerVisionUrl" type="text" placeholder="https://.../v1/chat/completions" /></label>
+                    <label><span>API Key</span><input id="stickerVisionApiKey" type="password" placeholder="留空不修改" /></label>
+                    <label><span>超时秒</span><input id="stickerVisionTimeout" type="number" min="5" max="180" step="1" /></label>
+                    <label><span>Max Tokens</span><input id="stickerVisionMaxTokens" type="number" min="128" max="4096" step="64" /></label>
                   </div>
                 </section>
                 <section class="dialog-feature-card sticker-asset-card">

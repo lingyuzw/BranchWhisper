@@ -102,6 +102,12 @@ class SessionSettings:
     vision_timeout: float
     vision_max_image_mb: float
     vision_memory_extract_enabled: bool
+    sticker_vision_enabled: bool
+    sticker_vision_url: str
+    sticker_vision_model: str
+    sticker_vision_api_key: str
+    sticker_vision_timeout: float
+    sticker_vision_max_tokens: int
     stickers_enabled: bool
     sticker_activity: str
     sticker_cooldown_sec: int
@@ -178,6 +184,12 @@ class SessionSettings:
             vision_timeout=args.vision_timeout,
             vision_max_image_mb=args.vision_max_image_mb,
             vision_memory_extract_enabled=args.vision_memory_extract_enabled,
+            sticker_vision_enabled=args.sticker_vision_enabled,
+            sticker_vision_url=args.sticker_vision_url,
+            sticker_vision_model=args.sticker_vision_model,
+            sticker_vision_api_key=args.sticker_vision_api_key,
+            sticker_vision_timeout=args.sticker_vision_timeout,
+            sticker_vision_max_tokens=args.sticker_vision_max_tokens,
             stickers_enabled=args.stickers_enabled,
             sticker_activity=args.sticker_activity,
             sticker_cooldown_sec=args.sticker_cooldown_sec,
@@ -231,6 +243,8 @@ class SessionSettings:
                     value = max(0.0, min(1.0, float(value)))
                 if key == "dialog_mode":
                     value = str(value) if str(value) in {"local", "api"} else "local"
+                if key == "sticker_vision_max_tokens":
+                    value = max(128, min(4096, int(value)))
             except (TypeError, ValueError):
                 continue
             setattr(self, key, value)
@@ -267,6 +281,10 @@ def migrate_legacy_defaults(settings: SessionSettings) -> None:
         settings.max_tokens = 512
     if int(getattr(settings, "api_max_tokens", 0) or 0) == 220:
         settings.api_max_tokens = 512
+    if not str(getattr(settings, "sticker_vision_url", "") or "").strip():
+        settings.sticker_vision_url = getattr(settings, "vision_url", "")
+    if not str(getattr(settings, "sticker_vision_model", "") or "").strip():
+        settings.sticker_vision_model = getattr(settings, "vision_model", "")
 
 
 def save_persisted_settings(settings: SessionSettings, path: Path) -> None:
@@ -287,18 +305,23 @@ def public_settings(settings: SessionSettings) -> dict:
     data = asdict(settings)
     api_key = str(data.pop("llm_api_key", "") or "")
     remote_api_key = str(data.pop("api_llm_api_key", "") or "")
+    sticker_vision_api_key = str(data.pop("sticker_vision_api_key", "") or "")
     data["llm_api_key"] = ""
     data["llm_api_key_set"] = bool(api_key.strip())
     data["llm_api_key_masked"] = mask_secret(api_key)
     data["api_llm_api_key"] = ""
     data["api_llm_api_key_set"] = bool(remote_api_key.strip())
     data["api_llm_api_key_masked"] = mask_secret(remote_api_key)
+    data["sticker_vision_api_key"] = ""
+    data["sticker_vision_api_key_set"] = bool(sticker_vision_api_key.strip())
+    data["sticker_vision_api_key_masked"] = mask_secret(sticker_vision_api_key)
     return data
 
 
 def update_llm_api_key(settings: SessionSettings, payload: dict) -> None:
     update_secret_field(settings, payload, "llm_api_key")
     update_secret_field(settings, payload, "api_llm_api_key")
+    update_secret_field(settings, payload, "sticker_vision_api_key")
 
 
 def update_secret_field(settings: SessionSettings, payload: dict, key: str) -> None:
@@ -430,6 +453,12 @@ def add_settings_args(parser) -> None:
     parser.add_argument("--vision-timeout", type=float, default=45.0)
     parser.add_argument("--vision-max-image-mb", type=float, default=8.0)
     parser.add_argument("--vision-memory-extract-enabled", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--sticker-vision-enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--sticker-vision-url", default="")
+    parser.add_argument("--sticker-vision-model", default="")
+    parser.add_argument("--sticker-vision-api-key", default="")
+    parser.add_argument("--sticker-vision-timeout", type=float, default=45.0)
+    parser.add_argument("--sticker-vision-max-tokens", type=int, default=420)
 
     parser.add_argument("--stickers-enabled", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--sticker-activity", choices=["off", "low", "standard", "active", "very_active", "custom"], default="active")

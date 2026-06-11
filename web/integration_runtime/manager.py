@@ -34,6 +34,7 @@ from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
 from integration_runtime.weixin_media import WeixinImageSendError, WeixinVoiceSendError, send_weixin_image, send_weixin_voice
 from media.assets import StickerStore
+from media.sticker_vision import ChatImageAnalyzer
 from media.sticker_policy import StickerPolicy
 from core.io_utils import read_json_file
 from core.text_utils import compact_text, extract_repeat_text, format_reply_paragraphs, is_story_request, split_reply_messages
@@ -158,6 +159,22 @@ def wav_bytes_from_pcm16(pcm: bytes, sample_rate: int) -> bytes:
         wav.writeframes(pcm)
     buffer.extend(stream.getvalue())
     return bytes(buffer)
+
+
+def sniff_image_mime(path: Path, fallback: str = "image/jpeg") -> str:
+    try:
+        header = path.read_bytes()[:16]
+    except Exception:
+        return fallback
+    if header.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+        return "image/webp"
+    if header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+        return "image/gif"
+    return fallback
 
 
 def voice_fallback_reply(user_text: str) -> str:
@@ -1182,8 +1199,12 @@ class ExternalDialogEngine:
         started_at = time.perf_counter()
         timings = {"receive_ms": 0, "tool_ms": 0, "llm_ms": 0, "tts_ms": 0, "memory_ms": 0, "send_ms": 0, "total_ms": 0}
         self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] recv sender={sender_id} text={compact_text(text, 220)}")
+        image_context, image_attachments = await self.prepare_inbound_images(platform_id, trace_id, payload.get("images"), runtime_settings)
+        model_text = text
+        if image_context:
+            model_text = f"{text}\n\n{image_context}" if text else image_context
         voice_requested = self.should_send_voice(text, keywords, integration)
-        reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(runtime_settings, conversation, text, voice_requested=voice_requested)
+        reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(runtime_settings, conversation, model_text, voice_requested=voice_requested)
         if voice_requested and not clean_for_tts(reply_text):
             reply_text = voice_fallback_reply(text)
             reply_diag["voice_empty_fallback"] = True
@@ -1194,10 +1215,11 @@ class ExternalDialogEngine:
         messages_to_store = [
             {
                 "role": "user",
-                "content": text,
+                "content": model_text,
                 "source": platform_id,
                 "platform_id": platform_id,
                 "sender_id": sender_id,
+                "attachments": image_attachments,
             }
         ]
         if reply_text.strip():
@@ -1312,6 +1334,46 @@ class ExternalDialogEngine:
         if profile.get("tools_enabled") is False:
             snapshot.tools_enabled = False
         return snapshot
+
+    async def prepare_inbound_images(self, platform_id: str, trace_id: str, images: Any, settings: SessionSettings) -> tuple[str, list[dict]]:
+        if not isinstance(images, list) or not images:
+            return "", []
+        analyzer = ChatImageAnalyzer(settings)
+        lines = []
+        attachments = []
+        for index, item in enumerate(images[:4], start=1):
+            if not isinstance(item, dict):
+                continue
+            path = str(item.get("path") or "").strip()
+            mime = str(item.get("mime") or "image/jpeg")
+            if item.get("ok") and path:
+                mime = sniff_image_mime(Path(path), mime)
+            attachment = {
+                "type": "image",
+                "path": path,
+                "mime": mime,
+                "source": "weixin",
+                "ok": bool(item.get("ok")),
+                "error": str(item.get("error") or ""),
+            }
+            if not item.get("ok"):
+                error = str(item.get("error") or "微信图片下载失败")
+                lines.append(f"第 {index} 张微信图片未能解析：{error}")
+                attachments.append(attachment)
+                continue
+            try:
+                description = await analyzer.describe(Path(path), mime=mime)
+                attachment["description"] = description
+                lines.append(f"第 {index} 张微信图片内容摘要：{description}")
+            except Exception as exc:
+                error = f"图片理解失败：{exc}"
+                attachment["error"] = error
+                lines.append(f"第 {index} 张微信图片已下载，但{error}")
+                self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] inbound image vision failed path={path} error={exc}")
+            attachments.append(attachment)
+        if not lines:
+            return "", attachments
+        return "微信图片解析结果：\n" + "\n".join(lines), attachments
 
     async def voice_test(self, integration_id: str, settings: SessionSettings, text: str, sender_id: str = "", account_id: str = "") -> dict:
         platform_id = safe_id(integration_id)
@@ -1501,10 +1563,12 @@ class ExternalDialogEngine:
             )
             return result
         except (WeixinImageSendError, Exception) as exc:
+            payload = getattr(exc, "payload", {}) if isinstance(exc, Exception) else {}
             result.update(
                 {
                     "ok": False,
                     "error": str(exc),
+                    "image_diagnostic": payload if isinstance(payload, dict) else {},
                     "total_ms": int((time.perf_counter() - started_at) * 1000),
                 }
             )

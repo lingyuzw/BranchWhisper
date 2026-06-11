@@ -355,6 +355,12 @@ const CONFIG_FIELD_MAP = [
   { key: "vision_timeout", id: "visionTimeout" },
   { key: "vision_max_image_mb", id: "visionMaxImageMb" },
   { key: "vision_memory_extract_enabled", id: "visionMemoryExtractEnabled" },
+  { key: "sticker_vision_enabled", id: "stickerVisionEnabled" },
+  { key: "sticker_vision_url", id: "stickerVisionUrl" },
+  { key: "sticker_vision_model", id: "stickerVisionModel" },
+  { key: "sticker_vision_api_key", id: "stickerVisionApiKey", secret: true },
+  { key: "sticker_vision_timeout", id: "stickerVisionTimeout" },
+  { key: "sticker_vision_max_tokens", id: "stickerVisionMaxTokens" },
   { key: "stickers_enabled", id: "stickersEnabled" },
   { key: "sticker_activity", id: "stickerActivity" },
   { key: "sticker_cooldown_sec", id: "stickerCooldownSec" },
@@ -383,7 +389,7 @@ const CONFIG_FIELD_MAP = [
   { key: "tools_max_result_chars", id: "toolsMaxResultChars" },
 ];
 
-const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "api_temperature", "api_max_tokens", "api_history_turns", "ui_font_scale", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars", "vision_timeout", "vision_max_image_mb", "sticker_cooldown_sec", "sticker_daily_limit", "sticker_max_streak", "sticker_custom_probability", "context_window_tokens", "context_compaction_ratio", "context_keep_recent_turns", "context_summary_max_chars", "context_summary_max_layers"]);
+const NUM_FIELDS = new Set(["temperature", "max_tokens", "history_turns", "api_temperature", "api_max_tokens", "api_history_turns", "ui_font_scale", "tts_speed", "tts_seed", "tts_volume", "tts_fade_ms", "tts_sample_rate", "vad_threshold", "vad_min_silence_ms", "vad_speech_pad_ms", "pre_speech_ms", "min_utterance_ms", "max_utterance_sec", "tools_timeout", "tools_max_result_chars", "vision_timeout", "vision_max_image_mb", "sticker_vision_timeout", "sticker_vision_max_tokens", "sticker_cooldown_sec", "sticker_daily_limit", "sticker_max_streak", "sticker_custom_probability", "context_window_tokens", "context_compaction_ratio", "context_keep_recent_turns", "context_summary_max_chars", "context_summary_max_layers"]);
 const BOOL_FIELDS = new Set(["thinking_enabled"]);
 
 function fillConfig(config) {
@@ -1226,9 +1232,13 @@ async function handleStickerUpload(event) {
     const channels = value("stickerChannelInput", "all") || "all";
     const result = await uploadStickerBatch(payload, channels);
     const okCount = (result.results || []).filter((item) => item.ok).length;
+    const pendingCount = (result.results || []).filter((item) => item.ok && item.analyzed === false && !item.duplicate).length;
+    const duplicateCount = (result.results || []).filter((item) => item.ok && item.duplicate).length;
     const failCount = (result.results || []).filter((item) => !item.ok).length;
     await refreshStickerLibrary();
-    showToast(`\u8868\u60c5\u5305\u5165\u5e93\u5b8c\u6210\uff1a${okCount} \u5f20\uff0c\u5931\u8d25 ${failCount} \u5f20`, failCount ? "info" : "success");
+    const pendingText = pendingCount ? `，${pendingCount} 张待重新识别` : "";
+    const duplicateText = duplicateCount ? `，${duplicateCount} 张重复` : "";
+    showToast(`表情包入库完成：${okCount} 张${pendingText}${duplicateText}，失败 ${failCount} 张`, (failCount || pendingCount) ? "info" : "success");
   } catch (error) {
     showToast(`\u8868\u60c5\u5305\u4e0a\u4f20\u5931\u8d25\uff1a${error.message}`, "error");
   } finally {

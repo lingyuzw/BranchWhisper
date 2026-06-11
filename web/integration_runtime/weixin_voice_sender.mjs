@@ -38,6 +38,7 @@ function usage() {
     "Usage:",
     "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --voice-file FILE [--context-token TOKEN] [--text TEXT]",
     "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --image-file FILE [--context-token TOKEN]",
+    "  node weixin_voice_sender.mjs --download-media --cdn-base-url URL --encrypt-query-param PARAM --aes-key KEY --output-file FILE",
     "",
     "Options:",
     "  --self-test   Check node crypto, ffmpeg, and ffprobe only.",
@@ -50,7 +51,7 @@ function parseArgs(argv) {
     const item = argv[i];
     if (!item.startsWith("--")) continue;
     const key = item.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    if (key === "help" || key === "selfTest") {
+    if (key === "help" || key === "selfTest" || key === "downloadMedia") {
       args[key] = true;
     } else {
       args[key] = argv[i + 1] || "";
@@ -121,9 +122,55 @@ function encryptAesEcb(plaintext, key) {
   return Buffer.concat([cipher.update(plaintext), cipher.final()]);
 }
 
+function decryptAesEcb(ciphertext, key) {
+  const decipher = crypto.createDecipheriv("aes-128-ecb", key, null);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+}
+
+function parseAesKey(value) {
+  const raw = String(value || "").trim();
+  if (!raw) throw new Error("missing aes key");
+  if (/^[0-9a-fA-F]{32}$/.test(raw)) return Buffer.from(raw, "hex");
+  const decoded = Buffer.from(raw, "base64");
+  if (decoded.length === 16) return decoded;
+  throw new Error("invalid aes key length");
+}
+
 function buildCdnUploadUrl({ cdnBaseUrl, uploadParam, filekey }) {
   const base = String(cdnBaseUrl || DEFAULT_CDN_BASE_URL).replace(/\/+$/, "");
   return `${base}/upload?encrypted_query_param=${encodeURIComponent(String(uploadParam || ""))}&filekey=${encodeURIComponent(filekey)}`;
+}
+
+function buildCdnDownloadUrl({ cdnBaseUrl, downloadParam }) {
+  const param = String(downloadParam || "").trim();
+  if (!param) throw new Error("missing encrypted query param");
+  if (/^https?:\/\//i.test(param)) return param;
+  const base = String(cdnBaseUrl || DEFAULT_CDN_BASE_URL).replace(/\/+$/, "");
+  return `${base}/download?encrypted_query_param=${encodeURIComponent(param)}`;
+}
+
+function firstValue(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (value && typeof value === "object") return value;
+  }
+  return "";
+}
+
+function compactResponseShape(value, depth = 0) {
+  if (!value || typeof value !== "object") return typeof value;
+  if (depth > 1) return Array.isArray(value) ? `array(${value.length})` : "object";
+  const result = {};
+  for (const [key, item] of Object.entries(value).slice(0, 24)) {
+    if (/token|key|param|aes|authorization/i.test(key)) {
+      result[key] = item ? `[${typeof item}]` : "";
+    } else if (item && typeof item === "object") {
+      result[key] = compactResponseShape(item, depth + 1);
+    } else {
+      result[key] = typeof item;
+    }
+  }
+  return result;
 }
 
 async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, cdnBaseUrl, aeskey, label = "media" }) {
@@ -168,6 +215,37 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
   throw lastError || new Error("CDN upload failed");
 }
 
+async function downloadMedia(args) {
+  const encryptQueryParam = String(args.encryptQueryParam || args.encryptedQueryParam || "").trim();
+  const outputFile = String(args.outputFile || "").trim();
+  if (!encryptQueryParam) throw new Error("missing --encrypt-query-param");
+  if (!outputFile) throw new Error("missing --output-file");
+  const aeskey = parseAesKey(args.aesKey || args.aeskey || "");
+  const url = buildCdnDownloadUrl({ cdnBaseUrl: args.cdnBaseUrl || DEFAULT_CDN_BASE_URL, downloadParam: encryptQueryParam });
+  const started = Date.now();
+  const response = await fetch(url, { method: "GET" });
+  if (response.status !== 200) {
+    const body = await response.text().catch(() => "");
+    const error = new Error(`CDN GET HTTP ${response.status}: ${body.slice(0, 180)}`);
+    error.stage = "cdn_download";
+    throw error;
+  }
+  const ciphertext = Buffer.from(await response.arrayBuffer());
+  if (!ciphertext.length) throw new Error("downloaded media is empty");
+  const plaintext = decryptAesEcb(ciphertext, aeskey);
+  await fs.mkdir(path.dirname(outputFile), { recursive: true });
+  await fs.writeFile(outputFile, plaintext);
+  return {
+    ok: true,
+    stage: "downloaded",
+    output_file: outputFile,
+    ciphertext_size: ciphertext.length,
+    plaintext_size: plaintext.length,
+    download_url_kind: /^https?:\/\//i.test(encryptQueryParam) ? "full" : "param",
+    download_ms: Date.now() - started,
+  };
+}
+
 async function loadSilkWasm() {
   if (!silkModulePromise) {
     silkModulePromise = import("silk-wasm").catch(async (firstError) => {
@@ -183,6 +261,9 @@ async function loadSilkWasm() {
         candidates.push(path.resolve(nodeBin, "..", "lib", "node_modules"));
         candidates.push(path.resolve(nodeBin, "..", "node_modules"));
       }
+      if (process.env.APPDATA) candidates.push(path.join(process.env.APPDATA, "npm", "node_modules"));
+      if (process.env.LOCALAPPDATA) candidates.push(path.join(process.env.LOCALAPPDATA, "npm", "node_modules"));
+      if (process.env.ProgramFiles) candidates.push(path.join(process.env.ProgramFiles, "nodejs", "node_modules"));
       try {
         const { stdout } = await execFileAsync(npmExecutable(), ["root", "-g"]);
         const globalRoot = stdout.trim();
@@ -643,12 +724,34 @@ async function sendImage(args) {
       throw error;
     });
 
-    const uploadFullUrl = String(uploadUrlResp.upload_full_url || "").trim();
-    const uploadParam = uploadUrlResp.upload_param;
-    const thumbUploadFullUrl = String(uploadUrlResp.thumb_upload_full_url || "").trim();
-    const thumbUploadParam = uploadUrlResp.thumb_upload_param;
-    if (!uploadFullUrl && !uploadParam) throw new Error("getuploadurl returned no image upload URL");
-    if (!thumbUploadFullUrl && !thumbUploadParam) throw new Error("getuploadurl returned no thumbnail upload URL");
+    const nestedImage = uploadUrlResp.image || uploadUrlResp.media || uploadUrlResp.main || uploadUrlResp.file || {};
+    const nestedThumb = uploadUrlResp.thumb || uploadUrlResp.thumbnail || uploadUrlResp.thumb_media || uploadUrlResp.thumbMedia || {};
+    const uploadFullUrl = String(firstValue(uploadUrlResp.upload_full_url, uploadUrlResp.uploadFullUrl, nestedImage.upload_full_url, nestedImage.uploadFullUrl) || "").trim();
+    const uploadParam = firstValue(uploadUrlResp.upload_param, uploadUrlResp.uploadParam, nestedImage.upload_param, nestedImage.uploadParam);
+    const thumbUploadFullUrl = String(
+      firstValue(
+        uploadUrlResp.thumb_upload_full_url,
+        uploadUrlResp.thumbUploadFullUrl,
+        uploadUrlResp.thumbnail_upload_full_url,
+        uploadUrlResp.thumbnailUploadFullUrl,
+        nestedThumb.upload_full_url,
+        nestedThumb.uploadFullUrl,
+      ) || "",
+    ).trim();
+    const thumbUploadParam = firstValue(
+      uploadUrlResp.thumb_upload_param,
+      uploadUrlResp.thumbUploadParam,
+      uploadUrlResp.thumbnail_upload_param,
+      uploadUrlResp.thumbnailUploadParam,
+      nestedThumb.upload_param,
+      nestedThumb.uploadParam,
+    );
+    if (!uploadFullUrl && !uploadParam) {
+      const error = new Error("getuploadurl returned no image upload URL");
+      error.response_shape = compactResponseShape(uploadUrlResp);
+      throw error;
+    }
+    const canUploadThumb = Boolean(thumbUploadFullUrl || thumbUploadParam);
 
     const upload = await uploadBufferToCdn({
       buffer: plaintext,
@@ -662,21 +765,40 @@ async function sendImage(args) {
       error.stage = "cdn_upload";
       throw error;
     });
-    const thumbUpload = await uploadBufferToCdn({
-      buffer: thumbPlaintext,
-      uploadFullUrl: thumbUploadFullUrl,
-      uploadParam: thumbUploadParam,
-      filekey,
-      cdnBaseUrl,
-      aeskey,
-      label: "thumbnail",
-    }).catch((error) => {
-      error.stage = "thumb_cdn_upload";
-      throw error;
-    });
+    let thumbUpload = null;
+    if (canUploadThumb) {
+      thumbUpload = await uploadBufferToCdn({
+        buffer: thumbPlaintext,
+        uploadFullUrl: thumbUploadFullUrl,
+        uploadParam: thumbUploadParam,
+        filekey,
+        cdnBaseUrl,
+        aeskey,
+        label: "thumbnail",
+      }).catch((error) => {
+        error.stage = "thumb_cdn_upload";
+        throw error;
+      });
+    }
     const uploadMs = Date.now() - uploadStart;
     const sendStart = Date.now();
     const clientId = `branchwhisper-image-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+    const imageItem = {
+      media: {
+        encrypt_query_param: upload.downloadParam,
+        aes_key: aeskey.toString("base64"),
+        encrypt_type: 1,
+      },
+      width: stats.width,
+      height: stats.height,
+    };
+    if (thumbUpload) {
+      imageItem.thumb_media = {
+        encrypt_query_param: thumbUpload.downloadParam,
+        aes_key: aeskey.toString("base64"),
+        encrypt_type: 1,
+      };
+    }
     await postJson({
       baseUrl,
       apiPath: "ilink/bot/sendmessage",
@@ -691,20 +813,7 @@ async function sendImage(args) {
           item_list: [
             {
               type: ITEM_IMAGE,
-              image_item: {
-                media: {
-                  encrypt_query_param: upload.downloadParam,
-                  aes_key: aeskey.toString("base64"),
-                  encrypt_type: 1,
-                },
-                thumb_media: {
-                  encrypt_query_param: thumbUpload.downloadParam,
-                  aes_key: aeskey.toString("base64"),
-                  encrypt_type: 1,
-                },
-                width: stats.width,
-                height: stats.height,
-              },
+              image_item: imageItem,
             },
           ],
           ...(contextToken ? { context_token: contextToken } : {}),
@@ -728,11 +837,13 @@ async function sendImage(args) {
       raw_size: rawsize,
       thumb_raw_size: thumbRawsize,
       cipher_size: upload.ciphertextSize,
-      thumb_cipher_size: thumbUpload.ciphertextSize,
+      thumb_cipher_size: thumbUpload?.ciphertextSize || 0,
       upload_method: upload.uploadMethod,
       upload_url_kind: upload.uploadUrlKind,
-      thumb_upload_method: thumbUpload.uploadMethod,
-      thumb_upload_url_kind: thumbUpload.uploadUrlKind,
+      thumb_upload_method: thumbUpload?.uploadMethod || "",
+      thumb_upload_url_kind: thumbUpload?.uploadUrlKind || "",
+      thumbnail_skipped: !thumbUpload,
+      getuploadurl_shape: compactResponseShape(uploadUrlResp),
       upload_ms: uploadMs,
       send_ms: Date.now() - sendStart,
       total_ms: Date.now() - started,
@@ -750,10 +861,15 @@ async function main() {
     return;
   }
   try {
-    const result = args.selfTest ? await selfTest() : (args.imageFile ? await sendImage(args) : await sendVoice(args));
+    const result = args.selfTest
+      ? await selfTest()
+      : (args.downloadMedia ? await downloadMedia(args) : (args.imageFile ? await sendImage(args) : await sendVoice(args)));
     process.stdout.write(JSON.stringify(result));
   } catch (error) {
-    fail(error?.message || String(error), { stage: error?.stage || "unknown" });
+    fail(error?.message || String(error), {
+      stage: error?.stage || "unknown",
+      response_shape: error?.response_shape,
+    });
   }
 }
 

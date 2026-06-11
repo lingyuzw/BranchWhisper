@@ -10,6 +10,7 @@ let dashboardInitialized = false;
 let servicesInitialized = false;
 let integrationsInitialized = false;
 let memoryInitialized = false;
+let assetsInitialized = false;
 let currentLeave = null;
 
 /* ---- SPA navigation ---- */
@@ -25,6 +26,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function setupNav() {
+  document.addEventListener("click", (e) => {
+    const target = e.target.closest("[data-nav]");
+    if (!target || target.closest("#mainNav") || target.classList.contains("brand")) return;
+    const page = target.dataset.nav;
+    if (!page) return;
+    e.preventDefault();
+    if (page !== currentPage) switchPage(page);
+  });
+
   document.querySelectorAll("#mainNav a[data-nav]").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
@@ -117,6 +127,15 @@ async function switchPage(page, pushState = true) {
       } else {
         await memoryModule.enterMemoryPage?.();
       }
+    } else if (page === "assets") {
+      const assetsModule = await import("./pages/assets.js");
+      if (!assetsInitialized) {
+        await assetsModule.initAssetsPage();
+        assetsInitialized = true;
+      } else {
+        await assetsModule.enterAssetsPage?.();
+      }
+      currentLeave = assetsModule.leaveAssetsPage || null;
     } else if (page === "settings") {
       const settingsModule = await import("./pages/settings/index.js");
       await settingsModule.initSettings();
@@ -128,11 +147,12 @@ async function switchPage(page, pushState = true) {
     if (page === "services") servicesInitialized = false;
     if (page === "integrations") integrationsInitialized = false;
     if (page === "dashboard") dashboardInitialized = false;
+    if (page === "assets") assetsInitialized = false;
   }
 }
 
 function normalizePage(page) {
-  return ["dashboard", "services", "integrations", "memory", "settings"].includes(page) ? page : "dashboard";
+  return ["dashboard", "services", "integrations", "memory", "assets", "settings"].includes(page) ? page : "dashboard";
 }
 
 function pageFromHash() {
