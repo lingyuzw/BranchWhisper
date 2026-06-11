@@ -1042,8 +1042,20 @@ def has_any(text: str, keywords: tuple[str, ...]) -> bool:
     return any(keyword in text for keyword in keywords)
 
 
+def looks_like_metaphorical_direction(text: str) -> bool:
+    return bool(
+        re.search(
+            r"(以后|未来|人生|工作|事业|感情|关系|选择|方向|迷茫|难受|摸着石头过河|路在何方|何去何从|前路)",
+            str(text or ""),
+        )
+    )
+
+
 def looks_like_geo_question(text: str) -> bool:
-    return has_any(
+    text = str(text or "")
+    if looks_like_metaphorical_direction(text):
+        return False
+    explicit_geo = has_any(
         text,
         (
             "地图",
@@ -1052,7 +1064,6 @@ def looks_like_geo_question(text: str) -> bool:
             "导航",
             "附近",
             "周边",
-            "怎么走",
             "距离",
             "在哪",
             "在哪里",
@@ -1067,6 +1078,9 @@ def looks_like_geo_question(text: str) -> bool:
             "位置",
         ),
     )
+    if explicit_geo:
+        return True
+    return bool(re.search(r"(从.+到.+(怎么走|路线|导航|多远|距离)|.+到.+怎么走)", text))
 
 
 def looks_like_admin_area_question(text: str) -> bool:
@@ -1262,11 +1276,13 @@ class ToolManager:
         if has_any(text, ("天气", "下雨", "气温", "温度", "冷不冷", "热不热", "降雨", "空气质量")) and self.tool_exists("weather"):
             location = re.sub(r"(天气|下雨|气温|温度|今天|现在|查一下|怎么样|如何)", "", text).strip(" ，。？?")
             return {"id": "weather", "arguments": {"location": location or "北京"}}
+        if looks_like_metaphorical_direction(text):
+            return None
         if looks_like_geo_question(text):
             return {"id": "map", "arguments": {"query": text}} if self.tool_exists("map") else {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         if re.search(r"(股票|股价|汇率|币价|价格|金价|美股|基金|btc|eth|usd|cny|人民币|美元|港币)", lowered) and self.tool_exists("finance"):
             return {"id": "finance", "arguments": {"query": text}}
-        if (has_any(text, ("搜索", "查一下", "帮我查", "网上", "资料", "最新", "现在", "当前", "实时", "官网", "多少钱", "哪里买", "评价", "怎么样")) or looks_like_geo_question(text)) and self.tool_exists("web_search"):
+        if (has_any(text, ("搜索", "查一下", "帮我查", "网上", "资料", "最新", "当前", "实时", "官网", "多少钱", "哪里买", "评价", "怎么样")) or looks_like_geo_question(text)) and self.tool_exists("web_search"):
             return {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         return None
 

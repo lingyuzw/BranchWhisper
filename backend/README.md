@@ -29,6 +29,6 @@ Do not change these without an explicit migration plan:
 - `/api/health`
 - `/ws/dialog`
 
-## Current Migration State
+## Refactor Notes
 
-The backend modules were moved out of `web/` first, while preserving behavior and import compatibility. Larger internal refactors, such as splitting `dialog/session.py` and `app/server.py`, should happen in smaller follow-up changes.
+Larger internal refactors, such as splitting `dialog/session.py` and `app/server.py`, should happen in smaller follow-up changes.

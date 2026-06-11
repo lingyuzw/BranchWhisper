@@ -41,6 +41,34 @@ def emotion_prefix(value: str) -> str:
     return value or "sticker"
 
 
+def sticker_display_name(analysis: dict, fallback: str = "") -> str:
+    caption = str(analysis.get("caption") or "").strip(" ，。！？!?")
+    ocr_text = str(analysis.get("ocr_text") or "").strip(" ，。！？!?")
+    tags = [str(item).strip() for item in analysis.get("tags") or [] if str(item).strip()]
+    scene = [str(item).strip() for item in analysis.get("scene") or [] if str(item).strip()]
+    for value in (caption, ocr_text, " ".join(tags[:2]), " ".join(scene[:2]), fallback):
+        value = re.sub(r"\s+", " ", str(value or "").strip())
+        if value:
+            return value[:40]
+    return "表情包"
+
+
+def sticker_file_stem(sticker_id: str, analysis: dict, fallback: str = "") -> str:
+    emotion = emotion_prefix(str(analysis.get("emotion") or "sticker"))
+    candidates = []
+    candidates.extend(str(item).strip() for item in analysis.get("tags") or [] if str(item).strip())
+    candidates.extend(str(item).strip() for item in analysis.get("scene") or [] if str(item).strip())
+    caption = str(analysis.get("caption") or "").strip()
+    if caption:
+        candidates.append(caption)
+    if fallback:
+        candidates.append(fallback)
+    semantic = next((item for item in candidates if item), sticker_id)
+    semantic = re.sub(r"\s+", "-", semantic)
+    semantic = re.sub(r"[^0-9A-Za-z_\-\u4e00-\u9fff]+", "", semantic)[:24] or sticker_id
+    return f"{emotion}_{semantic}_{sticker_id}"
+
+
 class StickerLibrary:
     def __init__(
         self,
@@ -109,6 +137,8 @@ class StickerLibrary:
             "confidence": float(item.get("confidence") or 0.0),
             "source_hash": str(item.get("source_hash") or ""),
             "mime": str(item.get("mime") or "image/png"),
+            "file_stem": str(item.get("file_stem") or ""),
+            "original_name": str(item.get("original_name") or ""),
             "file": str(item.get("file") or item.get("url") or ""),
             "path": str(item.get("path") or ""),
             "send_file": str(item.get("send_file") or item.get("path") or ""),
@@ -252,8 +282,69 @@ class StickerLibrary:
             "enabled",
             "channels",
             "error",
+            "file_stem",
+            "original_name",
         }
         return {key: value for key, value in (patch or {}).items() if key in allowed}
+
+    def rename_files(self, sticker: dict, stem: str) -> dict:
+        stem = re.sub(r"\s+", "-", str(stem or "").strip())
+        stem = re.sub(r"[^0-9A-Za-z_\-\u4e00-\u9fff]+", "", stem)[:80]
+        if not stem:
+            return sticker
+        updates: dict[str, str] = {"file_stem": stem}
+        path_pairs = (
+            ("original_path", "original_file"),
+            ("path", "file"),
+            ("send_path", "send_file"),
+            ("thumbnail_path", "thumbnail"),
+        )
+        for path_key, public_key in path_pairs:
+            current = Path(str(sticker.get(path_key) or ""))
+            if not current.exists():
+                continue
+            target = current.with_name(f"{stem}{current.suffix}")
+            if target == current:
+                continue
+            counter = 2
+            while target.exists():
+                target = current.with_name(f"{stem}_{counter}{current.suffix}")
+                counter += 1
+            current.rename(target)
+            updates[path_key] = str(target)
+            updates[public_key] = public_runtime_path(target)
+        if updates.get("thumbnail"):
+            updates["url"] = updates["thumbnail"]
+        elif updates.get("file"):
+            updates["url"] = updates["file"]
+        items = self.load()
+        sticker_id = str(sticker.get("id") or "")
+        for index, item in enumerate(items):
+            if item.get("id") == sticker_id:
+                items[index] = self.normalize({**item, **updates, "updated_at": now_text()})
+                self.save(items)
+                return items[index]
+        raise KeyError(sticker_id)
+
+    def apply_analysis(self, sticker_id: str, analysis: dict, *, name: str = "", error: str = "") -> dict:
+        normalized = normalize_analysis(analysis or default_sticker_analysis())
+        current = next((item for item in self.load() if item.get("id") == sticker_id), None)
+        if not current:
+            raise KeyError(sticker_id)
+        display_name = name or sticker_display_name(normalized, current.get("name") or sticker_id)
+        updated = self.update(
+            sticker_id,
+            {
+                **normalized,
+                "name": display_name,
+                "tag": normalized["tags"][0] if normalized["tags"] else normalized["emotion"],
+                "review_status": PENDING_STATUS,
+                "enabled": False,
+                "error": error,
+                "original_name": current.get("original_name") or current.get("name") or "",
+            },
+        )
+        return self.rename_files(updated, sticker_file_stem(sticker_id, normalized, display_name))
 
     def approve(self, sticker_id: str) -> dict:
         return self.update(sticker_id, {"review_status": APPROVED_STATUS, "enabled": True, "error": ""})

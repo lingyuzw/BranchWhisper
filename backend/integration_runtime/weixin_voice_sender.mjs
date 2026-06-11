@@ -142,6 +142,17 @@ function mediaAesKeyValue(aeskey) {
   return Buffer.from(aeskey.toString("hex"), "utf8").toString("base64");
 }
 
+function buildMediaPayload({ downloadParam, aeskey }) {
+  const encodedAesKey = mediaAesKeyValue(aeskey);
+  return {
+    encrypt_query_param: downloadParam,
+    encrypted_query_param: downloadParam,
+    aes_key: encodedAesKey,
+    aeskey: encodedAesKey,
+    encrypt_type: 1,
+  };
+}
+
 function buildCdnUploadUrl({ cdnBaseUrl, uploadParam, filekey }) {
   const base = String(cdnBaseUrl || DEFAULT_CDN_BASE_URL).replace(/\/+$/, "");
   return `${base}/upload?encrypted_query_param=${encodeURIComponent(String(uploadParam || ""))}&filekey=${encodeURIComponent(filekey)}`;
@@ -218,6 +229,29 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
     }
   }
   throw lastError || new Error("CDN upload failed");
+}
+
+async function verifyCdnRoundTrip({ cdnBaseUrl, downloadParam, aeskey, expectedMd5, expectedSize, label = "media" }) {
+  const url = buildCdnDownloadUrl({ cdnBaseUrl, downloadParam });
+  const response = await fetch(url);
+  if (response.status !== 200) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`${label} CDN verify HTTP ${response.status}: ${body.slice(0, 180)}`);
+  }
+  const ciphertext = Buffer.from(await response.arrayBuffer());
+  if (!ciphertext.length) throw new Error(`${label} CDN verify downloaded empty media`);
+  const plaintext = decryptAesEcb(ciphertext, aeskey);
+  const trimmed = plaintext.subarray(0, expectedSize);
+  const md5 = crypto.createHash("md5").update(trimmed).digest("hex");
+  if (md5 !== expectedMd5) {
+    throw new Error(`${label} CDN verify md5 mismatch`);
+  }
+  return {
+    ok: true,
+    cipher_size: ciphertext.length,
+    raw_size: trimmed.length,
+    md5,
+  };
 }
 
 async function downloadMedia(args) {
@@ -536,9 +570,24 @@ async function sendVoice(args) {
       throw error;
     });
     const uploadMs = Date.now() - uploadStart;
+    const cdnVerifyStart = Date.now();
+    let cdnVerify = { ok: false, error: "not checked" };
+    try {
+      cdnVerify = await verifyCdnRoundTrip({
+        cdnBaseUrl,
+        downloadParam: upload.downloadParam,
+        aeskey,
+        expectedMd5: rawfilemd5,
+        expectedSize: rawsize,
+        label: "voice",
+      });
+    } catch (error) {
+      cdnVerify = { ok: false, error: error?.message || String(error) };
+    }
+    cdnVerify.verify_ms = Date.now() - cdnVerifyStart;
     const sendStart = Date.now();
     const clientId = `branchwhisper-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-    await postJson({
+    const sendResp = await postJson({
       baseUrl,
       apiPath: "ilink/bot/sendmessage",
       token,
@@ -553,11 +602,7 @@ async function sendVoice(args) {
             {
               type: ITEM_VOICE,
               voice_item: {
-                media: {
-                  encrypt_query_param: upload.downloadParam,
-                  aes_key: aeskey.toString("base64"),
-                  encrypt_type: 1,
-                },
+                media: buildMediaPayload({ downloadParam: upload.downloadParam, aeskey }),
                 encode_type: VOICE_ENCODE_SILK,
                 sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
                 playtime: playtimeMs,
@@ -589,6 +634,8 @@ async function sendVoice(args) {
       cipher_size: upload.ciphertextSize,
       upload_method: upload.uploadMethod,
       upload_url_kind: upload.uploadUrlKind,
+      cdn_verify: cdnVerify,
+      sendmessage_shape: compactResponseShape(sendResp),
       upload_ms: uploadMs,
       send_ms: Date.now() - sendStart,
       total_ms: Date.now() - started,

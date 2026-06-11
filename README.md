@@ -15,12 +15,6 @@ Weixin message -> OpenClaw bridge -> BranchWhisper dialog core -> text / voice r
 python backend/main.py --host 127.0.0.1 --port 7860
 ```
 
-The old entrypoint is still kept for compatibility:
-
-```bash
-python web/web_server.py --host 127.0.0.1 --port 7860
-```
-
 Open:
 
 ```text
@@ -62,7 +56,6 @@ BranchWhisper/
   configs/                    # Local service configuration templates
   scripts/                    # Startup and check scripts
   docs/                       # Long-term architecture and module docs
-  web/                        # Compatibility wrapper for old entrypoint
 ```
 
 ## Runtime Data
@@ -124,6 +117,7 @@ node --check backend/integration_runtime/weixin_voice_sender.mjs
 Start here:
 
 - `docs/architecture/overview.md`
+- `docs/architecture/final-architecture.md`
 - `docs/architecture/frontend-backend-split.md`
 - `docs/architecture/runtime-files.md`
 - `docs/modules/dialog.md`
@@ -131,4 +125,4 @@ Start here:
 
 ## Naming
 
-The project name is **BranchWhisper**. Older local paths, config keys, or notes may still mention `buding`, `LoveChoice`, or the Chinese name `枝语`; those are compatibility leftovers and should not be removed from runtime data without a migration plan.
+The project name is **BranchWhisper**. Older runtime config keys may still mention `buding`, `LoveChoice`, or the Chinese name `枝语`; those are data compatibility leftovers and should not be removed without a migration plan.

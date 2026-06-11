@@ -13,6 +13,8 @@ The current frontend lives in `frontend/legacy-static/` and is still served by F
 
 The planned Vue frontend should live under `frontend/src/` with Vue 3, Vite, and TypeScript. Until a page is migrated, keep the existing legacy static page working.
 
+`frontend/src/README.md` is a placeholder for this migration track. Do not move the voice dialog page first.
+
 The frontend should only depend on public backend boundaries:
 
 - `/api/*`

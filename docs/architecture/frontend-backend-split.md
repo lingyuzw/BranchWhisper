@@ -39,6 +39,6 @@ The frontend may only depend on:
 
 It must not depend on backend Python paths.
 
-## Compatibility
+## Entrypoint
 
-`web/web_server.py` remains as a compatibility wrapper. Prefer `backend/main.py` for new usage.
+Use `backend/main.py` for backend startup.

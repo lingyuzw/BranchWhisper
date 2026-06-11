@@ -28,10 +28,7 @@ def selected_stickers(request: Request, sticker_ids: list[str] | None, include_f
 async def analyze_sticker(request: Request, sticker: dict) -> dict:
     analyzer = StickerVisionAnalyzer(request.app.state.settings)
     analysis = await analyzer.analyze(Path(sticker.get("send_path") or sticker.get("path") or ""), mime="image/png")
-    return request.app.state.sticker_library.update(
-        sticker["id"],
-        {**analysis, "review_status": "pending", "enabled": False, "error": ""},
-    )
+    return request.app.state.sticker_library.apply_analysis(sticker["id"], analysis)
 
 
 def create_assets_router() -> APIRouter:
@@ -110,10 +107,7 @@ def create_assets_router() -> APIRouter:
                     results.append({"ok": True, "analyzed": False, "warning": warning, "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""), "sticker": sticker})
                     continue
 
-                sticker = request.app.state.sticker_library.update(
-                    preview["id"],
-                    {**analysis, "review_status": "pending", "enabled": False, "error": ""},
-                )
+                sticker = request.app.state.sticker_library.apply_analysis(preview["id"], analysis)
                 results.append({"ok": True, "analyzed": True, "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""), "sticker": sticker})
             except ValueError as exc:
                 results.append({"ok": False, "name": name, "error": str(exc)})
@@ -148,7 +142,7 @@ def create_assets_router() -> APIRouter:
         try:
             analyzer = StickerVisionAnalyzer(request.app.state.settings)
             analysis = await analyzer.analyze(Path(sticker.get("send_path") or sticker.get("path") or ""), mime="image/png")
-            updated = request.app.state.sticker_library.update(sticker_id, {**analysis, "review_status": "pending", "enabled": False, "error": ""})
+            updated = request.app.state.sticker_library.apply_analysis(sticker_id, analysis)
             return {"sticker": updated, "stickers": request.app.state.sticker_store.list()}
         except Exception as exc:
             updated = request.app.state.sticker_library.update(sticker_id, {"review_status": "pending", "enabled": False, "error": f"自动识别失败：{exc}"})

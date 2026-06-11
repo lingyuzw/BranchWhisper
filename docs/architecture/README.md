@@ -7,3 +7,4 @@ Recommended reading order:
 3. `request-lifecycle.md`
 4. `data-flow.md`
 5. `runtime-files.md`
+6. `final-architecture.md`
