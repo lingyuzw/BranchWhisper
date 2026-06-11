@@ -29,6 +29,7 @@ import {
   updateServiceConfig,
   uploadAvatar,
   uploadSticker,
+  testSticker,
   deleteSticker,
 } from "../../api/index.js";
 
@@ -136,6 +137,7 @@ function setupSettingsEvents() {
   $("#addBotProfileBtn")?.addEventListener("click", addBotProfile);
   $("#stickerUploadBtn")?.addEventListener("click", () => $("#stickerFileInput")?.click());
   $("#stickerFileInput")?.addEventListener("change", handleStickerUpload);
+  $("#stickerTestBtn")?.addEventListener("click", runStickerTest);
   $("#openModelFilePickerBtn")?.addEventListener("click", openModelFilePicker);
   $("#modelFileRefreshBtn")?.addEventListener("click", refreshModelFilePicker);
   $("#modelFileCancelBtn")?.addEventListener("click", closeModelFilePicker);
@@ -1164,7 +1166,7 @@ function renderStickerLibrary() {
     img.src = sticker.url;
     img.alt = sticker.tag || sticker.name || "表情包";
     const meta = document.createElement("span");
-    meta.textContent = `${sticker.tag || "默认"} · ${sticker.use_count || 0}`;
+    meta.textContent = `${sticker.tag || "默认"} · ${stickerChannelsLabel(sticker.channels)} · ${sticker.use_count || 0}`;
     const del = document.createElement("button");
     del.type = "button";
     del.title = "删除表情包";
@@ -1185,7 +1187,8 @@ async function handleStickerUpload(event) {
   try {
     const dataUrl = await fileToDataUrl(file);
     const tag = value("stickerTagInput", "默认").trim() || "默认";
-    await uploadSticker(dataUrl, tag, file.name);
+    const channels = value("stickerChannelInput", "all") || "all";
+    await uploadSticker(dataUrl, tag, file.name, channels);
     renderStickerLibrary();
     showToast("表情包已加入素材库", "success");
   } catch (error) {
@@ -1193,6 +1196,72 @@ async function handleStickerUpload(event) {
   } finally {
     event.target.value = "";
   }
+}
+
+async function runStickerTest() {
+  const text = value("stickerTestInput", "").trim();
+  const channel = value("stickerTestChannel", "web");
+  const host = $("#stickerTestResult");
+  if (!text) {
+    showToast("请先输入一句测试文本", "error");
+    return;
+  }
+  if (host) {
+    host.classList.remove("hit");
+    host.textContent = "正在模拟当前表情包策略...";
+  }
+  try {
+    const result = await testSticker(text, channel);
+    renderStickerTestResult(result);
+  } catch (error) {
+    if (host) {
+      host.classList.remove("hit");
+      host.textContent = `测试失败：${error.message}`;
+    }
+  }
+}
+
+function renderStickerTestResult(result) {
+  const host = $("#stickerTestResult");
+  if (!host) return;
+  host.replaceChildren();
+  const intent = result.intent || {};
+  const sticker = result.sticker || null;
+  host.classList.toggle("hit", Boolean(sticker));
+  const title = document.createElement("strong");
+  title.textContent = sticker ? "命中表情包" : "未命中表情包";
+  const detail = document.createElement("span");
+  detail.textContent = sticker
+    ? `渠道 ${result.channel || "web"} · 标签 ${intent.tag || sticker.tag || "默认"} · 原因 ${stickerReasonLabel(intent.reason)}`
+    : `渠道 ${result.channel || "web"} · 原因 ${stickerReasonLabel(intent.reason)} · 素材 ${result.stickers_count || 0}`;
+  host.append(title, detail);
+  if (sticker?.url) {
+    const img = document.createElement("img");
+    img.src = sticker.url;
+    img.alt = sticker.name || sticker.tag || "表情包";
+    host.appendChild(img);
+  }
+}
+
+function stickerChannelsLabel(channels) {
+  const values = Array.isArray(channels) ? channels : ["all", "web", "weixin"];
+  if (values.includes("all") || (values.includes("web") && values.includes("weixin"))) return "Web+微信";
+  if (values.includes("weixin")) return "微信";
+  return "Web";
+}
+
+function stickerReasonLabel(reason) {
+  return {
+    disabled: "功能关闭",
+    off: "活跃度关闭",
+    serious_or_tool: "严肃/工具类消息不打扰",
+    daily_limit: "达到每日上限",
+    cooldown: "冷却中",
+    streak: "连续发送达到上限",
+    probability: "概率未命中",
+    matched: "标签和概率命中",
+    no_channel_sticker: "当前渠道没有可用素材",
+  }[reason] || reason || "未知";
 }
 
 function renderBotProfiles() {

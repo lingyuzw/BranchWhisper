@@ -106,7 +106,7 @@ class StickerStore:
     def save(self, items: list[dict]) -> None:
         self.index_path.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    def add_data_url(self, data_url: str, tag: str = "默认", name: str = "") -> dict:
+    def add_data_url(self, data_url: str, tag: str = "默认", name: str = "", channels: str | list[str] = "all") -> dict:
         mime, raw = parse_data_url(data_url)
         if len(raw) > 8 * 1024 * 1024:
             raise ValueError("表情包不能超过 8 MB")
@@ -125,6 +125,7 @@ class StickerStore:
             "created_at": now_text(),
             "last_used_at": "",
             "use_count": 0,
+            "channels": normalize_channels(channels),
         }
         items = self.list()
         items.insert(0, item)
@@ -156,8 +157,28 @@ class StickerStore:
             self.save(items)
         return found
 
-    def choose(self, tag: str = "", avoid_id: str = "") -> dict | None:
-        items = [item for item in self.list() if item.get("enabled", True)]
+    def mark_used_many(self, sticker_ids: list[str]) -> list[dict]:
+        wanted = {str(item or "") for item in sticker_ids if str(item or "").strip()}
+        if not wanted:
+            return []
+        items = self.list()
+        changed = []
+        for item in items:
+            if item["id"] in wanted:
+                item["last_used_at"] = now_text()
+                item["use_count"] = int(item.get("use_count") or 0) + 1
+                changed.append(item)
+        if changed:
+            self.save(items)
+        return changed
+
+    def choose(self, tag: str = "", avoid_id: str = "", channel: str = "web") -> dict | None:
+        channel = normalize_channel(channel)
+        items = [
+            item
+            for item in self.list()
+            if item.get("enabled", True) and channel in item.get("channels", ["all", "web", "weixin"])
+        ]
         if tag:
             tagged = [item for item in items if item.get("tag") == tag and item.get("id") != avoid_id]
             if tagged:
@@ -180,7 +201,26 @@ class StickerStore:
             "url": str(item.get("url") or ""),
             "path": str(item.get("path") or ""),
             "enabled": item.get("enabled") is not False,
+            "channels": normalize_channels(item.get("channels") or item.get("channel") or "all"),
             "created_at": str(item.get("created_at") or ""),
             "last_used_at": str(item.get("last_used_at") or ""),
             "use_count": int(item.get("use_count") or 0),
         }
+
+
+def normalize_channel(value: str) -> str:
+    value = str(value or "web").strip().lower()
+    return value if value in {"web", "weixin", "all"} else "web"
+
+
+def normalize_channels(value: str | list[str]) -> list[str]:
+    if isinstance(value, str):
+        raw = [item.strip().lower() for item in re.split(r"[,/\s]+", value) if item.strip()]
+    elif isinstance(value, list):
+        raw = [str(item).strip().lower() for item in value if str(item).strip()]
+    else:
+        raw = ["all"]
+    if "all" in raw:
+        return ["all", "web", "weixin"]
+    channels = [item for item in raw if item in {"web", "weixin"}]
+    return channels or ["all", "web", "weixin"]

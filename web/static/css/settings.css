@@ -673,13 +673,47 @@
 }
 .sticker-upload-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(118px, auto) auto;
   gap: 8px;
   align-items: center;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
+}
+.sticker-test-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+.sticker-test-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(96px, auto) auto;
+  gap: 8px;
+  align-items: center;
+}
+.sticker-test-result {
+  min-height: 54px;
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 10px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-muted) 76%, transparent);
+  font-size: var(--font-sm);
+}
+.sticker-test-result.hit {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent-soft) 56%, var(--surface-muted));
+}
+.sticker-test-result img {
+  max-width: 112px;
+  max-height: 112px;
+  object-fit: contain;
 }
 .sticker-library-list {
   display: grid;
@@ -936,7 +970,9 @@
   .toggle-row,
   .greeting-switches,
   .greeting-options,
-  .reminder-editor {
+  .reminder-editor,
+  .sticker-upload-row,
+  .sticker-test-row {
     grid-template-columns: 1fr;
   }
   .greeting-time-range {

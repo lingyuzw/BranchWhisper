@@ -32,7 +32,9 @@ from data.conversations import ConversationStore
 from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
-from integration_runtime.weixin_media import WeixinVoiceSendError, send_weixin_voice
+from integration_runtime.weixin_media import WeixinImageSendError, WeixinVoiceSendError, send_weixin_image, send_weixin_voice
+from media.assets import StickerStore
+from media.sticker_policy import StickerPolicy
 from core.io_utils import read_json_file
 from core.text_utils import compact_text, extract_repeat_text, format_reply_paragraphs, is_story_request, split_reply_messages
 from core.time_utils import now_text, now_ts
@@ -557,6 +559,11 @@ class IntegrationManager:
             "voice_stage",
             "voice_format",
             "voice_diagnostic",
+            "sticker_send_ms",
+            "sticker_send_status",
+            "sticker_count",
+            "sticker_error",
+            "sticker_sent_ids",
         }
         sanitized = {
             key: value
@@ -568,11 +575,33 @@ class IntegrationManager:
             if str(item.get("trace_id") or "") == str(trace_id):
                 item.update(sanitized)
                 runtime["recent_timings"] = items[:10]
+                self.mark_stickers_sent_from_timing(item)
                 return item
         timing = {"trace_id": trace_id, "created_at": now_text(), **sanitized}
         items.insert(0, timing)
         runtime["recent_timings"] = items[:10]
+        self.mark_stickers_sent_from_timing(timing)
         return timing
+
+    def mark_stickers_sent_from_timing(self, timing: dict) -> None:
+        if not getattr(self, "sticker_store", None) or not getattr(self, "sticker_policy", None):
+            return
+        if timing.get("sticker_usage_marked"):
+            return
+        sent_ids = [
+            str(item).strip()
+            for item in re.split(r"[,;\s]+", str(timing.get("sticker_sent_ids") or ""))
+            if str(item).strip()
+        ]
+        if not sent_ids or str(timing.get("sticker_send_status") or "") != "sent":
+            return
+        session_id = str(timing.get("conversation_id") or timing.get("session_id") or "")
+        if not session_id:
+            return
+        for sticker_id in sent_ids:
+            self.sticker_policy.mark_sent(session_id, sticker_id)
+        self.sticker_store.mark_used_many(sent_ids)
+        timing["sticker_usage_marked"] = True
 
     def mark_status(self, integration_id: str, status: str, error: str = "") -> None:
         integration = self.get_integration(integration_id)
@@ -1059,6 +1088,10 @@ class IntegrationManager:
             metadata={"source": platform, "platform_id": platform, "sender_id": sender_id or ""},
         )
         data["sessions"][key] = conversation["id"]
+        my_session = data.get("my_weixin_session") if isinstance(data.get("my_weixin_session"), dict) else {}
+        if my_session.get("platform_id") == platform and my_session.get("sender_id") == (sender_id or ""):
+            my_session["conversation_id"] = conversation["id"]
+            data["my_weixin_session"] = my_session
         self.save_config(data)
         return conversation["id"]
 
@@ -1090,6 +1123,8 @@ class ExternalDialogEngine:
         tool_manager: ToolManager,
         bot_profiles: BotProfileStore,
         media_dir: Path,
+        sticker_store: StickerStore | None = None,
+        sticker_policy: StickerPolicy | None = None,
     ):
         self.integration_manager = integration_manager
         self.conversation_store = conversation_store
@@ -1097,6 +1132,8 @@ class ExternalDialogEngine:
         self.tool_manager = tool_manager
         self.bot_profiles = bot_profiles
         self.media_dir = media_dir
+        self.sticker_store = sticker_store
+        self.sticker_policy = sticker_policy
         self.media_dir.mkdir(parents=True, exist_ok=True)
 
     async def handle(self, payload: dict, settings: SessionSettings) -> dict:
@@ -1160,6 +1197,7 @@ class ExternalDialogEngine:
                     "source": platform_id,
                     "platform_id": platform_id,
                     "bot_profile_id": bot_profile.get("id") or "default",
+                    "attachments": self.choose_reply_sticker(runtime_settings, conversation["id"], text, reply_text),
                 }
             )
         self.conversation_store.append_messages(conversation["id"], messages_to_store, title_hint=text)
@@ -1187,6 +1225,8 @@ class ExternalDialogEngine:
                 "trace_id": trace_id,
                 "sender_id": sender_id,
                 "text": compact_text(text, 80),
+                "conversation_id": conversation["id"],
+                "session_id": session_id,
                 "reply_len": len(reply_text),
                 "tool": (tool_result or {}).get("tool") or "",
                 "direct_answer": bool(direct_answer),
@@ -1207,7 +1247,7 @@ class ExternalDialogEngine:
             "conversation_id": conversation["id"],
             "reply_text": reply_text,
             "reply_parts": reply_parts,
-            "attachments": [],
+            "attachments": messages_to_store[-1].get("attachments", []) if messages_to_store and messages_to_store[-1].get("role") == "assistant" else [],
             "voice_requested": voice_requested,
             "send_voice": send_voice,
             "voice_file": voice_file,
@@ -1217,6 +1257,40 @@ class ExternalDialogEngine:
             "direct_answer": bool(direct_answer),
             "timings": timings,
         }
+
+    def choose_reply_sticker(self, settings: SessionSettings, session_id: str, user_text: str, reply_text: str) -> list[dict]:
+        if not self.sticker_store or not self.sticker_policy:
+            return []
+        intent = self.sticker_policy.choose_intent(
+            settings,
+            session_id=session_id or "weixin",
+            user_text=user_text,
+            reply_text=reply_text,
+            source="weixin",
+        )
+        if not intent.get("send"):
+            self.sticker_policy.mark_text_only(session_id or "weixin")
+            return []
+        sticker = self.sticker_store.choose(
+            str(intent.get("tag") or ""),
+            avoid_id=str(intent.get("avoid_id") or ""),
+            channel="weixin",
+        )
+        if not sticker:
+            self.sticker_policy.mark_text_only(session_id or "weixin")
+            return []
+        return [
+            {
+                "type": "sticker",
+                "asset_id": sticker["id"],
+                "url": sticker["url"],
+                "path": sticker.get("path") or "",
+                "mime": sticker.get("mime") or "image/png",
+                "tag": sticker.get("tag") or "",
+                "pending_mark_used": True,
+                "name": sticker.get("name") or "表情包",
+            }
+        ]
 
     def settings_for_profile(self, settings: SessionSettings, profile: dict) -> SessionSettings:
         snapshot = SessionSettings(**asdict(settings))
@@ -1314,6 +1388,110 @@ class ExternalDialogEngine:
                 }
             )
             self.integration_manager.append_log(platform_id, f"[voice-test:{trace_id}] failed stage={result.get('stage')} error={exc}")
+            return result
+
+    async def sticker_test(self, integration_id: str, settings: SessionSettings, text: str, sender_id: str = "", account_id: str = "") -> dict:
+        platform_id = safe_id(integration_id)
+        text = str(text or "").strip() or "哈哈哈哈"
+        target = self.integration_manager.select_weixin_target(platform_id, sender_id=sender_id, account_id=account_id)
+        if not target:
+            error = "我的微信会话未绑定或已超过 24 小时可触达窗口；请先用你的微信给 BranchWhisper 发一条消息。"
+            self.integration_manager.append_log(platform_id, f"[sticker-test] skipped: {error}")
+            return {"ok": False, "stage": "target", "error": error}
+        if not self.sticker_store or not self.sticker_policy:
+            return {"ok": False, "stage": "store", "error": "sticker store is not available"}
+
+        trace_id = f"sticker_test_{uuid.uuid4().hex[:10]}"
+        started_at = time.perf_counter()
+        intent = self.sticker_policy.simulate(
+            settings,
+            session_id=f"sticker_test:weixin",
+            user_text=text,
+            reply_text="",
+            source="weixin",
+        )
+        sticker = None
+        if intent.get("send"):
+            sticker = self.sticker_store.choose(
+                str(intent.get("tag") or ""),
+                avoid_id=str(intent.get("avoid_id") or ""),
+                channel="weixin",
+            )
+        if not sticker:
+            sticker = self.sticker_store.choose("", channel="weixin")
+        if not sticker:
+            return {"ok": False, "stage": "sticker", "intent": intent, "error": "没有可用于微信渠道的表情包素材。"}
+
+        result: dict[str, Any] = {
+            "ok": False,
+            "trace_id": trace_id,
+            "stage": "start",
+            "target": {
+                "account_id": target["account_id"],
+                "sender_id": target["sender_id"],
+                "age_hours": target.get("age_hours"),
+            },
+            "intent": intent,
+            "sticker": {
+                "id": sticker.get("id"),
+                "name": sticker.get("name"),
+                "tag": sticker.get("tag"),
+                "mime": sticker.get("mime"),
+                "url": sticker.get("url"),
+            },
+        }
+        self.integration_manager.append_log(
+            platform_id,
+            f"[sticker-test:{trace_id}] start account={target['account_id']} to={target['sender_id']} sticker={sticker.get('id')}",
+        )
+        try:
+            send_started = time.perf_counter()
+            sent = send_weixin_image(
+                base_url=target["base_url"],
+                token=target["token"],
+                to_user_id=target["sender_id"],
+                image_file=str(sticker.get("path") or ""),
+                context_token=target["context_token"],
+                cdn_base_url=str(target.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL),
+            )
+            self.sticker_policy.mark_sent(f"sticker_test:weixin", str(sticker.get("id") or ""))
+            self.sticker_store.mark_used(str(sticker.get("id") or ""))
+            result.update(
+                {
+                    "ok": True,
+                    "stage": "accepted",
+                    "send_done": True,
+                    "send_ms": int((time.perf_counter() - send_started) * 1000),
+                    "total_ms": int((time.perf_counter() - started_at) * 1000),
+                    "image_message_id": sent.get("message_id") or "",
+                    "image_stage": sent.get("stage") or "accepted",
+                    "image_diagnostic": {
+                        "image_format": sent.get("image_format"),
+                        "source_image": sent.get("source_image"),
+                        "image": sent.get("image"),
+                        "upload_ms": sent.get("upload_ms"),
+                        "upload_method": sent.get("upload_method"),
+                        "upload_url_kind": sent.get("upload_url_kind"),
+                        "send_ms": sent.get("send_ms"),
+                    },
+                    "client_delivery": "unconfirmed",
+                }
+            )
+            self.integration_manager.append_log(
+                platform_id,
+                f"[sticker-test:{trace_id}] image api accepted account={target['account_id']} to={target['sender_id']} "
+                f"message_id={result['image_message_id']} diagnostic={result['image_diagnostic']}",
+            )
+            return result
+        except (WeixinImageSendError, Exception) as exc:
+            result.update(
+                {
+                    "ok": False,
+                    "error": str(exc),
+                    "total_ms": int((time.perf_counter() - started_at) * 1000),
+                }
+            )
+            self.integration_manager.append_log(platform_id, f"[sticker-test:{trace_id}] failed stage={result.get('stage')} error={exc}")
             return result
 
     async def reply_text(self, settings: SessionSettings, conversation: dict, user_text: str, *, voice_requested: bool = False) -> tuple[str, dict | None, str, int, int, dict]:

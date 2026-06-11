@@ -13,6 +13,10 @@ class WeixinVoiceSendError(RuntimeError):
     pass
 
 
+class WeixinImageSendError(RuntimeError):
+    pass
+
+
 def send_weixin_voice(
     *,
     base_url: str,
@@ -72,6 +76,62 @@ def send_weixin_voice(
     return payload
 
 
+def send_weixin_image(
+    *,
+    base_url: str,
+    token: str,
+    to_user_id: str,
+    image_file: str,
+    context_token: str = "",
+    cdn_base_url: str = "",
+    timeout: float = 60.0,
+) -> dict:
+    command = [
+        "node",
+        str(SCRIPT_PATH),
+        "--base-url",
+        base_url,
+        "--token",
+        token,
+        "--to",
+        to_user_id,
+        "--image-file",
+        image_file,
+    ]
+    if context_token:
+        command.extend(["--context-token", context_token])
+    if cdn_base_url:
+        command.extend(["--cdn-base-url", cdn_base_url])
+    try:
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise WeixinImageSendError("node is not available in PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise WeixinImageSendError("image sender timed out") from exc
+
+    stdout = (proc.stdout or "").strip()
+    stderr = (proc.stderr or "").strip()
+    try:
+        payload = json.loads(stdout) if stdout else {}
+    except json.JSONDecodeError as exc:
+        detail = stderr or stdout or f"exit {proc.returncode}"
+        raise WeixinImageSendError(f"image sender returned invalid JSON: {detail[:240]}") from exc
+
+    if proc.returncode != 0 or not payload.get("ok"):
+        detail = str(payload.get("error") or stderr or f"exit {proc.returncode}")
+        stage = str(payload.get("stage") or "unknown")
+        raise WeixinImageSendError(f"{stage}: {detail[:220]}")
+    return payload
+
+
 def self_test_weixin_voice_sender() -> dict:
     proc = subprocess.run(
         ["node", str(SCRIPT_PATH), "--self-test"],
@@ -88,3 +148,7 @@ def self_test_weixin_voice_sender() -> dict:
     payload.setdefault("exit_code", proc.returncode)
     payload.setdefault("python", sys.executable)
     return payload
+
+
+def self_test_weixin_media_sender() -> dict:
+    return self_test_weixin_voice_sender()

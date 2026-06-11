@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Request
 
 from domain.paths import MEMORY_DB
+from tools.runtime_brain import admit_memory_candidate, extract_memory_candidates
 
 
 def create_memory_router() -> APIRouter:
@@ -35,5 +36,18 @@ def create_memory_router() -> APIRouter:
     async def decay_memory(request: Request, payload: dict | None = Body(default=None)):
         payload = payload or {}
         return request.app.state.memory_store.apply_decay(request.app.state.settings, mode=payload.get("mode"))
+
+    @router.post("/api/memory/admission-test")
+    async def memory_admission_test(request: Request, payload: dict | None = Body(default=None)):
+        payload = payload or {}
+        text = str(payload.get("text") or "").strip()
+        if not text:
+            return {"ok": False, "error": "text is required", "candidates": []}
+        candidates = extract_memory_candidates(text)
+        results = []
+        for candidate in candidates:
+            admitted, reason = admit_memory_candidate(candidate, text, request.app.state.settings)
+            results.append({"candidate": candidate, "admitted": bool(admitted), "reason": reason, "memory": admitted})
+        return {"ok": True, "text": text, "count": len(results), "results": results}
 
     return router

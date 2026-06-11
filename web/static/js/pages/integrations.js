@@ -18,6 +18,7 @@ import {
   startIntegrationQrLogin,
   stopIntegration,
   testIntegrationDialog,
+  testIntegrationSticker,
   testIntegrationVoice,
   updateIntegration,
 } from "../api/index.js";
@@ -74,6 +75,13 @@ function setupIntegrationEvents() {
     if (event.key === "Enter") {
       event.preventDefault();
       runVoiceProbe();
+    }
+  });
+  $("#integrationStickerTestBtn")?.addEventListener("click", runStickerProbe);
+  $("#integrationStickerTestInput")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      runStickerProbe();
     }
   });
   $("#integrationForm")?.addEventListener("submit", saveIntegrationForm);
@@ -578,6 +586,45 @@ function formatVoiceProbeResult(result) {
   if (result.voice_message_id) lines.push(`消息：${result.voice_message_id}`);
   if (Object.keys(diagnostic).length) lines.push(`诊断：${JSON.stringify(diagnostic, null, 2)}`);
   if (result.client_delivery) lines.push(`客户端：${result.client_delivery === "unconfirmed" ? "未确认，请在微信端点击播放验证" : result.client_delivery}`);
+  if (result.error) lines.push(`错误：${result.error}`);
+  return lines.join("\n");
+}
+
+async function runStickerProbe() {
+  const selected = selectedIntegration();
+  const text = $("#integrationStickerTestInput")?.value.trim() || "哈哈哈哈";
+  if (!selected) {
+    showToast("请选择微信实例后再测试表情发送", "error");
+    return;
+  }
+  const resultBox = $("#integrationStickerTestResult");
+  if (resultBox) resultBox.textContent = "正在选择素材并发送到微信...";
+  try {
+    const result = await testIntegrationSticker(selected.id, text);
+    if (resultBox) resultBox.textContent = formatStickerProbeResult(result);
+    await refreshIntegrations({ quiet: true });
+    await refreshSelectedLogs({ quiet: true });
+    showToast(result.ok ? "表情自检已发送，微信端请确认能否显示" : "表情自检失败，请查看结果详情", result.ok ? "success" : "error");
+  } catch (error) {
+    if (resultBox) resultBox.textContent = `失败：${error.message}`;
+    showToast(`表情自检失败：${error.message}`, "error");
+  }
+}
+
+function formatStickerProbeResult(result) {
+  const target = result.target || {};
+  const sticker = result.sticker || {};
+  const diagnostic = result.image_diagnostic || {};
+  const lines = [
+    `状态：${result.ok ? "接口已接受，等待微信端验证显示" : "失败"}`,
+    `阶段：${result.stage || "--"}`,
+    `目标：${target.account_id || "--"} → ${target.sender_id || "--"}`,
+    `素材：${sticker.tag || "--"} · ${sticker.name || sticker.id || "--"} · ${sticker.mime || "--"}`,
+  ];
+  if (result.send_done) lines.push(`发送：完成 · ${result.send_ms || 0}ms`);
+  if (result.image_message_id) lines.push(`消息：${result.image_message_id}`);
+  if (Object.keys(diagnostic).length) lines.push(`诊断：${JSON.stringify(diagnostic, null, 2)}`);
+  if (result.client_delivery) lines.push(`客户端：${result.client_delivery === "unconfirmed" ? "未确认，请在微信端查看是否显示" : result.client_delivery}`);
   if (result.error) lines.push(`错误：${result.error}`);
   return lines.join("\n");
 }

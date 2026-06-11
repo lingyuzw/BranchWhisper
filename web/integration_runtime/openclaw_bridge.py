@@ -20,7 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.text_utils import split_reply_messages
-from weixin_media import WeixinVoiceSendError, send_weixin_voice
+from weixin_media import WeixinImageSendError, WeixinVoiceSendError, send_weixin_image, send_weixin_voice
 
 
 DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com"
@@ -413,6 +413,69 @@ def send_voice_reply(
         return False
 
 
+def send_sticker_replies(
+    *,
+    branchwhisper_url: str,
+    integration_id: str,
+    trace_id: str,
+    account: dict,
+    to_user_id: str,
+    context_token: str,
+    result: dict,
+) -> dict:
+    attachments = result.get("attachments") if isinstance(result.get("attachments"), list) else []
+    stickers = [item for item in attachments if isinstance(item, dict) and item.get("type") == "sticker"]
+    if not stickers:
+        return {"count": 0, "errors": []}
+    sent = 0
+    errors: list[str] = []
+    sent_ids: list[str] = []
+    started = time.perf_counter()
+    for sticker in stickers[:2]:
+        image_file = str(sticker.get("path") or "").strip()
+        if not image_file:
+            errors.append("sticker missing local path")
+            continue
+        try:
+            image_sent = send_weixin_image(
+                base_url=account["base_url"],
+                token=account["token"],
+                to_user_id=to_user_id,
+                image_file=image_file,
+                context_token=context_token,
+                cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
+            )
+            sent += 1
+            sticker_id = str(sticker.get("asset_id") or sticker.get("id") or "").strip()
+            if sticker_id:
+                sent_ids.append(sticker_id)
+            log(
+                f"sent sticker account={account['account_id']} to={to_user_id} "
+                f"message_id={image_sent.get('message_id') or ''} sticker={sticker.get('asset_id') or sticker.get('id') or ''} "
+                f"upload_ms={image_sent.get('upload_ms') or 0} send_ms={image_sent.get('send_ms') or 0}"
+            )
+        except (WeixinImageSendError, Exception) as exc:
+            error = str(exc)
+            errors.append(error[:180])
+            log(
+                f"sticker send failed account={account['account_id']} to={to_user_id} "
+                f"sticker={sticker.get('asset_id') or sticker.get('id') or ''} err={error[:240]}"
+            )
+    report_branchwhisper_timing(
+        branchwhisper_url,
+        integration_id,
+        trace_id,
+        {
+            "sticker_send_ms": int((time.perf_counter() - started) * 1000),
+            "sticker_send_status": "sent" if sent else ("failed" if errors else "skipped"),
+            "sticker_count": sent,
+            "sticker_sent_ids": ",".join(sent_ids),
+            "sticker_error": "; ".join(errors)[:240],
+        },
+    )
+    return {"count": sent, "errors": errors}
+
+
 def message_fingerprint(account_id: str, msg: dict, text: str) -> str:
     material = "|".join(
         [
@@ -521,6 +584,15 @@ def process_message(
             "voice reply generated but media send failed: "
             f"{result.get('voice_file')} error={result.get('voice_error') or '-'}"
         )
+    send_sticker_replies(
+        branchwhisper_url=branchwhisper_url,
+        integration_id=integration_id,
+        trace_id=trace_id,
+        account=account,
+        to_user_id=from_user_id,
+        context_token=context_token,
+        result=result,
+    )
 
 
 def choose_accounts(state_dir: Path, account_id: str = "") -> list[dict]:

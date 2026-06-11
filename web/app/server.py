@@ -431,6 +431,8 @@ def create_app(args) -> FastAPI:
     app.state.proactive_store = ProactiveStore(PROACTIVE_CONFIG, PROACTIVE_DB)
     app.state.followup_policy = FollowupPolicy(app.state.proactive_store)
     app.state.integration_manager = IntegrationManager(INTEGRATIONS_CONFIG, LOG_DIR, INTEGRATION_MEDIA_DIR)
+    app.state.integration_manager.sticker_store = app.state.sticker_store
+    app.state.integration_manager.sticker_policy = app.state.sticker_policy
     app.state.external_dialog_engine = ExternalDialogEngine(
         app.state.integration_manager,
         app.state.conversation_store,
@@ -438,6 +440,8 @@ def create_app(args) -> FastAPI:
         app.state.tool_manager,
         app.state.bot_profiles,
         INTEGRATION_MEDIA_DIR,
+        app.state.sticker_store,
+        app.state.sticker_policy,
     )
     app.state.reminder_task = None
     app.state.proactive_task = None

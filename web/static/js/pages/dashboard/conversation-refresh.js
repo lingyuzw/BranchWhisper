@@ -2,7 +2,7 @@ import { state } from "../../stores/state.js";
 import { loadConversation, loadConversations } from "../../api/index.js";
 import { renderExternalConversation } from "../../dialog.js";
 
-const CONVERSATION_POLL_MS = 3500;
+const CONVERSATION_POLL_MS = 2000;
 let callbacks = {};
 
 export function setupConversationRefresh(nextCallbacks = {}) {
@@ -77,14 +77,14 @@ export async function refreshActiveConversation(options = {}) {
   if (!activeId) return null;
   const active = (state.conversations || []).find((conversation) => conversation.id === activeId);
   if (!active && !options.force) return null;
-  if (active && !conversationMatchesCurrentScope(active)) return null;
+  if (active && !conversationMatchesCurrentScope(active) && !callbacks.isWeixinConversation?.(active)) return null;
   if (active && !options.force && !callbacks.isWeixinConversation?.(active)) return null;
   if (active && !options.force && options.previousSnapshot?.[active.id] === conversationKey(active)) return null;
 
   try {
     const full = await loadConversation(activeId);
     if (!full || full.id !== state.activeConversationId) return null;
-    if (!conversationMatchesCurrentScope(full)) return null;
+    if (!conversationMatchesCurrentScope(full) && !callbacks.isWeixinConversation?.(full)) return null;
     if (callbacks.isWeixinConversation?.(full) || options.force) {
       renderExternalConversation(full);
     }

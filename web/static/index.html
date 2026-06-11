@@ -255,6 +255,12 @@
                   <button class="secondary-action" id="integrationVoiceTestBtn" type="button"><i data-lucide="volume-2"></i>发送语音</button>
                 </div>
                 <div class="integration-test-result compact" id="integrationVoiceTestResult">未测试</div>
+                <div class="panel-head compact-head"><div><p class="eyebrow">Sticker Probe</p><h2>表情自检</h2></div><span class="soft-badge">素材 → 微信</span></div>
+                <div class="integration-test-row">
+                  <input id="integrationStickerTestInput" type="text" placeholder="输入一句话，按策略发一张表情到微信..." autocomplete="off" />
+                  <button class="secondary-action" id="integrationStickerTestBtn" type="button"><i data-lucide="image-plus"></i>发送表情</button>
+                </div>
+                <div class="integration-test-result compact" id="integrationStickerTestResult">未测试</div>
               </section>
             </aside>
           </section>
@@ -439,7 +445,23 @@
                     <div class="sticker-upload-row">
                       <input class="visually-hidden" id="stickerFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
                       <input id="stickerTagInput" type="text" placeholder="标签：开心 / 安慰 / 无语" />
+                      <select id="stickerChannelInput">
+                        <option value="all">Web + 微信</option>
+                        <option value="web">仅 Web</option>
+                        <option value="weixin">仅微信</option>
+                      </select>
                       <button class="secondary-action" id="stickerUploadBtn" type="button"><i data-lucide="image-plus"></i>上传表情包</button>
+                    </div>
+                    <div class="sticker-test-panel">
+                      <div class="sticker-test-row">
+                        <input id="stickerTestInput" type="text" placeholder="测试一句话，比如：哈哈哈哈 / 无语了 / 有点难过" />
+                        <select id="stickerTestChannel">
+                          <option value="web">Web</option>
+                          <option value="weixin">微信</option>
+                        </select>
+                        <button class="secondary-action" id="stickerTestBtn" type="button"><i data-lucide="sparkles"></i>测试表情</button>
+                      </div>
+                      <div class="sticker-test-result" id="stickerTestResult">输入一句话后，可以模拟当前策略会不会发表情包。</div>
                     </div>
                     <div class="sticker-library-list" id="stickerLibraryList"></div>
                   </div>

@@ -548,7 +548,7 @@ class DialogSession:
         if not intent.get("send"):
             self.sticker_policy.mark_text_only(session_id)
             return []
-        sticker = self.sticker_store.choose(str(intent.get("tag") or ""), avoid_id=str(intent.get("avoid_id") or ""))
+        sticker = self.sticker_store.choose(str(intent.get("tag") or ""), avoid_id=str(intent.get("avoid_id") or ""), channel="web")
         if not sticker:
             self.sticker_policy.mark_text_only(session_id)
             return []

@@ -191,6 +191,23 @@ def create_integrations_router(
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Integration voice test failed: {exc}") from exc
 
+    @router.post("/api/integrations/{integration_id}/sticker-test")
+    async def integration_sticker_test(integration_id: str, request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        payload = payload or {}
+        try:
+            return await request.app.state.external_dialog_engine.sticker_test(
+                integration_id,
+                request.app.state.settings,
+                str(payload.get("text") or ""),
+                sender_id=str(payload.get("sender_id") or ""),
+                account_id=str(payload.get("account_id") or ""),
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Integration not found") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Integration sticker test failed: {exc}") from exc
+
     @router.post("/api/integrations/dialog")
     async def integration_dialog(request: Request, payload: dict | None = Body(default=None)):
         require_integration_dialog_access(request)

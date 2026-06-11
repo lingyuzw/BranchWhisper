@@ -16,12 +16,15 @@ const ILINK_APP_ID = "bot";
 const OPENCLAW_WEIXIN_VERSION = "2.4.4";
 const MESSAGE_TYPE_BOT = 2;
 const MESSAGE_STATE_FINISH = 2;
+const ITEM_IMAGE = 2;
 const ITEM_VOICE = 3;
+const UPLOAD_MEDIA_TYPE_IMAGE = 2;
 const UPLOAD_MEDIA_TYPE_VOICE = 4;
 const VOICE_ENCODE_SILK = 6;
 const WEIXIN_VOICE_SAMPLE_RATE = 24_000;
 const WEIXIN_VOICE_GAIN_DB = 8;
 const MAX_VOICE_SECONDS = 60;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 let silkModulePromise = null;
 
@@ -33,6 +36,7 @@ function usage() {
   return [
     "Usage:",
     "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --voice-file FILE [--context-token TOKEN] [--text TEXT]",
+    "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --image-file FILE [--context-token TOKEN]",
     "",
     "Options:",
     "  --self-test   Check node crypto, ffmpeg, and ffprobe only.",
@@ -505,6 +509,174 @@ async function sendVoice(args) {
   }
 }
 
+async function probeImageStats(filePath) {
+  const { size } = await fs.stat(filePath);
+  let width = 0;
+  let height = 0;
+  try {
+    const { stdout } = await execFileAsync("ffprobe", [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=width,height",
+      "-of",
+      "json",
+      filePath,
+    ]);
+    const data = JSON.parse(stdout || "{}");
+    const stream = Array.isArray(data.streams) ? data.streams[0] || {} : {};
+    width = Number(stream.width || 0) || 0;
+    height = Number(stream.height || 0) || 0;
+  } catch {
+    // Dimensions are diagnostics only.
+  }
+  return { size, width, height };
+}
+
+async function transcodeImageForWeixin(inputPath) {
+  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-image-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.png`);
+  await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    inputPath,
+    "-frames:v",
+    "1",
+    "-vf",
+    "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease,format=rgba",
+    outputPath,
+  ]);
+  const { size } = await fs.stat(outputPath);
+  if (!size) throw new Error("transcoded image is empty");
+  if (size > MAX_IMAGE_BYTES) throw new Error("transcoded image exceeds 8 MB");
+  return outputPath;
+}
+
+async function sendImage(args) {
+  const baseUrl = args.baseUrl || DEFAULT_BASE_URL;
+  const cdnBaseUrl = args.cdnBaseUrl || DEFAULT_CDN_BASE_URL;
+  const token = String(args.token || "");
+  const to = String(args.to || "");
+  const imageFile = String(args.imageFile || "");
+  const contextToken = String(args.contextToken || "");
+  if (!token) throw new Error("missing --token");
+  if (!to) throw new Error("missing --to");
+  if (!imageFile) throw new Error("missing --image-file");
+  await fs.access(imageFile);
+
+  const started = Date.now();
+  let normalizedPath = "";
+  try {
+    const source = await fs.readFile(imageFile);
+    if (!source.length) throw new Error("image file is empty");
+    if (source.length > MAX_IMAGE_BYTES) throw new Error("image file exceeds 8 MB");
+    const sourceStats = await probeImageStats(imageFile);
+    normalizedPath = await transcodeImageForWeixin(imageFile).catch((error) => {
+      error.stage = "image_transcode";
+      throw error;
+    });
+    const plaintext = await fs.readFile(normalizedPath);
+    const stats = await probeImageStats(normalizedPath);
+  const rawsize = plaintext.length;
+  const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
+  const filesize = aesEcbPaddedSize(rawsize);
+  const filekey = crypto.randomBytes(16).toString("hex");
+  const aeskey = crypto.randomBytes(16);
+  const uploadStart = Date.now();
+  const uploadUrlResp = await postJson({
+    baseUrl,
+    apiPath: "ilink/bot/getuploadurl",
+    token,
+    body: {
+      filekey,
+      media_type: UPLOAD_MEDIA_TYPE_IMAGE,
+      to_user_id: to,
+      rawsize,
+      rawfilemd5,
+      filesize,
+      no_need_thumb: true,
+      aeskey: aeskey.toString("hex"),
+    },
+  }).catch((error) => {
+    error.stage = "getuploadurl";
+    throw error;
+  });
+  const uploadFullUrl = String(uploadUrlResp.upload_full_url || "").trim();
+  const uploadParam = uploadUrlResp.upload_param;
+  if (!uploadFullUrl && !uploadParam) throw new Error("getuploadurl returned no upload URL");
+  const upload = await uploadBufferToCdn({
+    buffer: plaintext,
+    uploadFullUrl,
+    uploadParam,
+    filekey,
+    cdnBaseUrl,
+    aeskey,
+  }).catch((error) => {
+    error.stage = "cdn_upload";
+    throw error;
+  });
+  const uploadMs = Date.now() - uploadStart;
+  const sendStart = Date.now();
+  const clientId = `branchwhisper-image-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  await postJson({
+    baseUrl,
+    apiPath: "ilink/bot/sendmessage",
+    token,
+    body: {
+      msg: {
+        from_user_id: "",
+        to_user_id: to,
+        client_id: clientId,
+        message_type: MESSAGE_TYPE_BOT,
+        message_state: MESSAGE_STATE_FINISH,
+        item_list: [
+          {
+            type: ITEM_IMAGE,
+            image_item: {
+              media: {
+                encrypt_query_param: upload.downloadParam,
+                aes_key: Buffer.from(aeskey.toString("hex")).toString("base64"),
+                encrypt_type: 1,
+              },
+              width: stats.width,
+              height: stats.height,
+            },
+          },
+        ],
+        ...(contextToken ? { context_token: contextToken } : {}),
+      },
+      base_info: buildBaseInfo(),
+    },
+    timeoutMs: 20_000,
+  }).catch((error) => {
+    error.stage = "sendmessage";
+    throw error;
+  });
+    return {
+      ok: true,
+      message_id: clientId,
+      stage: "sent",
+      media_type: "image",
+      image_format: "png",
+      source_image: sourceStats,
+      image: stats,
+      raw_size: rawsize,
+      cipher_size: upload.ciphertextSize,
+      upload_method: upload.uploadMethod,
+      upload_url_kind: upload.uploadUrlKind,
+      upload_ms: uploadMs,
+      send_ms: Date.now() - sendStart,
+      total_ms: Date.now() - started,
+    };
+  } finally {
+    if (normalizedPath) await fs.unlink(normalizedPath).catch(() => {});
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -512,7 +684,7 @@ async function main() {
     return;
   }
   try {
-    const result = args.selfTest ? await selfTest() : await sendVoice(args);
+    const result = args.selfTest ? await selfTest() : (args.imageFile ? await sendImage(args) : await sendVoice(args));
     process.stdout.write(JSON.stringify(result));
   } catch (error) {
     fail(error?.message || String(error), { stage: error?.stage || "unknown" });

@@ -20,6 +20,14 @@ export async function addMemory(value, mode = "") {
   });
 }
 
+export async function testMemoryAdmission(text) {
+  return fetchJson("/api/memory/admission-test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+}
+
 export async function deleteMemory(id) {
   return fetchJson(`/api/memory/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

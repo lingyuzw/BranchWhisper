@@ -44,6 +44,31 @@ class StickerPolicy:
         self.sessions: dict[str, StickerRuntimeState] = {}
 
     def choose_intent(self, settings: Any, *, session_id: str, user_text: str, reply_text: str, source: str = "web") -> dict:
+        return self._choose_intent(settings, session_id=session_id, user_text=user_text, reply_text=reply_text, source=source)
+
+    def simulate(self, settings: Any, *, session_id: str, user_text: str, reply_text: str = "", source: str = "web") -> dict:
+        intent = self._choose_intent(
+            settings,
+            session_id=session_id,
+            user_text=user_text,
+            reply_text=reply_text,
+            source=source,
+            mutate=False,
+        )
+        intent["session_id"] = session_id or "default"
+        intent["source"] = source or "web"
+        return intent
+
+    def _choose_intent(
+        self,
+        settings: Any,
+        *,
+        session_id: str,
+        user_text: str,
+        reply_text: str,
+        source: str = "web",
+        mutate: bool = True,
+    ) -> dict:
         if not getattr(settings, "stickers_enabled", True):
             return {"send": False, "reason": "disabled"}
         activity = str(getattr(settings, "sticker_activity", "active") or "active")
@@ -65,23 +90,38 @@ class StickerPolicy:
 
         now = time.time()
         day = time.strftime("%Y-%m-%d")
-        state = self.sessions.setdefault(session_id or "default", StickerRuntimeState(day=day))
+        if mutate:
+            state = self.sessions.setdefault(session_id or "default", StickerRuntimeState(day=day))
+        else:
+            state = self.sessions.get(session_id or "default") or StickerRuntimeState(day=day)
         if state.day != day:
-            state.day = day
-            state.sent_today = 0
-            state.streak = 0
+            if mutate:
+                state.day = day
+                state.sent_today = 0
+                state.streak = 0
+            else:
+                state = StickerRuntimeState(day=day)
         if state.sent_today >= config["daily_limit"]:
-            return {"send": False, "reason": "daily_limit"}
+            return {"send": False, "reason": "daily_limit", "config": config, "state": self.state_snapshot(state)}
         if now - state.last_sent_at < config["cooldown"]:
-            return {"send": False, "reason": "cooldown"}
+            return {"send": False, "reason": "cooldown", "config": config, "state": self.state_snapshot(state)}
         if state.streak >= config["max_streak"]:
-            return {"send": False, "reason": "streak"}
+            return {"send": False, "reason": "streak", "config": config, "state": self.state_snapshot(state)}
 
         tag = self.infer_tag(user_text, reply_text)
         score = self.score(text, tag)
         if score < config["probability"]:
-            return {"send": False, "reason": "probability", "tag": tag, "score": score}
-        return {"send": True, "tag": tag, "reason": "matched", "avoid_id": state.last_sticker_id}
+            return {"send": False, "reason": "probability", "tag": tag, "score": score, "config": config, "state": self.state_snapshot(state)}
+        return {"send": True, "tag": tag, "reason": "matched", "avoid_id": state.last_sticker_id, "score": score, "config": config, "state": self.state_snapshot(state)}
+
+    def state_snapshot(self, state: StickerRuntimeState) -> dict:
+        return {
+            "last_sent_at": state.last_sent_at,
+            "last_sticker_id": state.last_sticker_id,
+            "streak": state.streak,
+            "sent_today": state.sent_today,
+            "day": state.day,
+        }
 
     def mark_sent(self, session_id: str, sticker_id: str) -> None:
         state = self.sessions.setdefault(session_id or "default", StickerRuntimeState(day=time.strftime("%Y-%m-%d")))
