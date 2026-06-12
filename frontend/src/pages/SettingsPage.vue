@@ -2,7 +2,6 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  Activity,
   AlarmPlus,
   Bot,
   ClipboardCheck,
@@ -32,6 +31,7 @@ import {
 import { uploadAvatar } from "@/api/assets";
 import { useAppStore } from "@/stores/app";
 import { listModelFiles, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
+import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
 import { useEngagementStore } from "@/stores/engagement";
 import { useProfilesStore } from "@/stores/profiles";
@@ -56,6 +56,17 @@ const modelFileLoading = ref(false);
 const modelFileError = ref("");
 const modelFilePath = ref("");
 const settingsMessage = ref("");
+const settingsHydrating = ref(false);
+interface ServiceDraft {
+  id: string;
+  cwd: string;
+  health_url: string;
+  startup_wait_sec: number;
+  command: string;
+}
+const serviceDrafts = reactive<Record<string, ServiceDraft>>({});
+const serviceDraftDirty = reactive<Record<string, boolean>>({});
+const serviceSaving = reactive<Record<string, boolean>>({});
 const providerKeys = Object.keys(PROVIDER_FIELDS);
 const localDisabled = computed(() => form.dialog_mode === "api");
 const apiDisabled = computed(() => form.dialog_mode === "local");
@@ -160,11 +171,16 @@ const settingsSections = computed(() => [
     icon: Terminal,
     eyebrow: "Services",
     title: "服务命令",
-    summary: "工作目录、启动命令、健康检查",
+    summary: "工作目录、启动命令、健康检查地址",
     status: `${services.services.length || 0} 个服务`,
   },
 ]);
 const activeSettingsCard = computed(() => settingsSections.value.find((item) => item.id === activeSettingsSection.value));
+const serviceDraftList = computed(() =>
+  services.services
+    .map((service) => ({ service, draft: serviceDrafts[service.id] }))
+    .filter((item): item is { service: ServiceSummary; draft: ServiceDraft } => Boolean(item.draft)),
+);
 
 onMounted(() => {
   theme.value = window.localStorage.getItem("branchwhisper:theme") === "light" ? "light" : "dark";
@@ -181,6 +197,14 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => services.services,
+  () => {
+    syncServiceDrafts();
+  },
+  { immediate: true, deep: true },
+);
+
 async function saveAll() {
   try {
     settingsMessage.value = "正在保存配置...";
@@ -189,8 +213,9 @@ async function saveAll() {
     await tools.save();
     await engagement.save();
     await profiles.saveAll();
-    await Promise.all(services.services.map((service) => services.updateConfig(service)));
+    await Promise.all(Object.keys(serviceDrafts).map((serviceId) => saveServiceDraft(serviceId, true)));
     await Promise.allSettled([tools.reload(), engagement.reload(), profiles.reload(), services.reload(true)]);
+    syncServiceDrafts({ force: true });
     syncModelFilePath();
     settingsMessage.value = "配置已应用";
   } catch (error) {
@@ -209,6 +234,11 @@ async function openDiagnostics() {
   await router.push({ name: "diagnostics" });
 }
 
+async function openServices() {
+  closeSettingsSection();
+  await router.push({ name: "services" });
+}
+
 function setMode(mode: "local" | "api") {
   form.dialog_mode = mode;
 }
@@ -220,11 +250,21 @@ function applyTheme(nextTheme: "dark" | "light") {
 }
 
 async function hydrateSettings() {
-  await Promise.allSettled([tools.reload(), engagement.reload(), profiles.reload(), services.reload(true)]);
-  syncModelFilePath();
+  settingsHydrating.value = true;
+  try {
+    await Promise.allSettled([tools.reload(), engagement.reload(), profiles.reload(), services.reload(true)]);
+    syncServiceDrafts({ force: true });
+    syncModelFilePath();
+  } finally {
+    settingsHydrating.value = false;
+  }
 }
 
 function openSettingsSection(id: SettingsSectionId) {
+  if (id === "commands") {
+    syncServiceDrafts();
+    if (!services.services.length) void services.reload(true);
+  }
   activeSettingsSection.value = id;
 }
 
@@ -305,26 +345,101 @@ function llmService() {
   return services.services.find((item) => item.id === "llm") || null;
 }
 
+function llmDraft() {
+  return serviceDrafts.llm || null;
+}
+
 function syncModelFilePath() {
   const explicit = String((form.llm_model_file as string) || "").trim();
-  modelFilePath.value = explicit || extractCommandModelPath(llmService()?.command || "");
+  modelFilePath.value = explicit || extractCommandModelPath(llmDraft()?.command || llmService()?.command || "");
 }
 
 function syncModelFileToServiceCommand() {
   const path = modelFilePath.value.trim();
   if (!path) return;
-  const service = llmService();
-  if (!service) return;
-  service.command = replaceCommandModelPath(service.command || "", path);
+  const draft = llmDraft();
+  if (!draft) return;
+  draft.command = replaceCommandModelPath(draft.command || "", path);
+  markServiceDraftDirty(draft.id);
   (form as Record<string, unknown>).llm_model_file = path;
 }
 
 function openModelPicker() {
   syncModelFilePath();
-  modelFileRoot.value = parentPath(modelFilePath.value) || llmService()?.cwd || "";
+  modelFileRoot.value = parentPath(modelFilePath.value) || llmDraft()?.cwd || llmService()?.cwd || "";
   modelFileQuery.value = "";
   modelFileModalOpen.value = true;
   void refreshModelFiles();
+}
+
+function makeServiceDraft(service: ServiceSummary): ServiceDraft {
+  return {
+    id: service.id,
+    cwd: String(service.cwd || ""),
+    health_url: String(service.health_url || ""),
+    startup_wait_sec: Number(service.startup_wait_sec || 0),
+    command: String(service.command || ""),
+  };
+}
+
+function syncServiceDrafts(options: { force?: boolean } = {}) {
+  const serviceIds = new Set(services.services.map((service) => service.id));
+  for (const service of services.services) {
+    if (!options.force && serviceDraftDirty[service.id] && serviceDrafts[service.id]) continue;
+    serviceDrafts[service.id] = makeServiceDraft(service);
+    serviceDraftDirty[service.id] = false;
+  }
+  for (const serviceId of Object.keys(serviceDrafts)) {
+    if (serviceIds.has(serviceId)) continue;
+    delete serviceDrafts[serviceId];
+    delete serviceDraftDirty[serviceId];
+    delete serviceSaving[serviceId];
+  }
+}
+
+function markServiceDraftDirty(serviceId: string) {
+  serviceDraftDirty[serviceId] = true;
+}
+
+function serviceRuntimeLabel(service: ServiceSummary) {
+  const state = String(service.state || service.status || (service.running ? "running" : "stopped"));
+  return {
+    starting: "启动中",
+    warming: "预热中",
+    ready: "就绪",
+    running: "运行中",
+    failed: "失败",
+    error: "异常",
+    stopped: "已停止",
+  }[state] || state || "--";
+}
+
+async function saveServiceDraft(serviceId: string, quiet = false) {
+  const draft = serviceDrafts[serviceId];
+  if (!draft) return;
+  serviceSaving[serviceId] = true;
+  if (!quiet) settingsMessage.value = `正在保存 ${serviceId} 服务参数...`;
+  try {
+    await services.updateConfig({
+      id: draft.id,
+      cwd: draft.cwd,
+      health_url: draft.health_url,
+      startup_wait_sec: Number(draft.startup_wait_sec || 0),
+      command: draft.command,
+      label: "",
+    } as ServiceSummary);
+    serviceDraftDirty[serviceId] = false;
+    if (!quiet) {
+      await services.reload(true);
+      syncServiceDrafts();
+      settingsMessage.value = `${serviceId} 服务参数已保存`;
+    }
+  } catch (error) {
+    settingsMessage.value = `保存 ${serviceId} 失败：${error instanceof Error ? error.message : String(error)}`;
+    throw error;
+  } finally {
+    serviceSaving[serviceId] = false;
+  }
 }
 
 async function refreshModelFiles() {
@@ -945,33 +1060,36 @@ function formatTime(value?: string) {
         <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'commands' }" id="commands">
           <div class="panel-head">
             <div><p class="eyebrow">Service Commands</p><h2>服务命令</h2></div>
-            <span class="soft-badge">保存配置时同步写入</span>
+            <div class="inline-actions">
+              <span class="soft-badge">只编辑启动参数</span>
+              <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
+            </div>
           </div>
           <div class="profile-list">
-            <section v-for="service in services.services" :key="service.id" class="profile-card">
+            <section v-for="{ service, draft } in serviceDraftList" :key="service.id" class="profile-card service-config-card" :class="{ dirty: serviceDraftDirty[service.id] }">
               <div class="profile-head">
                 <div>
                   <strong>{{ service.label || service.id }}</strong>
-                  <span>{{ service.running ? "运行中" : "已停止" }} · {{ service.status || "--" }}</span>
+                  <span>{{ serviceRuntimeLabel(service) }} · {{ service.external ? "外部进程" : "BranchWhisper 配置" }}</span>
                 </div>
-                <span class="soft-badge">{{ service.id }}</span>
+                <span class="soft-badge">{{ serviceDraftDirty[service.id] ? "未保存" : service.id }}</span>
               </div>
               <div class="form-grid compact">
-                <label class="wide"><span>工作目录</span><input v-model="service.cwd" /></label>
-                <label class="wide"><span>Health URL</span><input v-model="service.health_url" /></label>
-                <label><span>启动等待秒</span><input v-model.number="service.startup_wait_sec" type="number" min="0" max="180" step="1" /></label>
-                <label class="wide"><span>启动命令</span><textarea v-model="service.command" class="profile-command"></textarea></label>
+                <label class="wide"><span>工作目录</span><input v-model="draft.cwd" @input="markServiceDraftDirty(service.id)" /></label>
+                <label class="wide"><span>Health URL</span><input v-model="draft.health_url" @input="markServiceDraftDirty(service.id)" /></label>
+                <label><span>启动等待秒</span><input v-model.number="draft.startup_wait_sec" type="number" min="0" max="180" step="1" @input="markServiceDraftDirty(service.id)" /></label>
+                <label class="wide"><span>启动命令</span><textarea v-model="draft.command" class="profile-command" @input="markServiceDraftDirty(service.id)"></textarea></label>
               </div>
               <div class="inline-actions">
-                <button class="secondary-action" type="button" @click="services.updateConfig(service)"><Save :size="15" />保存服务</button>
-                <button class="secondary-action" type="button" @click="services.start(service.id)"><Activity :size="15" />启动</button>
-                <button class="secondary-action" type="button" @click="services.stop(service.id)"><X :size="15" />停止</button>
-                <button class="secondary-action" type="button" @click="services.restart(service.id)"><RefreshCw :size="15" />重启</button>
-                <button class="secondary-action" type="button" @click="copyServiceCommand(service.command || '')"><Copy :size="15" />复制命令</button>
+                <button class="secondary-action" type="button" :disabled="serviceSaving[service.id]" @click="saveServiceDraft(service.id)"><Save :size="15" />保存服务</button>
+                <button class="secondary-action" type="button" @click="copyServiceCommand(draft.command || '')"><Copy :size="15" />复制命令</button>
+                <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
               </div>
             </section>
           </div>
-          <div v-if="!services.services.length" class="model-file-empty">未读取到本地服务配置</div>
+          <div v-if="!serviceDraftList.length" class="model-file-empty">
+            {{ settingsHydrating ? "正在读取服务配置..." : "未读取到本地服务配置" }}
+          </div>
         </article>
       </section>
     </div>

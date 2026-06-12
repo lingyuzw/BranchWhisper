@@ -464,19 +464,34 @@
   border: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--primary) 4%), transparent 120px),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--primary) 8%), transparent 132px),
+    linear-gradient(90deg, rgba(255,255,255,0.035), transparent 1px 96%),
     var(--surface);
   box-shadow: var(--shadow-lg);
+}
+
+.settings-section-detached.is-active::before {
+  content: "";
+  position: sticky;
+  z-index: 3;
+  top: -18px;
+  display: block;
+  height: 1px;
+  margin: -18px -18px 0;
+  background: linear-gradient(90deg, transparent, var(--primary), var(--info), transparent);
+  opacity: 0.52;
 }
 
 .settings-section-detached.is-active .panel-head {
   position: sticky;
   z-index: 2;
-  top: -18px;
-  margin: -18px -18px 0;
+  top: -17px;
+  margin: 0 -18px 0;
   padding: 15px 18px 12px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--surface) 86%, var(--primary) 8%), transparent 78%),
+    color-mix(in srgb, var(--surface) 96%, transparent);
   backdrop-filter: blur(10px);
 }
 
@@ -499,7 +514,9 @@
   padding: 10px 12px 10px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--surface) 90%, var(--info) 6%), transparent 72%),
+    color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: var(--shadow-lg);
   backdrop-filter: blur(12px);
 }
@@ -696,6 +713,48 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-muted);
+}
+
+#commands .profile-list {
+  grid-template-columns: 1fr;
+}
+
+.service-config-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 86%, var(--info) 6%), transparent 92px),
+    var(--surface-muted);
+}
+
+.service-config-card.dirty {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  box-shadow: inset 3px 0 0 var(--primary-soft);
+}
+
+.service-config-card .profile-head {
+  align-items: flex-start;
+}
+
+.service-config-card .profile-head > div {
+  min-width: 0;
+}
+
+.service-config-card .profile-head strong,
+.service-config-card .profile-head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-config-card .profile-command {
+  min-height: 210px;
+  border-color: color-mix(in srgb, var(--border) 72%, transparent);
+  color: color-mix(in srgb, var(--text-soft) 92%, var(--primary) 8%);
+  background:
+    linear-gradient(180deg, rgba(117,200,189,0.045), transparent 120px),
+    var(--log-bg);
+  font-family: var(--font-mono);
+  line-height: 1.55;
 }
 
 .tool-provider-overview {
