@@ -387,6 +387,16 @@
   resize: vertical;
 }
 
+.asset-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.asset-detail-grid .wide {
+  grid-column: 1 / -1;
+}
+
 .asset-detail-actions {
   display: flex;
   gap: 8px;
@@ -435,6 +445,9 @@
   }
   .asset-gallery {
     max-height: none;
+  }
+  .asset-detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 

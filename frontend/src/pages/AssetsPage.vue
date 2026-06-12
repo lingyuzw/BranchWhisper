@@ -74,14 +74,20 @@ function toggle(id: string, checked: boolean) {
   <main class="page-view">
     <div class="ops-page assets-page">
       <section class="page-head assets-head">
-        <div><p class="eyebrow">Asset Library</p><h1>素材库</h1><small>表情包上传、识别、审核和微信发送自检都在这里处理。</small></div>
+        <div>
+          <p class="eyebrow">Asset Library</p>
+          <h1>素材库</h1>
+          <small>表情包上传、识别、审核、策略测试和微信发送自检都在这里处理。</small>
+        </div>
         <div class="head-actions">
           <label class="primary-action file-action">
             <ImagePlus :size="17" />
             批量上传
             <input type="file" accept="image/png,image/jpeg,image/webp" multiple @change="onUpload" />
           </label>
-          <button class="secondary-action" type="button"><ScanEye :size="16" /> 识别自检</button>
+          <button class="secondary-action" type="button" :disabled="!selected" @click="assets.runVisionTest(selected?.id)">
+            <ScanEye :size="16" /> 识别自检
+          </button>
           <button class="icon-button" type="button" title="刷新" @click="assets.reload()"><RefreshCw :size="16" /></button>
         </div>
       </section>
@@ -105,6 +111,8 @@ function toggle(id: string, checked: boolean) {
         <div class="asset-progress-track"><span :style="{ width: `${assets.progressPercent}%` }"></span></div>
         <small>失败 {{ assets.progress.failed }} · 正在处理当前任务。</small>
       </section>
+
+      <p v-if="assets.error" class="asset-error">{{ assets.error }}</p>
 
       <section class="asset-workbench">
         <AssetSidebar />

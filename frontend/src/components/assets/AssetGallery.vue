@@ -38,6 +38,7 @@ const emit = defineEmits<{
           <small>{{ item.review_status || "pending" }} · 强度 {{ item.intensity || "-" }}</small>
         </div>
       </article>
+      <div v-if="!stickers.length" class="asset-empty">当前筛选下没有素材</div>
     </div>
     <div v-if="hasMore" class="asset-load-more">
       <button class="secondary-action" type="button" @click="emit('loadMore')">加载更多</button>

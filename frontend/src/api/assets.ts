@@ -105,6 +105,14 @@ export async function updateSticker(stickerId: string, patch: Partial<Sticker>) 
   });
 }
 
+export async function testStickerVision(payload: { sticker_id?: string; data_url?: string }) {
+  return fetchJson<Record<string, unknown>>("/api/stickers/vision-test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function testSticker(text: string, channel = "web", replyText = "") {
   return fetchJson<{ intent: Record<string, unknown>; sticker: Sticker | null; matched_fields?: string[]; stickers_count: number }>(
     "/api/stickers/test",

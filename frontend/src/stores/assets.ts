@@ -6,6 +6,8 @@ import {
   loadStickers,
   reanalyzeSticker,
   testSticker,
+  testStickerVision,
+  updateSticker,
   uploadStickerBatch,
   type Sticker,
   type StickerFilters,
@@ -52,6 +54,8 @@ interface AssetState {
   testText: string;
   testChannel: string;
   testResult: Record<string, unknown> | null;
+  visionTestResult: Record<string, unknown> | null;
+  detailMessage: string;
 }
 
 function initialProgress(): AssetProgress {
@@ -107,9 +111,11 @@ export const useAssetsStore = defineStore("assets", {
     progress: initialProgress(),
     cancelRequested: false,
     config: defaultAssetConfig(),
-    testText: "打一架?",
+    testText: "哈哈哈",
     testChannel: "web",
     testResult: null,
+    visionTestResult: null,
+    detailMessage: "",
   }),
   getters: {
     selected(state) {
@@ -128,7 +134,7 @@ export const useAssetsStore = defineStore("assets", {
       try {
         const data = await loadStickers(this.filters);
         this.stickers = data.stickers || [];
-        if (this.selectedId && !this.stickers.some((item) => item.id === this.selectedId)) {
+        if (!this.selectedId || !this.stickers.some((item) => item.id === this.selectedId)) {
           this.selectedId = this.stickers[0]?.id || "";
         }
       } catch (error) {
@@ -197,6 +203,19 @@ export const useAssetsStore = defineStore("assets", {
         this.progress.active = false;
       }
     },
+    async saveSticker(stickerId: string, patch: Partial<Sticker>) {
+      if (!stickerId) return;
+      this.detailMessage = "正在保存素材...";
+      try {
+        const data = await updateSticker(stickerId, patch);
+        this.stickers = data.stickers || this.stickers;
+        this.selectedId = data.sticker?.id || stickerId;
+        this.detailMessage = "素材已保存";
+      } catch (error) {
+        this.detailMessage = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+        throw error;
+      }
+    },
     async recognize(ids: string[], label = "识别素材") {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
@@ -217,6 +236,28 @@ export const useAssetsStore = defineStore("assets", {
       await this.reload(this.filters);
       this.progress.active = false;
       this.cancelRequested = false;
+    },
+    async reanalyzeOne(id: string) {
+      if (!id) return;
+      this.detailMessage = "正在重新识别...";
+      try {
+        const data = await reanalyzeSticker(id);
+        this.stickers = data.stickers || this.stickers;
+        this.selectedId = data.sticker?.id || id;
+        this.detailMessage = "识别完成";
+      } catch (error) {
+        this.detailMessage = `识别失败：${error instanceof Error ? error.message : String(error)}`;
+      }
+    },
+    async runVisionTest(stickerId = "") {
+      this.detailMessage = "正在自测识别服务...";
+      this.visionTestResult = null;
+      try {
+        this.visionTestResult = await testStickerVision({ sticker_id: stickerId || this.selectedId });
+        this.detailMessage = "识别自测完成";
+      } catch (error) {
+        this.detailMessage = `识别自测失败：${error instanceof Error ? error.message : String(error)}`;
+      }
     },
     cancelProgress() {
       this.cancelRequested = true;
@@ -244,6 +285,7 @@ export const useAssetsStore = defineStore("assets", {
     },
     async approve(ids: string[]) {
       const targets = ids.filter(Boolean);
+      if (!targets.length) return;
       this.progress = { active: true, label: "通过素材", done: 0, total: targets.length, failed: 0 };
       for (const id of targets) {
         const data = await approveSticker(id);
@@ -255,6 +297,7 @@ export const useAssetsStore = defineStore("assets", {
     },
     async remove(ids: string[]) {
       const targets = ids.filter(Boolean);
+      if (!targets.length) return;
       this.progress = { active: true, label: "删除素材", done: 0, total: targets.length, failed: 0 };
       for (const id of targets) {
         const data = await deleteSticker(id);
@@ -266,7 +309,7 @@ export const useAssetsStore = defineStore("assets", {
       this.progress.active = false;
     },
     async runTest() {
-      this.testResult = await testSticker(this.testText || "哈哈哈哈", this.testChannel || "web");
+      this.testResult = await testSticker(this.testText || "哈哈哈", this.testChannel || "web");
     },
   },
 });

@@ -44,13 +44,13 @@ const assets = useAssetsStore();
     </div>
     <div class="asset-test-card">
       <strong>策略测试</strong>
-      <input v-model="assets.testText" type="text" placeholder="哈哈哈哈 / 无语了 / 有点难过" />
+      <input v-model="assets.testText" type="text" placeholder="哈哈哈 / 无语了 / 有点难过" />
       <select v-model="assets.testChannel">
         <option value="web">Web</option>
         <option value="weixin">微信</option>
       </select>
       <button class="secondary-action" type="button" @click="assets.runTest()"><Sparkles :size="16" /> 测试命中</button>
-      <div class="asset-test-result" :class="{ hit: assets.testResult }">{{ assets.testResult ? JSON.stringify(assets.testResult, null, 2) : "等待测试。" }}</div>
+      <pre class="asset-test-result" :class="{ hit: assets.testResult }">{{ assets.testResult ? JSON.stringify(assets.testResult, null, 2) : "等待测试。" }}</pre>
     </div>
   </aside>
 </template>

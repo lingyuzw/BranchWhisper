@@ -20,7 +20,7 @@ function selectAllCurrent() {
   <section class="asset-bulk-bar">
     <div class="asset-bulk-status">
       <strong>{{ assets.selectedIds.length ? `已选择 ${assets.selectedIds.length} 张` : "未选择" }}</strong>
-      <small>批量识别、审核和删除会作用于当前筛选结果或选中素材。</small>
+      <small>批量识别、审核和删除可作用于当前筛选结果或选中素材。</small>
     </div>
     <div class="asset-bulk-actions">
       <button class="secondary-action" type="button" @click="selectAllCurrent"><CheckSquare :size="16" /> 全选当前</button>

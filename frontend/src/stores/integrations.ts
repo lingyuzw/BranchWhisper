@@ -26,6 +26,7 @@ interface IntegrationForm {
   chat_name: string;
   enabled: boolean;
   openclaw_profile: string;
+  bot_profile_id: string;
   reply_mode: string;
   voice_trigger_keywords: string;
 }
@@ -34,6 +35,7 @@ interface IntegrationState {
   items: IntegrationItem[];
   environment: IntegrationEnvironment | null;
   selectedId: string;
+  editingId: string;
   logs: string;
   logScope: string;
   loading: boolean;
@@ -57,6 +59,7 @@ function defaultForm(): IntegrationForm {
     chat_name: "我的微信聊天",
     enabled: true,
     openclaw_profile: "branchwhisper",
+    bot_profile_id: "default",
     reply_mode: "text",
     voice_trigger_keywords: DEFAULT_KEYWORDS.join("\n"),
   };
@@ -70,9 +73,9 @@ function compact(value: unknown, limit = 52) {
 function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker") {
   const target = result.target || {};
   const lines = [
-    `状态：${result.ok ? "接口已接受，请到微信端验证" : "失败"}`,
+    `状态：${result.ok ? "接口已接收，请到微信端验证" : "失败"}`,
     `阶段：${result.stage || "--"}`,
-    `目标：${target.account_id || "--"} → ${target.sender_id || "--"}`,
+    `目标：${target.account_id || "--"} -> ${target.sender_id || "--"}`,
   ];
   if (kind === "voice") {
     if (result.tts_done) lines.push(`TTS：完成 · ${result.tts_ms || 0}ms`);
@@ -97,6 +100,7 @@ export const useIntegrationsStore = defineStore("integrations", {
     items: [],
     environment: null,
     selectedId: "",
+    editingId: "",
     logs: "",
     logScope: "current",
     loading: false,
@@ -107,8 +111,8 @@ export const useIntegrationsStore = defineStore("integrations", {
     loginPollHandle: null,
     form: defaultForm(),
     testText: "你好，测试一下",
-    voiceText: "我在呢，听得到的话我们继续聊。",
-    stickerText: "打一架?",
+    voiceText: "我在，听得到的话我们继续聊。",
+    stickerText: "打一架",
     testResult: "",
     voiceResult: "",
     stickerResult: "",
@@ -145,17 +149,17 @@ export const useIntegrationsStore = defineStore("integrations", {
     },
     select(id: string) {
       this.selectedId = id;
-      const item = this.selected;
-      if (item) this.fillForm(item);
       void this.refreshLogs(true);
     },
     fillForm(item?: IntegrationItem | null) {
-      const target = item ?? this.selected;
+      const target = item || null;
+      this.editingId = target?.id || "";
       this.form = {
-        id: target?.id || "weixin_personal",
+        id: target?.id || `weixin_${Date.now().toString(36)}`,
         chat_name: target?.chat_name || "我的微信聊天",
         enabled: target?.enabled ?? true,
         openclaw_profile: target?.openclaw_profile || "branchwhisper",
+        bot_profile_id: target?.bot_profile_id || "default",
         reply_mode: target?.reply_mode || "text",
         voice_trigger_keywords: (target?.voice_trigger_keywords?.length ? target.voice_trigger_keywords : DEFAULT_KEYWORDS).join("\n"),
       };
@@ -166,16 +170,17 @@ export const useIntegrationsStore = defineStore("integrations", {
         chat_name: this.form.chat_name.trim() || "我的微信聊天",
         enabled: this.form.enabled,
         openclaw_profile: this.form.openclaw_profile.trim() || "branchwhisper",
+        bot_profile_id: this.form.bot_profile_id || "default",
         reply_mode: this.form.reply_mode || "text",
         voice_trigger_keywords: this.form.voice_trigger_keywords
           .split(/\r?\n|[,，]/)
           .map((item) => item.trim())
           .filter(Boolean),
       };
-      const existing = this.items.find((item) => item.id === payload.id);
-      const data = existing ? await updateIntegration(existing.id, payload) : await createIntegration(payload);
+      const data = this.editingId ? await updateIntegration(this.editingId, payload) : await createIntegration(payload);
       this.sync(data);
-      this.selectedId = payload.id;
+      this.selectedId = this.editingId || payload.id;
+      this.editingId = "";
       await this.refreshLogs(true);
     },
     async remove(id: string) {

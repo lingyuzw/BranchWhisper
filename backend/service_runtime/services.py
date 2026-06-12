@@ -14,15 +14,25 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from domain.paths import PROJECT_ROOT
+
+
+WORKSPACE_ROOT = Path(os.environ.get("BRANCHWHISPER_WORKSPACE_ROOT") or PROJECT_ROOT.parent).expanduser().resolve()
+LEGACY_AUTODL_PROJECT = Path("/", "root", "autodl-tmp", "project").as_posix()
+LEGACY_AUTODL_REPO = f"{LEGACY_AUTODL_PROJECT}/BranchWhisper"
+SERVICE_PATH_TOKENS = {
+    "${PROJECT_ROOT}": PROJECT_ROOT.as_posix(),
+    "${WORKSPACE_ROOT}": WORKSPACE_ROOT.as_posix(),
+}
 
 DEFAULT_SERVICE_PROFILES = {
     "asr": {
         "label": "Qwen3-ASR vLLM",
         "description": "Speech recognition service, started by qwen-asr-serve.",
-        "cwd": "/root/autodl-tmp/project",
+        "cwd": "${WORKSPACE_ROOT}",
         "command": (
             "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
-            "/root/miniconda3/bin/conda run --no-capture-output -n qwen3-asr qwen-asr-serve /root/autodl-tmp/project/Qwen3-ASR-1.7B "
+            "conda run --no-capture-output -n qwen3-asr qwen-asr-serve \"${WORKSPACE_ROOT}/Qwen3-ASR-1.7B\" "
             "--served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 2048 --max-num-seqs 1 "
             "--enforce-eager --host 0.0.0.0 --port 8001"
         ),
@@ -33,7 +43,7 @@ DEFAULT_SERVICE_PROFILES = {
     "llm": {
         "label": "llama.cpp Qwen3.5",
         "description": "OpenAI-compatible llama.cpp server for the chat model.",
-        "cwd": "/root/autodl-tmp/project/llama.cpp",
+        "cwd": "${WORKSPACE_ROOT}/llama.cpp",
         "command": (
             "./build-cuda/bin/llama-server -m ./Qwen3.5-9B.Q8_0.gguf --alias qwen3.5-9b "
             "--host 0.0.0.0 --port 8080 -ngl 99 -c 4096 --jinja --reasoning off"
@@ -45,12 +55,12 @@ DEFAULT_SERVICE_PROFILES = {
     "tts": {
         "label": "CosyVoice3 TTS",
         "description": "Trained CosyVoice3 API with internal vLLM acceleration.",
-        "cwd": "/root/autodl-tmp/project/CosyVoice",
+        "cwd": "${WORKSPACE_ROOT}/CosyVoice",
         "command": (
-            "/root/miniconda3/bin/conda run --no-capture-output -n cosyvoice_vllm python -u "
-            "/root/autodl-tmp/project/BranchWhisper/services/tts/trained_tts_server.py "
-            "--repo_dir /root/autodl-tmp/project/CosyVoice "
-            "--model_dir /root/autodl-tmp/project/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B "
+            "conda run --no-capture-output -n cosyvoice_vllm python -u "
+            "\"${PROJECT_ROOT}/services/tts/trained_tts_server.py\" "
+            "--repo_dir \"${WORKSPACE_ROOT}/CosyVoice\" "
+            "--model_dir \"${WORKSPACE_ROOT}/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B\" "
             "--speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000"
         ),
         "health_url": "http://127.0.0.1:50000/health",
@@ -179,11 +189,12 @@ class ServiceManager:
                 return await self.status(service_id)
 
         command = service.get("command", "").strip()
+        command = expand_service_paths(command)
         command = tune_start_command(service_id, command)
         if not command:
             raise ValueError(f"{service_id} command is empty")
 
-        cwd = service.get("cwd") or None
+        cwd = expand_service_paths(service.get("cwd") or "") or None
         if cwd and not Path(cwd).exists():
             raise FileNotFoundError(f"{service_id} cwd does not exist: {cwd}")
 
@@ -363,7 +374,32 @@ def load_service_profiles(config_path: Path | None) -> dict:
         for service_id, service_patch in (data.get("services") or {}).items():
             if service_id in profiles and isinstance(service_patch, dict):
                 profiles[service_id].update(service_patch)
-    return profiles
+    return migrate_legacy_service_paths(profiles)
+
+
+def expand_service_paths(value: str) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    text = text.replace(LEGACY_AUTODL_REPO, PROJECT_ROOT.as_posix())
+    text = text.replace(LEGACY_AUTODL_PROJECT, WORKSPACE_ROOT.as_posix())
+    for token, path in SERVICE_PATH_TOKENS.items():
+        text = text.replace(f"{token}/", f"{path.rstrip('/')}/")
+        text = text.replace(token, path)
+    return text
+
+
+def migrate_legacy_service_paths(profiles: dict) -> dict:
+    def migrate_value(value):
+        if isinstance(value, dict):
+            return {key: migrate_value(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [migrate_value(item) for item in value]
+        if not isinstance(value, str):
+            return value
+        return value.replace(LEGACY_AUTODL_REPO, "${PROJECT_ROOT}").replace(LEGACY_AUTODL_PROJECT, "${WORKSPACE_ROOT}")
+
+    return migrate_value(profiles)
 
 
 def service_runtime_state(

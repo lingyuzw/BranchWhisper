@@ -1,9 +1,78 @@
 <script setup lang="ts">
+import { BadgeCheck, RefreshCw, Save, ScanEye, Trash2 } from "@lucide/vue";
+import { reactive, watch } from "vue";
 import type { Sticker } from "@/api/assets";
+import { useAssetsStore } from "@/stores/assets";
 
-defineProps<{
+const props = defineProps<{
   selected: Sticker | null;
 }>();
+
+const assets = useAssetsStore();
+const form = reactive({
+  name: "",
+  tag: "",
+  emotion: "",
+  review_status: "pending",
+  enabled: false,
+  intensity: 3,
+  tags: "",
+  scene: "",
+  avoid: "",
+  caption: "",
+  ocr_text: "",
+  error: "",
+});
+
+watch(
+  () => props.selected,
+  (selected) => {
+    form.name = selected?.name || "";
+    form.tag = selected?.tag || "";
+    form.emotion = selected?.emotion || "";
+    form.review_status = selected?.review_status || "pending";
+    form.enabled = Boolean(selected?.enabled);
+    form.intensity = Number(selected?.intensity || 3);
+    form.tags = listToText(selected?.tags);
+    form.scene = listToText(selected?.scene);
+    form.avoid = listToText(selected?.avoid);
+    form.caption = selected?.caption || "";
+    form.ocr_text = selected?.ocr_text || "";
+    form.error = selected?.error || "";
+    assets.detailMessage = "";
+    assets.visionTestResult = null;
+  },
+  { immediate: true },
+);
+
+function listToText(value?: string[]) {
+  return (value || []).join("\n");
+}
+
+function textToList(value: string) {
+  return String(value || "")
+    .split(/[\n,，、]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function save() {
+  if (!props.selected?.id) return;
+  await assets.saveSticker(props.selected.id, {
+    name: form.name,
+    tag: form.tag,
+    emotion: form.emotion,
+    review_status: form.review_status,
+    enabled: form.enabled,
+    intensity: Number(form.intensity || 3),
+    tags: textToList(form.tags),
+    scene: textToList(form.scene),
+    avoid: textToList(form.avoid),
+    caption: form.caption,
+    ocr_text: form.ocr_text,
+    error: form.error,
+  });
+}
 </script>
 
 <template>
@@ -16,11 +85,36 @@ defineProps<{
           <small>{{ selected.emotion || selected.tag || "-" }} · {{ selected.review_status || "pending" }}</small>
         </div>
       </div>
-      <label><span>分类</span><input :value="selected.emotion || selected.tag || ''" readonly /></label>
-      <label><span>标签</span><input :value="(selected.tags || []).join('，')" readonly /></label>
-      <label><span>适用场景</span><textarea :value="(selected.scene || []).join('，') || selected.caption || ''" readonly /></label>
-      <label><span>禁用场景</span><textarea :value="(selected.avoid || []).join('，')" readonly /></label>
+
+      <div class="asset-detail-actions">
+        <button class="primary-action" type="button" @click="save"><Save :size="15" />保存</button>
+        <button class="secondary-action" type="button" @click="assets.approve([selected.id])"><BadgeCheck :size="15" />通过</button>
+        <button class="secondary-action" type="button" @click="assets.reanalyzeOne(selected.id)"><RefreshCw :size="15" />重识别</button>
+        <button class="secondary-action" type="button" @click="assets.runVisionTest(selected.id)"><ScanEye :size="15" />自检</button>
+        <button class="secondary-action danger" type="button" @click="assets.remove([selected.id])"><Trash2 :size="15" />删除</button>
+      </div>
+
+      <span v-if="assets.detailMessage" class="asset-config-message">{{ assets.detailMessage }}</span>
+
+      <div class="asset-detail-grid">
+        <label><span>名称</span><input v-model="form.name" /></label>
+        <label><span>主标签</span><input v-model="form.tag" /></label>
+        <label><span>分类</span><input v-model="form.emotion" /></label>
+        <label><span>状态</span><select v-model="form.review_status"><option value="pending">待审核</option><option value="approved">已通过</option><option value="failed">失败</option><option value="disabled">停用</option></select></label>
+        <label><span>启用发送</span><select v-model="form.enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
+        <label><span>强度</span><input v-model.number="form.intensity" type="number" min="1" max="5" step="1" /></label>
+        <label class="wide"><span>标签</span><textarea v-model="form.tags" placeholder="每行一个标签，或用逗号分隔"></textarea></label>
+        <label class="wide"><span>适用场景</span><textarea v-model="form.scene" placeholder="例如：开玩笑、打招呼、安慰"></textarea></label>
+        <label class="wide"><span>避免场景</span><textarea v-model="form.avoid" placeholder="不适合发送的语境"></textarea></label>
+        <label class="wide"><span>说明</span><textarea v-model="form.caption"></textarea></label>
+        <label class="wide"><span>OCR 文本</span><textarea v-model="form.ocr_text"></textarea></label>
+        <label class="wide"><span>错误信息</span><textarea v-model="form.error"></textarea></label>
+      </div>
+
+      <pre v-if="assets.visionTestResult" class="asset-test-result hit">{{ JSON.stringify(assets.visionTestResult, null, 2) }}</pre>
     </template>
-    <template v-else>选择一张素材后，可以复核分类、标签和适用场景。</template>
+    <template v-else>
+      选择一张素材后，可以复核分类、标签、适用场景，并执行保存、审核、重识别和删除。
+    </template>
   </aside>
 </template>
