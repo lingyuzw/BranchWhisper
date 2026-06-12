@@ -1,8 +1,23 @@
 <script setup lang="ts">
 import { Save } from "@lucide/vue";
 import { useAssetsStore } from "@/stores/assets";
+import { useUiStore } from "@/stores/ui";
 
 const assets = useAssetsStore();
+const ui = useUiStore();
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function saveAssetConfig() {
+  try {
+    await assets.saveConfig();
+    ui.success("素材配置已保存");
+  } catch (error) {
+    ui.error(`素材配置保存失败：${errorText(error)}`);
+  }
+}
 </script>
 
 <template>
@@ -68,8 +83,8 @@ const assets = useAssetsStore();
       <span>自定义概率</span>
       <input v-model.number="assets.config.sticker_custom_probability" type="number" min="0" max="1" step="0.05" />
     </label>
-    <button class="secondary-action" type="button" :disabled="assets.configLoading" @click="assets.saveConfig()">
-      <Save :size="16" /> 保存素材配置
+    <button class="secondary-action" type="button" :disabled="assets.configLoading" @click="saveAssetConfig">
+      <Save :size="16" /> {{ assets.configLoading ? "保存中" : "保存素材配置" }}
     </button>
     <small v-if="assets.configMessage" class="asset-config-message">{{ assets.configMessage }}</small>
   </section>

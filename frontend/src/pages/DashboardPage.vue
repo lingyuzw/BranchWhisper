@@ -7,6 +7,7 @@ import ConversationSidebar from "@/components/dashboard/ConversationSidebar.vue"
 import RuntimeMetrics from "@/components/dashboard/RuntimeMetrics.vue";
 import { useAppStore } from "@/stores/app";
 import { useConversationsStore } from "@/stores/conversations";
+import { useUiStore } from "@/stores/ui";
 import { appendMicSamples, createAudioRuntime, schedulePcm16, startMic, stopAssistantAudio, stopMic } from "@/utils/audio";
 import { fileToDataUrl } from "@/utils/files";
 
@@ -14,6 +15,7 @@ type Scope = "recent" | "weixin";
 
 const app = useAppStore();
 const conversations = useConversationsStore();
+const ui = useUiStore();
 const scroller = ref<HTMLElement | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
 const draft = ref("");
@@ -126,33 +128,65 @@ function newConversation() {
 }
 
 async function removeConversation(item: ConversationSummary) {
+  const confirmed = await ui.confirmAction({
+    title: "删除会话",
+    message: `确定删除「${item.title || item.id}」？这会移除该会话记录。`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
   const wasActive = conversations.active?.id === item.id;
-  await conversations.remove(item.id);
-  if (wasActive) newConversation();
+  try {
+    await conversations.remove(item.id);
+    if (wasActive) newConversation();
+    ui.success("会话已删除");
+  } catch (error) {
+    ui.error(`删除会话失败：${errorText(error)}`);
+  }
 }
 
 async function toggleFavorite(item: ConversationSummary) {
-  await updateConversation(item.id, { favorite: !item.favorite });
-  await conversations.reloadList(true);
+  try {
+    await updateConversation(item.id, { favorite: !item.favorite });
+    await conversations.reloadList(true);
+    ui.success(item.favorite ? "已取消收藏" : "已收藏会话", 1800);
+  } catch (error) {
+    ui.error(`更新收藏失败：${errorText(error)}`);
+  }
 }
 
 async function archiveConversation(item: ConversationSummary) {
-  await updateConversation(item.id, { archived: !item.archived });
-  if (conversations.active?.id === item.id) newConversation();
-  await conversations.reloadList(true);
+  try {
+    await updateConversation(item.id, { archived: !item.archived });
+    if (conversations.active?.id === item.id) newConversation();
+    await conversations.reloadList(true);
+    ui.success(item.archived ? "会话已恢复" : "会话已归档", 1800);
+  } catch (error) {
+    ui.error(`更新归档失败：${errorText(error)}`);
+  }
 }
 
 async function renameConversation(item: ConversationSummary) {
   const nextTitle = window.prompt("新的会话名称", item.title || "");
   const title = String(nextTitle || "").trim();
   if (!title || title === item.title) return;
-  await updateConversation(item.id, { title });
-  await conversations.reloadList(true);
-  if (conversations.active?.id === item.id) await conversations.select(item.id, { force: true });
+  try {
+    await updateConversation(item.id, { title });
+    await conversations.reloadList(true);
+    if (conversations.active?.id === item.id) await conversations.select(item.id, { force: true });
+    ui.success("会话已重命名", 1800);
+  } catch (error) {
+    ui.error(`重命名失败：${errorText(error)}`);
+  }
 }
 
 function exportConversation(item: ConversationSummary) {
   window.open(conversationExportUrl(item.id), "_blank");
+  ui.info("正在打开导出文件", 1800);
+}
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function switchScope(scope: Scope) {
@@ -444,12 +478,16 @@ async function handleImageSelected(event: Event) {
   const input = event.target as HTMLInputElement;
   const files = Array.from(input.files || []).filter((file) => file.type.startsWith("image/")).slice(0, 4);
   try {
+    if (!files.length) return;
     for (const file of files) {
       const dataUrl = await fileToDataUrl(file);
       const result = await uploadChatImage(dataUrl);
       pendingAttachments.value.push({ ...result.asset, name: file.name });
     }
     pendingAttachments.value = pendingAttachments.value.slice(-4);
+    ui.success(`已添加 ${files.length} 张图片`);
+  } catch (error) {
+    ui.error(`图片上传失败：${errorText(error)}`);
   } finally {
     input.value = "";
   }

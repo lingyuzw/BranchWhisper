@@ -8,6 +8,7 @@
 }
 
 .memory-workbench {
+  min-width: 0;
   min-height: calc(100vh - var(--topbar-h) - 142px);
   display: grid;
   grid-template-columns: minmax(244px, 260px) minmax(0, 1fr);
@@ -44,6 +45,7 @@
 .memory-side-head small,
 .memory-side-head code {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: var(--text-muted);
   font-size: var(--font-xs);
@@ -55,6 +57,9 @@
   padding: 0;
   background: transparent;
   border: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .memory-stats-grid {
@@ -99,9 +104,11 @@
 }
 .memory-stat-card strong {
   grid-row: span 2;
+  min-width: 0;
   color: var(--primary);
   font-size: calc(24px * var(--ui-font-scale));
   line-height: 1;
+  text-align: right;
 }
 .memory-stat-card small {
   min-width: 0;
@@ -131,7 +138,7 @@
 
 .memory-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -169,6 +176,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
+.memory-add-box .primary-action {
+  min-width: 72px;
+}
 
 .memory-context-strip {
   min-width: 0;
@@ -204,6 +214,7 @@
 }
 
 .memory-list-shell {
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -261,6 +272,7 @@
 }
 .memory-row-actions {
   display: flex;
+  flex: 0 0 auto;
   gap: 6px;
 }
 .memory-row-actions .danger {
@@ -346,6 +358,15 @@
   .memory-pagination {
     display: grid;
     grid-template-columns: 1fr;
+  }
+  .memory-add-box {
+    grid-template-columns: 1fr;
+  }
+  .memory-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .memory-row-actions {
+    justify-content: flex-end;
   }
   .memory-pagination span {
     min-width: 0;

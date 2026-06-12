@@ -94,6 +94,7 @@
 }
 
 .asset-config-strip {
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(6, minmax(128px, 1fr));
   gap: 12px;
@@ -163,6 +164,7 @@
 }
 
 .asset-bulk-bar {
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
   gap: 12px;
@@ -171,6 +173,7 @@
 }
 
 .asset-bulk-status {
+  min-width: 0;
   display: grid;
   gap: 3px;
 }
@@ -187,10 +190,14 @@
 }
 
 .asset-bulk-actions {
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+.asset-bulk-actions .secondary-action {
+  min-width: 0;
 }
 
 .asset-progress-panel {
@@ -241,6 +248,7 @@
 }
 
 .asset-workbench {
+  min-width: 0;
   display: grid;
   grid-template-columns: 260px minmax(360px, 1fr) 370px;
   gap: 14px;
@@ -461,6 +469,10 @@
   flex-wrap: wrap;
   align-items: center;
 }
+.asset-detail-actions .primary-action,
+.asset-detail-actions .secondary-action {
+  flex: 1 1 92px;
+}
 
 .asset-error {
   padding: 10px;
@@ -510,6 +522,9 @@
   }
   .asset-bulk-actions {
     justify-content: flex-start;
+  }
+  .asset-bulk-actions .secondary-action {
+    flex: 1 1 140px;
   }
   .asset-gallery {
     max-height: none;

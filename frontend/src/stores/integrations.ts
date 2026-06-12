@@ -189,10 +189,14 @@ export const useIntegrationsStore = defineStore("integrations", {
       await this.refreshLogs(true);
     },
     async remove(id: string) {
-      if (!window.confirm(`删除接入实例 ${id}？`)) return;
-      this.sync(await deleteIntegration(id));
-      this.selectedId = this.items[0]?.id || "";
-      await this.refreshLogs(true);
+      this.actioning = true;
+      try {
+        this.sync(await deleteIntegration(id));
+        this.selectedId = this.items[0]?.id || "";
+        await this.refreshLogs(true);
+      } finally {
+        this.actioning = false;
+      }
     },
     async ensureIntegrationEnabled(id: string) {
       const item = this.items.find((candidate) => candidate.id === id);
@@ -248,6 +252,7 @@ export const useIntegrationsStore = defineStore("integrations", {
         this.logs = "";
         return;
       }
+      if (!quiet) this.error = "";
       try {
         this.logs = await fetchIntegrationLogs(id, this.logScope);
       } catch (error) {
@@ -257,7 +262,6 @@ export const useIntegrationsStore = defineStore("integrations", {
     async clearLogs() {
       const id = this.selected?.id;
       if (!id) return;
-      if (!window.confirm(`清空 ${id} 的接入日志？`)) return;
       await clearIntegrationLogs(id);
       await this.refreshLogs(true);
     },

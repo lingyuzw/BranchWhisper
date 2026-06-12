@@ -3,12 +3,14 @@ import { BadgeCheck, RefreshCw, Save, Trash2 } from "@lucide/vue";
 import { reactive, watch } from "vue";
 import type { Sticker } from "@/api/assets";
 import { useAssetsStore } from "@/stores/assets";
+import { useUiStore } from "@/stores/ui";
 
 const props = defineProps<{
   selected: Sticker | null;
 }>();
 
 const assets = useAssetsStore();
+const ui = useUiStore();
 const form = reactive({
   name: "",
   tag: "",
@@ -59,21 +61,67 @@ function textToList(value: string) {
 
 async function save() {
   if (!props.selected?.id) return;
-  await assets.saveSticker(props.selected.id, {
-    name: form.name,
-    tag: form.tag,
-    emotion: form.emotion,
-    review_status: form.review_status,
-    enabled: form.enabled,
-    intensity: Number(form.intensity || 3),
-    channels: textToList(form.channels),
-    tags: textToList(form.tags),
-    scene: textToList(form.scene),
-    avoid: textToList(form.avoid),
-    caption: form.caption,
-    ocr_text: form.ocr_text,
-    error: form.error,
+  try {
+    await assets.saveSticker(props.selected.id, {
+      name: form.name,
+      tag: form.tag,
+      emotion: form.emotion,
+      review_status: form.review_status,
+      enabled: form.enabled,
+      intensity: Number(form.intensity || 3),
+      channels: textToList(form.channels),
+      tags: textToList(form.tags),
+      scene: textToList(form.scene),
+      avoid: textToList(form.avoid),
+      caption: form.caption,
+      ocr_text: form.ocr_text,
+      error: form.error,
+    });
+    ui.success("素材详情已保存");
+  } catch (error) {
+    ui.error(`素材保存失败：${errorText(error)}`);
+  }
+}
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function approveSelected() {
+  if (!props.selected?.id) return;
+  try {
+    await assets.approve([props.selected.id]);
+    ui.success("素材已通过审核");
+  } catch (error) {
+    ui.error(`审核失败：${errorText(error)}`);
+  }
+}
+
+async function reanalyzeSelected() {
+  if (!props.selected?.id) return;
+  try {
+    await assets.reanalyzeOne(props.selected.id);
+    ui.success("素材重识别完成");
+  } catch (error) {
+    ui.error(`重识别失败：${errorText(error)}`);
+  }
+}
+
+async function removeSelected() {
+  if (!props.selected?.id) return;
+  const confirmed = await ui.confirmAction({
+    title: "删除素材",
+    message: `确定删除「${props.selected.name || props.selected.id}」？这个操作会移除素材文件。`,
+    confirmText: "删除",
+    tone: "error",
   });
+  if (!confirmed) return;
+  try {
+    await assets.remove([props.selected.id]);
+    ui.success("素材已删除");
+  } catch (error) {
+    ui.error(`删除失败：${errorText(error)}`);
+  }
 }
 
 function confidenceText(value?: number) {
@@ -109,9 +157,9 @@ function formatTime(value?: string) {
 
       <div class="asset-detail-actions">
         <button class="primary-action" type="button" @click="save"><Save :size="15" />保存</button>
-        <button class="secondary-action" type="button" @click="assets.approve([selected.id])"><BadgeCheck :size="15" />通过</button>
-        <button class="secondary-action" type="button" @click="assets.reanalyzeOne(selected.id)"><RefreshCw :size="15" />重识别</button>
-        <button class="secondary-action danger" type="button" @click="assets.remove([selected.id])"><Trash2 :size="15" />删除</button>
+        <button class="secondary-action" type="button" :disabled="assets.progress.active" @click="approveSelected"><BadgeCheck :size="15" />通过</button>
+        <button class="secondary-action" type="button" :disabled="assets.progress.active" @click="reanalyzeSelected"><RefreshCw :size="15" />重识别</button>
+        <button class="secondary-action danger" type="button" :disabled="assets.progress.active" @click="removeSelected"><Trash2 :size="15" />删除</button>
       </div>
 
       <span v-if="assets.detailMessage" class="asset-config-message">{{ assets.detailMessage }}</span>

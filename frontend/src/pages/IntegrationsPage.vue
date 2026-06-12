@@ -20,11 +20,14 @@ import {
 import type { IntegrationItem } from "@/api/integrations";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
+import { useUiStore } from "@/stores/ui";
 
 const integrations = useIntegrationsStore();
 const profiles = useProfilesStore();
+const ui = useUiStore();
 const configOpen = ref(false);
 const actionMessage = ref("");
+const configSaving = ref(false);
 
 const selected = computed(() => integrations.selected);
 
@@ -75,33 +78,141 @@ function openEdit(item: IntegrationItem) {
 }
 
 async function saveConfig() {
-  await integrations.saveForm();
-  configOpen.value = false;
+  configSaving.value = true;
+  try {
+    await integrations.saveForm();
+    configOpen.value = false;
+    showActionMessage("接入配置已保存", "success");
+  } catch (error) {
+    showActionMessage(`接入配置保存失败：${errorText(error)}`, "error");
+  } finally {
+    configSaving.value = false;
+  }
 }
 
-function showActionMessage(message: string) {
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function showActionMessage(message: string, type: "info" | "success" | "warning" | "error" = "info") {
   actionMessage.value = message;
+  ui.toast(message, type);
   window.setTimeout(() => {
     if (actionMessage.value === message) actionMessage.value = "";
   }, 1800);
 }
 
+async function refreshIntegrations() {
+  try {
+    await integrations.reload();
+    if (integrations.error) throw new Error(integrations.error);
+    showActionMessage("接入状态已刷新", "success");
+  } catch (error) {
+    showActionMessage(`刷新失败：${errorText(error)}`, "error");
+  }
+}
+
+async function runIntegration(item: IntegrationItem, action: "install" | "start" | "stop" | "restart") {
+  integrations.selectedId = item.id;
+  const label = { install: "安装适配器", start: "启动接入", stop: "停止接入", restart: "重启接入" }[action];
+  showActionMessage(`${label}中...`);
+  try {
+    await integrations.run(action);
+    showActionMessage(`${label}完成`, "success");
+  } catch (error) {
+    showActionMessage(`${label}失败：${errorText(error)}`, "error");
+  }
+}
+
+async function removeIntegration(item: IntegrationItem) {
+  const confirmed = await ui.confirmAction({
+    title: "删除接入实例",
+    message: `确定删除「${item.chat_name || item.id}」？运行日志和实例配置会一并移除。`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
+  try {
+    await integrations.remove(item.id);
+    showActionMessage("接入实例已删除", "success");
+  } catch (error) {
+    showActionMessage(`删除失败：${errorText(error)}`, "error");
+  }
+}
+
+async function startQrLogin() {
+  showActionMessage("正在创建扫码登录会话...");
+  try {
+    await integrations.startQrLogin(true);
+    showActionMessage("扫码登录会话已创建", "success");
+  } catch (error) {
+    showActionMessage(`扫码登录失败：${errorText(error)}`, "error");
+  }
+}
+
+async function startBridge() {
+  showActionMessage("正在启动桥接...");
+  try {
+    await integrations.startBridge();
+    showActionMessage("桥接启动请求已发送", "success");
+  } catch (error) {
+    showActionMessage(`桥接启动失败：${errorText(error)}`, "error");
+  }
+}
+
+async function pollLogin() {
+  try {
+    await integrations.pollQrLogin(false);
+    showActionMessage("登录状态已更新", "success");
+  } catch (error) {
+    showActionMessage(`登录轮询失败：${errorText(error)}`, "error");
+  }
+}
+
+async function refreshLogs() {
+  try {
+    await integrations.refreshLogs();
+    if (integrations.error) throw new Error(integrations.error);
+    showActionMessage("日志已刷新", "success");
+  } catch (error) {
+    showActionMessage(`日志刷新失败：${errorText(error)}`, "error");
+  }
+}
+
+async function clearLogs() {
+  const id = selected.value?.id;
+  if (!id) return;
+  const confirmed = await ui.confirmAction({
+    title: "清空接入日志",
+    message: `确定清空 ${id} 的接入日志？这个操作不可撤销。`,
+    confirmText: "清空",
+    tone: "warning",
+  });
+  if (!confirmed) return;
+  try {
+    await integrations.clearLogs();
+    showActionMessage("接入日志已清空", "success");
+  } catch (error) {
+    showActionMessage(`清空日志失败：${errorText(error)}`, "error");
+  }
+}
+
 async function copyLogs() {
   if (!integrations.logs.trim()) {
-    showActionMessage("没有可复制日志");
+    showActionMessage("没有可复制日志", "warning");
     return;
   }
   try {
     await navigator.clipboard.writeText(integrations.logs);
-    showActionMessage("日志已复制");
+    showActionMessage("日志已复制", "success");
   } catch {
-    showActionMessage("复制失败");
+    showActionMessage("复制失败", "error");
   }
 }
 
 function downloadLogs() {
   if (!integrations.logs.trim()) {
-    showActionMessage("没有可下载日志");
+    showActionMessage("没有可下载日志", "warning");
     return;
   }
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -112,7 +223,7 @@ function downloadLogs() {
   link.download = `${selected.value?.id || "integration"}-${timestamp}.log`;
   link.click();
   URL.revokeObjectURL(url);
-  showActionMessage("日志已下载");
+  showActionMessage("日志已下载", "success");
 }
 </script>
 
@@ -129,8 +240,8 @@ function downloadLogs() {
           <button class="primary-action" type="button" @click="openNew">
             <Plus :size="16" /> 添加微信个人号
           </button>
-          <button class="secondary-action" type="button" @click="integrations.reload()">
-            <RefreshCw :size="16" /> 刷新
+          <button class="secondary-action" type="button" :disabled="integrations.loading" @click="refreshIntegrations">
+            <RefreshCw :size="16" /> {{ integrations.loading ? "刷新中" : "刷新" }}
           </button>
         </div>
       </section>
@@ -170,16 +281,16 @@ function downloadLogs() {
               <button class="secondary-action" type="button" @click="openEdit(item)">
                 <Edit3 :size="15" /> 编辑
               </button>
-              <button class="secondary-action" type="button" @click="integrations.selectedId = item.id; integrations.run('start')">
-                <Play :size="15" /> 启动
+              <button class="secondary-action" type="button" :disabled="integrations.actioning" @click="runIntegration(item, 'start')">
+                <Play :size="15" /> {{ integrations.actioning && selected?.id === item.id ? "处理中" : "启动" }}
               </button>
-              <button class="secondary-action" type="button" @click="integrations.selectedId = item.id; integrations.run('stop')">
+              <button class="secondary-action" type="button" :disabled="integrations.actioning" @click="runIntegration(item, 'stop')">
                 <Square :size="15" /> 停止
               </button>
-              <button class="secondary-action" type="button" @click="integrations.selectedId = item.id; integrations.run('restart')">
+              <button class="secondary-action" type="button" :disabled="integrations.actioning" @click="runIntegration(item, 'restart')">
                 <RefreshCw :size="15" /> 重启
               </button>
-              <button class="secondary-action danger" type="button" @click="integrations.remove(item.id)">
+              <button class="secondary-action danger" type="button" :disabled="integrations.actioning" @click="removeIntegration(item)">
                 <Trash2 :size="15" /> 删除
               </button>
             </div>
@@ -227,34 +338,34 @@ function downloadLogs() {
               </span>
             </div>
             <div class="inline-actions">
-              <button class="secondary-action" type="button" :disabled="!selected" @click="integrations.startQrLogin(true)">
+              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startQrLogin">
                 <QrCode :size="16" /> 扫码登录
               </button>
-              <button class="secondary-action" type="button" :disabled="!selected" @click="integrations.run('install')">
+              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="selected && runIntegration(selected, 'install')">
                 <PackagePlus :size="16" /> 安装适配器
               </button>
             </div>
             <div class="integration-bridge-row">
               <input v-model="integrations.bridgeUrl" type="text" placeholder="http://127.0.0.1:7860" />
-              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="integrations.startBridge">
+              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startBridge">
                 <Link2 :size="16" /> 启动桥接
               </button>
             </div>
             <div class="integration-bridge-row">
-              <input v-model="integrations.verifyCode" type="text" placeholder="验证码 / verify_code" @keydown.enter="integrations.pollQrLogin(false)" />
-              <button class="secondary-action" type="button" :disabled="!integrations.qrSession" @click="integrations.pollQrLogin(false)">
+              <input v-model="integrations.verifyCode" type="text" placeholder="验证码 / verify_code" @keydown.enter="pollLogin" />
+              <button class="secondary-action" type="button" :disabled="!integrations.qrSession" @click="pollLogin">
                 <RefreshCw :size="16" /> 轮询登录
               </button>
             </div>
             <div class="integration-log-toolbar">
-              <select v-model="integrations.logScope" @change="integrations.refreshLogs()">
+              <select v-model="integrations.logScope" @change="refreshLogs">
                 <option value="current">本次启动</option>
                 <option value="all">全部日志</option>
               </select>
-              <button class="icon-button" type="button" title="刷新日志" @click="integrations.refreshLogs()"><RotateCw :size="16" /></button>
+              <button class="icon-button" type="button" title="刷新日志" @click="refreshLogs"><RotateCw :size="16" /></button>
               <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
               <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
-              <button class="icon-button danger" type="button" title="清空日志" @click="integrations.clearLogs()"><Eraser :size="16" /></button>
+              <button class="icon-button danger" type="button" title="清空日志" @click="clearLogs"><Eraser :size="16" /></button>
             </div>
             <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
             <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
@@ -286,7 +397,7 @@ function downloadLogs() {
           </div>
           <div class="modal-actions">
             <button class="secondary-action" type="button" @click="configOpen = false">取消</button>
-            <button class="primary-action" type="button" @click="saveConfig"><Save :size="16" /> 保存</button>
+            <button class="primary-action" type="button" :disabled="configSaving" @click="saveConfig"><Save :size="16" /> {{ configSaving ? "保存中" : "保存" }}</button>
           </div>
         </section>
       </div>

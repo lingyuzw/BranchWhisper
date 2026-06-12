@@ -199,6 +199,7 @@ export const useAssetsStore = defineStore("assets", {
         if (uploaded.length) await this.recognize(uploaded.map((item) => item.id), "识别新素材");
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
+        throw error;
       } finally {
         this.progress.active = false;
       }
@@ -247,6 +248,7 @@ export const useAssetsStore = defineStore("assets", {
         this.detailMessage = "识别完成";
       } catch (error) {
         this.detailMessage = `识别失败：${error instanceof Error ? error.message : String(error)}`;
+        throw error;
       }
     },
     async runVisionTest(stickerId = "") {
@@ -265,10 +267,6 @@ export const useAssetsStore = defineStore("assets", {
     async bulk(action: "reanalyze" | "approve" | "delete", ids: string[], label: string, includeFiltered = false) {
       const targets = ids.filter(Boolean);
       if (!includeFiltered && !targets.length) return;
-      if (action === "delete") {
-        const scope = includeFiltered ? "当前筛选结果" : `${targets.length} 张选中素材`;
-        if (!window.confirm(`删除${scope}？这个操作会移除素材文件。`)) return;
-      }
       this.progress = { active: true, label, done: 0, total: includeFiltered ? this.stickers.length || 1 : targets.length, failed: 0 };
       try {
         const data = await bulkStickerAction({ action, ids: targets, include_filtered: includeFiltered, filters: this.filters });
@@ -282,6 +280,7 @@ export const useAssetsStore = defineStore("assets", {
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
         this.progress.failed += 1;
+        throw error;
       } finally {
         await this.reload(this.filters);
         this.progress.active = false;
@@ -291,27 +290,40 @@ export const useAssetsStore = defineStore("assets", {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
       this.progress = { active: true, label: "通过素材", done: 0, total: targets.length, failed: 0 };
-      for (const id of targets) {
-        const data = await approveSticker(id);
-        this.stickers = data.stickers || this.stickers;
-        this.progress.done += 1;
+      try {
+        for (const id of targets) {
+          const data = await approveSticker(id);
+          this.stickers = data.stickers || this.stickers;
+          this.progress.done += 1;
+        }
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : String(error);
+        this.progress.failed += 1;
+        throw error;
+      } finally {
+        await this.reload(this.filters);
+        this.progress.active = false;
       }
-      await this.reload(this.filters);
-      this.progress.active = false;
     },
     async remove(ids: string[]) {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
-      if (!window.confirm(`删除 ${targets.length} 张素材？这个操作会移除素材文件。`)) return;
       this.progress = { active: true, label: "删除素材", done: 0, total: targets.length, failed: 0 };
-      for (const id of targets) {
-        const data = await deleteSticker(id);
-        this.stickers = data.stickers || this.stickers;
-        this.progress.done += 1;
+      try {
+        for (const id of targets) {
+          const data = await deleteSticker(id);
+          this.stickers = data.stickers || this.stickers;
+          this.progress.done += 1;
+        }
+        this.selectedIds = [];
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : String(error);
+        this.progress.failed += 1;
+        throw error;
+      } finally {
+        await this.reload(this.filters);
+        this.progress.active = false;
       }
-      this.selectedIds = [];
-      await this.reload(this.filters);
-      this.progress.active = false;
     },
     async runTest() {
       this.testResult = await testSticker(this.testText || "哈哈哈", this.testChannel || "web");

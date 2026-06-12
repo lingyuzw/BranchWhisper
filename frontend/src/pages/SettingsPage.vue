@@ -258,6 +258,69 @@ async function openServices() {
   await router.push({ name: "services" });
 }
 
+async function addProfile() {
+  try {
+    await profiles.add(String(form.system || ""));
+    announceSettings("人格已新增", "success");
+  } catch (error) {
+    announceSettings(`新增人格失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
+async function removeProfile(profileId: string, profileName?: string) {
+  const confirmed = await ui.confirmAction({
+    title: "删除人格",
+    message: `确定删除「${profileName || profileId}」？默认人格不会被删除。`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
+  try {
+    await profiles.remove(profileId);
+    announceSettings("人格已删除", "success");
+  } catch (error) {
+    announceSettings(`删除人格失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
+async function createReminder() {
+  if (!engagement.reminderTitle.trim() || !engagement.reminderDueAt.trim()) {
+    announceSettings("请填写提醒标题和时间", "warning");
+    return;
+  }
+  try {
+    await engagement.createReminder();
+    announceSettings("提醒已添加", "success");
+  } catch (error) {
+    announceSettings(`添加提醒失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
+async function removeReminder(reminderId: string, title?: string) {
+  const confirmed = await ui.confirmAction({
+    title: "删除提醒",
+    message: `确定删除提醒「${title || reminderId}」？`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
+  try {
+    await engagement.removeReminder(reminderId);
+    announceSettings("提醒已删除", "success");
+  } catch (error) {
+    announceSettings(`删除提醒失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
+async function dismissEvent(eventId: string) {
+  try {
+    await engagement.dismissEvent(eventId);
+    announceSettings("主动事件已忽略", "success");
+  } catch (error) {
+    announceSettings(`忽略事件失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
 function setMode(mode: "local" | "api") {
   form.dialog_mode = mode;
 }
@@ -1002,7 +1065,7 @@ function formatTime(value?: string) {
                   <option value="web">Web</option>
                   <option value="weixin">微信</option>
                 </select>
-                <button class="primary-action" type="button" @click="engagement.createReminder"><AlarmPlus :size="15" />添加</button>
+                <button class="primary-action" type="button" @click="createReminder"><AlarmPlus :size="15" />添加</button>
               </div>
               <div class="reminder-list">
                 <article v-for="reminder in pendingReminders" :key="reminder.id" class="reminder-item">
@@ -1010,7 +1073,7 @@ function formatTime(value?: string) {
                     <strong>{{ reminder.title }}</strong>
                     <small>{{ formatTime(reminder.due_at) }} · {{ reminder.channel || "web" }}</small>
                   </div>
-                  <button class="icon-button" type="button" title="删除提醒" @click="engagement.removeReminder(reminder.id)"><Trash2 :size="15" /></button>
+                  <button class="icon-button" type="button" title="删除提醒" @click="removeReminder(reminder.id, reminder.title)"><Trash2 :size="15" /></button>
                 </article>
                 <div v-if="!pendingReminders.length" class="model-file-empty">暂无待触发提醒</div>
               </div>
@@ -1025,7 +1088,7 @@ function formatTime(value?: string) {
                     <span>{{ event.content || event.last_error || "--" }}</span>
                     <small>{{ formatTime(event.created_at) }} · {{ event.channel || "web" }} · {{ event.status || "pending" }}</small>
                   </div>
-                  <button class="icon-button" type="button" title="忽略事件" @click="engagement.dismissEvent(event.id)"><X :size="15" /></button>
+                  <button class="icon-button" type="button" title="忽略事件" @click="dismissEvent(event.id)"><X :size="15" /></button>
                 </article>
                 <div v-if="!recentEvents.length" class="model-file-empty">暂无主动事件</div>
               </div>
@@ -1036,7 +1099,7 @@ function formatTime(value?: string) {
         <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'botProfiles' }" id="botProfiles">
           <div class="panel-head">
             <div><p class="eyebrow">Bot Profiles</p><h2>Bot 人格</h2></div>
-            <button class="secondary-action" type="button" @click="profiles.add(String(form.system || ''))"><Plus :size="15" />新增人格</button>
+            <button class="secondary-action" type="button" @click="addProfile"><Plus :size="15" />新增人格</button>
           </div>
           <div class="bot-profile-list">
             <article v-for="profile in profiles.profiles" :key="profile.id" class="bot-profile-card">
@@ -1052,7 +1115,7 @@ function formatTime(value?: string) {
                 <label class="wide"><span>System Prompt</span><textarea v-model="profile.system" class="bot-system"></textarea></label>
               </div>
               <div class="inline-actions">
-                <button class="secondary-action" type="button" :disabled="profile.id === 'default'" @click="profiles.remove(profile.id)"><Trash2 :size="15" />删除</button>
+                <button class="secondary-action" type="button" :disabled="profile.id === 'default'" @click="removeProfile(profile.id, profile.name)"><Trash2 :size="15" />删除</button>
               </div>
             </article>
           </div>

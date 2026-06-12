@@ -7,8 +7,10 @@ import AssetDetailPanel from "@/components/assets/AssetDetailPanel.vue";
 import AssetGallery from "@/components/assets/AssetGallery.vue";
 import AssetSidebar from "@/components/assets/AssetSidebar.vue";
 import { useAssetsStore } from "@/stores/assets";
+import { useUiStore } from "@/stores/ui";
 
 const assets = useAssetsStore();
+const ui = useUiStore();
 
 const selected = computed(() => assets.selected);
 const visibleLimit = ref(36);
@@ -51,17 +53,40 @@ function readFile(file: File): Promise<{ name: string; data_url: string }> {
 
 async function uploadFiles(files: File[]) {
   const accepted = files.filter((file) => /image\/(png|jpe?g|webp)/i.test(file.type));
-  if (!accepted.length) return;
+  if (!accepted.length) {
+    if (files.length) ui.warning("只支持 PNG / JPG / WebP 图片");
+    return;
+  }
   assets.progress = { active: true, label: "读取文件", done: 0, total: accepted.length, failed: 0 };
   const payload = [];
-  for (const file of accepted) {
-    try {
-      payload.push(await readFile(file));
-    } finally {
-      assets.progress.done += 1;
+  try {
+    for (const file of accepted) {
+      try {
+        payload.push(await readFile(file));
+      } finally {
+        assets.progress.done += 1;
+      }
     }
+    await assets.upload(payload);
+    ui.success(`已导入 ${accepted.length} 张素材`);
+  } catch (error) {
+    assets.progress.active = false;
+    ui.error(`素材上传失败：${errorText(error)}`);
   }
-  await assets.upload(payload);
+}
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function refreshAssets() {
+  try {
+    await assets.reload();
+    if (assets.error) throw new Error(assets.error);
+    ui.success("素材库已刷新", 1800);
+  } catch (error) {
+    ui.error(`刷新失败：${errorText(error)}`);
+  }
 }
 
 async function onUpload(event: Event) {
@@ -103,7 +128,7 @@ function toggle(id: string, checked: boolean) {
           <small>表情包上传、识别、审核和发送策略配置在这里处理；链路检测已集中到检测中心。</small>
         </div>
         <div class="head-actions">
-          <button class="icon-button" type="button" title="刷新" @click="assets.reload()"><RefreshCw :size="16" /></button>
+          <button class="icon-button" type="button" title="刷新" :disabled="assets.loading" @click="refreshAssets"><RefreshCw :size="16" /></button>
         </div>
       </section>
 
