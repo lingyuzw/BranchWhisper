@@ -2,6 +2,7 @@
 import { Copy, Download, Pause, RotateCw, Trash2 } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
 import type { ServiceSummary } from "@/api/services";
+import { useUiStore, type ToastKind } from "@/stores/ui";
 
 const props = defineProps<{
   services: ServiceSummary[];
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 const logBox = ref<HTMLElement | null>(null);
 const actionMessage = ref("");
+const ui = useUiStore();
 const selectedService = computed(() => props.services.find((service) => service.id === props.selectedId) || null);
 const logSections = computed(() => splitLogSections(props.logs));
 
@@ -32,8 +34,9 @@ watch(
   },
 );
 
-function setActionMessage(message: string) {
+function setActionMessage(message: string, type: ToastKind = "info") {
   actionMessage.value = message;
+  ui.toast(message, type);
   window.setTimeout(() => {
     if (actionMessage.value === message) actionMessage.value = "";
   }, 1800);
@@ -42,21 +45,21 @@ function setActionMessage(message: string) {
 async function copyLogs() {
   const text = props.logs || "";
   if (!text.trim()) {
-    setActionMessage("没有可复制日志");
+    setActionMessage("没有可复制日志", "warning");
     return;
   }
   try {
     await navigator.clipboard.writeText(text);
-    setActionMessage("日志已复制");
+    setActionMessage("日志已复制", "success");
   } catch {
-    setActionMessage("复制失败");
+    setActionMessage("复制失败", "error");
   }
 }
 
 function downloadLogs() {
   const text = props.logs || "";
   if (!text.trim()) {
-    setActionMessage("没有可下载日志");
+    setActionMessage("没有可下载日志", "warning");
     return;
   }
   const id = selectedService.value?.id || props.selectedId || "service";
@@ -68,7 +71,7 @@ function downloadLogs() {
   link.download = `${id}-${timestamp}.log`;
   link.click();
   URL.revokeObjectURL(url);
-  setActionMessage("日志已下载");
+  setActionMessage("日志已下载", "success");
 }
 
 function splitLogSections(text: string) {

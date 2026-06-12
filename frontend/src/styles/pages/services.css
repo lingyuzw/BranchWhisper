@@ -288,3 +288,99 @@
   color: color-mix(in srgb, var(--danger) 86%, var(--text) 14%);
   background: var(--danger-soft);
 }
+
+.service-details {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-muted) 88%, transparent);
+  overflow: hidden;
+}
+.service-details summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  color: var(--text-soft);
+  font-size: var(--font-xs);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.service-details summary::-webkit-details-marker { display: none; }
+.service-details summary::after {
+  content: "+";
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.service-details[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+.service-details[open] summary::after { content: "-"; }
+.service-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+.service-detail-row {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.service-detail-row.wide { grid-column: 1 / -1; }
+.service-detail-row span,
+.service-command-detail span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
+.service-detail-row strong {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.service-detail-row.mono strong {
+  font-family: var(--font-mono);
+}
+.service-detail-row.failed {
+  border-color: rgba(231,104,104,0.25);
+  background: var(--danger-soft);
+}
+.service-detail-row.failed strong { color: var(--danger); }
+.service-command-detail {
+  display: grid;
+  gap: 5px;
+  padding: 0 8px 8px;
+}
+.service-command-detail pre {
+  max-height: 150px;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  background: var(--log-bg);
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .service-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .service-action { justify-content: center; min-width: 0; padding-inline: 6px; }
+  .service-detail-grid { grid-template-columns: 1fr; }
+}

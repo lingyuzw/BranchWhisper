@@ -24,6 +24,8 @@ SERVICE_PATH_TOKENS = {
     "${PROJECT_ROOT}": PROJECT_ROOT.as_posix(),
     "${WORKSPACE_ROOT}": WORKSPACE_ROOT.as_posix(),
 }
+SERVICE_HEALTH_TIMEOUT_SEC = 0.8
+SERVICE_PORT_TIMEOUT_SEC = 0.15
 
 DEFAULT_SERVICE_PROFILES = {
     "asr": {
@@ -115,7 +117,34 @@ class ServiceManager:
         self.config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     async def status_all(self) -> list[dict]:
-        return [await self.status(service_id) for service_id in self.services]
+        service_ids = list(self.services)
+        results = await asyncio.gather(
+            *(self.status(service_id) for service_id in service_ids),
+            return_exceptions=True,
+        )
+        statuses: list[dict] = []
+        for service_id, result in zip(service_ids, results):
+            if isinstance(result, Exception):
+                service = self.services.get(service_id, {})
+                statuses.append(
+                    {
+                        "id": service_id,
+                        **service,
+                        "running": False,
+                        "state": "failed",
+                        "error": friendly_service_error(str(result)),
+                        "external": False,
+                        "port_open": False,
+                        "pid": None,
+                        "returncode": None,
+                        "started_at": self.started_at.get(service_id),
+                        "log_file": str(self.log_files.get(service_id) or self.log_dir / f"{service_id}.log"),
+                        "health": None,
+                    }
+                )
+                continue
+            statuses.append(result)
+        return statuses
 
     async def status(self, service_id: str) -> dict:
         if service_id not in self.services:
@@ -124,7 +153,8 @@ class ServiceManager:
         service = self.services[service_id]
         process = self.processes.get(service_id)
         health_url = service.get("health_url", "")
-        health = await check_service(service_id, health_url) if health_url else None
+        health_task = check_service(service_id, health_url) if health_url else _none_async()
+        port_task = asyncio.to_thread(is_tcp_port_open, health_url) if health_url else _false_async()
         tracked_running = False
         tracked_pid = getattr(process, "pid", None) if process else None
         if process is not None:
@@ -132,7 +162,7 @@ class ServiceManager:
         if not tracked_running:
             tracked_pid = tracked_pid or self._read_service_pid(service_id)
             tracked_running = bool(tracked_pid and _is_pid_alive(tracked_pid))
-        port_open = is_tcp_port_open(health_url)
+        health, port_open = await asyncio.gather(health_task, port_task)
         external_running = bool(health and health.get("ok")) or port_open
         running = tracked_running or external_running
         returncode = None if running or process is None else _safe_poll(process)
@@ -143,6 +173,11 @@ class ServiceManager:
             port_open=port_open,
             returncode=returncode,
         )
+        if runtime_state == "failed" and not running and not port_open and returncode is None:
+            runtime_state = "stopped"
+        runtime_error = service_runtime_error(health, returncode, self.latest_log_error(service_id))
+        if runtime_state == "stopped":
+            runtime_error = ""
 
         if (tracked_running or external_running) and process is None:
             tracked_pid = tracked_pid or self._read_service_pid(service_id)
@@ -157,13 +192,13 @@ class ServiceManager:
             **service,
             "running": running,
             "state": runtime_state,
-            "error": service_runtime_error(health, returncode, self.latest_log_error(service_id)),
+            "error": runtime_error,
             "external": external_running and not tracked_running,
             "port_open": port_open,
             "pid": tracked_pid if tracked_running else None,
             "returncode": returncode,
             "started_at": self.started_at.get(service_id),
-            "log_file": str(self.log_files.get(service_id, "")),
+            "log_file": str(self.log_files.get(service_id) or self.log_dir / f"{service_id}.log"),
             "health": health,
         }
 
@@ -241,13 +276,7 @@ class ServiceManager:
         if process is not None and _safe_poll(process) is None:
             await asyncio.to_thread(self._terminate_process, process)
         elif pid and _is_pid_alive(pid):
-            try:
-                if platform.system() == "Windows":
-                    os.kill(pid, signal.SIGTERM)
-                else:
-                    os.killpg(pid, signal.SIGTERM)
-            except OSError:
-                pass
+            await asyncio.to_thread(self._terminate_pid, pid)
 
         try:
             self._pid_file(service_id).unlink()
@@ -325,28 +354,54 @@ class ServiceManager:
 
     def _terminate_process(self, process: subprocess.Popen) -> None:
         pid = process.pid
-        for sig in (signal.SIGTERM, signal.SIGKILL):
-            try:
-                if platform.system() == "Windows":
-                    os.kill(pid, sig)
-                else:
-                    os.killpg(pid, sig)
-            except OSError:
-                continue
-            for _ in range(80):
-                if not _is_pid_alive(pid):
-                    if hasattr(process, "returncode"):
-                        try:
-                            process.returncode = process.returncode or -15
-                        except AttributeError:
-                            pass
-                    return
-                time.sleep(0.1)
+        self._terminate_pid(pid)
         if hasattr(process, "returncode"):
             try:
                 process.returncode = process.returncode or -15
             except AttributeError:
                 pass
+
+    def _terminate_pid(self, pid: int) -> None:
+        if platform.system() == "Windows":
+            self._terminate_windows_process_tree(pid)
+            return
+        self._terminate_posix_process_group(pid)
+
+    def _terminate_windows_process_tree(self, pid: int) -> None:
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=4,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+        self._wait_pid_exit(pid, timeout_sec=3.0)
+
+    def _terminate_posix_process_group(self, pid: int) -> None:
+        for sig, timeout_sec in ((signal.SIGTERM, 2.0), (signal.SIGKILL, 1.5)):
+            try:
+                os.killpg(pid, sig)
+            except OSError:
+                try:
+                    os.kill(pid, sig)
+                except OSError:
+                    return
+            if self._wait_pid_exit(pid, timeout_sec=timeout_sec):
+                return
+
+    def _wait_pid_exit(self, pid: int, *, timeout_sec: float) -> bool:
+        deadline = time.time() + max(0.0, timeout_sec)
+        while time.time() < deadline:
+            if not _is_pid_alive(pid):
+                return True
+            time.sleep(0.1)
+        return not _is_pid_alive(pid)
 
     def _pid_file(self, service_id: str) -> Path:
         return self.log_dir / f"{service_id}.pid"
@@ -417,20 +472,25 @@ def service_runtime_state(
     model_status = str(payload.get("status") or "").lower()
     ready = payload.get("ready")
 
+    if returncode is not None:
+        return "failed"
     if model_status in {"loading", "warming", "starting"}:
         return "warming" if model_status == "warming" else "starting"
     if ready is False:
         return "starting"
-    if model_status == "error":
+    if model_status in {"error", "failed"}:
         return "failed"
     if health and health.get("ok"):
         return "ready"
-    if health and health.get("ok") is False and not port_open:
-        return "failed"
+    if health and health.get("ok") is False:
+        status = health.get("status")
+        if isinstance(status, int) and status >= 500 and (running or tracked_running or port_open):
+            return "failed"
+        if running or tracked_running or port_open:
+            return "starting"
+        return "stopped"
     if running or tracked_running or port_open:
         return "starting"
-    if returncode is not None:
-        return "failed"
     return "stopped"
 
 
@@ -567,7 +627,8 @@ def normalize_conda_env_threads(command: str) -> str:
 async def check_service(name: str, url: str) -> dict:
     started = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=1.5) as client:
+        timeout = httpx.Timeout(SERVICE_HEALTH_TIMEOUT_SEC, connect=0.3, pool=0.3)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url)
         payload = {}
         try:
@@ -583,7 +644,21 @@ async def check_service(name: str, url: str) -> dict:
             "payload": payload if isinstance(payload, dict) else {},
         }
     except Exception as exc:
-        return {"name": name, "ok": False, "error": str(exc), "url": url}
+        return {
+            "name": name,
+            "ok": False,
+            "error": str(exc),
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+            "url": url,
+        }
+
+
+async def _none_async() -> None:
+    return None
+
+
+async def _false_async() -> bool:
+    return False
 
 
 def health_url_from(url: str) -> str:
@@ -591,7 +666,7 @@ def health_url_from(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, "/health", "", ""))
 
 
-def is_tcp_port_open(url: str) -> bool:
+def is_tcp_port_open(url: str, timeout: float = SERVICE_PORT_TIMEOUT_SEC) -> bool:
     if not url:
         return False
     parts = urlsplit(url)
@@ -600,7 +675,7 @@ def is_tcp_port_open(url: str) -> bool:
     if not host or not port:
         return False
     try:
-        with socket.create_connection((host, port), timeout=0.35):
+        with socket.create_connection((host, port), timeout=timeout):
             return True
     except OSError:
         return False

@@ -36,6 +36,7 @@ import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } fro
 import { useEngagementStore } from "@/stores/engagement";
 import { useProfilesStore } from "@/stores/profiles";
 import { useServicesStore } from "@/stores/services";
+import { useUiStore, type ToastKind } from "@/stores/ui";
 import { fileToDataUrl } from "@/utils/files";
 
 const app = useAppStore();
@@ -44,6 +45,7 @@ const tools = useToolsStore();
 const engagement = useEngagementStore();
 const profiles = useProfilesStore();
 const services = useServicesStore();
+const ui = useUiStore();
 const form = reactive<Partial<PublicConfig>>({});
 const userAvatarInput = ref<HTMLInputElement | null>(null);
 const assistantAvatarInput = ref<HTMLInputElement | null>(null);
@@ -57,6 +59,7 @@ const modelFileError = ref("");
 const modelFilePath = ref("");
 const settingsMessage = ref("");
 const settingsHydrating = ref(false);
+const settingsSaving = ref(false);
 interface ServiceDraft {
   id: string;
   cwd: string;
@@ -205,22 +208,38 @@ watch(
   { immediate: true, deep: true },
 );
 
+function announceSettings(message: string, type: ToastKind = "info", timeoutMs?: number) {
+  settingsMessage.value = message;
+  ui.toast(message, type, timeoutMs);
+}
+
 async function saveAll() {
+  if (settingsSaving.value) {
+    ui.info("正在保存中，请稍候", 1200);
+    return;
+  }
+  if (Object.values(serviceSaving).some(Boolean)) {
+    announceSettings("服务参数正在保存，请稍后再应用全部配置", "warning");
+    return;
+  }
+  settingsSaving.value = true;
+  settingsMessage.value = "正在保存配置...";
+  ui.info("正在保存配置...", 1600);
   try {
-    settingsMessage.value = "正在保存配置...";
     syncModelFileToServiceCommand();
     await app.saveConfig({ ...form });
     await tools.save();
     await engagement.save();
     await profiles.saveAll();
     await Promise.all(Object.keys(serviceDrafts).map((serviceId) => saveServiceDraft(serviceId, true)));
-    await Promise.allSettled([tools.reload(), engagement.reload(), profiles.reload(), services.reload(true)]);
+    await Promise.allSettled([tools.reload(), engagement.reload(), profiles.reload()]);
     syncServiceDrafts({ force: true });
     syncModelFilePath();
-    settingsMessage.value = "配置已应用";
+    announceSettings("配置已保存并应用", "success");
   } catch (error) {
-    settingsMessage.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
-    throw error;
+    announceSettings(`保存失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  } finally {
+    settingsSaving.value = false;
   }
 }
 
@@ -277,12 +296,17 @@ async function handleAvatarSelected(event: Event, target: "user" | "assistant") 
   const file = Array.from(input.files || []).find((item) => item.type.startsWith("image/"));
   input.value = "";
   if (!file) return;
-  const dataUrl = await fileToDataUrl(file);
-  const result = await uploadAvatar(dataUrl);
-  const url = result.asset.url || "";
-  if (target === "user") form.web_user_avatar_url = url;
-  else form.web_assistant_avatar_url = url;
-  await saveAll();
+  try {
+    announceSettings("正在上传头像...", "info", 1600);
+    const dataUrl = await fileToDataUrl(file);
+    const result = await uploadAvatar(dataUrl);
+    const url = result.asset.url || "";
+    if (target === "user") form.web_user_avatar_url = url;
+    else form.web_assistant_avatar_url = url;
+    await saveAll();
+  } catch (error) {
+    announceSettings(`头像上传失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
 }
 
 async function clearAvatar(target: "user" | "assistant") {
@@ -417,25 +441,32 @@ function serviceRuntimeLabel(service: ServiceSummary) {
 async function saveServiceDraft(serviceId: string, quiet = false) {
   const draft = serviceDrafts[serviceId];
   if (!draft) return;
+  if (serviceSaving[serviceId]) return;
   serviceSaving[serviceId] = true;
-  if (!quiet) settingsMessage.value = `正在保存 ${serviceId} 服务参数...`;
+  if (!quiet) {
+    settingsMessage.value = `正在保存 ${serviceId} 服务参数...`;
+    ui.info(`正在保存 ${serviceId} 服务参数...`, 1600);
+  }
   try {
-    await services.updateConfig({
+    const savedService = await services.updateConfig({
       id: draft.id,
       cwd: draft.cwd,
       health_url: draft.health_url,
       startup_wait_sec: Number(draft.startup_wait_sec || 0),
       command: draft.command,
-      label: "",
     } as ServiceSummary);
     serviceDraftDirty[serviceId] = false;
+    if (savedService) {
+      serviceDrafts[serviceId] = makeServiceDraft(savedService);
+      serviceDraftDirty[serviceId] = false;
+    }
     if (!quiet) {
-      await services.reload(true);
-      syncServiceDrafts();
-      settingsMessage.value = `${serviceId} 服务参数已保存`;
+      announceSettings(`${serviceId} 服务参数已保存`, "success");
     }
   } catch (error) {
-    settingsMessage.value = `保存 ${serviceId} 失败：${error instanceof Error ? error.message : String(error)}`;
+    if (!quiet) {
+      announceSettings(`保存 ${serviceId} 失败：${error instanceof Error ? error.message : String(error)}`, "error");
+    }
     throw error;
   } finally {
     serviceSaving[serviceId] = false;
@@ -470,18 +501,19 @@ function chooseModelFile(entry: ModelFileEntry) {
   modelFilePath.value = entry.path;
   syncModelFileToServiceCommand();
   modelFileModalOpen.value = false;
+  announceSettings("模型文件已写入 LLM 启动参数，记得保存配置", "success");
 }
 
 async function copyServiceCommand(command = "") {
   if (!command.trim()) {
-    settingsMessage.value = "没有可复制的启动命令";
+    announceSettings("没有可复制的启动命令", "warning");
     return;
   }
   try {
     await navigator.clipboard.writeText(command);
-    settingsMessage.value = "启动命令已复制";
+    announceSettings("启动命令已复制", "success");
   } catch {
-    settingsMessage.value = "复制启动命令失败";
+    announceSettings("复制启动命令失败", "error");
   }
 }
 
@@ -549,8 +581,8 @@ function formatTime(value?: string) {
           <component :is="section.icon" :size="16" />
           <span>{{ section.title }}</span>
         </button>
-        <button class="primary-action full settings-save-main" type="button" @click="saveAll">
-          <Save :size="16" /> 应用全部配置
+        <button class="primary-action full settings-save-main" type="button" :disabled="settingsSaving" @click="saveAll">
+          <Save :size="16" /> {{ settingsSaving ? "保存中..." : "应用全部配置" }}
         </button>
       </aside>
 
@@ -569,8 +601,8 @@ function formatTime(value?: string) {
             <button class="secondary-action" type="button" @click="openAssets">
               <Library :size="16" /> 素材库
             </button>
-            <button class="primary-action" type="button" @click="saveAll">
-              <Save :size="16" /> 保存当前配置
+            <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll">
+              <Save :size="16" /> {{ settingsSaving ? "保存中..." : "保存当前配置" }}
             </button>
           </div>
         </section>
@@ -1081,7 +1113,7 @@ function formatTime(value?: string) {
                 <label class="wide"><span>启动命令</span><textarea v-model="draft.command" class="profile-command" @input="markServiceDraftDirty(service.id)"></textarea></label>
               </div>
               <div class="inline-actions">
-                <button class="secondary-action" type="button" :disabled="serviceSaving[service.id]" @click="saveServiceDraft(service.id)"><Save :size="15" />保存服务</button>
+                <button class="secondary-action" type="button" :disabled="serviceSaving[service.id] || settingsSaving" @click="saveServiceDraft(service.id)"><Save :size="15" />{{ serviceSaving[service.id] ? "保存中..." : "保存服务" }}</button>
                 <button class="secondary-action" type="button" @click="copyServiceCommand(draft.command || '')"><Copy :size="15" />复制命令</button>
                 <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
               </div>
@@ -1101,7 +1133,7 @@ function formatTime(value?: string) {
           <strong>{{ activeSettingsCard?.title }}</strong>
         </div>
         <span class="soft-badge">{{ activeSettingsCard?.status }}</span>
-        <button class="primary-action" type="button" @click="saveAll"><Save :size="15" />保存配置</button>
+        <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll"><Save :size="15" />{{ settingsSaving ? "保存中..." : "保存配置" }}</button>
         <button class="icon-button modal-close" type="button" title="关闭配置面板" @click="closeSettingsSection"><X :size="16" /></button>
       </div>
     </div>

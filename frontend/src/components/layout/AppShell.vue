@@ -2,6 +2,7 @@
 import { Activity, Bot, Brain, ClipboardCheck, Library, MessagesSquare, Settings2 } from "@lucide/vue";
 import { onMounted, watchEffect } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
+import FeedbackLayer from "@/components/layout/FeedbackLayer.vue";
 import { useAppStore } from "@/stores/app";
 
 const app = useAppStore();
@@ -53,5 +54,6 @@ watchEffect(() => {
     </header>
 
     <RouterView />
+    <FeedbackLayer />
   </div>
 </template>

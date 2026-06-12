@@ -29,24 +29,31 @@ export interface ServicesResponse {
   resources?: unknown;
 }
 
+export interface ServiceActionResponse {
+  ok?: boolean;
+  service?: ServiceSummary;
+  services?: ServiceSummary[];
+  message?: string;
+}
+
 export async function loadServices(): Promise<ServicesResponse> {
   return fetchJson<ServicesResponse>("/api/services");
 }
 
-export async function startService(serviceId: string) {
-  return fetchJson(`/api/services/${encodeURIComponent(serviceId)}/start`, { method: "POST" });
+export async function startService(serviceId: string): Promise<ServiceActionResponse> {
+  return fetchJson<ServiceActionResponse>(`/api/services/${encodeURIComponent(serviceId)}/start`, { method: "POST" });
 }
 
-export async function stopService(serviceId: string) {
-  return fetchJson(`/api/services/${encodeURIComponent(serviceId)}/stop`, { method: "POST" });
+export async function stopService(serviceId: string): Promise<ServiceActionResponse> {
+  return fetchJson<ServiceActionResponse>(`/api/services/${encodeURIComponent(serviceId)}/stop`, { method: "POST" });
 }
 
-export async function startAllServices() {
-  return fetchJson("/api/services/start-all", { method: "POST" });
+export async function startAllServices(): Promise<ServiceActionResponse> {
+  return fetchJson<ServiceActionResponse>("/api/services/start-all", { method: "POST" });
 }
 
-export async function stopAllServices() {
-  return fetchJson("/api/services/stop-all", { method: "POST" });
+export async function stopAllServices(): Promise<ServiceActionResponse> {
+  return fetchJson<ServiceActionResponse>("/api/services/stop-all", { method: "POST" });
 }
 
 export async function fetchServiceLogs(serviceId: string) {
@@ -62,8 +69,8 @@ export async function clearAllServiceLogs() {
   return fetchJson("/api/services/logs", { method: "DELETE" });
 }
 
-export async function updateServiceConfig(serviceId: string, payload: Partial<ServiceSummary>) {
-  return fetchJson(`/api/services/${encodeURIComponent(serviceId)}`, {
+export async function updateServiceConfig(serviceId: string, payload: Partial<ServiceSummary>): Promise<ServiceActionResponse> {
+  return fetchJson<ServiceActionResponse>(`/api/services/${encodeURIComponent(serviceId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

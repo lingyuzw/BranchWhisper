@@ -75,6 +75,35 @@ const servicePort = computed(() => {
   }
 });
 
+const healthLatency = computed(() => {
+  const health = props.service.health;
+  if (!health || typeof health !== "object") return "--";
+  const latency = (health as Record<string, any>).latency_ms;
+  return Number.isFinite(Number(latency)) ? `${Math.round(Number(latency))} ms` : "--";
+});
+
+const startedAtText = computed(() => {
+  const value = props.service.started_at;
+  if (value === null || value === undefined || value === "") return "--";
+  const timestamp = typeof value === "number" ? value * 1000 : Number(value) * 1000;
+  if (Number.isFinite(timestamp)) return new Date(timestamp).toLocaleString();
+  return String(value);
+});
+
+const commandText = computed(() => String(props.service.command || "--"));
+
+const detailRows = computed(() => [
+  { label: "工作目录", value: props.service.cwd || "--", wide: true, mono: true },
+  { label: "Health URL", value: props.service.health_url || "--", wide: true, mono: true },
+  { label: "启动等待", value: `${props.service.startup_wait_sec ?? 0}s` },
+  { label: "就绪超时", value: `${props.service.startup_ready_timeout_sec ?? 0}s` },
+  { label: "日志文件", value: props.service.log_file || "--", wide: true, mono: true },
+  { label: "启动时间", value: startedAtText.value },
+  { label: "返回码", value: props.service.returncode ?? "--" },
+  { label: "健康耗时", value: healthLatency.value },
+  { label: "错误详情", value: props.service.error || "--", wide: true, tone: props.service.error ? "failed" : "" },
+]);
+
 const advice = computed(() => {
   if (props.service.error) return props.service.error;
   if (warmup.value?.error) return String(warmup.value.error);
@@ -110,15 +139,33 @@ const advice = computed(() => {
       <span class="meta-cell muted"><span>等待</span><strong>{{ service.startup_wait_sec ?? 0 }}s</strong></span>
     </div>
     <div class="service-advice" :class="{ failed: isFailed, loading: isLoading }">{{ advice }}</div>
+    <details class="service-details" @click.stop>
+      <summary>参数详情</summary>
+      <div class="service-detail-grid">
+        <div
+          v-for="row in detailRows"
+          :key="row.label"
+          class="service-detail-row"
+          :class="{ wide: row.wide, mono: row.mono, failed: row.tone === 'failed' }"
+        >
+          <span>{{ row.label }}</span>
+          <strong>{{ row.value }}</strong>
+        </div>
+      </div>
+      <div class="service-command-detail">
+        <span>启动命令</span>
+        <pre>{{ commandText }}</pre>
+      </div>
+    </details>
     <div class="service-actions">
       <button class="service-action" type="button" :disabled="!!pending" @click.stop="emit('start', service.id)">
-        <Play :size="15" /> 启动
+        <Play :size="15" /> {{ pending === "starting" ? "启动中..." : "启动" }}
       </button>
       <button class="service-action" type="button" :disabled="!!pending" @click.stop="emit('stop', service.id)">
-        <Square :size="15" /> 停止
+        <Square :size="15" /> {{ pending === "stopping" ? "停止中..." : "停止" }}
       </button>
       <button class="service-action" type="button" :disabled="!!pending" @click.stop="emit('restart', service.id)">
-        <RotateCcw :size="15" /> 重启
+        <RotateCcw :size="15" /> {{ pending === "restarting" ? "重启中..." : "重启" }}
       </button>
     </div>
   </article>
