@@ -32,6 +32,13 @@ export interface StickerUploadFile {
   data_url: string;
 }
 
+export interface StickerBulkPayload {
+  action: "reanalyze" | "approve" | "delete";
+  ids?: string[];
+  include_filtered?: boolean;
+  filters?: StickerFilters;
+}
+
 function query(filters: StickerFilters = {}) {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
@@ -71,6 +78,22 @@ export async function approveSticker(stickerId: string) {
 export async function deleteSticker(stickerId: string) {
   return fetchJson<{ ok: boolean; stickers: Sticker[] }>(`/api/stickers/${encodeURIComponent(stickerId)}`, {
     method: "DELETE",
+  });
+}
+
+export async function bulkStickerAction(payload: StickerBulkPayload) {
+  return fetchJson<{
+    ok: boolean;
+    action: string;
+    count: number;
+    success: number;
+    failed: number;
+    results: Array<{ ok: boolean; id?: string; sticker?: Sticker; error?: string }>;
+    stickers: Sticker[];
+  }>("/api/stickers/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 

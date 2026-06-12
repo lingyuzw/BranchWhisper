@@ -53,6 +53,19 @@
   font-weight: 800;
 }
 
+.asset-config-message {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  align-self: end;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: var(--font-xs);
+}
+
 .asset-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -219,8 +219,8 @@ async function clearAvatar(target: "user" | "assistant") {
             <div class="appearance-card-head"><strong>Local Chat Completions</strong><small>仅在本地模型模式下生效</small></div>
             <div class="form-grid compact">
               <label><span>本地模型别名</span><input v-model="form.llm_model" :disabled="localDisabled" /></label>
-              <label><span>Temperature</span><input v-model.number="form.llm_temperature" :disabled="localDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
-              <label><span>Max Tokens</span><input v-model.number="form.llm_max_tokens" :disabled="localDisabled" type="number" min="32" max="4096" step="1" /></label>
+              <label><span>Temperature</span><input v-model.number="form.temperature" :disabled="localDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
+              <label><span>Max Tokens</span><input v-model.number="form.max_tokens" :disabled="localDisabled" type="number" min="32" max="4096" step="1" /></label>
               <label><span>History Turns</span><input v-model.number="form.history_turns" :disabled="localDisabled" type="number" min="1" max="40" step="1" /></label>
               <label class="wide"><span>本地 Chat Completions URL</span><input v-model="form.llm_url" :disabled="localDisabled" /></label>
               <label class="wide model-file-field">
@@ -239,8 +239,9 @@ async function clearAvatar(target: "user" | "assistant") {
               <label class="wide"><span>API Chat Completions URL</span><input v-model="form.api_llm_url" :disabled="apiDisabled" placeholder="https://api.example.com/v1/chat/completions" /></label>
               <label><span>API Model</span><input v-model="form.api_llm_model" :disabled="apiDisabled" placeholder="model-name" /></label>
               <label><span>API Key</span><input v-model="form.api_llm_api_key" :disabled="apiDisabled" type="password" :placeholder="form.api_llm_api_key_masked || '留空则保留已保存 Key'" /></label>
-              <label><span>API Temperature</span><input v-model.number="form.api_llm_temperature" :disabled="apiDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
-              <label><span>API Max Tokens</span><input v-model.number="form.api_llm_max_tokens" :disabled="apiDisabled" type="number" min="32" max="8192" step="1" /></label>
+              <label><span>API Temperature</span><input v-model.number="form.api_temperature" :disabled="apiDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
+              <label><span>API Max Tokens</span><input v-model.number="form.api_max_tokens" :disabled="apiDisabled" type="number" min="32" max="8192" step="1" /></label>
+              <label><span>API History Turns</span><input v-model.number="form.api_history_turns" :disabled="apiDisabled" type="number" min="1" max="40" step="1" /></label>
             </div>
           </section>
         </article>
@@ -313,7 +314,7 @@ async function clearAvatar(target: "user" | "assistant") {
 
         <article class="settings-panel settings-panel--prominent" id="prompt">
           <div class="panel-head"><div><p class="eyebrow">Persona</p><h2>Prompt 配置</h2></div></div>
-          <label class="wide"><span>System Prompt</span><textarea v-model="form.system_prompt" class="prompt-textarea"></textarea></label>
+          <label class="wide"><span>System Prompt</span><textarea v-model="form.system" class="prompt-textarea"></textarea></label>
         </article>
 
         <article class="settings-panel" id="tts">
@@ -330,8 +331,8 @@ async function clearAvatar(target: "user" | "assistant") {
           <div class="panel-head"><div><p class="eyebrow">Voice Activity Detection</p><h2>语音检测</h2></div></div>
           <div class="form-grid compact">
             <label><span>Threshold</span><input v-model.number="form.vad_threshold" type="number" min="0.1" max="0.9" step="0.01" /></label>
-            <label><span>Silence ms</span><input v-model.number="form.vad_min_silence" type="number" min="120" max="1500" step="10" /></label>
-            <label><span>Speech Pad ms</span><input v-model.number="form.vad_speech_pad" type="number" min="0" max="500" step="10" /></label>
+            <label><span>Silence ms</span><input v-model.number="form.vad_min_silence_ms" type="number" min="120" max="1500" step="10" /></label>
+            <label><span>Speech Pad ms</span><input v-model.number="form.vad_speech_pad_ms" type="number" min="0" max="500" step="10" /></label>
           </div>
         </article>
 

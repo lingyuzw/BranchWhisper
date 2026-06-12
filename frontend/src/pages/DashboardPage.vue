@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { Archive, Download, ImagePlus, Mic, MicOff, Search, Send, SquarePen, Star, Trash2, Volume2, VolumeX, XOctagon } from "@lucide/vue";
+import { ImagePlus, Mic, MicOff, Send, SquarePen, Volume2, VolumeX, XOctagon } from "@lucide/vue";
 import { uploadChatImage } from "@/api/assets";
 import { conversationExportUrl, updateConversation, type ChatAttachment, type ChatMessage, type ConversationSummary } from "@/api/conversations";
+import ConversationSidebar from "@/components/dashboard/ConversationSidebar.vue";
+import RuntimeMetrics from "@/components/dashboard/RuntimeMetrics.vue";
 import { useAppStore } from "@/stores/app";
 import { useConversationsStore } from "@/stores/conversations";
 import { appendMicSamples, createAudioRuntime, schedulePcm16, startMic, stopAssistantAudio, stopMic } from "@/utils/audio";
@@ -436,74 +438,22 @@ function avatarUrl(role: string) {
   <main class="page-view">
     <div class="voice-console">
       <aside class="sidebar">
-        <div class="conversation-top">
-          <button class="conversation-action-row" type="button" @click="newConversation">
-            <SquarePen :size="16" />
-            <span>新建对话</span>
-          </button>
-          <label class="conversation-search-row">
-            <Search :size="16" />
-            <input v-model="conversations.query" type="search" placeholder="搜索对话" autocomplete="off" @input="conversations.reloadList(true)" />
-          </label>
-          <div class="conversation-tabs">
-            <button type="button" :class="{ active: activeScope === 'recent' }" @click="switchScope('recent')">最近</button>
-            <button type="button" :class="{ active: activeScope === 'weixin' }" @click="switchScope('weixin')">微信聊天</button>
-          </div>
-          <button class="conversation-action-row subtle" type="button">
-            <Archive :size="16" />
-            <span>归档</span>
-          </button>
-        </div>
-
-      <div class="conversation-rail">
-        <div class="rail-head">
-          <p class="eyebrow rail-label">{{ activeScope === "weixin" ? "微信聊天" : "最近" }}</p>
-          <span>{{ visibleConversations.length }}</span>
-        </div>
-
-        <section class="conversation-list">
-          <article
-            v-for="item in visibleConversations"
-            :key="item.id"
-            class="conversation-item"
-            :class="{ active: conversations.active?.id === item.id }"
-          >
-            <button class="conversation-open" type="button" @click="openConversation(item.id)">
-              <strong>{{ item.title || (isWeixinConversation(item) ? "微信聊天" : "新的对话") }}</strong>
-              <span>{{ item.summary || item.last_message || "空会话" }}</span>
-              <small>{{ item.favorite ? "★ " : "" }}{{ isWeixinConversation(item) ? "微信 · " : "" }}{{ item.updated_at?.slice(0, 16) || "--" }}</small>
-            </button>
-            <div class="conversation-actions">
-              <button class="conversation-icon" type="button" title="收藏" @click.stop="toggleFavorite(item)"><Star :size="14" /></button>
-              <button class="conversation-icon" type="button" title="导出" @click.stop="exportConversation(item)"><Download :size="14" /></button>
-              <button class="conversation-icon" type="button" title="归档" @click.stop="archiveConversation(item)"><Archive :size="14" /></button>
-              <button class="conversation-icon danger" type="button" title="删除" @click.stop="removeConversation(item)"><Trash2 :size="14" /></button>
-            </div>
-          </article>
-          <p v-if="!visibleConversations.length" class="conversation-empty">
-            {{ activeScope === "weixin" ? "还没有微信聊天。先在微信里发一条消息。" : "还没有保存的对话。发送第一条消息后会出现在这里。" }}
-          </p>
-        </section>
-      </div>
-
-      <section class="sidebar-scope">
-        <div class="scope-header"><span>{{ metrics.status }}</span><span>{{ Math.round(level * 100) }}%</span></div>
-        <div class="level-track"><span class="level-bar" :style="{ width: `${Math.round(level * 100)}%` }"></span></div>
-      </section>
-
-      <section class="pipeline-compact">
-        <div class="pipeline-row" :class="{ active: metrics.status === '收音' }"><span class="pdot"></span><strong>VAD</strong><small>{{ metrics.vad }}</small></div>
-        <div class="pipeline-row"><span class="pdot"></span><strong>ASR</strong><small>{{ metrics.asr }}</small></div>
-        <div class="pipeline-row"><span class="pdot"></span><strong>LLM</strong><small>{{ metrics.llm }}</small></div>
-        <div class="pipeline-row"><span class="pdot"></span><strong>TTS</strong><small>{{ metrics.tts }}</small></div>
-      </section>
-
-      <section class="runtime-chips sidebar-chips">
-        <span><b>ASR</b><strong>{{ metrics.asr }}</strong></span>
-        <span><b>LLM</b><strong>{{ metrics.llm }}</strong></span>
-        <span><b>TTS</b><strong>{{ metrics.tts }}</strong></span>
-        <span><b>TRACE</b><strong>{{ metrics.trace }}</strong></span>
-      </section>
+        <ConversationSidebar
+          v-model:query="conversations.query"
+          :active-scope="activeScope"
+          :active-id="conversations.active?.id"
+          :visible-conversations="visibleConversations"
+          :is-weixin-conversation="isWeixinConversation"
+          @new-conversation="newConversation"
+          @switch-scope="switchScope"
+          @open-conversation="openConversation"
+          @search="conversations.reloadList(true)"
+          @toggle-favorite="toggleFavorite"
+          @export-conversation="exportConversation"
+          @archive-conversation="archiveConversation"
+          @remove-conversation="removeConversation"
+        />
+        <RuntimeMetrics :metrics="metrics" :level="level" />
     </aside>
 
       <section class="chat-area">
