@@ -468,15 +468,47 @@ html.theme-light .message-avatar {
   }
   .chat-area > * { max-width: 100%; }
   .composer {
-    grid-template-columns: 40px 40px minmax(160px, 1fr) repeat(4, 40px);
-    overflow-x: auto;
+    grid-template-columns: 36px 36px minmax(44px, 1fr) repeat(4, 36px);
+    gap: 4px;
+    padding: 4px;
+    overflow: hidden;
+  }
+  .composer > .voice-button,
+  .composer > .send-button,
+  .composer > .icon-button {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
   }
   .chat-composer,
   .chat-welcome {
     padding-left: 10px;
     padding-right: 10px;
   }
-  .composer textarea { border-radius: var(--radius-md); }
+  .composer textarea {
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+  }
   .message-body { max-width: calc(100% - 40px); }
   .message { max-width: 100%; font-size: var(--font-sm); }
+}
+
+@media (max-width: 360px) {
+  .composer {
+    grid-template-columns: 36px 36px minmax(0, 1fr) 36px;
+  }
+  .composer > .toggle-button {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .composer > button:nth-of-type(5) {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+  .composer > button:nth-of-type(6) {
+    grid-column: 4;
+    grid-row: 2;
+  }
 }

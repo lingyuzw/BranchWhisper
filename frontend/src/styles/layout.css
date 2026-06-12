@@ -227,7 +227,7 @@ body[data-page="dashboard"] .page-view {
 }
 @media (max-width: 760px) {
   .topbar { position: static; grid-template-columns: minmax(0, 1fr); justify-items: start; overflow-x: hidden; }
-  .nav-tabs { width: 100%; max-width: 100%; min-width: 0; justify-content: flex-start; overflow-x: auto; }
+  .nav-tabs { width: 100%; max-width: 100%; min-width: 0; justify-content: flex-start; flex-wrap: wrap; overflow-x: hidden; border-radius: var(--radius-md); }
   .topbar-status { justify-content: flex-start; }
   .settings-page,
   .ops-page { width: min(100%, calc(100vw - 20px)); }
