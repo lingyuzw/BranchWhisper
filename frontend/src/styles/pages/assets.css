@@ -10,6 +10,77 @@
   font-size: var(--font-sm);
 }
 
+.asset-upload-dock {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px dashed color-mix(in srgb, var(--border-strong) 74%, transparent);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, var(--primary) 10%), transparent 64%),
+    var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.asset-upload-dock.is-dragging {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 80%, var(--primary) 20%), transparent 70%),
+    color-mix(in srgb, var(--surface) 92%, var(--primary) 8%);
+}
+
+.asset-upload-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--border));
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.asset-upload-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.asset-upload-copy span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: var(--font-xs);
+  font-weight: 850;
+}
+
+.asset-upload-copy strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: calc(17px * var(--ui-font-scale));
+  line-height: 1.25;
+}
+
+.asset-upload-copy small {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+.asset-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.asset-file-input {
+  display: none;
+}
+
 .asset-config-strip,
 .asset-bulk-bar,
 .asset-progress-panel,
@@ -458,6 +529,16 @@
 }
 
 @media (max-width: 900px) {
+  .asset-upload-dock {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  .asset-upload-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .asset-upload-actions .primary-action {
+    width: 100%;
+  }
   .asset-config-strip,
   .asset-bulk-bar,
   .asset-workbench {

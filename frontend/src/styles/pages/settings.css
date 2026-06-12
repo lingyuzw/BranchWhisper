@@ -90,10 +90,36 @@
   margin-bottom: 8px;
 }
 
-.settings-nav a {
+.settings-nav a,
+.settings-nav-item {
   min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 0 9px;
+  border: 0;
   border-radius: 10px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--font-sm);
   font-weight: 760;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.settings-nav-item:hover,
+.settings-nav-item.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.settings-nav-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-save-main {
@@ -169,14 +195,17 @@
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   gap: 8px;
+  width: 100%;
   padding: 13px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  color: inherit;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--primary) 6%), transparent 88px),
     var(--surface-muted);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
+  text-align: left;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
@@ -187,7 +216,8 @@
     var(--surface-muted);
 }
 
-.settings-overview-card:hover {
+.settings-overview-card:hover,
+.settings-overview-card.active {
   transform: translateY(-2px);
   border-color: var(--border-strong);
   background:
@@ -214,6 +244,25 @@
 .settings-overview-card small {
   color: var(--text-muted);
   font-size: var(--font-sm);
+}
+.settings-overview-card em {
+  align-self: end;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  max-width: 100%;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-soft);
+  background: var(--surface);
+  font-size: var(--font-xs);
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .settings-overview-card .secondary-action {
   justify-self: start;
@@ -248,8 +297,108 @@
   }
 }
 
-.settings-section-detached {
+.settings-section-detached:not(.is-active) {
   display: none !important;
+}
+
+.settings-section-detached.is-active {
+  position: fixed;
+  z-index: 155;
+  top: clamp(78px, 8vh, 94px);
+  bottom: clamp(88px, 9vh, 112px);
+  left: 50%;
+  width: min(1080px, calc(100vw - 34px));
+  max-width: 1080px;
+  display: grid !important;
+  align-content: start;
+  overflow: auto;
+  padding: 18px;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--primary) 4%), transparent 120px),
+    var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-section-detached.is-active .panel-head {
+  position: sticky;
+  z-index: 2;
+  top: -18px;
+  margin: -18px -18px 0;
+  padding: 15px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.settings-section-backdrop {
+  z-index: 150;
+  place-items: stretch;
+}
+
+.settings-section-modal-toolbar {
+  position: fixed;
+  z-index: 156;
+  right: max(17px, calc((100vw - 1080px) / 2));
+  bottom: clamp(16px, 3vh, 26px);
+  left: max(17px, calc((100vw - 1080px) / 2));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(12px);
+}
+
+.settings-section-modal-toolbar > div {
+  min-width: 0;
+}
+
+.settings-section-modal-toolbar strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--font-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-section-modal-toolbar .soft-badge {
+  max-width: 190px;
+}
+
+.settings-section-modal-toolbar .primary-action {
+  min-height: 38px;
+}
+
+@media (max-width: 620px) {
+  .settings-section-detached.is-active {
+    top: 64px;
+    bottom: 78px;
+    width: calc(100vw - 18px);
+    padding: 14px;
+  }
+  .settings-section-detached.is-active .panel-head {
+    top: -14px;
+    margin: -14px -14px 0;
+    padding: 13px 14px 10px;
+  }
+  .settings-section-modal-toolbar {
+    right: 9px;
+    bottom: 10px;
+    left: 9px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .settings-section-modal-toolbar .soft-badge {
+    display: none;
+  }
 }
 
 .settings-section-modal-panel {

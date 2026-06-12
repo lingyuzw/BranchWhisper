@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImagePlus, RefreshCw, ScanEye } from "@lucide/vue";
+import { ImagePlus, RefreshCw, ScanEye, UploadCloud } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import AssetBulkBar from "@/components/assets/AssetBulkBar.vue";
 import AssetConfigStrip from "@/components/assets/AssetConfigStrip.vue";
@@ -12,6 +12,8 @@ const assets = useAssetsStore();
 
 const selected = computed(() => assets.selected);
 const visibleLimit = ref(36);
+const uploadInput = ref<HTMLInputElement | null>(null);
+const uploadDragging = ref(false);
 const visibleStickers = computed(() => assets.stickers.slice(0, visibleLimit.value));
 const hasMoreStickers = computed(() => visibleLimit.value < assets.stickers.length);
 const stats = computed(() => {
@@ -47,10 +49,7 @@ function readFile(file: File): Promise<{ name: string; data_url: string }> {
   });
 }
 
-async function onUpload(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const files = Array.from(input.files || []);
-  input.value = "";
+async function uploadFiles(files: File[]) {
   const accepted = files.filter((file) => /image\/(png|jpe?g|webp)/i.test(file.type));
   if (!accepted.length) return;
   assets.progress = { active: true, label: "读取文件", done: 0, total: accepted.length, failed: 0 };
@@ -63,6 +62,30 @@ async function onUpload(event: Event) {
     }
   }
   await assets.upload(payload);
+}
+
+async function onUpload(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files || []);
+  input.value = "";
+  await uploadFiles(files);
+}
+
+async function onUploadDrop(event: DragEvent) {
+  uploadDragging.value = false;
+  const files = Array.from(event.dataTransfer?.files || []);
+  await uploadFiles(files);
+}
+
+function onUploadDragLeave(event: DragEvent) {
+  const current = event.currentTarget as HTMLElement | null;
+  const next = event.relatedTarget;
+  if (current && next instanceof Node && current.contains(next)) return;
+  uploadDragging.value = false;
+}
+
+function openUploadPicker() {
+  uploadInput.value?.click();
 }
 
 function toggle(id: string, checked: boolean) {
@@ -80,15 +103,30 @@ function toggle(id: string, checked: boolean) {
           <small>表情包上传、识别、审核、策略测试和微信发送自检都在这里处理。</small>
         </div>
         <div class="head-actions">
-          <label class="primary-action file-action">
-            <ImagePlus :size="17" />
-            批量上传
-            <input type="file" accept="image/png,image/jpeg,image/webp" multiple @change="onUpload" />
-          </label>
           <button class="secondary-action" type="button" :disabled="!selected" @click="assets.runVisionTest(selected?.id)">
             <ScanEye :size="16" /> 识别自检
           </button>
           <button class="icon-button" type="button" title="刷新" @click="assets.reload()"><RefreshCw :size="16" /></button>
+        </div>
+      </section>
+
+      <section
+        class="asset-upload-dock"
+        :class="{ 'is-dragging': uploadDragging }"
+        @dragenter.prevent="uploadDragging = true"
+        @dragover.prevent="uploadDragging = true"
+        @dragleave.prevent="onUploadDragLeave"
+        @drop.prevent="onUploadDrop"
+      >
+        <div class="asset-upload-mark"><UploadCloud :size="22" /></div>
+        <div class="asset-upload-copy">
+          <span><ImagePlus :size="14" />PNG / JPG / WebP</span>
+          <strong>拖放图片到这里，或选择文件批量导入</strong>
+          <small>上传后会进入素材库，可继续批量识别、审核和测试发送策略。</small>
+        </div>
+        <div class="asset-upload-actions">
+          <button class="primary-action" type="button" @click="openUploadPicker"><ImagePlus :size="16" />选择文件</button>
+          <input ref="uploadInput" class="asset-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple @change="onUpload" />
         </div>
       </section>
 

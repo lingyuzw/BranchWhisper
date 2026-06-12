@@ -23,8 +23,6 @@ import {
   RefreshCw,
   Route,
   Save,
-  Settings2,
-  SlidersHorizontal,
   Sparkles,
   Sun,
   Terminal,
@@ -64,6 +62,101 @@ const localDisabled = computed(() => form.dialog_mode === "api");
 const apiDisabled = computed(() => form.dialog_mode === "local");
 const pendingReminders = computed(() => engagement.pendingReminders.slice(0, 8));
 const recentEvents = computed(() => engagement.recentEvents);
+type SettingsSectionId =
+  | "appearance"
+  | "engine"
+  | "tools"
+  | "dialogFeatures"
+  | "proactive"
+  | "botProfiles"
+  | "prompt"
+  | "tts"
+  | "vad"
+  | "commands";
+const activeSettingsSection = ref<SettingsSectionId | "">("");
+const settingsSections = computed(() => [
+  {
+    id: "appearance" as SettingsSectionId,
+    icon: Palette,
+    eyebrow: "Appearance",
+    title: "外观与身份",
+    summary: "主题、头像、字号和对话页身份",
+    status: theme.value === "light" ? "浅色主题" : "深色主题",
+  },
+  {
+    id: "engine" as SettingsSectionId,
+    icon: Cpu,
+    eyebrow: "Model Engine",
+    title: "对话模型",
+    summary: "本地/API 模型、ASR 与模型文件",
+    status: form.dialog_mode === "api" ? "API 模式" : "本地模式",
+  },
+  {
+    id: "tools" as SettingsSectionId,
+    icon: Globe2,
+    eyebrow: "Network Tools",
+    title: "联网工具",
+    summary: "搜索、天气、新闻、微信等 Provider",
+    status: form.tools_enabled ? "工具启用" : "工具关闭",
+  },
+  {
+    id: "dialogFeatures" as SettingsSectionId,
+    icon: Library,
+    eyebrow: "Conversation",
+    title: "素材与对话能力",
+    summary: "图片理解、素材库、上下文压缩",
+    status: form.vision_enabled ? "视觉启用" : "视觉关闭",
+  },
+  {
+    id: "proactive" as SettingsSectionId,
+    icon: Sparkles,
+    eyebrow: "Proactive",
+    title: "主动性",
+    summary: "问候、提醒、追问和触发器",
+    status: engagement.config.enabled ? "主动消息启用" : "主动消息关闭",
+  },
+  {
+    id: "botProfiles" as SettingsSectionId,
+    icon: Bot,
+    eyebrow: "Profiles",
+    title: "Bot 人格",
+    summary: "多人格、头像、工具权限和风格",
+    status: `${profiles.profiles.length || 0} 个 Profile`,
+  },
+  {
+    id: "prompt" as SettingsSectionId,
+    icon: MessageSquareText,
+    eyebrow: "Persona",
+    title: "Prompt 配置",
+    summary: "系统提示词与角色边界",
+    status: form.system ? "已配置" : "未配置",
+  },
+  {
+    id: "tts" as SettingsSectionId,
+    icon: Volume2,
+    eyebrow: "Speech",
+    title: "语音合成",
+    summary: "TTS 地址、速度、音量和采样率",
+    status: form.tts_enabled ? "TTS 启用" : "TTS 关闭",
+  },
+  {
+    id: "vad" as SettingsSectionId,
+    icon: MicVocal,
+    eyebrow: "Voice Activity",
+    title: "语音检测",
+    summary: "VAD 阈值、静默和语音时长",
+    status: `阈值 ${form.vad_threshold ?? "--"}`,
+  },
+  {
+    id: "commands" as SettingsSectionId,
+    icon: Terminal,
+    eyebrow: "Services",
+    title: "服务命令",
+    summary: "工作目录、启动命令、健康检查",
+    status: `${services.services.length || 0} 个服务`,
+  },
+]);
+const activeSettingsCard = computed(() => settingsSections.value.find((item) => item.id === activeSettingsSection.value));
 
 onMounted(() => {
   theme.value = window.localStorage.getItem("branchwhisper:theme") === "light" ? "light" : "dark";
@@ -118,8 +211,12 @@ async function hydrateSettings() {
   syncModelFilePath();
 }
 
-function jumpTo(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+function openSettingsSection(id: SettingsSectionId) {
+  activeSettingsSection.value = id;
+}
+
+function closeSettingsSection() {
+  activeSettingsSection.value = "";
 }
 
 async function handleAvatarSelected(event: Event, target: "user" | "assistant") {
@@ -317,16 +414,17 @@ function formatTime(value?: string) {
       <aside class="settings-nav">
         <p class="eyebrow">BranchWhisper</p>
         <h1>配置中心</h1>
-        <a href="#appearance"><Palette :size="16" />外观</a>
-        <a href="#engine"><Cpu :size="16" />对话模型</a>
-        <a href="#tools"><Globe2 :size="16" />联网工具</a>
-        <a href="#dialogFeatures"><Library :size="16" />素材与对话</a>
-        <a href="#proactive"><Sparkles :size="16" />主动性</a>
-        <a href="#botProfiles"><Bot :size="16" />人格</a>
-        <a href="#prompt"><MessageSquareText :size="16" />Prompt</a>
-        <a href="#tts"><Volume2 :size="16" />语音合成</a>
-        <a href="#vad"><MicVocal :size="16" />语音检测</a>
-        <a href="#commands"><Terminal :size="16" />服务命令</a>
+        <button
+          v-for="section in settingsSections"
+          :key="section.id"
+          class="settings-nav-item"
+          :class="{ active: activeSettingsSection === section.id }"
+          type="button"
+          @click="openSettingsSection(section.id)"
+        >
+          <component :is="section.icon" :size="16" />
+          <span>{{ section.title }}</span>
+        </button>
         <button class="primary-action full settings-save-main" type="button" @click="saveAll">
           <Save :size="16" /> 应用全部配置
         </button>
@@ -337,7 +435,7 @@ function formatTime(value?: string) {
           <div>
             <p class="eyebrow">Control Room</p>
             <h2>本地模型与对话能力</h2>
-            <p>常用配置直接展开，复杂能力进入对应页面或后续弹窗，避免一个配置页堆满所有东西。</p>
+            <p>把高频配置收束成入口卡片，需要时再打开对应面板，减少页面堆叠和滚动压力。</p>
           </div>
           <div class="settings-hero-actions">
             <span v-if="settingsMessage" class="soft-badge">{{ settingsMessage }}</span>
@@ -348,33 +446,22 @@ function formatTime(value?: string) {
         </section>
 
         <section class="settings-overview-grid">
-          <article class="settings-overview-card primary-card">
-            <span><Library :size="15" />素材与对话</span>
-            <strong>图片 · 表情包</strong>
-            <small>图片理解、素材库、上下文压缩</small>
-            <button class="secondary-action" type="button" @click="openAssets"><Settings2 :size="14" />打开素材库</button>
-          </article>
-          <article class="settings-overview-card primary-card">
-            <span><Sparkles :size="15" />主动性</span>
-            <strong>{{ engagement.config.enabled ? "已启用" : "默认关闭" }}</strong>
-            <small>早安、提醒、主动追问</small>
-            <button class="secondary-action" type="button" @click="jumpTo('proactive')"><Settings2 :size="14" />配置</button>
-          </article>
-          <article class="settings-overview-card">
-            <span><Bot :size="15" />人格</span>
-            <strong>{{ profiles.profiles.length || 0 }} 个 Profile</strong>
-            <small>Profile、工具开关、角色风格</small>
-            <button class="secondary-action" type="button" @click="jumpTo('botProfiles')"><Settings2 :size="14" />配置</button>
-          </article>
-          <article class="settings-overview-card">
-            <span><Volume2 :size="15" />语音合成</span>
-            <strong>{{ form.tts_enabled ? "启用" : "关闭" }}</strong>
-            <small>TTS 地址、速度、音量</small>
-            <button class="secondary-action" type="button" @click="saveAll"><Save :size="14" />保存</button>
-          </article>
+          <button
+            v-for="(section, index) in settingsSections"
+            :key="section.id"
+            class="settings-overview-card settings-launch-card"
+            :class="{ 'primary-card': index < 2, active: activeSettingsSection === section.id }"
+            type="button"
+            @click="openSettingsSection(section.id)"
+          >
+            <span><component :is="section.icon" :size="15" />{{ section.eyebrow }}</span>
+            <strong>{{ section.title }}</strong>
+            <small>{{ section.summary }}</small>
+            <em>{{ section.status }}</em>
+          </button>
         </section>
 
-        <article class="theme-section" id="appearance">
+        <article class="theme-section settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'appearance' }" id="appearance">
           <div class="panel-head">
             <div>
               <p class="eyebrow">Appearance</p>
@@ -433,7 +520,7 @@ function formatTime(value?: string) {
           </div>
         </article>
 
-        <article class="settings-panel" id="engine">
+        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'engine' }" id="engine">
           <div class="panel-head">
             <div>
               <p class="eyebrow">Model Engine</p>
@@ -495,7 +582,7 @@ function formatTime(value?: string) {
           </section>
         </article>
 
-        <article class="settings-panel" id="tools">
+        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'tools' }" id="tools">
           <div class="panel-head">
             <div>
               <p class="eyebrow">Network Tools</p>
@@ -556,7 +643,7 @@ function formatTime(value?: string) {
           <p v-if="tools.error" class="muted-copy">工具配置读取失败：{{ tools.error }}</p>
         </article>
 
-        <article class="settings-panel dialog-features-panel" id="dialogFeatures">
+        <article class="settings-panel dialog-features-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'dialogFeatures' }" id="dialogFeatures">
           <div class="panel-head">
             <div>
               <p class="eyebrow">Conversation Features</p>
@@ -595,7 +682,7 @@ function formatTime(value?: string) {
           </div>
         </article>
 
-        <article class="settings-panel proactive-panel" id="proactive">
+        <article class="settings-panel proactive-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'proactive' }" id="proactive">
           <div class="panel-head">
             <div>
               <p class="eyebrow">Proactive Intelligence</p>
@@ -702,7 +789,7 @@ function formatTime(value?: string) {
           </div>
         </article>
 
-        <article class="settings-panel" id="botProfiles">
+        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'botProfiles' }" id="botProfiles">
           <div class="panel-head">
             <div><p class="eyebrow">Bot Profiles</p><h2>Bot 人格</h2></div>
             <button class="secondary-action" type="button" @click="profiles.add(String(form.system || ''))"><Plus :size="15" />新增人格</button>
@@ -728,12 +815,12 @@ function formatTime(value?: string) {
           <p v-if="profiles.error" class="muted-copy">人格配置读取失败：{{ profiles.error }}</p>
         </article>
 
-        <article class="settings-panel settings-panel--prominent" id="prompt">
+        <article class="settings-panel settings-panel--prominent settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'prompt' }" id="prompt">
           <div class="panel-head"><div><p class="eyebrow">Persona</p><h2>Prompt 配置</h2></div></div>
           <label class="wide"><span>System Prompt</span><textarea v-model="form.system" class="prompt-textarea"></textarea></label>
         </article>
 
-        <article class="settings-panel" id="tts">
+        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'tts' }" id="tts">
           <div class="panel-head"><div><p class="eyebrow">Speech Synthesis</p><h2>语音合成</h2></div></div>
           <div class="form-grid compact">
             <label><span>Web TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
@@ -746,7 +833,7 @@ function formatTime(value?: string) {
           </div>
         </article>
 
-        <article class="settings-panel" id="vad">
+        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'vad' }" id="vad">
           <div class="panel-head"><div><p class="eyebrow">Voice Activity Detection</p><h2>语音检测</h2></div></div>
           <div class="form-grid compact">
             <label><span>Threshold</span><input v-model.number="form.vad_threshold" type="number" min="0.1" max="0.9" step="0.01" /></label>
@@ -758,7 +845,7 @@ function formatTime(value?: string) {
           </div>
         </article>
 
-        <article class="settings-panel" id="commands">
+        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'commands' }" id="commands">
           <div class="panel-head">
             <div><p class="eyebrow">Service Commands</p><h2>服务命令</h2></div>
             <span class="soft-badge">保存配置时同步写入</span>
@@ -790,6 +877,18 @@ function formatTime(value?: string) {
           <div v-if="!services.services.length" class="model-file-empty">未读取到本地服务配置</div>
         </article>
       </section>
+    </div>
+
+    <div v-if="activeSettingsSection" class="modal-overlay settings-section-backdrop" @click.self="closeSettingsSection">
+      <div class="settings-section-modal-toolbar" role="presentation">
+        <div>
+          <p class="eyebrow">{{ activeSettingsCard?.eyebrow }}</p>
+          <strong>{{ activeSettingsCard?.title }}</strong>
+        </div>
+        <span class="soft-badge">{{ activeSettingsCard?.status }}</span>
+        <button class="primary-action" type="button" @click="saveAll"><Save :size="15" />保存配置</button>
+        <button class="icon-button modal-close" type="button" title="关闭配置面板" @click="closeSettingsSection"><X :size="16" /></button>
+      </div>
     </div>
 
     <div v-if="modelFileModalOpen" class="modal-overlay" @click.self="modelFileModalOpen = false">
