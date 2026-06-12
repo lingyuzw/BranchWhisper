@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Archive, Download, Search, SquarePen, Star, Trash2 } from "@lucide/vue";
+import { Archive, ArchiveRestore, Download, Pencil, Search, SquarePen, Star, Trash2 } from "@lucide/vue";
 import type { ConversationSummary } from "@/api/conversations";
 
 defineProps<{
   query: string;
   activeScope: "recent" | "weixin";
+  archivedMode: "active" | "archived";
   activeId?: string;
   visibleConversations: ConversationSummary[];
   isWeixinConversation: (item: ConversationSummary) => boolean;
@@ -16,6 +17,8 @@ const emit = defineEmits<{
   switchScope: [scope: "recent" | "weixin"];
   openConversation: [id: string];
   search: [];
+  toggleArchiveMode: [];
+  renameConversation: [item: ConversationSummary];
   toggleFavorite: [item: ConversationSummary];
   exportConversation: [item: ConversationSummary];
   archiveConversation: [item: ConversationSummary];
@@ -37,15 +40,15 @@ const emit = defineEmits<{
       <button type="button" :class="{ active: activeScope === 'recent' }" @click="emit('switchScope', 'recent')">最近</button>
       <button type="button" :class="{ active: activeScope === 'weixin' }" @click="emit('switchScope', 'weixin')">微信聊天</button>
     </div>
-    <button class="conversation-action-row subtle" type="button">
-      <Archive :size="16" />
-      <span>归档</span>
+    <button class="conversation-action-row subtle" :class="{ active: archivedMode === 'archived' }" type="button" @click="emit('toggleArchiveMode')">
+      <component :is="archivedMode === 'archived' ? ArchiveRestore : Archive" :size="16" />
+      <span>{{ archivedMode === "archived" ? "查看活跃" : "查看归档" }}</span>
     </button>
   </div>
 
   <div class="conversation-rail">
     <div class="rail-head">
-      <p class="eyebrow rail-label">{{ activeScope === "weixin" ? "微信聊天" : "最近" }}</p>
+      <p class="eyebrow rail-label">{{ archivedMode === "archived" ? "归档" : activeScope === "weixin" ? "微信聊天" : "最近" }}</p>
       <span>{{ visibleConversations.length }}</span>
     </div>
 
@@ -63,8 +66,11 @@ const emit = defineEmits<{
         </button>
         <div class="conversation-actions">
           <button class="conversation-icon" type="button" title="收藏" @click.stop="emit('toggleFavorite', item)"><Star :size="14" /></button>
+          <button class="conversation-icon" type="button" title="重命名" @click.stop="emit('renameConversation', item)"><Pencil :size="14" /></button>
           <button class="conversation-icon" type="button" title="导出" @click.stop="emit('exportConversation', item)"><Download :size="14" /></button>
-          <button class="conversation-icon" type="button" title="归档" @click.stop="emit('archiveConversation', item)"><Archive :size="14" /></button>
+          <button class="conversation-icon" type="button" :title="item.archived ? '取消归档' : '归档'" @click.stop="emit('archiveConversation', item)">
+            <component :is="item.archived ? ArchiveRestore : Archive" :size="14" />
+          </button>
           <button class="conversation-icon danger" type="button" title="删除" @click.stop="emit('removeConversation', item)"><Trash2 :size="14" /></button>
         </div>
       </article>

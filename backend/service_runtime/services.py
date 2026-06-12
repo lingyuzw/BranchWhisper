@@ -374,7 +374,10 @@ def load_service_profiles(config_path: Path | None) -> dict:
         for service_id, service_patch in (data.get("services") or {}).items():
             if service_id in profiles and isinstance(service_patch, dict):
                 profiles[service_id].update(service_patch)
-    return migrate_legacy_service_paths(profiles)
+    migrated = migrate_legacy_service_paths(profiles)
+    if config_path and config_path.exists() and migrated != profiles:
+        config_path.write_text(json.dumps({"services": migrated}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return migrated
 
 
 def expand_service_paths(value: str) -> str:

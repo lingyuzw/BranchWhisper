@@ -21,6 +21,7 @@ const emit = defineEmits<{
 const logBox = ref<HTMLElement | null>(null);
 const actionMessage = ref("");
 const selectedService = computed(() => props.services.find((service) => service.id === props.selectedId) || null);
+const logSections = computed(() => splitLogSections(props.logs));
 
 watch(
   () => props.logs,
@@ -69,6 +70,25 @@ function downloadLogs() {
   URL.revokeObjectURL(url);
   setActionMessage("日志已下载");
 }
+
+function splitLogSections(text: string) {
+  const lines = String(text || "").split(/\r?\n/);
+  const sections: Array<{ title: string; lines: string[] }> = [];
+  let current: { title: string; lines: string[] } | null = null;
+  const startRe = /^=+\s*start\s+(.+?)\s*=+$/i;
+  for (const line of lines) {
+    const match = line.match(startRe);
+    if (match) {
+      if (current) sections.push(current);
+      current = { title: match[1], lines: [] };
+      continue;
+    }
+    if (!current) current = { title: "当前日志", lines: [] };
+    current.lines.push(line);
+  }
+  if (current) sections.push(current);
+  return sections.filter((section) => section.title || section.lines.join("").trim());
+}
 </script>
 
 <template>
@@ -99,6 +119,17 @@ function downloadLogs() {
       </div>
     </div>
     <span v-if="actionMessage" class="soft-badge log-action-message">{{ actionMessage }}</span>
-    <div ref="logBox" class="log-viewer" role="log" aria-live="polite">{{ logs || "选择一个服务查看日志。" }}</div>
+    <div ref="logBox" class="log-viewer" role="log" aria-live="polite">
+      <template v-if="logSections.length > 1">
+        <section v-for="section in logSections" :key="section.title + section.lines.length" class="log-run">
+          <div class="log-run-head">
+            <strong>{{ section.title }}</strong>
+            <span>{{ section.lines.length }} lines</span>
+          </div>
+          <pre class="log-run-body">{{ section.lines.join("\n") || "--" }}</pre>
+        </section>
+      </template>
+      <template v-else>{{ logs || "选择一个服务查看日志。" }}</template>
+    </div>
   </section>
 </template>

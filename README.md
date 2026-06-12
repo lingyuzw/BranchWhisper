@@ -89,6 +89,14 @@ Example profile:
 backend/service_profiles.example.json
 ```
 
+Service profile paths should use portable tokens instead of machine-specific absolute paths:
+
+- `${PROJECT_ROOT}` points to this BranchWhisper repository.
+- `${WORKSPACE_ROOT}` points to the parent workspace that contains model folders such as `Qwen3-ASR-1.7B`, `llama.cpp`, and `CosyVoice`.
+- Set `BRANCHWHISPER_WORKSPACE_ROOT=/your/workspace/path` when the model folders are not beside this repository.
+
+Legacy AutoDL absolute paths are migrated automatically when service profiles are loaded.
+
 ## Weixin / OpenClaw Integration
 
 The Weixin personal-account integration depends on Node.js, npm, OpenClaw, ffmpeg, and `silk-wasm`.

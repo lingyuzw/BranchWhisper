@@ -265,6 +265,10 @@ export const useAssetsStore = defineStore("assets", {
     async bulk(action: "reanalyze" | "approve" | "delete", ids: string[], label: string, includeFiltered = false) {
       const targets = ids.filter(Boolean);
       if (!includeFiltered && !targets.length) return;
+      if (action === "delete") {
+        const scope = includeFiltered ? "当前筛选结果" : `${targets.length} 张选中素材`;
+        if (!window.confirm(`删除${scope}？这个操作会移除素材文件。`)) return;
+      }
       this.progress = { active: true, label, done: 0, total: includeFiltered ? this.stickers.length || 1 : targets.length, failed: 0 };
       try {
         const data = await bulkStickerAction({ action, ids: targets, include_filtered: includeFiltered, filters: this.filters });
@@ -298,6 +302,7 @@ export const useAssetsStore = defineStore("assets", {
     async remove(ids: string[]) {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
+      if (!window.confirm(`删除 ${targets.length} 张素材？这个操作会移除素材文件。`)) return;
       this.progress = { active: true, label: "删除素材", done: 0, total: targets.length, failed: 0 };
       for (const id of targets) {
         const data = await deleteSticker(id);

@@ -34,6 +34,11 @@
 .conversation-action-row.subtle {
   color: var(--text-muted);
 }
+.conversation-action-row.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+}
 .conversation-action-row svg,
 .conversation-search-row svg {
   width: 16px;

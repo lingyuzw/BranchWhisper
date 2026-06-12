@@ -21,7 +21,7 @@ interface ServicesState {
   loading: boolean;
   logLoading: boolean;
   error: string;
-  pending: Record<string, "starting" | "stopping" | "">;
+  pending: Record<string, "starting" | "stopping" | "restarting" | "">;
   live: boolean;
   pollHandle: number | null;
   logHandle: number | null;
@@ -94,6 +94,17 @@ export const useServicesStore = defineStore("services", {
       this.pending[id] = "stopping";
       try {
         await stopService(id);
+        await this.trackUntilStable(id);
+      } finally {
+        this.pending[id] = "";
+      }
+    },
+    async restart(id: string) {
+      this.pending[id] = "restarting";
+      try {
+        await stopService(id);
+        await this.reload(true);
+        await startService(id);
         await this.trackUntilStable(id);
       } finally {
         this.pending[id] = "";

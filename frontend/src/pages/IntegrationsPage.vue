@@ -3,8 +3,11 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   Check,
   CircleAlert,
+  Copy,
+  Download,
   Edit3,
   Eraser,
+  Link2,
   PackagePlus,
   Play,
   Plus,
@@ -25,6 +28,7 @@ import { useProfilesStore } from "@/stores/profiles";
 const integrations = useIntegrationsStore();
 const profiles = useProfilesStore();
 const configOpen = ref(false);
+const actionMessage = ref("");
 
 const tools = computed(() => integrations.environment?.tools || {});
 const selected = computed(() => integrations.selected);
@@ -78,6 +82,42 @@ function openEdit(item: IntegrationItem) {
 async function saveConfig() {
   await integrations.saveForm();
   configOpen.value = false;
+}
+
+function showActionMessage(message: string) {
+  actionMessage.value = message;
+  window.setTimeout(() => {
+    if (actionMessage.value === message) actionMessage.value = "";
+  }, 1800);
+}
+
+async function copyLogs() {
+  if (!integrations.logs.trim()) {
+    showActionMessage("没有可复制日志");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(integrations.logs);
+    showActionMessage("日志已复制");
+  } catch {
+    showActionMessage("复制失败");
+  }
+}
+
+function downloadLogs() {
+  if (!integrations.logs.trim()) {
+    showActionMessage("没有可下载日志");
+    return;
+  }
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const blob = new Blob([integrations.logs], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${selected.value?.id || "integration"}-${timestamp}.log`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showActionMessage("日志已下载");
 }
 </script>
 
@@ -190,8 +230,13 @@ async function saveConfig() {
               <img v-if="qrImage(integrations.qrSession)" class="integration-qr-image" :src="qrImage(integrations.qrSession)" alt="微信扫码二维码" />
               <div v-else class="integration-login-placeholder">
                 <strong>{{ selected?.status === "running" ? "桥接运行中" : selected ? "等待扫码" : "请选择实例" }}</strong>
-                <span>{{ selected?.runtime?.manual_stop ? "实例已手动停止。" : "点击扫码登录后，这里会显示二维码。" }}</span>
+                <span>{{ integrations.qrSession?.message || (selected?.runtime?.manual_stop ? "实例已手动停止。" : "点击扫码登录后，这里会显示二维码。") }}</span>
               </div>
+            </div>
+            <div v-if="integrations.qrSession" class="integration-login-meta">
+              <strong>{{ integrations.qrSession.status || "login" }}</strong>
+              <span>{{ integrations.qrSession.message || integrations.qrSession.qrcode_url || "--" }}</span>
+              <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
             </div>
             <div class="integration-account-list">
               <div v-for="account in accounts(selected)" :key="account.account_id || account.id" class="integration-account-item">
@@ -219,14 +264,29 @@ async function saveConfig() {
                 <PackagePlus :size="16" /> 安装适配器
               </button>
             </div>
+            <div class="integration-bridge-row">
+              <input v-model="integrations.bridgeUrl" type="text" placeholder="http://127.0.0.1:7860" />
+              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="integrations.startBridge">
+                <Link2 :size="16" /> 启动桥接
+              </button>
+            </div>
+            <div class="integration-bridge-row">
+              <input v-model="integrations.verifyCode" type="text" placeholder="验证码 / verify_code" @keydown.enter="integrations.pollQrLogin(false)" />
+              <button class="secondary-action" type="button" :disabled="!integrations.qrSession" @click="integrations.pollQrLogin(false)">
+                <RefreshCw :size="16" /> 轮询登录
+              </button>
+            </div>
             <div class="integration-log-toolbar">
               <select v-model="integrations.logScope" @change="integrations.refreshLogs()">
                 <option value="current">本次启动</option>
                 <option value="all">全部日志</option>
               </select>
               <button class="icon-button" type="button" title="刷新日志" @click="integrations.refreshLogs()"><RotateCw :size="16" /></button>
+              <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
+              <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
               <button class="icon-button danger" type="button" title="清空日志" @click="integrations.clearLogs()"><Eraser :size="16" /></button>
             </div>
+            <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
             <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
           </section>
 

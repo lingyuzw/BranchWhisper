@@ -16,6 +16,7 @@ const form = reactive({
   review_status: "pending",
   enabled: false,
   intensity: 3,
+  channels: "",
   tags: "",
   scene: "",
   avoid: "",
@@ -33,6 +34,7 @@ watch(
     form.review_status = selected?.review_status || "pending";
     form.enabled = Boolean(selected?.enabled);
     form.intensity = Number(selected?.intensity || 3);
+    form.channels = listToText(selected?.channels);
     form.tags = listToText(selected?.tags);
     form.scene = listToText(selected?.scene);
     form.avoid = listToText(selected?.avoid);
@@ -65,6 +67,7 @@ async function save() {
     review_status: form.review_status,
     enabled: form.enabled,
     intensity: Number(form.intensity || 3),
+    channels: textToList(form.channels),
     tags: textToList(form.tags),
     scene: textToList(form.scene),
     avoid: textToList(form.avoid),
@@ -72,6 +75,16 @@ async function save() {
     ocr_text: form.ocr_text,
     error: form.error,
   });
+}
+
+function confidenceText(value?: number) {
+  const num = Number(value);
+  return Number.isFinite(num) ? `${Math.round(num * 100)}%` : "--";
+}
+
+function formatTime(value?: string) {
+  if (!value) return "--";
+  return value.replace("T", " ").slice(0, 16);
 }
 </script>
 
@@ -84,6 +97,15 @@ async function save() {
           <strong>{{ selected.name }}</strong>
           <small>{{ selected.emotion || selected.tag || "-" }} · {{ selected.review_status || "pending" }}</small>
         </div>
+      </div>
+
+      <div class="asset-detail-meta">
+        <span><b>原文件</b>{{ selected.original_name || selected.file_stem || selected.id }}</span>
+        <span><b>置信度</b>{{ confidenceText(selected.confidence) }}</span>
+        <span><b>渠道</b>{{ selected.channels?.join(" / ") || "all" }}</span>
+        <span><b>格式</b>{{ selected.mime || "--" }}</span>
+        <span><b>使用</b>{{ selected.use_count || 0 }} 次</span>
+        <span><b>更新</b>{{ formatTime(selected.updated_at || selected.created_at) }}</span>
       </div>
 
       <div class="asset-detail-actions">
@@ -103,6 +125,7 @@ async function save() {
         <label><span>状态</span><select v-model="form.review_status"><option value="pending">待审核</option><option value="approved">已通过</option><option value="failed">失败</option><option value="disabled">停用</option></select></label>
         <label><span>启用发送</span><select v-model="form.enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
         <label><span>强度</span><input v-model.number="form.intensity" type="number" min="1" max="5" step="1" /></label>
+        <label class="wide"><span>发送渠道</span><textarea v-model="form.channels" placeholder="all / web / weixin，每行一个"></textarea></label>
         <label class="wide"><span>标签</span><textarea v-model="form.tags" placeholder="每行一个标签，或用逗号分隔"></textarea></label>
         <label class="wide"><span>适用场景</span><textarea v-model="form.scene" placeholder="例如：开玩笑、打招呼、安慰"></textarea></label>
         <label class="wide"><span>避免场景</span><textarea v-model="form.avoid" placeholder="不适合发送的语境"></textarea></label>

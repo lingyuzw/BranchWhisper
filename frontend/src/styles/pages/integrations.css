@@ -277,6 +277,15 @@
   color: var(--danger);
   background: var(--danger-soft);
 }
+.integration-bridge-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.integration-action-message {
+  justify-self: end;
+}
 
 .integration-timing-list {
   display: grid;
@@ -427,6 +436,7 @@
   .integration-env-grid { grid-template-columns: 1fr; }
   .integration-meta,
   .integration-timing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .integration-test-row { grid-template-columns: 1fr; }
+  .integration-test-row,
+  .integration-bridge-row { grid-template-columns: 1fr; }
   .integration-qr { align-items: flex-start; flex-direction: column; }
 }

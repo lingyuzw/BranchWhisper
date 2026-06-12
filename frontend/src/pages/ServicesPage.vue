@@ -44,6 +44,7 @@ onUnmounted(() => {
           @select="services.select"
           @start="services.start"
           @stop="services.stop"
+          @restart="services.restart"
         />
       </div>
 

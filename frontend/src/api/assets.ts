@@ -11,6 +11,8 @@ export interface Sticker {
   mime?: string;
   enabled?: boolean;
   review_status?: string;
+  channels?: string[];
+  confidence?: number;
   tags?: string[];
   scene?: string[];
   avoid?: string[];
@@ -19,6 +21,12 @@ export interface Sticker {
   error?: string;
   intensity?: number;
   use_count?: number;
+  original_name?: string;
+  file_stem?: string;
+  source_hash?: string;
+  duplicate?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface StickerFilters {

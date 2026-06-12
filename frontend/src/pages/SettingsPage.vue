@@ -6,6 +6,7 @@ import {
   AlarmPlus,
   Bot,
   Cloud,
+  Copy,
   Cpu,
   Eraser,
   FileSearch,
@@ -248,6 +249,19 @@ function chooseModelFile(entry: ModelFileEntry) {
   modelFilePath.value = entry.path;
   syncModelFileToServiceCommand();
   modelFileModalOpen.value = false;
+}
+
+async function copyServiceCommand(command = "") {
+  if (!command.trim()) {
+    settingsMessage.value = "没有可复制的启动命令";
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(command);
+    settingsMessage.value = "启动命令已复制";
+  } catch {
+    settingsMessage.value = "复制启动命令失败";
+  }
 }
 
 function extractCommandModelPath(command: string) {
@@ -768,6 +782,8 @@ function formatTime(value?: string) {
                 <button class="secondary-action" type="button" @click="services.updateConfig(service)"><Save :size="15" />保存服务</button>
                 <button class="secondary-action" type="button" @click="services.start(service.id)"><Activity :size="15" />启动</button>
                 <button class="secondary-action" type="button" @click="services.stop(service.id)"><X :size="15" />停止</button>
+                <button class="secondary-action" type="button" @click="services.restart(service.id)"><RefreshCw :size="15" />重启</button>
+                <button class="secondary-action" type="button" @click="copyServiceCommand(service.command || '')"><Copy :size="15" />复制命令</button>
               </div>
             </section>
           </div>

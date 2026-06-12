@@ -142,6 +142,15 @@ async function archiveConversation(item: ConversationSummary) {
   await conversations.reloadList(true);
 }
 
+async function renameConversation(item: ConversationSummary) {
+  const nextTitle = window.prompt("新的会话名称", item.title || "");
+  const title = String(nextTitle || "").trim();
+  if (!title || title === item.title) return;
+  await updateConversation(item.id, { title });
+  await conversations.reloadList(true);
+  if (conversations.active?.id === item.id) await conversations.select(item.id, { force: true });
+}
+
 function exportConversation(item: ConversationSummary) {
   window.open(conversationExportUrl(item.id), "_blank");
 }
@@ -150,6 +159,14 @@ function switchScope(scope: Scope) {
   activeScope.value = scope;
   if (conversations.active && visibleConversations.value.some((item) => item.id === conversations.active?.id)) return;
   newConversation();
+}
+
+async function toggleArchiveMode() {
+  await conversations.setArchivedMode(conversations.archivedMode === "archived" ? "active" : "archived");
+  if (conversations.active && visibleConversations.value.some((item) => item.id === conversations.active?.id)) return;
+  const first = visibleConversations.value[0] || conversations.items[0];
+  if (first) await openConversation(first.id, { force: true });
+  else newConversation();
 }
 
 function connectSocket(conversationId = conversations.active?.id || "") {
@@ -365,6 +382,24 @@ function sendText() {
   sendMessage(text, attachments);
   draft.value = "";
   pendingAttachments.value = [];
+  resizeComposerInputs();
+}
+
+function resizeComposerInput(input: HTMLTextAreaElement) {
+  input.style.height = "auto";
+  const nextHeight = Math.min(132, Math.max(44, input.scrollHeight));
+  input.style.height = `${nextHeight}px`;
+  input.style.overflowY = input.scrollHeight > 132 ? "auto" : "hidden";
+}
+
+function handleDraftInput(event: Event) {
+  resizeComposerInput(event.target as HTMLTextAreaElement);
+}
+
+function resizeComposerInputs() {
+  void nextTick(() => {
+    document.querySelectorAll<HTMLTextAreaElement>(".composer textarea").forEach(resizeComposerInput);
+  });
 }
 
 function interruptAssistant(reason = "manual") {
@@ -441,14 +476,17 @@ function avatarUrl(role: string) {
         <ConversationSidebar
           v-model:query="conversations.query"
           :active-scope="activeScope"
+          :archived-mode="conversations.archivedMode"
           :active-id="conversations.active?.id"
           :visible-conversations="visibleConversations"
           :is-weixin-conversation="isWeixinConversation"
           @new-conversation="newConversation"
           @switch-scope="switchScope"
+          @toggle-archive-mode="toggleArchiveMode"
           @open-conversation="openConversation"
           @search="conversations.reloadList(true)"
           @toggle-favorite="toggleFavorite"
+          @rename-conversation="renameConversation"
           @export-conversation="exportConversation"
           @archive-conversation="archiveConversation"
           @remove-conversation="removeConversation"
@@ -477,7 +515,7 @@ function avatarUrl(role: string) {
             <component :is="micActive ? MicOff : Mic" :size="18" />
           </button>
           <button class="icon-button attach-image-btn" type="button" title="发送图片" @click="imageInput?.click()"><ImagePlus :size="18" /></button>
-          <textarea v-model="draft" :disabled="!connected" placeholder="输入消息..." rows="1" autocomplete="off" @keydown.enter.exact.prevent="sendText"></textarea>
+          <textarea v-model="draft" :disabled="!connected" placeholder="输入消息..." rows="1" autocomplete="off" @input="handleDraftInput" @keydown.enter.exact.prevent="sendText"></textarea>
           <button class="send-button" type="button" title="发送" :disabled="!connected || (!draft.trim() && !pendingAttachments.length)" @click="sendText">
             <Send :size="16" />
           </button>
@@ -528,7 +566,7 @@ function avatarUrl(role: string) {
             <component :is="micActive ? MicOff : Mic" :size="18" />
           </button>
           <button class="icon-button attach-image-btn" type="button" title="发送图片" @click="imageInput?.click()"><ImagePlus :size="18" /></button>
-          <textarea v-model="draft" :disabled="!connected" placeholder="输入消息..." rows="1" autocomplete="off" @keydown.enter.exact.prevent="sendText"></textarea>
+          <textarea v-model="draft" :disabled="!connected" placeholder="输入消息..." rows="1" autocomplete="off" @input="handleDraftInput" @keydown.enter.exact.prevent="sendText"></textarea>
           <button class="send-button" type="button" title="发送" :disabled="!connected || (!draft.trim() && !pendingAttachments.length)" @click="sendText">
             <Send :size="16" />
           </button>

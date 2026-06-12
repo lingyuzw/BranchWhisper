@@ -1,8 +1,26 @@
 <script setup lang="ts">
 import { Sparkles } from "@lucide/vue";
+import { computed } from "vue";
 import { useAssetsStore } from "@/stores/assets";
 
 const assets = useAssetsStore();
+
+const testSummary = computed(() => {
+  const result = assets.testResult as Record<string, any> | null;
+  if (!result) return null;
+  const sticker = result.sticker || {};
+  const diagnostics = result.diagnostics || result.intent || {};
+  const score = diagnostics.score ?? diagnostics.best_score;
+  const threshold = diagnostics.threshold;
+  return {
+    hit: Boolean(sticker?.id),
+    title: sticker?.tag || sticker?.name || sticker?.id || "未命中素材",
+    subtitle: sticker?.emotion || sticker?.review_status || `${result.stickers_count || 0} 张可用素材`,
+    score: score === undefined || score === null ? "--" : Number(score).toFixed(2),
+    threshold: threshold === undefined || threshold === null ? "--" : Number(threshold).toFixed(2),
+    fields: (result.matched_fields || diagnostics.matched_fields || []).join("、") || "无",
+  };
+});
 </script>
 
 <template>
@@ -50,7 +68,15 @@ const assets = useAssetsStore();
         <option value="weixin">微信</option>
       </select>
       <button class="secondary-action" type="button" @click="assets.runTest()"><Sparkles :size="16" /> 测试命中</button>
-      <pre class="asset-test-result" :class="{ hit: assets.testResult }">{{ assets.testResult ? JSON.stringify(assets.testResult, null, 2) : "等待测试。" }}</pre>
+      <div class="asset-test-result" :class="{ hit: testSummary?.hit, miss: testSummary && !testSummary.hit }">
+        <template v-if="testSummary">
+          <strong>{{ testSummary.title }}</strong>
+          <span>{{ testSummary.subtitle }}</span>
+          <small>score {{ testSummary.score }} · threshold {{ testSummary.threshold }}</small>
+          <small>匹配字段：{{ testSummary.fields }}</small>
+        </template>
+        <template v-else>等待测试。</template>
+      </div>
     </div>
   </aside>
 </template>

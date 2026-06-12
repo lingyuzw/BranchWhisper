@@ -294,6 +294,7 @@
   align-content: start;
 }
 .appearance-card-head {
+  min-width: 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -305,9 +306,10 @@
   font-weight: 800;
 }
 .appearance-card-head small {
+  min-width: 0;
   color: var(--text-muted);
   font-size: var(--font-xs);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .theme-toggle-group--compact {
   max-width: 190px;

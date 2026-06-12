@@ -5,6 +5,7 @@ interface ConversationState {
   items: ConversationSummary[];
   active: Conversation | null;
   query: string;
+  archivedMode: "active" | "archived";
   loadingList: boolean;
   loadingActive: boolean;
   error: string;
@@ -31,6 +32,7 @@ export const useConversationsStore = defineStore("conversations", {
     items: [],
     active: null,
     query: "",
+    archivedMode: "active",
     loadingList: false,
     loadingActive: false,
     error: "",
@@ -49,7 +51,7 @@ export const useConversationsStore = defineStore("conversations", {
       if (!quiet) this.loadingList = true;
       this.error = "";
       try {
-        const data = await loadConversations(this.query, "active");
+        const data = await loadConversations(this.query, this.archivedMode);
         this.items = data.conversations || [];
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
@@ -78,6 +80,10 @@ export const useConversationsStore = defineStore("conversations", {
     async remove(id: string) {
       await deleteConversation(id);
       if (this.active?.id === id) this.active = null;
+      await this.reloadList();
+    },
+    async setArchivedMode(mode: "active" | "archived") {
+      this.archivedMode = mode;
       await this.reloadList();
     },
     startPolling() {

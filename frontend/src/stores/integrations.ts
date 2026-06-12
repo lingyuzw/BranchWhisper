@@ -8,6 +8,7 @@ import {
   loadIntegrations,
   pollIntegrationQrLogin,
   restartIntegration,
+  startIntegrationBridge,
   startIntegration,
   startIntegrationQrLogin,
   stopIntegration,
@@ -42,6 +43,8 @@ interface IntegrationState {
   actioning: boolean;
   error: string;
   qrSession: Record<string, any> | null;
+  verifyCode: string;
+  bridgeUrl: string;
   pollHandle: number | null;
   loginPollHandle: number | null;
   form: IntegrationForm;
@@ -107,6 +110,8 @@ export const useIntegrationsStore = defineStore("integrations", {
     actioning: false,
     error: "",
     qrSession: null,
+    verifyCode: "",
+    bridgeUrl: "",
     pollHandle: null,
     loginPollHandle: null,
     form: defaultForm(),
@@ -184,15 +189,22 @@ export const useIntegrationsStore = defineStore("integrations", {
       await this.refreshLogs(true);
     },
     async remove(id: string) {
+      if (!window.confirm(`删除接入实例 ${id}？`)) return;
       this.sync(await deleteIntegration(id));
       this.selectedId = this.items[0]?.id || "";
       await this.refreshLogs(true);
+    },
+    async ensureIntegrationEnabled(id: string) {
+      const item = this.items.find((candidate) => candidate.id === id);
+      if (!item || item.enabled) return;
+      this.sync(await updateIntegration(id, { enabled: true }));
     },
     async run(action: "install" | "start" | "stop" | "restart") {
       const id = this.selected?.id;
       if (!id) return;
       this.actioning = true;
       try {
+        if (["start", "restart", "install"].includes(action)) await this.ensureIntegrationEnabled(id);
         if (action === "install") this.sync(await installIntegration(id));
         if (action === "start") this.sync(await startIntegration(id));
         if (action === "stop") this.sync(await stopIntegration(id));
@@ -205,6 +217,7 @@ export const useIntegrationsStore = defineStore("integrations", {
     async startQrLogin(force = true) {
       const id = this.selected?.id;
       if (!id) return;
+      await this.ensureIntegrationEnabled(id);
       const data = await startIntegrationQrLogin(id, force);
       this.sync(data);
       this.qrSession = { ...(data.result?.login || {}), integrationId: id };
@@ -215,7 +228,7 @@ export const useIntegrationsStore = defineStore("integrations", {
       const id = this.selected?.id;
       if (!id || this.qrSession?.integrationId !== id) return;
       try {
-        const data = await pollIntegrationQrLogin(id);
+        const data = await pollIntegrationQrLogin(id, this.verifyCode.trim());
         this.sync(data);
         const session = { ...(this.qrSession || {}), ...(data.result?.login || {}), integrationId: id };
         this.qrSession = session;
@@ -244,8 +257,21 @@ export const useIntegrationsStore = defineStore("integrations", {
     async clearLogs() {
       const id = this.selected?.id;
       if (!id) return;
+      if (!window.confirm(`清空 ${id} 的接入日志？`)) return;
       await clearIntegrationLogs(id);
       await this.refreshLogs(true);
+    },
+    async startBridge() {
+      const id = this.selected?.id;
+      if (!id) return;
+      this.actioning = true;
+      try {
+        await this.ensureIntegrationEnabled(id);
+        this.sync(await startIntegrationBridge(id, this.bridgeUrl.trim()));
+        await this.refreshLogs(true);
+      } finally {
+        this.actioning = false;
+      }
     },
     async runDialogTest() {
       const id = this.selected?.id;

@@ -6,13 +6,22 @@ export interface ServiceSummary {
   description?: string;
   running?: boolean;
   status?: string;
+  state?: string;
+  error?: string;
+  external?: boolean;
+  port_open?: boolean;
   health_url?: string;
   cwd?: string;
   command?: string;
   startup_wait_sec?: number;
+  startup_ready_timeout_sec?: number;
   pid?: number | string | null;
   port?: number | string | null;
-  health?: string | null;
+  returncode?: number | string | null;
+  started_at?: number | string | null;
+  log_file?: string;
+  health?: Record<string, any> | string | null;
+  warmup?: Record<string, any> | null;
 }
 
 export interface ServicesResponse {
