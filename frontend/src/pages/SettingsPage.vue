@@ -60,6 +60,7 @@ const modelFilePath = ref("");
 const settingsMessage = ref("");
 const settingsHydrating = ref(false);
 const settingsSaving = ref(false);
+const formBaseline = ref<Partial<PublicConfig>>({});
 interface ServiceDraft {
   id: string;
   cwd: string;
@@ -83,6 +84,39 @@ const recommendedBooleanDefaults: Partial<PublicConfig> = {
   sticker_vision_enabled: true,
   stickers_enabled: true,
   context_compaction_enabled: true,
+};
+const DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_BASE_URL}/chat/completions`;
+const DEFAULT_API_MODEL = "qwen-plus";
+const DEFAULT_VISION_MODEL = "qwen3-vl-plus";
+const recommendedStringDefaults: Partial<PublicConfig> = {
+  api_llm_url: DASHSCOPE_CHAT_COMPLETIONS_URL,
+  api_llm_model: DEFAULT_API_MODEL,
+  sticker_vision_url: DASHSCOPE_CHAT_COMPLETIONS_URL,
+  sticker_vision_model: DEFAULT_VISION_MODEL,
+};
+const SECRET_CONFIG_KEYS = new Set(["llm_api_key", "api_llm_api_key", "sticker_vision_api_key"]);
+const SKIPPED_CONFIG_KEYS = new Set(["llm_model_file"]);
+const TOOL_CONFIG_KEYS = new Set(["tools_enabled", "tools_auto_call", "tools_timeout", "tools_max_result_chars"]);
+const PROVIDER_BASE_URL_PRESETS: Record<string, Record<string, string>> = {
+  weather: {
+    gaode: "https://restapi.amap.com/v3/weather/weatherInfo",
+    wttr: "https://wttr.in",
+  },
+  search: {
+    gaode: "https://restapi.amap.com/v3/place/text",
+    duckduckgo: "https://duckduckgo.com/html/",
+  },
+  news: {
+    google_rss: "https://news.google.com/rss",
+    search: "",
+  },
+  map: {
+    gaode: "https://restapi.amap.com/v3/direction/driving",
+  },
+  finance: {
+    search: "",
+  },
 };
 type SettingsSectionId =
   | "appearance"
@@ -195,7 +229,7 @@ watch(
   () => app.config,
   (config) => {
     if (!config) return;
-    Object.assign(form, { ...recommendedBooleanDefaults, ...config });
+    hydrateConfigForm(config);
   },
   { immediate: true },
 );
@@ -213,6 +247,94 @@ function announceSettings(message: string, type: ToastKind = "info", timeoutMs?:
   ui.toast(message, type, timeoutMs);
 }
 
+function cloneConfig(value: Partial<PublicConfig>): Partial<PublicConfig> {
+  return JSON.parse(JSON.stringify(value || {}));
+}
+
+function applyRecommendedDefaults(config: PublicConfig): Partial<PublicConfig> {
+  const next: Partial<PublicConfig> = { ...config };
+  for (const [key, value] of Object.entries(recommendedBooleanDefaults)) {
+    if (next[key] === undefined || next[key] === null) next[key] = value;
+  }
+  for (const [key, value] of Object.entries(recommendedStringDefaults)) {
+    if (!String(next[key] || "").trim()) next[key] = value;
+  }
+  return next;
+}
+
+function replaceForm(next: Partial<PublicConfig>) {
+  for (const key of Object.keys(form)) delete form[key];
+  Object.assign(form, next);
+  formBaseline.value = cloneConfig(next);
+}
+
+function hydrateConfigForm(config: PublicConfig, force = false) {
+  if (!force && Object.keys(formBaseline.value).length && formHasDirtyChanges()) return;
+  replaceForm(applyRecommendedDefaults(config));
+}
+
+function normalizeConfigValue(value: unknown) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "number") return Number.isFinite(value) ? value : "";
+  return value;
+}
+
+function isSameConfigValue(left: unknown, right: unknown) {
+  return JSON.stringify(normalizeConfigValue(left)) === JSON.stringify(normalizeConfigValue(right));
+}
+
+function buildConfigPatch(allowedKeys?: Set<string>): Partial<PublicConfig> {
+  const patch: Partial<PublicConfig> = {};
+  for (const key of Object.keys(form)) {
+    if (allowedKeys && !allowedKeys.has(key)) continue;
+    if (SKIPPED_CONFIG_KEYS.has(key) || key.endsWith("_masked") || key.endsWith("_set")) continue;
+    const value = form[key];
+    if (SECRET_CONFIG_KEYS.has(key)) {
+      const text = String(value || "").trim();
+      if (!text || text.includes("*")) continue;
+    }
+    if (!isSameConfigValue(value, formBaseline.value[key])) {
+      (patch as Record<string, unknown>)[key] = value;
+    }
+  }
+  return patch;
+}
+
+function formHasDirtyChanges() {
+  return Object.keys(buildConfigPatch()).length > 0;
+}
+
+function absorbSavedConfigKeys(config: PublicConfig, keys: Set<string>) {
+  const next = applyRecommendedDefaults(config);
+  const baseline = cloneConfig(formBaseline.value);
+  for (const key of keys) {
+    form[key] = next[key];
+    baseline[key] = next[key];
+  }
+  formBaseline.value = baseline;
+}
+
+function isDashScopeCompatibleUrl(value: unknown) {
+  const text = String(value || "").trim();
+  return !text || text === DASHSCOPE_BASE_URL || text === DASHSCOPE_CHAT_COMPLETIONS_URL;
+}
+
+function applyDashScopeDefaults(force = false) {
+  if (force || isDashScopeCompatibleUrl(form.api_llm_url)) {
+    form.api_llm_url = DASHSCOPE_CHAT_COMPLETIONS_URL;
+  }
+  if (force || !String(form.api_llm_model || "").trim() || form.api_llm_model === "qwen3") {
+    form.api_llm_model = DEFAULT_API_MODEL;
+  }
+  if (force || isDashScopeCompatibleUrl(form.sticker_vision_url)) {
+    form.sticker_vision_url = DASHSCOPE_CHAT_COMPLETIONS_URL;
+  }
+  if (force || !String(form.sticker_vision_model || "").trim() || form.sticker_vision_model === "qwen-vl") {
+    form.sticker_vision_model = DEFAULT_VISION_MODEL;
+  }
+  announceSettings("已填入百炼 OpenAI 兼容预设", "success", 1800);
+}
+
 async function saveAll() {
   if (settingsSaving.value) {
     ui.info("正在保存中，请稍候", 1200);
@@ -227,11 +349,15 @@ async function saveAll() {
   ui.info("正在保存配置...", 1600);
   try {
     syncModelFileToServiceCommand();
-    await app.saveConfig({ ...form });
-    await tools.save();
+    const configPatch = buildConfigPatch();
+    if (Object.keys(configPatch).length) {
+      await app.saveConfig(configPatch);
+      if (app.config) hydrateConfigForm(app.config, true);
+    }
+    if (tools.dirty) await tools.save();
     await engagement.save();
     await profiles.saveAll();
-    await Promise.all(Object.keys(serviceDrafts).map((serviceId) => saveServiceDraft(serviceId, true)));
+    await Promise.all(Object.keys(serviceDrafts).filter((serviceId) => serviceDraftDirty[serviceId]).map((serviceId) => saveServiceDraft(serviceId, true)));
     await Promise.allSettled([tools.reload(), engagement.reload(), profiles.reload()]);
     syncServiceDrafts({ force: true });
     syncModelFilePath();
@@ -323,6 +449,7 @@ async function dismissEvent(eventId: string) {
 
 function setMode(mode: "local" | "api") {
   form.dialog_mode = mode;
+  if (mode === "api") applyDashScopeDefaults();
 }
 
 function applyTheme(nextTheme: "dark" | "light") {
@@ -389,7 +516,36 @@ function parseProviderValue(field: string, value: string) {
 }
 
 function setProviderField(providerKey: string, field: string, value: string) {
-  tools.setProviderField(providerKey, field, parseProviderValue(field, value));
+  const currentProvider = tools.config[providerKey] || {};
+  const parsed = parseProviderValue(field, value);
+  tools.setProviderField(providerKey, field, parsed);
+  if (field !== "provider") return;
+  const preset = PROVIDER_BASE_URL_PRESETS[providerKey]?.[String(parsed)];
+  if (preset === undefined) return;
+  const currentBaseUrl = String(currentProvider.base_url || "");
+  const knownUrls = Object.values(PROVIDER_BASE_URL_PRESETS[providerKey] || {});
+  if (!currentBaseUrl.trim() || knownUrls.includes(currentBaseUrl)) {
+    tools.setProviderField(providerKey, "base_url", preset);
+  }
+}
+
+async function saveToolsOnly() {
+  const toolConfigPatch = buildConfigPatch(TOOL_CONFIG_KEYS);
+  if (!tools.dirty && !Object.keys(toolConfigPatch).length) {
+    announceSettings("联网工具没有未保存修改", "info", 1400);
+    return;
+  }
+  try {
+    announceSettings("正在保存联网工具...", "info", 1600);
+    if (Object.keys(toolConfigPatch).length) {
+      await app.saveConfig(toolConfigPatch);
+      if (app.config) absorbSavedConfigKeys(app.config, TOOL_CONFIG_KEYS);
+    }
+    await tools.save();
+    announceSettings("联网工具配置已保存", "success");
+  } catch (error) {
+    announceSettings(`联网工具保存失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
 }
 
 function providerFieldValue(providerKey: string, field: string) {
@@ -874,7 +1030,10 @@ function formatTime(value?: string) {
           </section>
 
           <section class="api-engine-card" :class="{ 'model-panel-locked': apiDisabled }" data-locked-label="当前使用本地模型，API 参数已锁定">
-            <div class="appearance-card-head"><strong>OpenAI-compatible API</strong><small>DeepSeek、通义兼容接口、自建网关都可填这里</small></div>
+            <div class="appearance-card-head">
+              <div><strong>OpenAI-compatible API</strong><small>DeepSeek、通义兼容接口、自建网关都可填这里</small></div>
+              <button class="secondary-action" type="button" :disabled="apiDisabled" @click="applyDashScopeDefaults(true)"><Cloud :size="15" />百炼预设</button>
+            </div>
             <div class="form-grid compact">
               <label class="wide"><span>API Chat Completions URL</span><input v-model="form.api_llm_url" :disabled="apiDisabled" placeholder="https://api.example.com/v1/chat/completions" /></label>
               <label><span>API Model</span><input v-model="form.api_llm_model" :disabled="apiDisabled" placeholder="model-name" /></label>
@@ -892,7 +1051,12 @@ function formatTime(value?: string) {
               <p class="eyebrow">Network Tools</p>
               <h2>联网工具</h2>
             </div>
-            <span class="soft-badge">{{ tools.loading ? "加载中" : "Provider Config" }}</span>
+            <div class="inline-actions">
+              <span class="soft-badge">{{ tools.loading ? "加载中" : tools.dirty ? "有未保存修改" : "Provider Config" }}</span>
+              <button class="secondary-action" type="button" :disabled="tools.saving || !tools.dirty" @click="saveToolsOnly">
+                <Save :size="15" />{{ tools.saving ? "保存中..." : "保存联网工具" }}
+              </button>
+            </div>
           </div>
           <div class="form-grid compact">
             <label><span>工具总开关</span><select v-model="form.tools_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>

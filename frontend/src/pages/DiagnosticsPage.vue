@@ -1,25 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted } from "vue";
 import { Activity, Clipboard, ClipboardCheck, Copy, MessageCircle, Network, Play, RotateCw, SearchCheck, Sparkles, Wrench } from "@lucide/vue";
 import { loadConfig } from "@/api/config";
-import { loadDiagnosticsSummary } from "@/api/diagnostics";
+import { loadDiagnosticsSummary, runLlmApiDiagnostic } from "@/api/diagnostics";
+import { testStickerVision } from "@/api/assets";
 import { useAppStore } from "@/stores/app";
 import { PROVIDER_LABELS, useToolsStore } from "@/stores/tools";
 import { useAssetsStore } from "@/stores/assets";
+import { useDiagnosticsStore, type CheckStatus, type DiagnosticResult } from "@/stores/diagnostics";
 import { useEngagementStore } from "@/stores/engagement";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useMemoryStore } from "@/stores/memory";
-
-type CheckStatus = "idle" | "running" | "passed" | "warning" | "failed";
-
-interface DiagnosticResult {
-  status: CheckStatus;
-  message: string;
-  detail?: string;
-  rawLog?: string;
-  durationMs?: number;
-  updatedAt?: string;
-}
 
 interface DiagnosticCheck {
   id: string;
@@ -32,12 +23,14 @@ interface DiagnosticCheck {
 const app = useAppStore();
 const tools = useToolsStore();
 const assets = useAssetsStore();
+const diagnostics = useDiagnosticsStore();
 const engagement = useEngagementStore();
 const integrations = useIntegrationsStore();
 const memory = useMemoryStore();
-const runningAll = ref(false);
-const reportMessage = ref("");
-const results = reactive<Record<string, DiagnosticResult>>({});
+const runningAll = computed(() => diagnostics.runningAll);
+const reportMessage = computed(() => diagnostics.reportMessage);
+const TINY_PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 
 const providerChecks = computed<DiagnosticCheck[]>(() =>
   tools.providers.map((provider) => ({
@@ -47,7 +40,7 @@ const providerChecks = computed<DiagnosticCheck[]>(() =>
     detail: provider.config?.enabled === false ? "当前 Provider 已关闭，检测会返回关闭状态。" : "调用后端工具测试接口，验证配置、密钥和返回格式。",
     action: async () => {
       if (provider.config?.enabled === false) {
-        results[`tool-${provider.key}`] = { status: "warning", message: "Provider 已关闭", updatedAt: nowText() };
+        diagnostics.setResult(`tool-${provider.key}`, { status: "warning", message: "Provider 已关闭", updatedAt: nowText() });
         return;
       }
       await tools.runProviderTest(provider.key);
@@ -67,7 +60,7 @@ const checks = computed<DiagnosticCheck[]>(() => [
     action: async () => {
       const summary = await loadDiagnosticsSummary();
       if (summary.issues.length) {
-        results["runtime-summary"] = { status: "warning", message: summary.issues.join("\n"), updatedAt: nowText() };
+        diagnostics.setResult("runtime-summary", { status: "warning", message: summary.issues.join("\n"), updatedAt: nowText() });
       }
       return JSON.stringify(summary, null, 2);
     },
@@ -90,6 +83,28 @@ const checks = computed<DiagnosticCheck[]>(() => [
     action: async () => {
       await app.bootstrap();
       return `读取到 ${app.services.length || 0} 个服务。`;
+    },
+  },
+  {
+    id: "api-llm",
+    group: "API 能力",
+    title: "API 大模型连通性",
+    detail: "用 API 模式配置向 OpenAI-compatible chat/completions 发最小请求，验证 URL、模型、Key 和返回结构。",
+    action: async () => {
+      const result = await runLlmApiDiagnostic();
+      if (!result.ok) throw new Error(result.error || `LLM API 检测失败：HTTP ${result.status_code || "--"}`);
+      return JSON.stringify(result, null, 2);
+    },
+  },
+  {
+    id: "asset-vision-api",
+    group: "API 能力",
+    title: "素材识别 API 连通性",
+    detail: "用 1px 测试图调用素材 Vision 配置，验证 URL、模型、Key 和返回结构。",
+    action: async () => {
+      const result = await testStickerVision({ data_url: TINY_PNG_DATA_URL });
+      if (!result.ok) throw new Error(String(result.error || "素材 Vision API 检测失败"));
+      return JSON.stringify(result, null, 2);
     },
   },
   {
@@ -123,7 +138,23 @@ const checks = computed<DiagnosticCheck[]>(() => [
     action: async () => {
       if (!assets.testText.trim()) throw new Error("请先填写素材策略文本。");
       await assets.runTest();
-      return JSON.stringify(assets.testResult || {}, null, 2);
+      const result = assets.testResult || {};
+      const intent = (result.intent || {}) as Record<string, unknown>;
+      const sticker = result.sticker;
+      const stickersCount = Number(result.stickers_count || 0);
+      if (!sticker || intent.send === false || stickersCount <= 0) {
+        const reason = String(intent.reason || (result.diagnostics as Record<string, unknown> | undefined)?.reason || "no_sticker");
+        const detail = JSON.stringify(result, null, 2);
+        diagnostics.setResult("asset-policy", {
+          status: "warning",
+          message: stickersCount <= 0 ? "表情策略接口可用，但素材库没有可发送素材。" : `表情策略未命中可发送素材：${reason}`,
+          detail,
+          rawLog: detail,
+          updatedAt: nowText(),
+        });
+        return detail;
+      }
+      return JSON.stringify(result, null, 2);
     },
   },
   {
@@ -145,7 +176,22 @@ const checks = computed<DiagnosticCheck[]>(() => [
     detail: "刷新接入实例与 openclaw 环境信息。",
     action: async () => {
       await integrations.reload(true);
-      return `${integrations.summary}，环境：${integrations.environmentReady ? "ready" : "not ready"}`;
+      const accountIssues = integrations.items.flatMap((item) =>
+        (item.accounts || [])
+          .filter((account) => account.base_url_reachable === false || account.diagnostic_hint || account.connectivity_error)
+          .map((account) => `${item.id}/${account.account_id || account.id || "account"}：${account.diagnostic_hint || account.connectivity_error || "OpenClaw 本地服务不可达"}`),
+      );
+      const detail = JSON.stringify({ environment: integrations.environment, integrations: integrations.items }, null, 2);
+      if (accountIssues.length) {
+        diagnostics.setResult("integration-state", {
+          status: "warning",
+          message: accountIssues.join("\n"),
+          detail,
+          rawLog: detail,
+          updatedAt: nowText(),
+        });
+      }
+      return `${integrations.summary}，环境：${integrations.environmentReady ? "ready" : "not ready"}\n${accountIssues.join("\n")}\n${detail}`;
     },
   },
   {
@@ -243,7 +289,7 @@ onMounted(async () => {
 });
 
 function resultFor(id: string): DiagnosticResult {
-  return results[id] || { status: "idle", message: "未检测" };
+  return diagnostics.resultFor(id);
 }
 
 function nowText() {
@@ -289,35 +335,35 @@ async function copyText(text: string) {
 
 async function runCheck(check: DiagnosticCheck) {
   const start = Date.now();
-  results[check.id] = { status: "running", message: "检测中...", updatedAt: nowText() };
+  diagnostics.setResult(check.id, { status: "running", message: "检测中...", updatedAt: nowText() });
   try {
     const detail = await check.action();
     if (resultFor(check.id).status === "warning") {
-      results[check.id] = {
+      diagnostics.setResult(check.id, {
         ...resultFor(check.id),
         detail: detail ? String(detail) : resultFor(check.id).detail,
         rawLog: detail ? String(detail) : resultFor(check.id).rawLog,
         durationMs: Date.now() - start,
         updatedAt: nowText(),
-      };
+      });
       return;
     }
-    results[check.id] = {
+    diagnostics.setResult(check.id, {
       status: "passed",
       message: "检测通过",
       detail: detail ? String(detail) : "",
       rawLog: detail ? String(detail) : "检测通过",
       durationMs: Date.now() - start,
       updatedAt: nowText(),
-    };
+    });
   } catch (error) {
-    results[check.id] = {
+    diagnostics.setResult(check.id, {
       status: "failed",
       message: error instanceof Error ? error.message : String(error),
       rawLog: error instanceof Error ? error.stack || error.message : String(error),
       durationMs: Date.now() - start,
       updatedAt: nowText(),
-    };
+    });
   }
 }
 
@@ -328,13 +374,13 @@ async function runGroup(items: DiagnosticCheck[]) {
 }
 
 async function runAll() {
-  runningAll.value = true;
+  diagnostics.runningAll = true;
   try {
     for (const group of groups.value) {
       await runGroup(group.items);
     }
   } finally {
-    runningAll.value = false;
+    diagnostics.runningAll = false;
   }
 }
 
@@ -348,22 +394,16 @@ async function runFailed() {
 async function copyReport() {
   const lines = checks.value.map((check) => checkLog(check));
   const copied = await copyText(lines.join("\n\n"));
-  reportMessage.value = copied ? "检测报告已复制" : "复制失败，请手动选择日志";
-  window.setTimeout(() => {
-    reportMessage.value = "";
-  }, 1800);
+  diagnostics.setReportMessage(copied ? "检测报告已复制" : "复制失败，请手动选择日志");
 }
 
 async function copyCheckLog(check: DiagnosticCheck) {
   const copied = await copyText(checkLog(check));
-  reportMessage.value = copied ? `已复制：${check.title}` : "复制失败，请手动选择日志";
-  window.setTimeout(() => {
-    reportMessage.value = "";
-  }, 1800);
+  diagnostics.setReportMessage(copied ? `已复制：${check.title}` : "复制失败，请手动选择日志");
 }
 
 function groupIcon(name: string) {
-  return { 基础环境: Activity, 联网工具: Network, 素材能力: SearchCheck, 接入链路: MessageCircle, 记忆系统: Clipboard, 主动性: Sparkles }[name] || Wrench;
+  return { 基础环境: Activity, "API 能力": Network, 联网工具: Network, 素材能力: SearchCheck, 接入链路: MessageCircle, 记忆系统: Clipboard, 主动性: Sparkles }[name] || Wrench;
 }
 </script>
 

@@ -9,6 +9,9 @@ from pathlib import Path
 MASKED_SECRET_CHARS = "*"
 DEFAULT_TTS_VOLUME = 0.88
 DEFAULT_TTS_FADE_MS = 5
+DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+DEFAULT_API_LLM_MODEL = "qwen-plus"
+DEFAULT_STICKER_VISION_MODEL = "qwen3-vl-plus"
 
 DEFAULT_SYSTEM = (
     "你以“满穗”的人设和聊天风格与用户对话。她是 24 岁女生，福建人，二本毕业，"
@@ -281,10 +284,14 @@ def migrate_legacy_defaults(settings: SessionSettings) -> None:
         settings.max_tokens = 512
     if int(getattr(settings, "api_max_tokens", 0) or 0) == 220:
         settings.api_max_tokens = 512
+    if not str(getattr(settings, "api_llm_url", "") or "").strip():
+        settings.api_llm_url = DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL
+    if not str(getattr(settings, "api_llm_model", "") or "").strip():
+        settings.api_llm_model = DEFAULT_API_LLM_MODEL
     if not str(getattr(settings, "sticker_vision_url", "") or "").strip():
-        settings.sticker_vision_url = getattr(settings, "vision_url", "")
+        settings.sticker_vision_url = DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL
     if not str(getattr(settings, "sticker_vision_model", "") or "").strip():
-        settings.sticker_vision_model = getattr(settings, "vision_model", "")
+        settings.sticker_vision_model = DEFAULT_STICKER_VISION_MODEL
 
 
 def save_persisted_settings(settings: SessionSettings, path: Path) -> None:
@@ -410,8 +417,8 @@ def add_settings_args(parser) -> None:
         default=os.environ.get("BRANCHWHISPER_LLM_API_KEY", os.environ.get("BUDING_LLM_API_KEY", "")),
     )
     parser.add_argument("--dialog-mode", choices=["local", "api"], default="local")
-    parser.add_argument("--api-llm-url", default=os.environ.get("BRANCHWHISPER_API_LLM_URL", ""))
-    parser.add_argument("--api-llm-model", default=os.environ.get("BRANCHWHISPER_API_LLM_MODEL", ""))
+    parser.add_argument("--api-llm-url", default=os.environ.get("BRANCHWHISPER_API_LLM_URL", DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL))
+    parser.add_argument("--api-llm-model", default=os.environ.get("BRANCHWHISPER_API_LLM_MODEL", DEFAULT_API_LLM_MODEL))
     parser.add_argument("--api-llm-api-key", default=os.environ.get("BRANCHWHISPER_API_LLM_API_KEY", ""))
     parser.add_argument("--api-temperature", type=float, default=0.35)
     parser.add_argument("--api-max-tokens", type=int, default=512)
@@ -454,8 +461,8 @@ def add_settings_args(parser) -> None:
     parser.add_argument("--vision-max-image-mb", type=float, default=8.0)
     parser.add_argument("--vision-memory-extract-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--sticker-vision-enabled", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--sticker-vision-url", default="")
-    parser.add_argument("--sticker-vision-model", default="")
+    parser.add_argument("--sticker-vision-url", default=os.environ.get("BRANCHWHISPER_STICKER_VISION_URL", DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL))
+    parser.add_argument("--sticker-vision-model", default=os.environ.get("BRANCHWHISPER_STICKER_VISION_MODEL", DEFAULT_STICKER_VISION_MODEL))
     parser.add_argument("--sticker-vision-api-key", default="")
     parser.add_argument("--sticker-vision-timeout", type=float, default=45.0)
     parser.add_argument("--sticker-vision-max-tokens", type=int, default=420)

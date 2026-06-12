@@ -341,6 +341,30 @@
   color: var(--text-muted);
   font-size: var(--font-xs);
 }
+.integration-account-diagnostic {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid rgba(233,120,114,0.22);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+.integration-account-diagnostic span {
+  color: var(--danger);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+}
+.integration-account-diagnostic small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.integration-account-diagnostic .small-button {
+  justify-self: start;
+  min-height: 30px;
+  padding-inline: 8px;
+}
 
 .integration-log {
   height: 360px;

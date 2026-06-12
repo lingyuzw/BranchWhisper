@@ -21,3 +21,17 @@ export interface DiagnosticsSummary {
 export async function loadDiagnosticsSummary() {
   return fetchJson<DiagnosticsSummary>("/api/diagnostics/summary");
 }
+
+export interface LlmApiDiagnostic {
+  ok: boolean;
+  url: string;
+  model: string;
+  status_code?: number;
+  latency_ms?: number;
+  error?: string;
+  response?: unknown;
+}
+
+export async function runLlmApiDiagnostic() {
+  return fetchJson<LlmApiDiagnostic>("/api/diagnostics/llm-api-test", { method: "POST" });
+}

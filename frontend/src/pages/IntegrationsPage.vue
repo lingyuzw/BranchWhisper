@@ -58,6 +58,28 @@ function accounts(item: Record<string, any> | null | undefined) {
   return Array.isArray(item?.accounts) ? item.accounts : [];
 }
 
+function accountDiagnosticText(account: Record<string, any>) {
+  return [
+    `账号：${account.nickname || account.name || account.account_id || account.id || "--"}`,
+    `Account ID：${account.account_id || account.id || "--"}`,
+    `Base URL：${account.base_url || "--"}`,
+    `Base URL 可达：${account.base_url_reachable === true ? "是" : account.base_url_reachable === false ? "否" : "未检测"}`,
+    account.connectivity_error ? `错误：${account.connectivity_error}` : "",
+    account.diagnostic_hint ? `提示：${account.diagnostic_hint}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function copyAccountDiagnostic(account: Record<string, any>) {
+  try {
+    await navigator.clipboard.writeText(accountDiagnosticText(account));
+    showActionMessage("账号诊断已复制", "success");
+  } catch {
+    showActionMessage("账号诊断复制失败", "error");
+  }
+}
+
 function timings(item: Record<string, any> | null | undefined) {
   return Array.isArray(item?.recent_timings) ? item.recent_timings.slice(0, 4) : [];
 }
@@ -324,6 +346,12 @@ function downloadLogs() {
                 <span>账号</span>
                 <strong>{{ account.nickname || account.name || account.account_id || account.id }}</strong>
                 <small>{{ account.account_id || account.id || "--" }}</small>
+                <small v-if="account.base_url">Base URL: {{ account.base_url }}</small>
+                <div v-if="account.diagnostic_hint || account.connectivity_error" class="integration-account-diagnostic">
+                  <span>{{ account.diagnostic_hint || "账号本地服务不可达" }}</span>
+                  <small v-if="account.connectivity_error">{{ account.connectivity_error }}</small>
+                  <button class="small-button" type="button" @click="copyAccountDiagnostic(account)"><Copy :size="13" />复制诊断</button>
+                </div>
               </div>
               <div v-if="!accounts(selected).length" class="integration-account-item muted">
                 <span>账号</span>

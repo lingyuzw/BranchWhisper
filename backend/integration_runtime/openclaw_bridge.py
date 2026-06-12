@@ -771,6 +771,7 @@ def main() -> int:
     sync_bufs = {account["account_id"]: load_sync_buf(state_dir, account["account_id"]) for account in accounts}
     seen: set[str] = set()
     pending_images: dict[str, dict] = {}
+    connection_error_counts: dict[str, int] = {}
     with httpx.Client() as client:
         for account in accounts:
             notify_start(client, account)
@@ -786,7 +787,16 @@ def main() -> int:
                     except httpx.TimeoutException:
                         continue
                     except Exception as exc:
-                        log(f"getUpdates error account={account_id}: {exc}")
+                        text = str(exc)
+                        if "Connection refused" in text or "[Errno 111]" in text or "[WinError 10061]" in text:
+                            count = connection_error_counts.get(account_id, 0) + 1
+                            connection_error_counts[account_id] = count
+                            if count <= 3 or count % 10 == 0:
+                                suffix = f" (重复 {count} 次)" if count > 3 else ""
+                                log(f"getUpdates error account={account_id}: {exc}{suffix}")
+                        else:
+                            connection_error_counts[account_id] = 0
+                            log(f"getUpdates error account={account_id}: {exc}")
                         time.sleep(max(0.5, args.retry_delay_sec))
                         continue
 

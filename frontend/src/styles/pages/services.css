@@ -94,6 +94,8 @@
 }
 .service-card.active { border-color: rgba(120,199,122,0.26); }
 .service-card.active::before { background: var(--success); }
+.service-card.degraded { border-color: rgba(117,200,189,0.28); }
+.service-card.degraded::before { background: var(--info); }
 .service-card.loading { border-color: rgba(217,155,79,0.28); }
 .service-card.loading::before { background: var(--warning); }
 .service-card.failed { border-color: rgba(231,104,104,0.26); }
@@ -124,6 +126,7 @@
 }
 .service-badge.running { color: var(--success); background: var(--success-soft); border-color: rgba(120,199,122,0.22); }
 .service-badge.active { color: var(--success); background: var(--success-soft); border-color: rgba(120,199,122,0.22); }
+.service-badge.degraded { color: var(--info); background: var(--info-soft); border-color: rgba(117,200,189,0.24); }
 .service-badge.loading { color: var(--warning); background: var(--warning-soft); border-color: rgba(217,155,79,0.22); }
 .service-badge.failed  { color: var(--danger); background: var(--danger-soft); border-color: rgba(231,104,104,0.22); }
 
@@ -156,6 +159,11 @@
   border-color: rgba(217,155,79,0.24);
 }
 .meta-cell.loading strong { color: var(--warning); }
+.meta-cell.degraded {
+  background: color-mix(in srgb, var(--surface) 86%, var(--info) 14%);
+  border-color: rgba(117,200,189,0.24);
+}
+.meta-cell.degraded strong { color: var(--info); }
 .meta-cell.failed {
   background: color-mix(in srgb, var(--surface) 86%, var(--danger) 14%);
   border-color: rgba(231,104,104,0.25);
@@ -248,6 +256,7 @@
 /* .status-dot overrides — services page uses a different dot style.
    base.css serves as the default; these rules extend it for the card context. */
 .service-card.active .status-dot { background: var(--success); opacity: 1; box-shadow: none; animation: none; }
+.service-card.degraded .status-dot { background: var(--info); opacity: 1; box-shadow: none; animation: none; }
 .service-card.loading .status-dot { background: var(--warning); opacity: 1; box-shadow: none; animation: pulse 1.4s ease-in-out infinite; }
 .service-card.failed .status-dot { background: var(--danger); opacity: 1; box-shadow: none; }
 
@@ -289,41 +298,26 @@
   background: var(--danger-soft);
 }
 
-.service-details {
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-muted) 88%, transparent);
+.service-detail-modal {
+  width: min(820px, calc(100vw - 36px));
+  max-height: calc(100vh - 44px);
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
-.service-details summary {
-  min-height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px;
-  color: var(--text-soft);
-  font-size: var(--font-xs);
-  font-weight: 700;
-  cursor: pointer;
-  list-style: none;
+.service-detail-head {
+  background:
+    linear-gradient(90deg, rgba(214,181,109,0.10), transparent 34%),
+    color-mix(in srgb, var(--surface) 92%, var(--info) 8%);
 }
-.service-details summary::-webkit-details-marker { display: none; }
-.service-details summary::after {
-  content: "+";
-  color: var(--text-muted);
-  font-family: var(--font-mono);
+.service-detail-body {
+  display: grid;
+  gap: 12px;
+  overflow: auto;
 }
-.service-details[open] summary {
-  border-bottom: 1px solid var(--border);
-}
-.service-details[open] summary::after { content: "-"; }
 .service-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  padding: 8px;
 }
 .service-detail-row {
   min-width: 0;
@@ -358,15 +352,26 @@
   background: var(--danger-soft);
 }
 .service-detail-row.failed strong { color: var(--danger); }
-.service-command-detail {
+.service-detail-code {
   display: grid;
-  gap: 5px;
-  padding: 0 8px 8px;
+  gap: 7px;
+  min-width: 0;
 }
-.service-command-detail pre {
-  max-height: 150px;
+.service-detail-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.service-detail-code-head span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
+.service-detail-code pre {
+  max-height: 180px;
   margin: 0;
-  padding: 8px;
+  padding: 10px;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -380,7 +385,8 @@
 }
 
 @media (max-width: 720px) {
-  .service-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .service-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
   .service-action { justify-content: center; min-width: 0; padding-inline: 6px; }
   .service-detail-grid { grid-template-columns: 1fr; }
+  .service-detail-modal { width: calc(100vw - 20px); max-height: calc(100vh - 24px); }
 }

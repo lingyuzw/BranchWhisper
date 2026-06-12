@@ -14,6 +14,7 @@ import {
   type StickerUploadFile,
 } from "@/api/assets";
 import { loadConfig, saveConfig, type PublicConfig } from "@/api/config";
+import { useAppStore } from "@/stores/app";
 
 interface AssetProgress {
   active: boolean;
@@ -58,6 +59,9 @@ interface AssetState {
   detailMessage: string;
 }
 
+const DASHSCOPE_CHAT_COMPLETIONS_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+const DEFAULT_STICKER_VISION_MODEL = "qwen3-vl-plus";
+
 function initialProgress(): AssetProgress {
   return { active: false, label: "", done: 0, total: 0, failed: 0 };
 }
@@ -65,8 +69,8 @@ function initialProgress(): AssetProgress {
 function defaultAssetConfig(): AssetConfigForm {
   return {
     sticker_vision_enabled: true,
-    sticker_vision_url: "",
-    sticker_vision_model: "",
+    sticker_vision_url: DASHSCOPE_CHAT_COMPLETIONS_URL,
+    sticker_vision_model: DEFAULT_STICKER_VISION_MODEL,
     sticker_vision_api_key: "",
     sticker_vision_api_key_masked: "",
     sticker_vision_timeout: 45,
@@ -83,8 +87,8 @@ function defaultAssetConfig(): AssetConfigForm {
 function configFromPublic(config: PublicConfig): AssetConfigForm {
   return {
     sticker_vision_enabled: Boolean(config.sticker_vision_enabled ?? true),
-    sticker_vision_url: String(config.sticker_vision_url || config.vision_url || ""),
-    sticker_vision_model: String(config.sticker_vision_model || config.vision_model || ""),
+    sticker_vision_url: String(config.sticker_vision_url || config.vision_url || DASHSCOPE_CHAT_COMPLETIONS_URL),
+    sticker_vision_model: String(config.sticker_vision_model || config.vision_model || DEFAULT_STICKER_VISION_MODEL),
     sticker_vision_api_key: "",
     sticker_vision_api_key_masked: String(config.sticker_vision_api_key_masked || ""),
     sticker_vision_timeout: Number(config.sticker_vision_timeout || 45),
@@ -174,7 +178,9 @@ export const useAssetsStore = defineStore("assets", {
         payload.sticker_vision_api_key = this.config.sticker_vision_api_key.trim();
       }
       try {
-        this.config = configFromPublic(await saveConfig(payload));
+        const saved = await saveConfig(payload);
+        this.config = configFromPublic(saved);
+        useAppStore().config = saved;
         this.configMessage = "素材配置已保存";
       } catch (error) {
         this.configMessage = `保存失败：${error instanceof Error ? error.message : String(error)}`;

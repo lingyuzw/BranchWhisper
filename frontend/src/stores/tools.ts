@@ -35,6 +35,7 @@ interface ToolsState {
   config: ToolProviderConfig;
   loading: boolean;
   saving: boolean;
+  dirty: boolean;
   error: string;
   resolveText: string;
   resolveResult: ToolResolveResult | null;
@@ -50,6 +51,7 @@ export const useToolsStore = defineStore("tools", {
     config: {},
     loading: false,
     saving: false,
+    dirty: false,
     error: "",
     resolveText: "漳州今天天气怎么样",
     resolveResult: null,
@@ -66,6 +68,7 @@ export const useToolsStore = defineStore("tools", {
       this.error = "";
       try {
         this.config = await loadToolsConfig();
+        this.dirty = false;
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
       } finally {
@@ -73,10 +76,12 @@ export const useToolsStore = defineStore("tools", {
       }
     },
     async save() {
+      if (!this.dirty) return;
       this.saving = true;
       this.error = "";
       try {
         this.config = await saveToolsConfig(clone(this.config));
+        this.dirty = false;
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
         throw error;
@@ -86,8 +91,10 @@ export const useToolsStore = defineStore("tools", {
     },
     setProviderField(providerKey: string, field: string, value: unknown) {
       const provider = { ...(this.config[providerKey] || {}) };
+      if (provider[field] === value) return;
       provider[field] = value;
       this.config = { ...this.config, [providerKey]: provider };
+      this.dirty = true;
     },
     async runResolve() {
       const text = this.resolveText.trim();

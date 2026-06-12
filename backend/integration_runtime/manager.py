@@ -8,6 +8,7 @@ import os
 import random
 import re
 import shutil
+import socket
 import subprocess
 import time
 import uuid
@@ -15,6 +16,7 @@ import wave
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -100,6 +102,37 @@ def openclaw_state_dir(profile: str) -> Path:
     if profile and profile not in {"default", "main"}:
         return Path.home() / f".openclaw-{profile}"
     return Path.home() / ".openclaw"
+
+
+def diagnose_weixin_base_url(base_url: str, timeout: float = 0.25) -> dict:
+    url = str(base_url or "").strip()
+    if not url:
+        return {
+            "reachable": False,
+            "error": "base_url is empty",
+            "hint": "OpenClaw 微信账号缺少 base_url，请重新扫码登录或检查账号凭据。",
+        }
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    port = parts.port or (443 if parts.scheme == "https" else 80 if parts.scheme == "http" else None)
+    if not host or not port:
+        return {
+            "reachable": False,
+            "error": "invalid base_url",
+            "hint": "OpenClaw 微信账号 base_url 格式不正确，请重新扫码登录。",
+        }
+    is_local = host in {"127.0.0.1", "localhost", "::1", "0.0.0.0"} or host.startswith("192.168.") or host.startswith("10.") or host.startswith("172.")
+    if not is_local:
+        return {"reachable": None, "error": "", "hint": ""}
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return {"reachable": True, "error": "", "hint": ""}
+    except OSError as exc:
+        return {
+            "reachable": False,
+            "error": str(exc),
+            "hint": "OpenClaw 微信本地服务不可达，请检查 openclaw gateway、账号 base_url 或登录状态。",
+        }
 
 
 def build_client_version(version: str) -> int:
@@ -347,10 +380,15 @@ class IntegrationManager:
                 data = read_json_file(account_path, None)
             if not isinstance(data, dict):
                 data = {}
+            base_url = str(data.get("baseUrl") or data.get("base_url") or "")
+            base_url_diag = diagnose_weixin_base_url(base_url)
             accounts.append(
                 {
                     "id": account_id,
-                    "base_url": str(data.get("baseUrl") or data.get("base_url") or ""),
+                    "base_url": base_url,
+                    "base_url_reachable": base_url_diag["reachable"],
+                    "connectivity_error": base_url_diag["error"],
+                    "diagnostic_hint": base_url_diag["hint"],
                     "user_id": str(data.get("userId") or data.get("user_id") or ""),
                     "saved_at": str(data.get("savedAt") or data.get("saved_at") or ""),
                     "token_set": bool(str(data.get("token") or "").strip()),

@@ -163,6 +163,10 @@ class ServiceManager:
             tracked_pid = tracked_pid or self._read_service_pid(service_id)
             tracked_running = bool(tracked_pid and _is_pid_alive(tracked_pid))
         health, port_open = await asyncio.gather(health_task, port_task)
+        if _is_unsupported_health_endpoint(health) and port_open:
+            compatible = await check_openai_compatible_endpoint(service_id, health_url)
+            if isinstance(health, dict):
+                health = {**health, "compatible": compatible}
         external_running = bool(health and health.get("ok")) or port_open
         running = tracked_running or external_running
         returncode = None if running or process is None else _safe_poll(process)
@@ -469,11 +473,14 @@ def service_runtime_state(
     returncode: int | None,
 ) -> str:
     payload = normalized_health_payload(health)
+    compatible = (health or {}).get("compatible") if isinstance(health, dict) else None
     model_status = str(payload.get("status") or "").lower()
     ready = payload.get("ready")
 
     if returncode is not None:
         return "failed"
+    if isinstance(compatible, dict) and compatible.get("ok") and (running or tracked_running or port_open):
+        return "running_degraded"
     if model_status in {"loading", "warming", "starting"}:
         return "warming" if model_status == "warming" else "starting"
     if ready is False:
@@ -486,9 +493,13 @@ def service_runtime_state(
         status = health.get("status")
         if isinstance(status, int) and status >= 500 and (running or tracked_running or port_open):
             return "failed"
+        if status in {404, 405} and (running or tracked_running or port_open):
+            return "running_degraded"
         if running or tracked_running or port_open:
             return "starting"
         return "stopped"
+    if port_open:
+        return "running_degraded"
     if running or tracked_running or port_open:
         return "starting"
     return "stopped"
@@ -502,6 +513,8 @@ def service_runtime_error(health: dict | None, returncode: int | None, log_error
     if log_error:
         return friendly_service_error(log_error)
     if health and health.get("ok") is False and health.get("status"):
+        if health.get("status") in {404, 405}:
+            return ""
         return f"HTTP {health.get('status')}"
     if returncode is not None:
         return f"exit {returncode}"
@@ -637,11 +650,46 @@ async def check_service(name: str, url: str) -> dict:
             payload = {}
         return {
             "name": name,
-            "ok": resp.status_code < 500,
+            "ok": 200 <= resp.status_code < 400,
             "status": resp.status_code,
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "url": url,
             "payload": payload if isinstance(payload, dict) else {},
+        }
+    except Exception as exc:
+        return {
+            "name": name,
+            "ok": False,
+            "error": str(exc),
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+            "url": url,
+        }
+
+
+def _is_unsupported_health_endpoint(health: dict | None) -> bool:
+    if not isinstance(health, dict):
+        return False
+    return health.get("ok") is False and health.get("status") in {404, 405}
+
+
+def _compatible_models_url(url: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, "/v1/models", "", ""))
+
+
+async def check_openai_compatible_endpoint(name: str, health_url: str) -> dict:
+    started = time.perf_counter()
+    url = _compatible_models_url(health_url)
+    try:
+        timeout = httpx.Timeout(SERVICE_HEALTH_TIMEOUT_SEC, connect=0.3, pool=0.3)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.get(url)
+        return {
+            "name": name,
+            "ok": 200 <= resp.status_code < 500,
+            "status": resp.status_code,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+            "url": url,
         }
     except Exception as exc:
         return {
