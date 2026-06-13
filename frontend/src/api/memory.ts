@@ -13,9 +13,9 @@ export interface MemoryItem {
   mode?: string;
   memory_type?: string;
   source?: string;
-  last_seen_at?: string;
-  last_changed_at?: string;
-  created_at?: string;
+  last_seen_at?: string | number;
+  last_changed_at?: string | number;
+  created_at?: string | number;
 }
 
 export interface MemoryAdmissionResult {

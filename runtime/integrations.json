@@ -33,12 +33,12 @@
   },
   "my_weixin_session": {
     "platform_id": "weixin_personal",
-    "account_id": "test-account",
-    "session_id": "codex_final_verify",
-    "sender_id": "codex_verify_user",
-    "conversation_id": "20260613_161850_97a341",
-    "context_token_set": false,
-    "updated_at": "2026-06-13 16:18:51",
-    "updated_at_ts": 1781338731.8686905
+    "account_id": "8397c5c17324-im-bot",
+    "session_id": "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat",
+    "sender_id": "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat",
+    "conversation_id": "20260613_154443_1e8729",
+    "context_token_set": true,
+    "updated_at": "2026-06-13 16:32:31",
+    "updated_at_ts": 1781339551.4970255
   }
 }

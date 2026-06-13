@@ -96,9 +96,13 @@ function layerLabel(layer?: string) {
   return { short: "短期", mid: "中期", long: "长期" }[layer || ""] || "未分层";
 }
 
-function formatTime(value?: string) {
+function formatTime(value?: string | number) {
   if (!value) return "--";
-  return value.replace("T", " ").slice(0, 16);
+  if (typeof value === "number") {
+    const date = new Date(value * 1000);
+    return Number.isNaN(date.getTime()) ? "--" : date.toLocaleString("zh-CN", { hour12: false }).slice(0, 16);
+  }
+  return String(value).replace("T", " ").slice(0, 16);
 }
 </script>
 

@@ -3238,3 +3238,90 @@ Channel login failed: Error: 二维码多次失效，连接流程已停止。请
 [2026-06-13 16:28:19] received signal 2, stopping after current poll
 [2026-06-13 16:28:20] received signal 2, stopping after current poll
 [2026-06-13 16:28:23] bridge stopped
+[2026-06-13 16:30:27] received signal 15, stopping after current poll[2026-06-13 16:30:27] received signal 15, stopping after current poll
+
+[2026-06-13 16:30:27] received signal 15, stopping after current poll
+[2026-06-13 16:30:38] bridge stopped
+[2026-06-13 16:30:38] bridge stopped
+[2026-06-13 16:30:43] bridge stopped
+
+===== 2026-06-13 16:31:45 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 16:31:45 =====
+[config] updated integration
+
+===== 2026-06-13 16:31:45 =====
+[session] bridge started pid=7111
+
+===== 2026-06-13 16:31:45 =====
+[watchdog] bridge restart requested
+[2026-06-13 16:31:46] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 16:31:46] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 16:32:06] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=在干嘛？
+
+===== 2026-06-13 16:32:07 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 16:32:07 =====
+[dialog:ext_2e9742411a] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=在干嘛？
+
+===== 2026-06-13 16:32:08 =====
+[dialog:ext_2e9742411a] reply text_len=13 parts=1 clean_len=13 diag={'finish_reason': 'stop', 'llm_reply_len': 13, 'llm_clean_len': 13, 'reply_len': 13, 'reply_clean_len': 13} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1463, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1467} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 16:32:09] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781339528789-81260a8f branch_ms=2451 send_ms=218 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1463, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1467}
+[2026-06-13 16:32:28] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你大小姐来的，洗啥？
+
+===== 2026-06-13 16:32:31 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 16:32:31 =====
+[dialog:ext_c038bcb3ed] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你大小姐来的，洗啥？
+
+===== 2026-06-13 16:32:32 =====
+[dialog:ext_c038bcb3ed] reply text_len=3 parts=1 clean_len=3 diag={'finish_reason': 'stop', 'llm_reply_len': 3, 'llm_clean_len': 3, 'reply_len': 3, 'reply_clean_len': 3} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 764, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 766} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 16:32:32] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781339552275-8ddd6691 branch_ms=3489 send_ms=176 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 764, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 766}
+[2026-06-13 16:37:00] received signal 15, stopping after current poll
+
+===== 2026-06-13 16:37:00 =====
+[process] stopped orphan bridge pid=7111
+
+===== 2026-06-13 16:37:00 =====
+[process] killed orphan bridge pid=7111
+
+===== 2026-06-13 16:37:00 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 16:37:00 =====
+[config] updated integration
+
+===== 2026-06-13 16:37:00 =====
+[session] bridge started pid=9572
+
+===== 2026-06-13 16:37:00 =====
+[watchdog] bridge restart requested
+[2026-06-13 16:37:01] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 16:37:01] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 16:37:22] received signal 15, stopping after current poll
+
+===== 2026-06-13 16:37:22 =====
+[process] stopped orphan bridge pid=9572
+
+===== 2026-06-13 16:37:22 =====
+[process] killed orphan bridge pid=9572
+
+===== 2026-06-13 16:37:22 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 16:37:22 =====
+[config] updated integration
+
+===== 2026-06-13 16:37:22 =====
+[session] bridge started pid=9790
+
+===== 2026-06-13 16:37:22 =====
+[watchdog] bridge restart requested
+[2026-06-13 16:37:22] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 16:37:22] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 16:37:48] received signal 2, stopping after current poll
+[2026-06-13 16:37:48] received signal 2, stopping after current poll
+[2026-06-13 16:37:48] received signal 2, stopping after current poll

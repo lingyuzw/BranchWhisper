@@ -8,6 +8,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -867,6 +868,10 @@ class IntegrationManager:
 
     async def start_bridge(self, integration_id: str, branchwhisper_url: str = "http://127.0.0.1:7860") -> dict:
         integration = self.require_integration(integration_id)
+        existing = self.processes.get(integration["id"])
+        if existing and existing.poll() is None:
+            return {"ok": True, "status": "already_running", "pid": existing.pid}
+        self.stop_orphan_bridge_processes(integration["id"], integration["openclaw_profile"])
         script = Path(__file__).resolve().parent / "openclaw_bridge.py"
         command = [
             os.environ.get("PYTHON") or sys.executable or "python3",
@@ -882,6 +887,63 @@ class IntegrationManager:
             branchwhisper_url,
         ]
         return self.start_background_process(integration, command, status="running")
+
+    def stop_orphan_bridge_processes(self, integration_id: str, profile: str) -> None:
+        script_name = "openclaw_bridge.py"
+        try:
+            proc = subprocess.run(
+                ["ps", "-eo", "pid=,args="],
+                text=True,
+                capture_output=True,
+                timeout=5,
+            )
+        except Exception as exc:
+            self.append_log(integration_id, f"[process] orphan scan failed: {exc}")
+            return
+        if proc.returncode != 0:
+            return
+        current_pid = os.getpid()
+        matched: list[int] = []
+        for line in proc.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            pid_text, _, args = line.partition(" ")
+            try:
+                pid = int(pid_text)
+            except ValueError:
+                continue
+            if pid == current_pid:
+                continue
+            if script_name not in args:
+                continue
+            if f"--integration-id {integration_id}" not in args:
+                continue
+            if f"--profile {profile}" not in args:
+                continue
+            matched.append(pid)
+        for pid in matched:
+            try:
+                os.kill(pid, signal.SIGTERM)
+                self.append_log(integration_id, f"[process] stopped orphan bridge pid={pid}")
+            except ProcessLookupError:
+                pass
+            except Exception as exc:
+                self.append_log(integration_id, f"[process] stop orphan bridge pid={pid} failed: {exc}")
+        if matched:
+            time.sleep(0.5)
+            for pid in matched:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    continue
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                    self.append_log(integration_id, f"[process] killed orphan bridge pid={pid}")
+                except ProcessLookupError:
+                    pass
+                except Exception as exc:
+                    self.append_log(integration_id, f"[process] kill orphan bridge pid={pid} failed: {exc}")
 
     def start_background_process(self, integration: dict, command: list[str], status: str) -> dict:
         integration_id = integration["id"]
