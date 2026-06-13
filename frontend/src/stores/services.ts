@@ -63,6 +63,11 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function sameServiceConfigValue(left: unknown, right: unknown) {
+  const normalize = (value: unknown) => (value === undefined || value === null ? "" : value);
+  return JSON.stringify(normalize(left)) === JSON.stringify(normalize(right));
+}
+
 export const useServicesStore = defineStore("services", {
   state: (): ServicesState => ({
     services: [],
@@ -287,7 +292,20 @@ export const useServicesStore = defineStore("services", {
         this.mergeServices(result.services);
         return this.services.find((item) => item.id === service.id) || null;
       }
-      return this.mergeService(result.service ? { ...result.service, id: service.id } : { ...service, id: service.id });
+      const saved = this.mergeService(result.service ? { ...result.service, id: service.id } : { ...service, id: service.id });
+      await this.reloadServices(true);
+      const verified = this.services.find((item) => item.id === service.id) || saved;
+      const command = verified?.configured_command || verified?.command || "";
+      if (!sameServiceConfigValue(command, service.command || "")) {
+        throw new Error("服务参数保存后校验失败：启动命令回显不一致");
+      }
+      if (!sameServiceConfigValue(verified?.cwd || "", service.cwd || "")) {
+        throw new Error("服务参数保存后校验失败：工作目录回显不一致");
+      }
+      if (!sameServiceConfigValue(verified?.health_url || "", service.health_url || "")) {
+        throw new Error("服务参数保存后校验失败：Health URL 回显不一致");
+      }
+      return verified;
     },
     async refreshBurst(options: { id?: string; action?: PendingState; rounds?: number; delayMs?: number } = {}) {
       const rounds = options.rounds ?? 4;

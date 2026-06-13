@@ -14,6 +14,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from core.http_client import httpx_client_for_url
 from domain.paths import PROJECT_ROOT
 
 
@@ -26,6 +27,8 @@ SERVICE_PATH_TOKENS = {
 }
 SERVICE_HEALTH_TIMEOUT_SEC = 0.8
 SERVICE_PORT_TIMEOUT_SEC = 0.15
+DEFAULT_ASR_GPU_MEMORY_UTILIZATION = "0.25"
+DEFAULT_ASR_MAX_MODEL_LEN = "1024"
 
 DEFAULT_SERVICE_PROFILES = {
     "asr": {
@@ -34,8 +37,8 @@ DEFAULT_SERVICE_PROFILES = {
         "cwd": "${WORKSPACE_ROOT}",
         "command": (
             "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
-            "conda run --no-capture-output -n qwen3-asr qwen-asr-serve \"${WORKSPACE_ROOT}/Qwen3-ASR-1.7B\" "
-            "--served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 2048 --max-num-seqs 1 "
+            "conda run --no-capture-output -n qwen3-asr qwen-asr-serve \"${WORKSPACE_ROOT}/Qwen3-ASR-0.6B\" "
+            "--served-model-name qwen3-asr --gpu-memory-utilization 0.25 --max-model-len 1024 --max-num-seqs 1 "
             "--enforce-eager --host 0.0.0.0 --port 8001"
         ),
         "health_url": "http://127.0.0.1:8001/health",
@@ -82,7 +85,10 @@ class ServiceManager:
         self.processes: dict[str, subprocess.Popen] = {}
         self.log_files: dict[str, Path] = {}
         self.started_at: dict[str, float] = {}
+        self.last_started_commands: dict[str, str] = {}
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        if self.config_path and not self.config_path.exists():
+            self.save_profiles()
         for sid in self.services:
             pid = self._read_service_pid(sid)
             if pid and _is_pid_alive(pid):
@@ -94,6 +100,8 @@ class ServiceManager:
     def update_service(self, service_id: str, patch: dict) -> dict:
         if service_id not in self.services:
             raise KeyError(service_id)
+        if not self.config_path:
+            raise RuntimeError("service config path is not configured")
 
         service = self.services[service_id]
         for key in ("label", "description", "cwd", "command", "health_url"):
@@ -107,14 +115,33 @@ class ServiceManager:
             except (TypeError, ValueError):
                 pass
         self.save_profiles()
-        return service
+        verified = load_service_profiles(self.config_path).get(service_id, {})
+        for key in ("label", "description", "cwd", "command", "health_url", "startup_wait_sec", "startup_ready_timeout_sec"):
+            if key in service and verified.get(key) != service.get(key):
+                raise RuntimeError(f"service config save verification failed for {service_id}.{key}")
+        self.services[service_id] = verified or service
+        return self.service_config_view(service_id)
 
     def save_profiles(self) -> None:
         if not self.config_path:
-            return
+            raise RuntimeError("service config path is not configured")
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"services": self.services}
-        self.config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_path = self.config_path.with_suffix(f"{self.config_path.suffix}.tmp")
+        tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_path.replace(self.config_path)
+
+    def service_config_view(self, service_id: str) -> dict:
+        service = self.services[service_id]
+        final_command = final_service_command(service_id, service)
+        return {
+            **service,
+            "id": service_id,
+            "configured_command": service.get("command", ""),
+            "final_command": final_command,
+            "effective_command": final_command,
+            "config_path": str(self.config_path) if self.config_path else "",
+        }
 
     async def status_all(self) -> list[dict]:
         service_ids = list(self.services)
@@ -179,7 +206,12 @@ class ServiceManager:
         )
         if runtime_state == "failed" and not running and not port_open and returncode is None:
             runtime_state = "stopped"
-        runtime_error = service_runtime_error(health, returncode, self.latest_log_error(service_id))
+        log_error = self.latest_log_error(service_id)
+        runtime_error = service_runtime_error(health, returncode, log_error)
+        if runtime_state in {"starting", "warming"}:
+            runtime_error = friendly_service_error(log_error) if log_error else ""
+        if runtime_state in {"ready", "running", "running_degraded"}:
+            runtime_error = ""
         if runtime_state == "stopped":
             runtime_error = ""
 
@@ -191,9 +223,10 @@ class ServiceManager:
                     self.processes[service_id] = proc
                     process = proc
 
-        return {
-            "id": service_id,
-            **service,
+        final_command = final_service_command(service_id, service)
+        actual_command = self.last_started_commands.get(service_id) or self.latest_started_command(service_id)
+        result = {
+            **self.service_config_view(service_id),
             "running": running,
             "state": runtime_state,
             "error": runtime_error,
@@ -205,6 +238,13 @@ class ServiceManager:
             "log_file": str(self.log_files.get(service_id) or self.log_dir / f"{service_id}.log"),
             "health": health,
         }
+        if actual_command:
+            result["actual_command"] = actual_command
+            result["command_mismatch"] = normalize_command_for_compare(actual_command) != normalize_command_for_compare(final_command)
+        else:
+            result["actual_command"] = ""
+            result["command_mismatch"] = False
+        return result
 
     async def start(self, service_id: str, overrides: dict | None = None, allow_config_update: bool = False) -> dict:
         if service_id not in self.services:
@@ -227,9 +267,8 @@ class ServiceManager:
             if health.get("ok") or is_tcp_port_open(health_url):
                 return await self.status(service_id)
 
-        command = service.get("command", "").strip()
-        command = expand_service_paths(command)
-        command = tune_start_command(service_id, command)
+        configured_command = service.get("command", "").strip()
+        command = final_service_command(service_id, service)
         if not command:
             raise ValueError(f"{service_id} command is empty")
 
@@ -241,7 +280,8 @@ class ServiceManager:
         log_file = self.log_dir / f"{service_id}.log"
         log_handle = log_file.open("ab", buffering=0)
         log_handle.write(f"\n\n===== start {time.strftime('%Y-%m-%d %H:%M:%S')} =====\n".encode("utf-8"))
-        log_handle.write((command + "\n").encode("utf-8", errors="replace"))
+        log_handle.write((f"configured command: {configured_command}\n").encode("utf-8", errors="replace"))
+        log_handle.write((f"final command: {command}\n").encode("utf-8", errors="replace"))
 
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
@@ -263,6 +303,7 @@ class ServiceManager:
         self.processes[service_id] = process
         self.log_files[service_id] = log_file
         self.started_at[service_id] = time.time()
+        self.last_started_commands[service_id] = command
         self._write_service_pid(service_id, process.pid)
         return await self.status(service_id)
 
@@ -356,6 +397,13 @@ class ServiceManager:
             return ""
         return extract_service_log_error(text)
 
+    def latest_started_command(self, service_id: str, max_bytes: int = 32000) -> str:
+        try:
+            text = self.read_logs(service_id, max_bytes=max_bytes)
+        except Exception:
+            return ""
+        return extract_latest_started_command(text)
+
     def _terminate_process(self, process: subprocess.Popen) -> None:
         pid = process.pid
         self._terminate_pid(pid)
@@ -437,6 +485,11 @@ def load_service_profiles(config_path: Path | None) -> dict:
     if config_path and config_path.exists() and migrated != profiles:
         config_path.write_text(json.dumps({"services": migrated}, ensure_ascii=False, indent=2), encoding="utf-8")
     return migrated
+
+
+def final_service_command(service_id: str, service: dict) -> str:
+    command = expand_service_paths(str(service.get("command") or "").strip())
+    return tune_start_command(service_id, command)
 
 
 def expand_service_paths(value: str) -> str:
@@ -527,7 +580,6 @@ def extract_service_log_error(text: str) -> str:
     lower = text.lower()
     markers = (
         "no available memory for the cache blocks",
-        "available kv cache memory",
         "cuda out of memory",
         "outofmemoryerror",
         "address already in use",
@@ -545,10 +597,24 @@ def extract_service_log_error(text: str) -> str:
     return ""
 
 
+def extract_latest_started_command(text: str) -> str:
+    if not text:
+        return ""
+    latest = ""
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        lower = line.lower()
+        if lower.startswith("final command:"):
+            latest = line.split(":", 1)[1].strip()
+        elif latest == "" and line and not line.startswith("=") and " command:" not in lower:
+            latest = line
+    return latest
+
+
 def friendly_service_error(text: str) -> str:
     lower = str(text or "").lower()
-    if "no available memory for the cache blocks" in lower or "available kv cache memory" in lower:
-        return "ASR vLLM KV cache 显存不足：启动全部时可能和 LLM/TTS 抢显存。建议串行启动、使用 --gpu-memory-utilization 0.60 和 --max-model-len 2048，仍失败再降到 1024。"
+    if "no available memory for the cache blocks" in lower:
+        return "ASR vLLM KV cache 显存不足：建议使用 --gpu-memory-utilization 0.25 和 --max-model-len 1024，仍失败再停止其他模型服务后重试。"
     if "cuda out of memory" in lower or "outofmemoryerror" in lower:
         return "CUDA 显存不足：请先停止其他模型服务，或降低模型长度/显存占用后重试。"
     if "address already in use" in lower or "port already in use" in lower:
@@ -573,60 +639,22 @@ def normalized_health_payload(health: dict | None) -> dict:
 def tune_start_command(service_id: str, command: str) -> str:
     if service_id != "asr":
         return command
-    safe_util, model_len = safe_asr_vllm_profile()
-    command = replace_or_append_arg(command, "--gpu-memory-utilization", f"{safe_util:.2f}")
-    command = replace_or_append_arg(command, "--max-model-len", str(model_len))
-    command = replace_or_append_arg(command, "--max-num-seqs", "1")
+    command = ensure_arg(command, "--gpu-memory-utilization", DEFAULT_ASR_GPU_MEMORY_UTILIZATION)
+    command = ensure_arg(command, "--max-model-len", DEFAULT_ASR_MAX_MODEL_LEN)
+    command = ensure_arg(command, "--max-num-seqs", "1")
     command = normalize_conda_env_threads(command)
     return command
 
 
-def safe_asr_vllm_profile() -> tuple[float, int]:
-    default = (0.60, 2048)
-    try:
-        result = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=memory.free,memory.total",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=1.5,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return default
-
-    if result.returncode != 0:
-        return default
-
-    for line in result.stdout.splitlines():
-        parts = [part.strip() for part in line.split(",")]
-        if len(parts) < 2:
-            continue
-        try:
-            free_mb = float(parts[0])
-            total_mb = float(parts[1])
-        except ValueError:
-            continue
-        if total_mb <= 0:
-            continue
-        free_ratio = free_mb / total_mb
-        if free_ratio < 0.35:
-            return (0.70, 1024)
-        if free_ratio < 0.55:
-            return (0.65, 1536)
-        return default
-    return default
-
-
-def replace_or_append_arg(command: str, name: str, value: str) -> str:
-    pattern = rf"({re.escape(name)})(?:=|\s+)\S+"
-    replacement = f"{name} {value}"
+def ensure_arg(command: str, name: str, value: str) -> str:
+    pattern = rf"{re.escape(name)}(?:=|\s+)\S+"
     if re.search(pattern, command):
-        return re.sub(pattern, replacement, command)
-    return f"{command.strip()} {replacement}".strip()
+        return command
+    return f"{command.strip()} {name} {value}".strip()
+
+
+def normalize_command_for_compare(command: str) -> str:
+    return " ".join(str(command or "").split())
 
 
 def normalize_conda_env_threads(command: str) -> str:
@@ -641,7 +669,7 @@ async def check_service(name: str, url: str) -> dict:
     started = time.perf_counter()
     try:
         timeout = httpx.Timeout(SERVICE_HEALTH_TIMEOUT_SEC, connect=0.3, pool=0.3)
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx_client_for_url(url, timeout=timeout) as client:
             resp = await client.get(url)
         payload = {}
         try:
@@ -682,7 +710,7 @@ async def check_openai_compatible_endpoint(name: str, health_url: str) -> dict:
     url = _compatible_models_url(health_url)
     try:
         timeout = httpx.Timeout(SERVICE_HEALTH_TIMEOUT_SEC, connect=0.3, pool=0.3)
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx_client_for_url(url, timeout=timeout) as client:
             resp = await client.get(url)
         return {
             "name": name,

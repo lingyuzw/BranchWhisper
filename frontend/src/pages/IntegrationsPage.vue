@@ -30,6 +30,33 @@ const actionMessage = ref("");
 const configSaving = ref(false);
 
 const selected = computed(() => integrations.selected);
+const selectedAccounts = computed(() => accounts(selected.value));
+const bridgeRunning = computed(() => ["running", "starting"].includes(String(selected.value?.status || "")));
+const loginReady = computed(() => selectedAccounts.value.length > 0);
+const textProbeReady = computed(() => Boolean(integrations.testResult && !integrations.testResult.startsWith("失败")));
+const voiceProbeReady = computed(() => Boolean(integrations.voiceResult && integrations.voiceResult.includes("接口已接收")));
+const integrationSteps = computed(() => [
+  {
+    label: "登录",
+    status: loginReady.value ? "已登录" : integrations.qrSession ? "待扫码" : "未配置",
+    state: loginReady.value ? "ok" : integrations.qrSession ? "pending" : "idle",
+  },
+  {
+    label: "桥接",
+    status: bridgeRunning.value ? "桥接成功" : selected.value?.status === "failed" ? "失败" : "未启动",
+    state: bridgeRunning.value ? "ok" : selected.value?.status === "failed" ? "failed" : "idle",
+  },
+  {
+    label: "文字",
+    status: textProbeReady.value ? "接收正常" : integrations.testResult ? "失败" : "未测试",
+    state: textProbeReady.value ? "ok" : integrations.testResult ? "failed" : "idle",
+  },
+  {
+    label: "发送",
+    status: voiceProbeReady.value ? "发送正常" : integrations.voiceResult ? "失败" : "未测试",
+    state: voiceProbeReady.value ? "ok" : integrations.voiceResult ? "failed" : "idle",
+  },
+]);
 
 onMounted(async () => {
   await Promise.all([integrations.reload(), profiles.reload()]);
@@ -179,6 +206,39 @@ async function startBridge() {
     showActionMessage("桥接启动请求已发送", "success");
   } catch (error) {
     showActionMessage(`桥接启动失败：${errorText(error)}`, "error");
+  }
+}
+
+async function runDialogProbe() {
+  showActionMessage("正在测试真实微信 dialog 链路...");
+  try {
+    await integrations.runDialogTest();
+    showActionMessage("文本回复链路正常", "success");
+  } catch (error) {
+    integrations.testResult = `失败：${errorText(error)}`;
+    showActionMessage(`文本回复测试失败：${errorText(error)}`, "error");
+  }
+}
+
+async function runVoiceProbe() {
+  showActionMessage("正在测试语音发送...");
+  try {
+    await integrations.runVoiceTest();
+    showActionMessage(integrations.voiceResult.includes("失败") ? "语音测试失败，已生成诊断" : "语音测试已发送", integrations.voiceResult.includes("失败") ? "warning" : "success");
+  } catch (error) {
+    integrations.voiceResult = `失败：${errorText(error)}`;
+    showActionMessage(`语音测试失败：${errorText(error)}`, "error");
+  }
+}
+
+async function runStickerProbe() {
+  showActionMessage("正在测试素材发送...");
+  try {
+    await integrations.runStickerTest();
+    showActionMessage(integrations.stickerResult.includes("失败") ? "素材测试失败，已生成诊断" : "素材测试已发送", integrations.stickerResult.includes("失败") ? "warning" : "success");
+  } catch (error) {
+    integrations.stickerResult = `失败：${errorText(error)}`;
+    showActionMessage(`素材测试失败：${errorText(error)}`, "error");
   }
 }
 
@@ -342,7 +402,7 @@ function downloadLogs() {
               <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
             </div>
             <div class="integration-account-list">
-              <div v-for="account in accounts(selected)" :key="account.account_id || account.id" class="integration-account-item">
+              <div v-for="account in selectedAccounts" :key="account.account_id || account.id" class="integration-account-item">
                 <span>账号</span>
                 <strong>{{ account.nickname || account.name || account.account_id || account.id }}</strong>
                 <small>{{ account.account_id || account.id || "--" }}</small>
@@ -353,11 +413,18 @@ function downloadLogs() {
                   <button class="small-button" type="button" @click="copyAccountDiagnostic(account)"><Copy :size="13" />复制诊断</button>
                 </div>
               </div>
-              <div v-if="!accounts(selected).length" class="integration-account-item muted">
+              <div v-if="!selectedAccounts.length" class="integration-account-item muted">
                 <span>账号</span>
                 <strong>暂无账号</strong>
                 <small>扫码登录成功后显示</small>
               </div>
+            </div>
+            <div class="integration-step-list">
+              <span v-for="step in integrationSteps" :key="step.label" :class="step.state">
+                <b></b>
+                <strong>{{ step.label }}</strong>
+                <small>{{ step.status }}</small>
+              </span>
             </div>
             <div v-if="timings(selected).length" class="integration-timing-summary">
               <span v-for="timing in timings(selected)" :key="timing.message_id || timing.created_at || timing.total_ms">
@@ -385,6 +452,23 @@ function downloadLogs() {
                 <RefreshCw :size="16" /> 轮询登录
               </button>
             </div>
+            <section class="integration-probe-panel">
+              <div class="probe-row">
+                <input v-model="integrations.testText" type="text" placeholder="测试文本回复" @keydown.enter="runDialogProbe" />
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="runDialogProbe"><Play :size="15" />文本回复</button>
+              </div>
+              <pre v-if="integrations.testResult">{{ integrations.testResult }}</pre>
+              <div class="probe-row">
+                <input v-model="integrations.voiceText" type="text" placeholder="测试语音发送" @keydown.enter="runVoiceProbe" />
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="runVoiceProbe"><Play :size="15" />语音发送</button>
+              </div>
+              <pre v-if="integrations.voiceResult">{{ integrations.voiceResult }}</pre>
+              <div class="probe-row">
+                <input v-model="integrations.stickerText" type="text" placeholder="测试素材发送" @keydown.enter="runStickerProbe" />
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="runStickerProbe"><Play :size="15" />素材发送</button>
+              </div>
+              <pre v-if="integrations.stickerResult">{{ integrations.stickerResult }}</pre>
+            </section>
             <div class="integration-log-toolbar">
               <select v-model="integrations.logScope" @change="refreshLogs">
                 <option value="current">本次启动</option>

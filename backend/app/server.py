@@ -9,10 +9,9 @@ from dataclasses import asdict
 from pathlib import Path
 import sys
 
-import httpx
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -33,6 +32,7 @@ from api.dependencies import (
     local_branchwhisper_url,
     unique_urls,
 )
+from core.http_client import httpx_client_for_url
 from domain.paths import (
     APP_DIR,
     AVATAR_DIR,
@@ -111,7 +111,7 @@ async def resolve_branchwhisper_url(request: Request, preferred: str = "") -> st
     )
     for url in candidates:
         try:
-            async with httpx.AsyncClient(timeout=1.5) as client:
+            async with httpx_client_for_url(url, timeout=1.5) as client:
                 response = await client.get(f"{url}/api/health")
             if response.status_code < 500:
                 return url
@@ -257,8 +257,9 @@ async def warmup_llm(settings: SessionSettings) -> None:
         "temperature": 0.0,
         "max_tokens": 1,
     }
-    async with httpx.AsyncClient(timeout=35.0) as client:
-        resp = await client.post(active_llm_url(settings), json=payload, headers=llm_headers(settings))
+    llm_url = active_llm_url(settings)
+    async with httpx_client_for_url(llm_url, timeout=35.0) as client:
+        resp = await client.post(llm_url, json=payload, headers=llm_headers(settings))
     resp.raise_for_status()
 
 
@@ -492,6 +493,22 @@ def create_app(args) -> FastAPI:
             response.headers["Pragma"] = "no-cache"
         return response
 
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(_request: Request, exc: HTTPException):
+        detail = exc.detail
+        if isinstance(detail, dict):
+            error = str(detail.get("error") or detail.get("detail") or detail.get("message") or exc.status_code)
+            message = str(detail.get("message") or error)
+            data = detail.get("data") if isinstance(detail.get("data"), dict) else {}
+        else:
+            error = str(detail or exc.status_code)
+            message = error
+            data = {}
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"ok": False, "data": data, "error": error, "message": message},
+        )
+
     @app.on_event("startup")
     async def start_reminder_loop():
         app.state.reminder_task = asyncio.create_task(reminder_loop(app))
@@ -572,5 +589,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -6,8 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-import httpx
-
+from core.http_client import httpx_client_for_url
 from service_runtime.audio_pipeline import extract_chat_message_text, strip_reasoning_text
 
 
@@ -116,8 +115,8 @@ async def call_openai_vision(
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": image_data_url(image_path, mime)}},
+                    {"type": "text", "text": prompt},
                 ],
             }
         ],
@@ -125,7 +124,7 @@ async def call_openai_vision(
         "temperature": temperature,
         "max_tokens": max(128, min(4096, int(max_tokens or 420))),
     }
-    async with httpx.AsyncClient(timeout=float(timeout or 45.0)) as client:
+    async with httpx_client_for_url(str(url), timeout=float(timeout or 45.0)) as client:
         resp = await client.post(str(url), json=payload, headers=vision_headers(api_key))
     resp.raise_for_status()
     text = extract_chat_message_text(resp.json()).strip()

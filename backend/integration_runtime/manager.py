@@ -10,6 +10,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import time
 import uuid
 import wave
@@ -18,9 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-import httpx
-
-from service_runtime.audio_pipeline import clean_for_tts, clean_reply_text, extract_chat_message_text, extract_finish_reason
+from service_runtime.audio_pipeline import clean_for_tts, clean_reply_text, extract_chat_message_text, extract_finish_reason, strip_internal_attachment_markers
 from core.config import (
     SessionSettings,
     active_history_turns,
@@ -31,6 +30,7 @@ from core.config import (
     llm_headers,
     memory_mode,
 )
+from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
 from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
@@ -72,12 +72,14 @@ VOICE_INTENT_RE = re.compile(
     r"|读出来"
     r"|开口(说话)?"
     r"|出声"
-    r"|听听$"
 )
 VOICE_NEGATIVE_RE = re.compile(r"(别|不要|不用|不想|先别|别再)(发语音|语音|说话|开口|出声)")
 VOICE_CONTEXT_RE = re.compile(
     r"(说话(的|语气|方式|风格|像|不像)|你说话(的|语气|方式|风格|像|不像)|"
     r"怎么说话|会不会说话|说话算话|念旧|想念|纪念|挂念|惦念|信念)"
+)
+VOICE_FALSE_POSITIVE_RE = re.compile(
+    r"(推荐|歌|歌曲|音乐|听歌|听听歌|歌名|听听看|听听看看|好不好听|听起来|听上去|听着|试听|听听这首)"
 )
 VOICE_EXACT_TEXTS = {"语音", "说话", "你说话", "说两句", "说一句", "说呀", "说嘛", "说吗", "快说", "那你快说呀", "听听"}
 DEFAULT_WEIXIN_OC_BASE_URL = "https://ilinkai.weixin.qq.com"
@@ -87,6 +89,20 @@ DEFAULT_WEIXIN_OC_VERSION = "2.4.4"
 ILINK_APP_ID = "bot"
 SUPPORTED_TYPES = {"weixin_oc"}
 RUNNING_STATES = {"starting", "running", "login"}
+
+
+def attachment_history_text(attachments: list[dict] | None) -> str:
+    parts = []
+    for item in attachments or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "image":
+            summary = item.get("description") or item.get("summary") or item.get("url") or item.get("error") or ""
+            parts.append(f"[图片] {summary}".strip())
+        elif item.get("type") == "sticker":
+            label = item.get("name") or item.get("tag") or item.get("asset_id") or "表情包"
+            parts.append(f"[已发送表情包: {label}]")
+    return "\n".join(part for part in parts if part)
 
 
 def safe_id(value: str, fallback: str = "weixin_personal") -> str:
@@ -488,9 +504,10 @@ class IntegrationManager:
             },
             "base_info": {"channel_version": "branchwhisper-server", "bot_agent": "BranchWhisper/1.0 (proactive)"},
         }
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        send_url = ilink_endpoint(target["base_url"], "ilink/bot/sendmessage")
+        async with httpx_client_for_url(send_url, timeout=20.0) as client:
             resp = await client.post(
-                ilink_endpoint(target["base_url"], "ilink/bot/sendmessage"),
+                send_url,
                 json=payload,
                 headers=weixin_api_headers(target["token"]),
             )
@@ -616,12 +633,14 @@ class IntegrationManager:
             "voice_error",
             "voice_message_id",
             "voice_stage",
+            "voice_target_url",
             "voice_format",
             "voice_diagnostic",
             "sticker_send_ms",
             "sticker_send_status",
             "sticker_count",
             "sticker_error",
+            "sticker_target_url",
             "sticker_sent_ids",
         }
         sanitized = {
@@ -850,7 +869,7 @@ class IntegrationManager:
         integration = self.require_integration(integration_id)
         script = Path(__file__).resolve().parent / "openclaw_bridge.py"
         command = [
-            os.environ.get("PYTHON", "python"),
+            os.environ.get("PYTHON") or sys.executable or "python3",
             "-u",
             str(script),
             "--integration-id",
@@ -952,9 +971,10 @@ class IntegrationManager:
         payload = {"local_token_list": self.local_token_list(integration)}
         params = {"bot_type": str(integration.get("weixin_oc_bot_type") or DEFAULT_WEIXIN_OC_BOT_TYPE)}
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            qr_url = f"{base_url}/ilink/bot/get_bot_qrcode"
+            async with httpx_client_for_url(qr_url, timeout=15.0) as client:
                 response = await client.post(
-                    f"{base_url}/ilink/bot/get_bot_qrcode",
+                    qr_url,
                     params=params,
                     json=payload,
                     headers=weixin_api_headers(),
@@ -1006,9 +1026,10 @@ class IntegrationManager:
         if verify_code:
             params["verify_code"] = verify_code
         try:
-            async with httpx.AsyncClient(timeout=36.0) as client:
+            poll_url = f"{session['base_url']}/ilink/bot/get_qrcode_status"
+            async with httpx_client_for_url(poll_url, timeout=36.0) as client:
                 response = await client.get(
-                    f"{session['base_url']}/ilink/bot/get_qrcode_status",
+                    poll_url,
                     params=params,
                     headers=weixin_api_headers(version="0.0.1"),
                 )
@@ -1268,10 +1289,21 @@ class ExternalDialogEngine:
             llm_ms = 0
             reply_diag = {"image_vision_failed_direct_reply": True}
         else:
-            reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(runtime_settings, conversation, model_text, voice_requested=voice_requested)
+            try:
+                reply_text, tool_result, direct_answer, tool_ms, llm_ms, reply_diag = await self.reply_text(
+                    runtime_settings,
+                    conversation,
+                    model_text,
+                    voice_requested=voice_requested,
+                )
+            except Exception as exc:
+                llm_url = active_llm_url(runtime_settings)
+                error = f"stage=llm url={llm_url} sender={sender_id} message_id={metadata.get('message_id') or ''} error={exc}"
+                self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] {error}")
+                raise RuntimeError(error) from exc
         directive_result = extract_sticker_directives(reply_text)
         requested_sticker_tags = directive_result.tags
-        reply_text = directive_result.text
+        reply_text = strip_internal_attachment_markers(directive_result.text)
         if voice_requested and not clean_for_tts(reply_text):
             reply_text = voice_fallback_reply(text)
             reply_diag["voice_empty_fallback"] = True
@@ -1308,8 +1340,12 @@ class ExternalDialogEngine:
                     }
                 )
         self.conversation_store.append_messages(conversation["id"], messages_to_store, title_hint=text)
-        if reply_text.strip():
-            self.run_background(platform_id, trace_id, self.remember_turn(runtime_settings, text, reply_text), "memory")
+        if reply_text.strip() or assistant_attachments:
+            assistant_memory_text = reply_text
+            attachment_note = attachment_history_text(assistant_attachments)
+            if attachment_note:
+                assistant_memory_text = f"{assistant_memory_text}\n{attachment_note}".strip()
+            self.run_background(platform_id, trace_id, self.remember_turn(runtime_settings, text, assistant_memory_text), "memory")
 
         send_voice = voice_requested
         voice_file = ""
@@ -1544,14 +1580,23 @@ class ExternalDialogEngine:
             )
             return result
         except (WeixinVoiceSendError, Exception) as exc:
+            payload = getattr(exc, "payload", {}) if isinstance(getattr(exc, "payload", {}), dict) else {}
             result.update(
                 {
                     "ok": False,
                     "error": str(exc),
+                    "stage": str(payload.get("stage") or result.get("stage") or "send_failed"),
+                    "target_url": str(payload.get("target_url") or ""),
+                    "sender_payload": payload,
                     "total_ms": int((time.perf_counter() - started_at) * 1000),
                 }
             )
-            self.integration_manager.append_log(platform_id, f"[voice-test:{trace_id}] failed stage={result.get('stage')} error={exc}")
+            self.integration_manager.append_log(
+                platform_id,
+                f"[voice-test:{trace_id}] failed stage={result.get('stage')} "
+                f"target_url={result.get('target_url') or '-'} account={target['account_id']} "
+                f"to={target['sender_id']} error={exc}",
+            )
             return result
 
     async def sticker_test(self, integration_id: str, settings: SessionSettings, text: str, sender_id: str = "", account_id: str = "") -> dict:
@@ -1704,15 +1749,22 @@ class ExternalDialogEngine:
         max_history = max(2, active_history_turns(settings) * 2)
         for item in history[-max_history:]:
             role = item.get("role")
-            content = item.get("content")
-            if role in {"user", "assistant"} and content:
-                messages.append({"role": role, "content": content})
+            content = str(item.get("content") or "").strip()
+            attachments_note = attachment_history_text(item.get("attachments") or [])
+            if role in {"user", "assistant"} and (content or attachments_note):
+                full_content = content
+                if attachments_note:
+                    full_content = f"{full_content}\n{attachments_note}".strip()
+                messages.append({"role": role, "content": full_content})
 
         memory_context = self.memory_store.format_context(settings, user_text, mode=memory_mode(settings))
         system_text = messages[0]["content"]
         if memory_context:
             system_text += "\n\n" + memory_context
-        system_text += "\n\n当前消息来自外部平台接入。回复要短、自然，默认适合文字聊天；除非上下文需要，不要解释系统实现。"
+        system_text += (
+            "\n\n当前消息来自外部平台接入。回复要短、自然，默认适合文字聊天；除非上下文需要，不要解释系统实现。"
+            "历史里的“[已发送表情包: ...]”只是内部记录，绝对不要复述、改写或输出给用户。"
+        )
         if voice_requested:
             system_text += (
                 "\n\n本轮用户明确请求语音回复。系统会把你的回复转换成语音并发送，"
@@ -1723,7 +1775,12 @@ class ExternalDialogEngine:
         recent_user = [compact_text(item.get("content", "")) for item in history[-6:] if item.get("role") == "user"]
         if recent_user and compact_text(user_text) == recent_user[-1]:
             system_text += "\n用户重复了上一轮问题，请换一种说法回答，避免原句复用。"
-        recent_assistant = [compact_text(item.get("content", ""), 90) for item in history[-8:] if item.get("role") == "assistant"]
+        recent_assistant = [
+            compact_text(f"{item.get('content', '')}\n{attachment_history_text(item.get('attachments') or [])}", 90)
+            for item in history[-8:]
+            if item.get("role") == "assistant"
+        ]
+        recent_assistant = [item for item in recent_assistant if item]
         if recent_assistant:
             system_text += "\n最近你已经说过这些回复片段，请避免原句复用：\n" + "\n".join(f"- {item}" for item in recent_assistant[-3:])
         messages[0] = {"role": "system", "content": system_text}
@@ -1800,10 +1857,11 @@ class ExternalDialogEngine:
         thinking_requested = bool(getattr(settings_snapshot, "thinking_enabled", False))
         if thinking_requested:
             payload["enable_thinking"] = True
-        async with httpx.AsyncClient(timeout=timeout or settings_snapshot.tools_timeout) as client:
-            resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
+        llm_url = active_llm_url(settings_snapshot)
+        async with httpx_client_for_url(llm_url, timeout=timeout or settings_snapshot.tools_timeout) as client:
+            resp = await client.post(llm_url, json=payload, headers=llm_headers(settings_snapshot))
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
-                resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
+                resp = await client.post(llm_url, json=payload, headers=llm_headers(settings_snapshot))
             resp.raise_for_status()
             data = resp.json()
             text = clean_reply_text(extract_chat_message_text(data))
@@ -1861,8 +1919,9 @@ class ExternalDialogEngine:
             "temperature": temperature,
             "max_tokens": min(220, max(80, active_max_tokens(settings))),
         }
-        async with httpx.AsyncClient(timeout=timeout or settings.tools_timeout) as client:
-            resp = await client.post(active_llm_url(settings), json=payload, headers=llm_headers(settings))
+        llm_url = active_llm_url(settings)
+        async with httpx_client_for_url(llm_url, timeout=timeout or settings.tools_timeout) as client:
+            resp = await client.post(llm_url, json=payload, headers=llm_headers(settings))
         resp.raise_for_status()
         return clean_reply_text(extract_chat_message_text(resp.json()))
 
@@ -1873,6 +1932,8 @@ class ExternalDialogEngine:
         if VOICE_NEGATIVE_RE.search(normalized):
             return False
         if VOICE_CONTEXT_RE.search(normalized):
+            return False
+        if VOICE_FALSE_POSITIVE_RE.search(normalized):
             return False
         for keyword in keywords:
             normalized_keyword = re.sub(r"\s+", "", str(keyword))
@@ -1901,7 +1962,7 @@ class ExternalDialogEngine:
             "seed": settings.tts_seed,
         }
         pcm = bytearray()
-        async with httpx.AsyncClient(timeout=None) as client:
+        async with httpx_client_for_url(settings.tts_url, timeout=None) as client:
             async with client.stream("POST", settings.tts_url, json=payload) as resp:
                 resp.raise_for_status()
                 async for chunk in resp.aiter_bytes():

@@ -42,15 +42,57 @@ def emotion_prefix(value: str) -> str:
 
 
 def sticker_display_name(analysis: dict, fallback: str = "") -> str:
-    caption = str(analysis.get("caption") or "").strip(" ，。！？!?")
-    ocr_text = str(analysis.get("ocr_text") or "").strip(" ，。！？!?")
+    return sticker_semantic_name(analysis, fallback=fallback, existing_names=set())
+
+
+def clean_name_part(value: str, fallback: str = "素材") -> str:
+    text = re.sub(r"\s+", "", str(value or "").strip(" _-，。！？!?"))
+    text = re.sub(r"[^0-9A-Za-z_\-\u4e00-\u9fff]+", "", text)
+    return (text[:12] or fallback)[:12]
+
+
+def first_semantic_value(values: list[str], blocked: set[str]) -> str:
+    for value in values:
+        text = clean_name_part(value, "")
+        if text and text.lower() not in blocked:
+            return text
+    return ""
+
+
+def sticker_semantic_name(analysis: dict, fallback: str = "", existing_names: set[str] | None = None) -> str:
     tags = [str(item).strip() for item in analysis.get("tags") or [] if str(item).strip()]
     scene = [str(item).strip() for item in analysis.get("scene") or [] if str(item).strip()]
-    for value in (caption, ocr_text, " ".join(tags[:2]), " ".join(scene[:2]), fallback):
-        value = re.sub(r"\s+", " ", str(value or "").strip())
-        if value:
-            return value[:40]
-    return "表情包"
+    caption = str(analysis.get("caption") or "").strip()
+    ocr_text = str(analysis.get("ocr_text") or "").strip()
+    emotion = clean_name_part(str(analysis.get("emotion") or ""), "")
+    blocked = {"表情包", "素材", "图片", "默认", "sticker", "laugh", "cute", "smug", "angry", "sad", "shock"}
+    subject = first_semantic_value([*tags, *scene, caption, ocr_text, fallback], blocked) or "素材"
+    feature = first_semantic_value([emotion, *scene, *tags, caption, ocr_text], {subject.lower(), *blocked}) or "未识别"
+    base = f"表情包_{subject}_{feature}"
+    existing_names = existing_names or set()
+    for index in range(1, 10000):
+        candidate = f"{base}_{index:03d}"
+        if candidate not in existing_names:
+            return candidate[:80]
+    return f"{base}_{uuid.uuid4().hex[:6]}"[:80]
+
+
+def clean_display_name(value: str, fallback: str = "未分类_素材") -> str:
+    text = re.sub(r"\s+", "", str(value or "").strip(" _-，。！？!?"))
+    text = re.sub(r"[^0-9A-Za-z_\-\u4e00-\u9fff]+", "", text)
+    return text[:64] or fallback
+
+
+def unique_sticker_name(name: str, existing_names: set[str] | None = None) -> str:
+    base = clean_display_name(name)
+    existing_names = existing_names or set()
+    if base not in existing_names:
+        return base[:80]
+    for index in range(2, 10000):
+        candidate = f"{base}_{index:03d}"
+        if candidate not in existing_names:
+            return candidate[:80]
+    return f"{base}_{uuid.uuid4().hex[:6]}"[:80]
 
 
 def sticker_file_stem(sticker_id: str, analysis: dict, fallback: str = "") -> str:
@@ -254,12 +296,20 @@ class StickerLibrary:
             return {**duplicate, "duplicate": True}
         return self.create_pending(processed=processed, analysis=analysis, channels=channels, name=name, error=error)
 
+    def unclassified_name(self) -> str:
+        existing_names = {str(item.get("name") or "") for item in self.load()}
+        return unique_sticker_name(f"未分类_素材_{time.strftime('%Y%m%d_%H%M%S')}", existing_names)
+
     def update(self, sticker_id: str, patch: dict) -> dict:
         items = self.load()
         for index, item in enumerate(items):
             if item.get("id") != sticker_id:
                 continue
-            updated = {**item, **self.sanitize_patch(patch), "updated_at": now_text()}
+            sanitized = self.sanitize_patch(patch)
+            if "name" in sanitized:
+                existing_names = {str(existing.get("name") or "") for existing in items if existing.get("id") != sticker_id}
+                sanitized["name"] = unique_sticker_name(str(sanitized.get("name") or ""), existing_names)
+            updated = {**item, **sanitized, "updated_at": now_text()}
             items[index] = self.normalize(updated)
             self.save(items)
             return items[index]
@@ -331,7 +381,8 @@ class StickerLibrary:
         current = next((item for item in self.load() if item.get("id") == sticker_id), None)
         if not current:
             raise KeyError(sticker_id)
-        display_name = name or sticker_display_name(normalized, current.get("name") or sticker_id)
+        existing_names = {str(item.get("name") or "") for item in self.load() if item.get("id") != sticker_id}
+        display_name = name or sticker_semantic_name(normalized, current.get("name") or sticker_id, existing_names)
         updated = self.update(
             sticker_id,
             {

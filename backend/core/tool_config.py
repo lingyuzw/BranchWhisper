@@ -25,7 +25,7 @@ DEFAULT_TOOL_PROVIDER_CONFIG: dict[str, Any] = {
         "provider": "gaode",
         "base_url": GAODE_BASE_URL,
         "api_key": "",
-        "default_location": "北京",
+        "default_location": "漳州",
     },
     "search": {
         "enabled": True,

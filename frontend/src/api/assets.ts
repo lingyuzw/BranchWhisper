@@ -40,6 +40,16 @@ export interface StickerUploadFile {
   data_url: string;
 }
 
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percent: number;
+}
+
+export interface UploadStickerBatchOptions {
+  onUploadProgress?: (progress: UploadProgress) => void;
+}
+
 export interface StickerBulkPayload {
   action: "reanalyze" | "approve" | "delete";
   ids?: string[];
@@ -60,15 +70,48 @@ export async function loadStickers(filters: StickerFilters = {}) {
   return fetchJson<{ stickers: Sticker[] }>(`/api/stickers${qs ? `?${qs}` : ""}`);
 }
 
-export async function uploadStickerBatch(files: StickerUploadFile[], channels = "all") {
-  return fetchJson<{ ok: boolean; results: Array<{ ok: boolean; sticker?: Sticker; error?: string }>; stickers: Sticker[] }>(
-    "/api/stickers/batch",
-    {
+export async function uploadStickerBatch(files: StickerUploadFile[], channels = "all", analyze = true, options: UploadStickerBatchOptions = {}) {
+  const body = JSON.stringify({ files, channels, analyze });
+  type UploadResponse = { ok: boolean; results: Array<{ ok: boolean; sticker?: Sticker; error?: string }>; stickers: Sticker[] };
+  if (!options.onUploadProgress) {
+    return fetchJson<UploadResponse>("/api/stickers/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files, channels, analyze: false }),
-    },
-  );
+      body,
+    });
+  }
+  return new Promise<UploadResponse>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/stickers/batch");
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.upload.onprogress = (event) => {
+      const total = event.lengthComputable ? event.total : body.length;
+      const loaded = event.lengthComputable ? event.loaded : Math.min(body.length, event.loaded || 0);
+      options.onUploadProgress?.({
+        loaded,
+        total,
+        percent: total ? Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) : 0,
+      });
+    };
+    xhr.onload = () => {
+      let data: any = {};
+      if (xhr.responseText) {
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          data = { detail: xhr.responseText };
+        }
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || data.detail || data.error || `HTTP ${xhr.status}`));
+        return;
+      }
+      resolve(data as UploadResponse);
+    };
+    xhr.onerror = () => reject(new Error("素材上传网络失败"));
+    xhr.ontimeout = () => reject(new Error("素材上传超时"));
+    xhr.send(body);
+  });
 }
 
 export async function reanalyzeSticker(stickerId: string) {

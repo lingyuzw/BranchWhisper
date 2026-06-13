@@ -9,4 +9,4 @@ PORT="${PORT:-7860}"
 exec "$CONDA_BIN" run --no-capture-output -n qwen3-asr python "$APP_ROOT/backend/main.py" \
   --host "$HOST" \
   --port "$PORT" \
-  --service-config "$APP_ROOT/configs/voice_services.local.json"
+  --service-config "$APP_ROOT/runtime/service_profiles.json"

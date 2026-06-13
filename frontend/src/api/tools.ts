@@ -9,15 +9,17 @@ export interface ToolResolveResult {
 }
 
 export async function loadToolsConfig() {
-  return fetchJson<ToolProviderConfig>("/api/tools");
+  const data = await fetchJson<{ tools?: ToolProviderConfig }>("/api/config/tools");
+  return data.tools || {};
 }
 
 export async function saveToolsConfig(config: ToolProviderConfig) {
-  return fetchJson<ToolProviderConfig>("/api/tools", {
+  const data = await fetchJson<{ tools?: ToolProviderConfig }>("/api/config/tools", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
   });
+  return data.tools || {};
 }
 
 export async function resolveTool(text: string) {

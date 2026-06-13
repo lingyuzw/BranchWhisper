@@ -46,6 +46,30 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value ?? {}));
 }
 
+function normalizeToolValue(value: unknown) {
+  if (value === undefined || value === null) return "";
+  return value;
+}
+
+function verifySavedToolsConfig(sent: ToolProviderConfig, verified: ToolProviderConfig) {
+  for (const [providerKey, provider] of Object.entries(sent || {})) {
+    if (!provider || typeof provider !== "object") continue;
+    const verifiedProvider = verified[providerKey] || {};
+    for (const [field, value] of Object.entries(provider)) {
+      if (field.endsWith("_masked") || field.endsWith("_set")) continue;
+      if (["api_key", "webhook_url", "token", "secret"].includes(field)) {
+        if (String(value || "").trim() && !String(value).includes("*") && !verifiedProvider[`${field}_set`]) {
+          throw new Error(`保存后校验失败：${PROVIDER_LABELS[providerKey] || providerKey} ${field} 未写入`);
+        }
+        continue;
+      }
+      if (JSON.stringify(normalizeToolValue(value)) !== JSON.stringify(normalizeToolValue(verifiedProvider[field]))) {
+        throw new Error(`保存后校验失败：${PROVIDER_LABELS[providerKey] || providerKey} ${field} 回显不一致`);
+      }
+    }
+  }
+}
+
 export const useToolsStore = defineStore("tools", {
   state: (): ToolsState => ({
     config: {},
@@ -80,7 +104,11 @@ export const useToolsStore = defineStore("tools", {
       this.saving = true;
       this.error = "";
       try {
-        this.config = await saveToolsConfig(clone(this.config));
+        const sent = clone(this.config);
+        await saveToolsConfig(sent);
+        const verified = await loadToolsConfig();
+        verifySavedToolsConfig(sent, verified);
+        this.config = verified;
         this.dirty = false;
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
@@ -106,12 +134,13 @@ export const useToolsStore = defineStore("tools", {
       this.resolveResult = null;
     },
     async runProviderTest(providerKey: string) {
+      const weatherLocation = String(this.config.weather?.default_location || "漳州").trim() || "漳州";
       const args: Record<string, Record<string, unknown>> = {
-        weather: { location: "北京" },
+        weather: { location: weatherLocation },
         search: { query: "BranchWhisper" },
         news: { query: "AI" },
         finance: { symbol: "AAPL" },
-        map: { origin: "北京站", destination: "天安门" },
+        map: { query: `${weatherLocation}市政府` },
         url_fetch: { url: "https://example.com" },
         reminder: { title: "测试提醒", due_at: new Date(Date.now() + 3600_000).toISOString() },
       };

@@ -1,490 +1,217 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
-import { Activity, Clipboard, ClipboardCheck, Copy, MessageCircle, Network, Play, RotateCw, SearchCheck, Sparkles, Wrench } from "@lucide/vue";
-import { loadConfig } from "@/api/config";
-import { loadDiagnosticsSummary, runLlmApiDiagnostic } from "@/api/diagnostics";
-import { testStickerVision } from "@/api/assets";
-import { useAppStore } from "@/stores/app";
-import { PROVIDER_LABELS, useToolsStore } from "@/stores/tools";
-import { useAssetsStore } from "@/stores/assets";
-import { useDiagnosticsStore, type CheckStatus, type DiagnosticResult } from "@/stores/diagnostics";
-import { useEngagementStore } from "@/stores/engagement";
-import { useIntegrationsStore } from "@/stores/integrations";
-import { useMemoryStore } from "@/stores/memory";
+import { computed, onMounted, ref } from "vue";
+import { CheckCircle2, Clipboard, Copy, Image, Play, RefreshCw, Server, XCircle } from "@lucide/vue";
+import {
+  runLocalModelsDiagnostic,
+  runVisionApiDiagnostic,
+  type LocalModelCheck,
+  type VisionApiDiagnostic,
+} from "@/api/diagnostics";
+import { useUiStore } from "@/stores/ui";
 
-interface DiagnosticCheck {
-  id: string;
-  group: string;
-  title: string;
-  detail: string;
-  action: () => Promise<string | void>;
-}
+const ui = useUiStore();
+const localChecks = ref<LocalModelCheck[]>([]);
+const visionResult = ref<VisionApiDiagnostic | null>(null);
+const localLoading = ref(false);
+const visionLoading = ref(false);
+const copiedLabel = ref("");
 
-const app = useAppStore();
-const tools = useToolsStore();
-const assets = useAssetsStore();
-const diagnostics = useDiagnosticsStore();
-const engagement = useEngagementStore();
-const integrations = useIntegrationsStore();
-const memory = useMemoryStore();
-const runningAll = computed(() => diagnostics.runningAll);
-const reportMessage = computed(() => diagnostics.reportMessage);
-const TINY_PNG_DATA_URL =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+const localPassed = computed(() => localChecks.value.filter((item) => item.ok).length);
+const localFailed = computed(() => localChecks.value.filter((item) => !item.ok).length);
 
-const providerChecks = computed<DiagnosticCheck[]>(() =>
-  tools.providers.map((provider) => ({
-    id: `tool-${provider.key}`,
-    group: "联网工具",
-    title: `${provider.label} Provider`,
-    detail: provider.config?.enabled === false ? "当前 Provider 已关闭，检测会返回关闭状态。" : "调用后端工具测试接口，验证配置、密钥和返回格式。",
-    action: async () => {
-      if (provider.config?.enabled === false) {
-        diagnostics.setResult(`tool-${provider.key}`, { status: "warning", message: "Provider 已关闭", updatedAt: nowText() });
-        return;
-      }
-      await tools.runProviderTest(provider.key);
-      const text = tools.testResults[provider.key] || "";
-      if (text.startsWith("测试失败")) throw new Error(text);
-      return text;
-    },
-  })),
-);
-
-const checks = computed<DiagnosticCheck[]>(() => [
-  {
-    id: "runtime-summary",
-    group: "基础环境",
-    title: "运行时总览",
-    detail: "读取后端诊断摘要，确认 runtime、前端构建、命令依赖和基础数据链路。",
-    action: async () => {
-      const summary = await loadDiagnosticsSummary();
-      if (summary.issues.length) {
-        diagnostics.setResult("runtime-summary", { status: "warning", message: summary.issues.join("\n"), updatedAt: nowText() });
-      }
-      return JSON.stringify(summary, null, 2);
-    },
-  },
-  {
-    id: "backend-config",
-    group: "基础环境",
-    title: "后端 API 与配置读取",
-    detail: "读取 /api/config，确认前端可以访问后端。",
-    action: async () => {
-      const config = await loadConfig();
-      return `配置读取成功，当前模式：${config.dialog_mode || "local"}`;
-    },
-  },
-  {
-    id: "services-list",
-    group: "基础环境",
-    title: "服务清单",
-    detail: "刷新服务状态，确认运行时服务管理接口可用。",
-    action: async () => {
-      await app.bootstrap();
-      return `读取到 ${app.services.length || 0} 个服务。`;
-    },
-  },
-  {
-    id: "api-llm",
-    group: "API 能力",
-    title: "API 大模型连通性",
-    detail: "用 API 模式配置向 OpenAI-compatible chat/completions 发最小请求，验证 URL、模型、Key 和返回结构。",
-    action: async () => {
-      const result = await runLlmApiDiagnostic();
-      if (!result.ok) throw new Error(result.error || `LLM API 检测失败：HTTP ${result.status_code || "--"}`);
-      return JSON.stringify(result, null, 2);
-    },
-  },
-  {
-    id: "asset-vision-api",
-    group: "API 能力",
-    title: "素材识别 API 连通性",
-    detail: "用 1px 测试图调用素材 Vision 配置，验证 URL、模型、Key 和返回结构。",
-    action: async () => {
-      const result = await testStickerVision({ data_url: TINY_PNG_DATA_URL });
-      if (!result.ok) throw new Error(String(result.error || "素材 Vision API 检测失败"));
-      return JSON.stringify(result, null, 2);
-    },
-  },
-  {
-    id: "tool-route",
-    group: "联网工具",
-    title: "工具路由解析",
-    detail: `用“${tools.resolveText}”测试工具路由是否能解析到合适 Provider。`,
-    action: async () => {
-      if (!tools.resolveText.trim()) throw new Error("请先填写工具路由句子。");
-      await tools.runResolve();
-      if (!tools.resolveResult) throw new Error("没有返回解析结果");
-      return JSON.stringify(tools.resolveResult, null, 2);
-    },
-  },
-  ...providerChecks.value,
-  {
-    id: "asset-list",
-    group: "素材能力",
-    title: "素材库读取",
-    detail: "读取素材列表和素材配置，确认素材库接口可用。",
-    action: async () => {
-      await Promise.all([assets.reload(), assets.loadConfig()]);
-      return `读取到 ${assets.stickers.length || 0} 张素材，发送策略：${assets.config.stickers_enabled ? "启用" : "关闭"}`;
-    },
-  },
-  {
-    id: "asset-policy",
-    group: "素材能力",
-    title: "表情策略命中",
-    detail: `用“${assets.testText}”跑表情策略，验证是否能选出可发送素材。`,
-    action: async () => {
-      if (!assets.testText.trim()) throw new Error("请先填写素材策略文本。");
-      await assets.runTest();
-      const result = assets.testResult || {};
-      const intent = (result.intent || {}) as Record<string, unknown>;
-      const sticker = result.sticker;
-      const stickersCount = Number(result.stickers_count || 0);
-      if (!sticker || intent.send === false || stickersCount <= 0) {
-        const reason = String(intent.reason || (result.diagnostics as Record<string, unknown> | undefined)?.reason || "no_sticker");
-        const detail = JSON.stringify(result, null, 2);
-        diagnostics.setResult("asset-policy", {
-          status: "warning",
-          message: stickersCount <= 0 ? "表情策略接口可用，但素材库没有可发送素材。" : `表情策略未命中可发送素材：${reason}`,
-          detail,
-          rawLog: detail,
-          updatedAt: nowText(),
-        });
-        return detail;
-      }
-      return JSON.stringify(result, null, 2);
-    },
-  },
-  {
-    id: "asset-vision",
-    group: "素材能力",
-    title: "单张素材 Vision 自检",
-    detail: "对当前选中素材执行识别服务自检。",
-    action: async () => {
-      if (!assets.selectedId) throw new Error("素材库没有可用素材，请先上传或选择一张素材。");
-      await assets.runVisionTest(assets.selectedId);
-      if (!assets.visionTestResult) throw new Error(assets.detailMessage || "没有返回识别结果");
-      return JSON.stringify(assets.visionTestResult, null, 2);
-    },
-  },
-  {
-    id: "integration-state",
-    group: "接入链路",
-    title: "接入环境",
-    detail: "刷新接入实例与 openclaw 环境信息。",
-    action: async () => {
-      await integrations.reload(true);
-      const accountIssues = integrations.items.flatMap((item) =>
-        (item.accounts || [])
-          .filter((account) => account.base_url_reachable === false || account.diagnostic_hint || account.connectivity_error)
-          .map((account) => `${item.id}/${account.account_id || account.id || "account"}：${account.diagnostic_hint || account.connectivity_error || "OpenClaw 本地服务不可达"}`),
-      );
-      const detail = JSON.stringify({ environment: integrations.environment, integrations: integrations.items }, null, 2);
-      if (accountIssues.length) {
-        diagnostics.setResult("integration-state", {
-          status: "warning",
-          message: accountIssues.join("\n"),
-          detail,
-          rawLog: detail,
-          updatedAt: nowText(),
-        });
-      }
-      return `${integrations.summary}，环境：${integrations.environmentReady ? "ready" : "not ready"}\n${accountIssues.join("\n")}\n${detail}`;
-    },
-  },
-  {
-    id: "integration-dialog",
-    group: "接入链路",
-    title: "微信文本链路",
-    detail: `向当前接入实例发送文本：“${integrations.testText}”。`,
-    action: async () => {
-      if (!integrations.selected?.id) throw new Error("没有可用接入实例。");
-      if (!integrations.testText.trim()) throw new Error("请先填写微信文本。");
-      await integrations.runDialogTest();
-      return integrations.testResult || "已发送文本测试。";
-    },
-  },
-  {
-    id: "integration-voice",
-    group: "接入链路",
-    title: "微信语音链路",
-    detail: `执行 TTS 合成并发送：“${integrations.voiceText}”。`,
-    action: async () => {
-      if (!integrations.selected?.id) throw new Error("没有可用接入实例。");
-      if (!integrations.voiceText.trim()) throw new Error("请先填写微信语音文本。");
-      await integrations.runVoiceTest();
-      return integrations.voiceResult || "已发送语音测试。";
-    },
-  },
-  {
-    id: "integration-sticker",
-    group: "接入链路",
-    title: "微信表情链路",
-    detail: `按表情策略发送：“${integrations.stickerText}”。`,
-    action: async () => {
-      if (!integrations.selected?.id) throw new Error("没有可用接入实例。");
-      if (!integrations.stickerText.trim()) throw new Error("请先填写微信表情文本。");
-      await integrations.runStickerTest();
-      return integrations.stickerResult || "已发送表情测试。";
-    },
-  },
-  {
-    id: "memory-admission",
-    group: "记忆系统",
-    title: "记忆准入测试",
-    detail: `检查“${memory.admissionText}”是否会进入记忆。`,
-    action: async () => {
-      if (!memory.admissionText.trim()) throw new Error("请先填写记忆准入文本。");
-      await memory.testAdmission();
-      if (!memory.admissionResults.length) throw new Error("没有返回准入结果");
-      return JSON.stringify(memory.admissionResults, null, 2);
-    },
-  },
-  {
-    id: "proactive-config",
-    group: "主动性",
-    title: "主动性配置",
-    detail: "读取主动消息配置、提醒和近期事件。",
-    action: async () => {
-      await engagement.reload();
-      return `主动性：${engagement.config.enabled ? "启用" : "关闭"}，待触发提醒 ${engagement.pendingReminders.length} 条。`;
-    },
-  },
-  {
-    id: "proactive-message",
-    group: "主动性",
-    title: "主动消息测试",
-    detail: "按当前主动性通道发送一条测试主动消息。",
-    action: async () => {
-      await engagement.runTest();
-      return `主动消息测试已提交，最近事件 ${engagement.recentEvents.length} 条。`;
-    },
-  },
-]);
-
-const groups = computed(() => {
-  const map = new Map<string, DiagnosticCheck[]>();
-  for (const check of checks.value) {
-    if (!map.has(check.group)) map.set(check.group, []);
-    map.get(check.group)?.push(check);
-  }
-  return Array.from(map.entries()).map(([name, items]) => ({ name, items }));
+onMounted(() => {
+  void runLocalModels();
 });
 
-const totals = computed(() => {
-  const values = checks.value.map((check) => resultFor(check.id).status);
-  return {
-    total: checks.value.length,
-    passed: values.filter((status) => status === "passed").length,
-    failed: values.filter((status) => status === "failed").length,
-    warning: values.filter((status) => status === "warning").length,
-    running: values.filter((status) => status === "running").length,
-  };
-});
-
-onMounted(async () => {
-  await Promise.allSettled([app.bootstrap(), tools.reload(), assets.reload(), assets.loadConfig(), integrations.reload(true), engagement.reload(), memory.reload()]);
-});
-
-function resultFor(id: string): DiagnosticResult {
-  return diagnostics.resultFor(id);
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
-function nowText() {
-  return new Date().toLocaleTimeString("zh-CN", { hour12: false });
+function formatLatency(value: unknown) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? `${Math.round(numeric)} ms` : "--";
 }
 
-function statusLabel(status: CheckStatus) {
-  return { idle: "未检测", running: "检测中", passed: "通过", warning: "提示", failed: "失败" }[status];
-}
-
-function checkLog(check: DiagnosticCheck) {
-  const result = resultFor(check.id);
-  return [
-    `[${statusLabel(result.status)}] ${check.group} / ${check.title}`,
-    `说明：${check.detail}`,
-    `结果：${result.message}`,
-    result.durationMs ? `耗时：${result.durationMs}ms` : "",
-    result.updatedAt ? `时间：${result.updatedAt}` : "",
-    result.detail ? `详情：\n${result.detail}` : "",
-    result.rawLog ? `原始日志：\n${result.rawLog}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-async function copyText(text: string) {
+function formatJson(value: unknown) {
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    return JSON.stringify(value ?? {}, null, 2);
   } catch {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.setAttribute("readonly", "true");
-    textArea.style.position = "fixed";
-    textArea.style.left = "-9999px";
-    document.body.appendChild(textArea);
-    textArea.select();
-    const copied = document.execCommand("copy");
-    document.body.removeChild(textArea);
-    return copied;
+    return String(value ?? "");
   }
 }
 
-async function runCheck(check: DiagnosticCheck) {
-  const start = Date.now();
-  diagnostics.setResult(check.id, { status: "running", message: "检测中...", updatedAt: nowText() });
+async function copyText(label: string, text: string) {
+  const value = String(text || "").trim();
+  if (!value) {
+    ui.warning(`${label}为空`);
+    return;
+  }
   try {
-    const detail = await check.action();
-    if (resultFor(check.id).status === "warning") {
-      diagnostics.setResult(check.id, {
-        ...resultFor(check.id),
-        detail: detail ? String(detail) : resultFor(check.id).detail,
-        rawLog: detail ? String(detail) : resultFor(check.id).rawLog,
-        durationMs: Date.now() - start,
-        updatedAt: nowText(),
-      });
-      return;
-    }
-    diagnostics.setResult(check.id, {
-      status: "passed",
-      message: "检测通过",
-      detail: detail ? String(detail) : "",
-      rawLog: detail ? String(detail) : "检测通过",
-      durationMs: Date.now() - start,
-      updatedAt: nowText(),
-    });
+    await navigator.clipboard.writeText(value);
+    copiedLabel.value = label;
+    ui.success(`${label}已复制`);
+    window.setTimeout(() => {
+      if (copiedLabel.value === label) copiedLabel.value = "";
+    }, 1400);
   } catch (error) {
-    diagnostics.setResult(check.id, {
-      status: "failed",
-      message: error instanceof Error ? error.message : String(error),
-      rawLog: error instanceof Error ? error.stack || error.message : String(error),
-      durationMs: Date.now() - start,
-      updatedAt: nowText(),
-    });
+    ui.error(`${label}复制失败：${errorText(error)}`);
   }
 }
 
-async function runGroup(items: DiagnosticCheck[]) {
-  for (const check of items) {
-    await runCheck(check);
-  }
-}
-
-async function runAll() {
-  diagnostics.runningAll = true;
+async function runLocalModels() {
+  localLoading.value = true;
   try {
-    for (const group of groups.value) {
-      await runGroup(group.items);
-    }
+    const result = await runLocalModelsDiagnostic();
+    localChecks.value = result.checks || [];
+  } catch (error) {
+    ui.error(`本地模型检测失败：${errorText(error)}`);
   } finally {
-    diagnostics.runningAll = false;
+    localLoading.value = false;
   }
 }
 
-async function runFailed() {
-  const failed = checks.value.filter((check) => resultFor(check.id).status === "failed");
-  for (const check of failed) {
-    await runCheck(check);
+async function runVisionApi() {
+  visionLoading.value = true;
+  try {
+    visionResult.value = await runVisionApiDiagnostic();
+  } catch (error) {
+    visionResult.value = {
+      ok: false,
+      url: "",
+      model: "",
+      api_key_set: false,
+      message: `调用失败：${errorText(error)}`,
+      error: errorText(error),
+    };
+  } finally {
+    visionLoading.value = false;
   }
-}
-
-async function copyReport() {
-  const lines = checks.value.map((check) => checkLog(check));
-  const copied = await copyText(lines.join("\n\n"));
-  diagnostics.setReportMessage(copied ? "检测报告已复制" : "复制失败，请手动选择日志");
-}
-
-async function copyCheckLog(check: DiagnosticCheck) {
-  const copied = await copyText(checkLog(check));
-  diagnostics.setReportMessage(copied ? `已复制：${check.title}` : "复制失败，请手动选择日志");
-}
-
-function groupIcon(name: string) {
-  return { 基础环境: Activity, "API 能力": Network, 联网工具: Network, 素材能力: SearchCheck, 接入链路: MessageCircle, 记忆系统: Clipboard, 主动性: Sparkles }[name] || Wrench;
 }
 </script>
 
 <template>
   <main class="page-view">
-    <div class="diagnostics-page">
-      <section class="diagnostics-hero">
+    <div class="diagnostics-page diagnostics-lite">
+      <section class="page-head">
         <div>
           <p class="eyebrow">Diagnostics</p>
           <h1>检测中心</h1>
-          <p>把分散在配置、接入、素材库里的自检集中到这里，按链路定位问题。</p>
+          <small>本地模型 API 与识图 API</small>
         </div>
-        <div class="diagnostics-actions">
-          <span v-if="reportMessage" class="soft-badge">{{ reportMessage }}</span>
-          <button class="secondary-action" type="button" :disabled="!totals.failed" @click="runFailed"><RotateCw :size="16" />重跑失败项</button>
-          <button class="secondary-action" type="button" @click="copyReport"><Copy :size="16" />复制报告</button>
-          <button class="primary-action" type="button" :disabled="runningAll" @click="runAll"><Play :size="16" />一键检测</button>
+        <div class="head-actions">
+          <span v-if="copiedLabel" class="soft-badge">{{ copiedLabel }}已复制</span>
+          <button class="secondary-action" type="button" :disabled="localLoading" @click="runLocalModels">
+            <RefreshCw :size="16" /> {{ localLoading ? "检测中" : "检测本地模型" }}
+          </button>
+          <button class="primary-action" type="button" :disabled="visionLoading" @click="runVisionApi">
+            <Play :size="16" /> {{ visionLoading ? "检测中" : "检测识图 API" }}
+          </button>
         </div>
       </section>
 
       <section class="diagnostics-summary">
-        <article><small>检测项</small><strong>{{ totals.total }}</strong></article>
-        <article class="passed"><small>通过</small><strong>{{ totals.passed }}</strong></article>
-        <article class="warning"><small>提示</small><strong>{{ totals.warning }}</strong></article>
-        <article class="failed"><small>失败</small><strong>{{ totals.failed }}</strong></article>
-        <article class="running"><small>检测中</small><strong>{{ totals.running }}</strong></article>
-      </section>
-
-      <section class="diagnostics-input-console">
-        <div class="diagnostics-input-head">
-          <div>
-            <p class="eyebrow">Probe Inputs</p>
-            <h2>检测输入</h2>
-          </div>
-          <small>测试文本集中在这里维护，其他页面只保留业务管理。</small>
-        </div>
-        <div class="diagnostics-input-grid">
-          <label><span>工具路由句子</span><input v-model="tools.resolveText" /></label>
-          <label><span>素材策略文本</span><input v-model="assets.testText" /></label>
-          <label><span>素材渠道</span><select v-model="assets.testChannel"><option value="web">Web</option><option value="weixin">微信</option></select></label>
-          <label><span>微信文本</span><input v-model="integrations.testText" /></label>
-          <label><span>微信语音</span><input v-model="integrations.voiceText" /></label>
-          <label><span>微信表情</span><input v-model="integrations.stickerText" /></label>
-          <label class="wide"><span>记忆准入文本</span><textarea v-model="memory.admissionText" rows="3"></textarea></label>
-        </div>
-      </section>
-
-      <section class="diagnostics-groups">
-        <article v-for="group in groups" :key="group.name" class="diagnostics-group">
-          <header class="diagnostics-group-head">
-            <div>
-              <component :is="groupIcon(group.name)" :size="18" />
-              <strong>{{ group.name }}</strong>
-              <small>{{ group.items.length }} 项</small>
-            </div>
-            <button class="secondary-action" type="button" @click="runGroup(group.items)"><ClipboardCheck :size="15" />检测本组</button>
-          </header>
-
-          <div class="diagnostics-list">
-            <section v-for="check in group.items" :key="check.id" class="diagnostic-row" :class="resultFor(check.id).status">
-              <div class="diagnostic-main">
-                <span class="status-dot" :class="{ active: resultFor(check.id).status === 'passed', loading: resultFor(check.id).status === 'running', failed: resultFor(check.id).status === 'failed' }"></span>
-                <div>
-                  <strong>{{ check.title }}</strong>
-                  <small>{{ check.detail }}</small>
-                </div>
-              </div>
-              <div class="diagnostic-result">
-                <span class="diagnostic-state">{{ statusLabel(resultFor(check.id).status) }}</span>
-                <small v-if="resultFor(check.id).durationMs">{{ resultFor(check.id).durationMs }}ms · {{ resultFor(check.id).updatedAt }}</small>
-                <small v-else-if="resultFor(check.id).updatedAt">{{ resultFor(check.id).updatedAt }}</small>
-              </div>
-              <div class="diagnostic-actions">
-                <button class="secondary-action" type="button" @click="copyCheckLog(check)"><Copy :size="14" />复制日志</button>
-                <button class="secondary-action" type="button" @click="runCheck(check)"><Play :size="14" />运行</button>
-              </div>
-              <pre v-if="resultFor(check.id).message !== '未检测' || resultFor(check.id).detail" class="diagnostic-detail">{{ resultFor(check.id).message }}<template v-if="resultFor(check.id).detail">
-{{ resultFor(check.id).detail }}</template></pre>
-            </section>
-          </div>
+        <article><small>本地服务</small><strong>{{ localChecks.length || 4 }}</strong></article>
+        <article class="passed"><small>正常</small><strong>{{ localPassed }}</strong></article>
+        <article class="failed"><small>异常</small><strong>{{ localFailed }}</strong></article>
+        <article :class="visionResult?.ok ? 'passed' : visionResult ? 'failed' : ''">
+          <small>识图 API</small><strong>{{ visionResult ? (visionResult.ok ? "正常" : "异常") : "--" }}</strong>
         </article>
+      </section>
+
+      <section class="diagnostics-workbench">
+      <section class="diagnostics-panel diagnostics-panel--local">
+        <header class="diagnostics-panel-head">
+          <div>
+            <Server :size="18" />
+            <strong>本地模型 API 检测</strong>
+            <small>{{ localPassed }} / {{ localChecks.length || 4 }} 正常</small>
+          </div>
+          <button class="secondary-action" type="button" :disabled="localLoading" @click="runLocalModels">
+            <RefreshCw :size="15" /> 刷新
+          </button>
+        </header>
+        <div class="diagnostics-model-list diagnostics-model-table">
+          <article v-for="check in localChecks" :key="check.id" class="diagnostic-api-row" :class="{ ok: check.ok, failed: !check.ok }">
+            <div class="diagnostic-api-main">
+              <CheckCircle2 v-if="check.ok" :size="18" />
+              <XCircle v-else :size="18" />
+              <div>
+                <strong>{{ check.name }}</strong>
+                <span>{{ check.message }}</span>
+              </div>
+            </div>
+            <div class="diagnostic-api-meta">
+              <span><small>状态</small><strong>{{ check.status }}</strong></span>
+              <span><small>延迟</small><strong>{{ formatLatency(check.latency_ms) }}</strong></span>
+              <span><small>端口</small><strong>{{ check.port || "--" }}</strong></span>
+            </div>
+            <div class="diagnostic-api-actions">
+              <button class="small-button" type="button" @click="copyText('curl', check.curl)">
+                <Clipboard :size="13" /> curl
+              </button>
+              <button class="small-button" type="button" @click="copyText('错误', check.error || check.message)">
+                <Copy :size="13" /> 错误
+              </button>
+              <button class="small-button" type="button" @click="copyText('JSON', formatJson(check.detail))">
+                <Copy :size="13" /> JSON
+              </button>
+            </div>
+            <details class="diagnostic-details">
+              <summary>展开详情</summary>
+              <pre>{{ formatJson(check.detail) }}</pre>
+            </details>
+          </article>
+          <p v-if="!localChecks.length && !localLoading" class="diagnostic-empty">还没有检测结果。</p>
+        </div>
+      </section>
+
+      <section class="diagnostics-panel diagnostics-panel--vision">
+        <header class="diagnostics-panel-head">
+          <div>
+            <Image :size="18" />
+            <strong>识图模型 API 检测</strong>
+            <small>{{ visionResult ? (visionResult.ok ? "可以正常调用 API" : "调用失败") : "未运行" }}</small>
+          </div>
+          <button class="secondary-action" type="button" :disabled="visionLoading" @click="runVisionApi">
+            <Play :size="15" /> 运行
+          </button>
+        </header>
+        <article v-if="visionResult" class="diagnostic-vision-card" :class="{ ok: visionResult.ok, failed: !visionResult.ok }">
+          <div class="diagnostic-api-main">
+            <CheckCircle2 v-if="visionResult.ok" :size="18" />
+            <XCircle v-else :size="18" />
+            <div>
+              <strong>{{ visionResult.message }}</strong>
+              <span>{{ visionResult.model || "--" }} · {{ visionResult.url || "--" }}</span>
+            </div>
+          </div>
+          <div class="diagnostic-api-meta">
+            <span><small>API Key</small><strong>{{ visionResult.api_key_set ? "已配置" : "未配置" }}</strong></span>
+            <span><small>HTTP</small><strong>{{ visionResult.status_code || "--" }}</strong></span>
+            <span><small>延迟</small><strong>{{ formatLatency(visionResult.latency_ms) }}</strong></span>
+          </div>
+          <div class="diagnostic-api-actions">
+            <button class="small-button" type="button" @click="copyText('错误', visionResult.error || visionResult.message)">
+              <Copy :size="13" /> 错误
+            </button>
+            <button class="small-button" type="button" @click="copyText('请求 JSON', formatJson(visionResult.request_shape))">
+              <Copy :size="13" /> 请求 JSON
+            </button>
+            <button class="small-button" type="button" @click="copyText('响应 JSON', formatJson(visionResult.response))">
+              <Copy :size="13" /> 响应 JSON
+            </button>
+          </div>
+          <details class="diagnostic-details">
+            <summary>展开详情</summary>
+            <pre>请求:
+{{ formatJson(visionResult.request_shape) }}
+
+响应:
+{{ formatJson(visionResult.response) }}</pre>
+          </details>
+        </article>
+        <p v-else class="diagnostic-empty">尚未运行识图 API 检测。</p>
+      </section>
       </section>
     </div>
   </main>

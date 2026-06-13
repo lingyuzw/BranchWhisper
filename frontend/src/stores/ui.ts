@@ -89,5 +89,19 @@ export const useUiStore = defineStore("ui", {
       confirmResolvers.delete(pending.id);
       resolve?.(confirmed);
     },
+    closeTransientUi() {
+      if (this.confirm) this.resolveConfirm(false);
+      document.dispatchEvent(new CustomEvent("branchwhisper:close-transient-ui"));
+      document.querySelectorAll("details[open]").forEach((item) => {
+        item.removeAttribute("open");
+      });
+      document.querySelectorAll<HTMLElement>("[aria-expanded='true']").forEach((item) => {
+        item.setAttribute("aria-expanded", "false");
+      });
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && ["SELECT", "BUTTON", "INPUT", "TEXTAREA"].includes(active.tagName)) {
+        active.blur();
+      }
+    },
   },
 });

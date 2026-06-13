@@ -10,7 +10,7 @@
     "check": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitejs/plugin-vue": "5.2.4",
     "@lucide/vue": "^1.17.0",
     "pinia": "^2.3.0",
     "vue": "^3.5.13",

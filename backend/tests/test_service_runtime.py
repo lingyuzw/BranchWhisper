@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import json
 import sys
 import tempfile
 import unittest
@@ -9,8 +11,19 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from integration_runtime.manager import IntegrationManager
-from service_runtime.services import service_runtime_state
+from core.config import SessionSettings, add_settings_args
+from integration_runtime.openclaw_bridge import mark_message_processed_once, mark_reply_sent_once, message_fingerprint, reply_fingerprint
+from integration_runtime.manager import ExternalDialogEngine, IntegrationManager, attachment_history_text
+from media.sticker_policy import StickerPolicy
+from service_runtime.audio_pipeline import clean_reply_text, strip_internal_attachment_markers
+from service_runtime.services import ServiceManager, service_runtime_state, tune_start_command
+from tools.runtime_brain import ToolManager
+
+
+def default_settings() -> SessionSettings:
+    parser = argparse.ArgumentParser()
+    add_settings_args(parser)
+    return SessionSettings.from_args(parser.parse_args([]))
 
 
 class ServiceRuntimeStateTests(unittest.TestCase):
@@ -69,6 +82,52 @@ class ServiceRuntimeStateTests(unittest.TestCase):
 
         self.assertEqual(state, "running_degraded")
 
+    def test_running_process_with_unready_health_is_starting(self) -> None:
+        state = service_runtime_state(
+            running=True,
+            tracked_running=True,
+            health={"ok": False, "error": "All connection attempts failed"},
+            port_open=False,
+            returncode=None,
+        )
+
+        self.assertEqual(state, "starting")
+
+    def test_asr_tuning_does_not_override_saved_gpu_or_context(self) -> None:
+        command = (
+            "conda run --no-capture-output -n qwen3-asr qwen-asr-serve model "
+            "--served-model-name qwen3-asr --gpu-memory-utilization 0.35 --max-model-len 2048 "
+            "--host 0.0.0.0 --port 8001"
+        )
+
+        tuned = tune_start_command("asr", command)
+
+        self.assertIn("--gpu-memory-utilization 0.35", tuned)
+        self.assertIn("--max-model-len 2048", tuned)
+        self.assertIn("--max-num-seqs 1", tuned)
+        self.assertTrue(tuned.startswith("env OMP_NUM_THREADS=1"))
+
+    def test_service_update_persists_to_runtime_config_and_exposes_final_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "service_profiles.json"
+            manager = ServiceManager(config_path, Path(tmp) / "logs")
+
+            saved = manager.update_service(
+                "asr",
+                {
+                    "command": (
+                        "conda run --no-capture-output -n qwen3-asr qwen-asr-serve model "
+                        "--gpu-memory-utilization 0.35 --max-model-len 2048 --host 0.0.0.0 --port 8001"
+                    )
+                },
+            )
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["services"]["asr"]["command"], saved["configured_command"])
+        self.assertIn("--gpu-memory-utilization 0.35", saved["final_command"])
+        self.assertIn("--max-model-len 2048", saved["final_command"])
+        self.assertNotIn("--gpu-memory-utilization 0.60", saved["final_command"])
+
 
 class IntegrationDiagnosticsTests(unittest.TestCase):
     def test_local_weixin_base_url_connection_refused_has_hint(self) -> None:
@@ -101,6 +160,156 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         self.assertEqual(len(accounts), 1)
         self.assertFalse(accounts[0]["base_url_reachable"])
         self.assertIn("OpenClaw", accounts[0]["diagnostic_hint"])
+
+
+class OpenClawBridgeTests(unittest.TestCase):
+    def test_reply_fingerprint_is_sent_once_per_source_message(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            account_id = "test-account"
+            (state_dir / "openclaw-weixin" / "accounts").mkdir(parents=True)
+            source_msg = {"message_id": "m1", "client_id": "c1", "session_id": "s1"}
+            first = reply_fingerprint(account_id, "user@im.wechat", source_msg, "满穗啊，漳州人，爱吃爱睡。")
+            same = reply_fingerprint(account_id, "user@im.wechat", source_msg, "满穗啊，漳州人，爱吃爱睡。")
+            other_text = reply_fingerprint(account_id, "user@im.wechat", source_msg, "我是满穗。")
+            other_msg = reply_fingerprint(account_id, "user@im.wechat", {**source_msg, "message_id": "m2"}, "满穗啊，漳州人，爱吃爱睡。")
+
+            self.assertEqual(first, same)
+            self.assertTrue(mark_reply_sent_once(state_dir, account_id, first))
+            self.assertFalse(mark_reply_sent_once(state_dir, account_id, same))
+            self.assertTrue(mark_reply_sent_once(state_dir, account_id, other_text))
+            self.assertTrue(mark_reply_sent_once(state_dir, account_id, other_msg))
+
+    def test_message_fingerprint_is_processed_once_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            account_id = "test-account"
+            msg = {
+                "message_id": "m1",
+                "client_id": "c1",
+                "from_user_id": "user@im.wechat",
+                "create_time_ms": 123,
+            }
+            fingerprint = message_fingerprint(account_id, msg, "感觉咋都笨笨的？")
+
+            self.assertTrue(mark_message_processed_once(state_dir, account_id, fingerprint))
+            self.assertFalse(mark_message_processed_once(state_dir, account_id, fingerprint))
+
+
+class ToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_weather_question_uses_configured_default_location(self) -> None:
+        class ProviderConfigStub:
+            def load(self) -> dict:
+                return {
+                    "enabled": True,
+                    "timeout": 12,
+                    "max_result_chars": 4000,
+                    "weather": {
+                        "enabled": True,
+                        "provider": "gaode",
+                        "default_location": "漳州",
+                    },
+                }
+
+        class WeatherToolManager(ToolManager):
+            async def weather(self, location: str, timeout: float = 12, providers: dict | None = None) -> dict:
+                provider = (providers or {}).get("weather") or {}
+                final_location = location.strip() or str(provider.get("default_location") or "北京")
+                return {"ok": True, "tool": "weather", "location": final_location}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = WeatherToolManager(Path(tmp) / "tools.json", ProviderConfigStub())
+            suggestion = manager.suggest_from_text("今天天气怎么样")
+            self.assertEqual(suggestion, {"id": "weather", "arguments": {"location": ""}})
+
+            result = await manager.execute("weather", suggestion["arguments"])
+
+        self.assertEqual(result["location"], "漳州")
+
+
+class ExternalDialogHistoryTests(unittest.TestCase):
+    def test_sticker_attachments_are_visible_to_next_llm_turn(self) -> None:
+        class MemoryStub:
+            def format_context(self, *_args, **_kwargs) -> str:
+                return ""
+
+        engine = ExternalDialogEngine(
+            integration_manager=None,
+            conversation_store=None,
+            memory_store=MemoryStub(),
+            tool_manager=None,
+            bot_profiles=None,
+            media_dir=Path(tempfile.gettempdir()),
+        )
+        conversation = {
+            "messages": [
+                {"role": "user", "content": "哈哈"},
+                {
+                    "role": "assistant",
+                    "content": "哈哈，逗你玩的，别当真。",
+                    "attachments": [{"type": "sticker", "asset_id": "s1", "name": "自信真好", "tag": "开心"}],
+                },
+            ]
+        }
+
+        messages = engine.build_messages(default_settings(), conversation, "啥表情包？", "啥表情包？")
+
+        self.assertIn("[已发送表情包: 自信真好]", messages[-2]["content"])
+        self.assertEqual(attachment_history_text(conversation["messages"][1]["attachments"]), "[已发送表情包: 自信真好]")
+
+    def test_voice_trigger_does_not_match_song_recommendation(self) -> None:
+        engine = ExternalDialogEngine(
+            integration_manager=None,
+            conversation_store=None,
+            memory_store=None,
+            tool_manager=None,
+            bot_profiles=None,
+            media_dir=Path(tempfile.gettempdir()),
+        )
+
+        self.assertFalse(engine.should_send_voice("推荐首歌听听", [], {}))
+        self.assertFalse(engine.should_send_voice("那行，我等下听听看看", [], {}))
+        self.assertTrue(engine.should_send_voice("发条语音听听", [], {}))
+        self.assertTrue(engine.should_send_voice("听听", [], {}))
+
+    def test_internal_sticker_marker_is_not_display_text(self) -> None:
+        leaked = "嗯嗯好歌都是需要时间品的 [已发送表情包:\n表情包_猫_被夸奖时假装谦虚_001]"
+
+        self.assertEqual(strip_internal_attachment_markers(leaked), "嗯嗯好歌都是需要时间品的")
+        self.assertEqual(clean_reply_text(leaked), "嗯嗯好歌都是需要时间品的")
+
+
+class StickerPolicyTests(unittest.TestCase):
+    def test_plain_song_followup_does_not_send_sticker(self) -> None:
+        policy = StickerPolicy()
+        settings = default_settings()
+        settings.sticker_activity = "very_active"
+
+        intent = policy.simulate(
+            settings,
+            session_id="wechat",
+            user_text="那行，我等下听听看看",
+            reply_text="嗯嗯好歌都是需要时间品的",
+            source="weixin",
+        )
+
+        self.assertFalse(intent["send"])
+        self.assertEqual(intent["reason"], "plain_context")
+
+    def test_strong_chat_emotion_can_send_sticker(self) -> None:
+        policy = StickerPolicy()
+        settings = default_settings()
+        settings.sticker_activity = "very_active"
+
+        intent = policy.simulate(
+            settings,
+            session_id="wechat",
+            user_text="哈哈哈哈笑死我了",
+            reply_text="你这反应也太好笑了",
+            source="weixin",
+        )
+
+        self.assertTrue(intent["send"])
 
 
 if __name__ == "__main__":

@@ -144,11 +144,13 @@ function serviceDetailRows(service: ServiceSummary) {
     { label: "端口", value: servicePort(service) },
     { label: "Health URL", value: formatValue(service.health_url), wide: true, mono: true },
     { label: "工作目录", value: formatValue(service.cwd), wide: true, mono: true },
+    { label: "配置文件", value: formatValue(service.config_path), wide: true, mono: true },
     { label: "日志文件", value: formatValue(service.log_file), wide: true, mono: true },
     { label: "启动等待", value: `${service.startup_wait_sec ?? 0}s` },
     { label: "就绪超时", value: `${service.startup_ready_timeout_sec ?? "--"}s` },
     { label: "启动时间", value: formatStartedAt(service.started_at) },
     { label: "退出码", value: formatValue(service.returncode), failed: service.returncode !== undefined && service.returncode !== null },
+    { label: "命令一致性", value: service.command_mismatch ? "配置未生效" : "一致", failed: Boolean(service.command_mismatch) },
     { label: "最近错误", value: formatValue(service.error), wide: true, failed: Boolean(service.error) },
   ];
 }
@@ -229,12 +231,30 @@ async function copyText(label: string, text: string) {
             </div>
             <section class="service-detail-code">
               <div class="service-detail-code-head">
-                <span>启动命令</span>
-                <button class="small-button" type="button" @click="copyText('启动命令', detailService.command || '')">
+                <span>配置命令</span>
+                <button class="small-button" type="button" @click="copyText('配置命令', detailService.configured_command || detailService.command || '')">
                   <Copy :size="14" /> 复制
                 </button>
               </div>
-              <pre>{{ detailService.command || "--" }}</pre>
+              <pre>{{ detailService.configured_command || detailService.command || "--" }}</pre>
+            </section>
+            <section class="service-detail-code">
+              <div class="service-detail-code-head">
+                <span>最终启动命令</span>
+                <button class="small-button" type="button" @click="copyText('最终启动命令', detailService.final_command || detailService.effective_command || '')">
+                  <Copy :size="14" /> 复制
+                </button>
+              </div>
+              <pre>{{ detailService.final_command || detailService.effective_command || "--" }}</pre>
+            </section>
+            <section class="service-detail-code">
+              <div class="service-detail-code-head">
+                <span>最近实际启动命令</span>
+                <button class="small-button" type="button" @click="copyText('实际启动命令', detailService.actual_command || '')">
+                  <Copy :size="14" /> 复制
+                </button>
+              </div>
+              <pre>{{ detailService.actual_command || "尚未由当前配置启动" }}</pre>
             </section>
             <section class="service-detail-code">
               <div class="service-detail-code-head">

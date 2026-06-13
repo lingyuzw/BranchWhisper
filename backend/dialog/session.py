@@ -26,6 +26,7 @@ from core.config import (
     memory_mode,
     public_settings,
 )
+from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
 from engagement.proactive import FollowupPolicy
 from media.assets import ChatImageStore, StickerStore
@@ -517,7 +518,7 @@ class DialogSession:
                 "temperature": 0.1,
                 "max_tokens": 180,
             }
-            async with httpx.AsyncClient(timeout=float(getattr(self.settings, "vision_timeout", 45.0))) as client:
+            async with httpx_client_for_url(self.settings.vision_url, timeout=float(getattr(self.settings, "vision_timeout", 45.0))) as client:
                 resp = await client.post(self.settings.vision_url, json=payload)
             resp.raise_for_status()
             summary = extract_chat_message_text(resp.json()).strip()
@@ -831,10 +832,11 @@ class DialogSession:
         }
         if getattr(self.settings, "thinking_enabled", False):
             payload["enable_thinking"] = True
-        async with httpx.AsyncClient(timeout=timeout or self.settings.tools_timeout) as client:
-            resp = await client.post(active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
+        llm_url = active_llm_url(self.settings)
+        async with httpx_client_for_url(llm_url, timeout=timeout or self.settings.tools_timeout) as client:
+            resp = await client.post(llm_url, json=payload, headers=llm_headers(self.settings))
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
-                resp = await client.post(active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
+                resp = await client.post(llm_url, json=payload, headers=llm_headers(self.settings))
         resp.raise_for_status()
         data = resp.json()
         text = clean_reply_text(extract_chat_message_text(data))
@@ -860,8 +862,9 @@ class DialogSession:
             "temperature": temperature,
             "max_tokens": min(220, max(80, active_max_tokens(self.settings))),
         }
-        async with httpx.AsyncClient(timeout=timeout or self.settings.tools_timeout) as client:
-            resp = await client.post(active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
+        llm_url = active_llm_url(self.settings)
+        async with httpx_client_for_url(llm_url, timeout=timeout or self.settings.tools_timeout) as client:
+            resp = await client.post(llm_url, json=payload, headers=llm_headers(self.settings))
         resp.raise_for_status()
         return clean_reply_text(extract_chat_message_text(resp.json()))
 
@@ -900,8 +903,9 @@ class DialogSession:
         started = time.perf_counter()
         finish_reason = ""
 
-        async with httpx.AsyncClient(timeout=None) as client:
-            stream_response = client.stream("POST", active_llm_url(self.settings), json=payload, headers=llm_headers(self.settings))
+        llm_url = active_llm_url(self.settings)
+        async with httpx_client_for_url(llm_url, timeout=None) as client:
+            stream_response = client.stream("POST", llm_url, json=payload, headers=llm_headers(self.settings))
             async with stream_response as resp:
                 if resp.status_code == 400 and payload.pop("enable_thinking", None):
                     await resp.aclose()
@@ -1029,7 +1033,7 @@ class DialogSession:
             self.reset_tts_pcm_state()
 
             try:
-                async with httpx.AsyncClient(timeout=None) as client:
+                async with httpx_client_for_url(self.settings.tts_url, timeout=None) as client:
                     async with client.stream("POST", self.settings.tts_url, json=payload) as resp:
                         resp.raise_for_status()
                         async for chunk in resp.aiter_bytes():
@@ -1216,6 +1220,5 @@ def last_assistant_content(messages: list[dict[str, str]]) -> str | None:
         if message.get("role") == "assistant" and message.get("content"):
             return message["content"]
     return None
-
 
 

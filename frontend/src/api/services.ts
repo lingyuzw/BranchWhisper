@@ -13,6 +13,12 @@ export interface ServiceSummary {
   health_url?: string;
   cwd?: string;
   command?: string;
+  configured_command?: string;
+  final_command?: string;
+  effective_command?: string;
+  actual_command?: string;
+  command_mismatch?: boolean;
+  config_path?: string;
   startup_wait_sec?: number;
   startup_ready_timeout_sec?: number;
   pid?: number | string | null;

@@ -107,7 +107,12 @@ def create_assets_router() -> APIRouter:
                     warning = f"自动识别失败：{exc}"
                     sticker = request.app.state.sticker_library.update(
                         preview["id"],
-                        {"review_status": "pending", "enabled": False, "error": warning},
+                        {
+                            "name": request.app.state.sticker_library.unclassified_name(),
+                            "review_status": "pending",
+                            "enabled": False,
+                            "error": warning,
+                        },
                     )
                     results.append({"ok": True, "analyzed": False, "warning": warning, "vision_model": getattr(request.app.state.settings, "sticker_vision_model", ""), "sticker": sticker})
                     continue
@@ -150,7 +155,15 @@ def create_assets_router() -> APIRouter:
             updated = request.app.state.sticker_library.apply_analysis(sticker_id, analysis)
             return {"sticker": updated, "stickers": request.app.state.sticker_store.list()}
         except Exception as exc:
-            updated = request.app.state.sticker_library.update(sticker_id, {"review_status": "pending", "enabled": False, "error": f"自动识别失败：{exc}"})
+            updated = request.app.state.sticker_library.update(
+                sticker_id,
+                {
+                    "name": request.app.state.sticker_library.unclassified_name(),
+                    "review_status": "pending",
+                    "enabled": False,
+                    "error": f"自动识别失败：{exc}",
+                },
+            )
             return {"sticker": updated, "stickers": request.app.state.sticker_store.list()}
 
     @router.post("/api/stickers/vision-test")
@@ -225,7 +238,12 @@ def create_assets_router() -> APIRouter:
                     try:
                         updated = request.app.state.sticker_library.update(
                             str(sticker.get("id")),
-                            {"review_status": "pending", "enabled": False, "error": f"自动识别失败：{exc}"},
+                            {
+                                "name": request.app.state.sticker_library.unclassified_name(),
+                                "review_status": "pending",
+                                "enabled": False,
+                                "error": f"自动识别失败：{exc}",
+                            },
                         )
                     except Exception:
                         pass

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Awaitable, Callable
 
 import asyncio
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 
 from api.dependencies import require_local_service_control
 from service_runtime.services import check_service, health_url_from
@@ -40,7 +40,7 @@ def create_services_router(
 
     @router.get("/api/services")
     async def services(request: Request):
-        return {"services": attach_service_warmups(await request.app.state.service_manager.status_all())}
+        return {"ok": True, "services": attach_service_warmups(await request.app.state.service_manager.status_all())}
 
     @router.get("/api/system/resources")
     async def system_resources():
@@ -52,13 +52,13 @@ def create_services_router(
         overrides = (payload or {}).get("services") or {}
         services = await request.app.state.service_manager.start_all(overrides, allow_config_update=True)
         await schedule_service_warmups(request.app.state.settings)
-        return {"services": attach_service_warmups(services)}
+        return {"ok": True, "services": attach_service_warmups(services), "message": "启动请求已发送"}
 
     @router.post("/api/services/stop-all")
     async def stop_all_services(request: Request):
         require_local_service_control(request)
         clear_warmup_status()
-        return {"services": await request.app.state.service_manager.stop_all()}
+        return {"ok": True, "services": await request.app.state.service_manager.stop_all(), "message": "服务已停止"}
 
     @router.post("/api/services/{service_id}/start")
     async def start_service(service_id: str, request: Request, payload: dict | None = Body(default=None)):
@@ -67,20 +67,26 @@ def create_services_router(
         if service_id in {"asr", "llm"}:
             await schedule_service_warmup(service_id, request.app.state.settings)
         service = attach_service_warmups([service])[0]
-        return {"service": service}
+        return {"ok": True, "service": service, "message": "启动请求已发送"}
 
     @router.post("/api/services/{service_id}/stop")
     async def stop_service(service_id: str, request: Request):
         require_local_service_control(request)
         clear_warmup_status(service_id)
         service = await request.app.state.service_manager.stop(service_id)
-        return {"service": service}
+        return {"ok": True, "service": service, "message": "服务已停止"}
 
     @router.patch("/api/services/{service_id}")
     async def update_service(service_id: str, request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
-        service = request.app.state.service_manager.update_service(service_id, payload or {})
-        return {"service": service}
+        try:
+            service = request.app.state.service_manager.update_service(service_id, payload or {})
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"unknown service: {service_id}") from exc
+        except Exception as exc:
+            config_path = getattr(request.app.state.service_manager, "config_path", "")
+            raise HTTPException(status_code=500, detail=f"保存服务配置失败：path={config_path} error={exc}") from exc
+        return {"ok": True, "service": service, "message": "服务配置已保存并校验"}
 
     @router.get("/api/services/{service_id}/logs")
     async def service_logs(service_id: str, request: Request, max_bytes: int = 24000):

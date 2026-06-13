@@ -1,0 +1,31 @@
+{
+  "services": {
+    "asr": {
+      "label": "Qwen3-ASR vLLM",
+      "description": "Speech recognition service, started by qwen-asr-serve.",
+      "cwd": "${WORKSPACE_ROOT}",
+      "command": "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 conda run --no-capture-output -n qwen3-asr qwen-asr-serve \"${WORKSPACE_ROOT}/Qwen3-ASR-0.6B\" --served-model-name qwen3-asr --gpu-memory-utilization 0.25 --max-model-len 1024 --max-num-seqs 1 --enforce-eager --host 0.0.0.0 --port 8001",
+      "health_url": "http://127.0.0.1:8001/health",
+      "startup_wait_sec": 0.0,
+      "startup_ready_timeout_sec": 120.0
+    },
+    "llm": {
+      "label": "llama.cpp Qwen3.5",
+      "description": "OpenAI-compatible llama.cpp server for the chat model.",
+      "cwd": "${WORKSPACE_ROOT}/llama.cpp",
+      "command": "./build/bin/llama-server \\\n  -m ./BranchWhisper-Qwen3.5-9B-v12-reality-Q8_0.gguf \\\n  --alias qwen3.5-9b \\\n  --host 127.0.0.1 \\\n  --port 8080 \\\n  -ngl 50 \\\n  -c 2048 \\\n  --parallel 1 \\\n  --jinja \\\n  --reasoning off",
+      "health_url": "http://127.0.0.1:8080/health",
+      "startup_wait_sec": 5.0,
+      "startup_ready_timeout_sec": 90
+    },
+    "tts": {
+      "label": "CosyVoice3 TTS",
+      "description": "Trained CosyVoice3 API with internal vLLM acceleration.",
+      "cwd": "${WORKSPACE_ROOT}/CosyVoice",
+      "command": "conda run --no-capture-output -n cosyvoice_vllm python -u \"${PROJECT_ROOT}/services/tts/trained_tts_server.py\" --repo_dir \"${WORKSPACE_ROOT}/CosyVoice\" --model_dir \"${WORKSPACE_ROOT}/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B\" --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000",
+      "health_url": "http://127.0.0.1:50000/health",
+      "startup_wait_sec": 10.0,
+      "startup_ready_timeout_sec": 60
+    }
+  }
+}

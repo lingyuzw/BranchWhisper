@@ -102,6 +102,25 @@ function configFromPublic(config: PublicConfig): AssetConfigForm {
   };
 }
 
+function sameConfigValue(left: unknown, right: unknown) {
+  const normalize = (value: unknown) => (value === undefined || value === null ? "" : value);
+  return JSON.stringify(normalize(left)) === JSON.stringify(normalize(right));
+}
+
+function verifyAssetConfigPatch(payload: Partial<PublicConfig>, saved: PublicConfig) {
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === "sticker_vision_api_key") {
+      if (String(value || "").trim() && !saved.sticker_vision_api_key_set) {
+        throw new Error("保存后校验失败：sticker_vision_api_key 未写入");
+      }
+      continue;
+    }
+    if (!sameConfigValue(value, saved[key])) {
+      throw new Error(`保存后校验失败：${key} 回显不一致`);
+    }
+  }
+}
+
 export const useAssetsStore = defineStore("assets", {
   state: (): AssetState => ({
     stickers: [],
@@ -178,7 +197,9 @@ export const useAssetsStore = defineStore("assets", {
         payload.sticker_vision_api_key = this.config.sticker_vision_api_key.trim();
       }
       try {
-        const saved = await saveConfig(payload);
+        await saveConfig(payload);
+        const saved = await loadConfig();
+        verifyAssetConfigPatch(payload, saved);
         this.config = configFromPublic(saved);
         useAppStore().config = saved;
         this.configMessage = "素材配置已保存";
@@ -191,18 +212,28 @@ export const useAssetsStore = defineStore("assets", {
     },
     async upload(files: StickerUploadFile[]) {
       if (!files.length) return;
-      this.progress = { active: true, label: "上传素材", done: 0, total: files.length, failed: 0 };
+      this.progress = { active: true, label: "上传素材", done: 0, total: 100, failed: 0 };
       this.error = "";
       try {
-        const data = await uploadStickerBatch(files, "all");
+        const data = await uploadStickerBatch(files, "all", true, {
+          onUploadProgress: (progress) => {
+            this.progress.active = true;
+            this.progress.label = progress.percent >= 100 ? "服务端识别中" : "上传素材";
+            this.progress.total = 100;
+            this.progress.done = progress.percent;
+          },
+        });
+        this.progress = { active: true, label: "刷新素材库", done: 96, total: 100, failed: 0 };
         this.stickers = data.stickers || this.stickers;
         const uploaded = (data.results || []).filter((item) => item.ok && item.sticker).map((item) => item.sticker as Sticker);
         this.progress.failed = (data.results || []).filter((item) => !item.ok).length;
         this.selectedIds = uploaded.map((item) => item.id);
         this.selectedId = uploaded[0]?.id || this.selectedId;
-        this.progress.done = files.length;
         await this.reload(this.filters);
-        if (uploaded.length) await this.recognize(uploaded.map((item) => item.id), "识别新素材");
+        if (this.selectedId && !this.stickers.some((item) => item.id === this.selectedId)) {
+          this.selectedId = this.stickers[0]?.id || "";
+        }
+        this.progress.done = 100;
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
         throw error;

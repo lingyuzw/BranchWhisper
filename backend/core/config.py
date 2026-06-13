@@ -296,7 +296,16 @@ def migrate_legacy_defaults(settings: SessionSettings) -> None:
 
 def save_persisted_settings(settings: SessionSettings, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(asdict(settings), ensure_ascii=False, indent=2), encoding="utf-8")
+    payload = asdict(settings)
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(path)
+    try:
+        verified = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"settings save verification failed for {path}: {exc}") from exc
+    if verified != payload:
+        raise RuntimeError(f"settings save verification failed for {path}: saved payload differs from memory")
 
 
 def mask_secret(value: str) -> str:

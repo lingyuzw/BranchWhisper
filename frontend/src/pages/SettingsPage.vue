@@ -72,6 +72,12 @@ const serviceDrafts = reactive<Record<string, ServiceDraft>>({});
 const serviceDraftDirty = reactive<Record<string, boolean>>({});
 const serviceSaving = reactive<Record<string, boolean>>({});
 const providerKeys = Object.keys(PROVIDER_FIELDS);
+interface ToolProviderGroup {
+  id: string;
+  title: string;
+  summary: string;
+  keys: string[];
+}
 const localDisabled = computed(() => form.dialog_mode === "api");
 const apiDisabled = computed(() => form.dialog_mode === "local");
 const pendingReminders = computed(() => engagement.pendingReminders.slice(0, 8));
@@ -130,6 +136,30 @@ type SettingsSectionId =
   | "vad"
   | "commands";
 const activeSettingsSection = ref<SettingsSectionId | "">("");
+const toolsConfigDirty = computed(() => Object.keys(buildConfigPatch(TOOL_CONFIG_KEYS)).length > 0);
+const toolsAnyDirty = computed(() => tools.dirty || toolsConfigDirty.value);
+const providerGroups = computed<ToolProviderGroup[]>(() => {
+  const groups: ToolProviderGroup[] = [
+    {
+      id: "external",
+      title: "外部接口",
+      summary: "需要服务商、Base URL 或 API Key 的联网能力",
+      keys: ["weather", "search", "news", "finance", "map"].filter((key) => providerKeys.includes(key)),
+    },
+    {
+      id: "builtin",
+      title: "内置能力",
+      summary: "由本地运行时处理的网页读取、提醒和通道能力",
+      keys: ["url_fetch", "reminder"].filter((key) => providerKeys.includes(key)),
+    },
+  ];
+  const groupedKeys = new Set(groups.flatMap((group) => group.keys));
+  const extraKeys = providerKeys.filter((key) => !groupedKeys.has(key));
+  if (extraKeys.length) {
+    groups.push({ id: "custom", title: "其他 Provider", summary: "插件或自定义工具", keys: extraKeys });
+  }
+  return groups.filter((group) => group.keys.length);
+});
 const settingsSections = computed(() => [
   {
     id: "appearance" as SettingsSectionId,
@@ -212,6 +242,7 @@ const settingsSections = computed(() => [
     status: `${services.services.length || 0} 个服务`,
   },
 ]);
+const settingsLaunchSections = computed(() => settingsSections.value.filter((item) => item.id !== "appearance"));
 const activeSettingsCard = computed(() => settingsSections.value.find((item) => item.id === activeSettingsSection.value));
 const serviceDraftList = computed(() =>
   services.services
@@ -551,6 +582,9 @@ async function saveToolsOnly() {
 function providerFieldValue(providerKey: string, field: string) {
   const value = (tools.config[providerKey] || {})[field];
   if (typeof value === "boolean") return String(value);
+  if ((field === "api_key" || field === "webhook_url") && !value && (tools.config[providerKey]?.[`${field}_set`] || tools.config[providerKey]?.[`${field}_masked`])) {
+    return "";
+  }
   return String(value ?? "");
 }
 
@@ -621,7 +655,7 @@ function makeServiceDraft(service: ServiceSummary): ServiceDraft {
     cwd: String(service.cwd || ""),
     health_url: String(service.health_url || ""),
     startup_wait_sec: Number(service.startup_wait_sec || 0),
-    command: String(service.command || ""),
+    command: String(service.configured_command || service.command || ""),
   };
 }
 
@@ -790,7 +824,7 @@ function formatTime(value?: string) {
         <p class="eyebrow">BranchWhisper</p>
         <h1>配置中心</h1>
         <button
-          v-for="section in settingsSections"
+          v-for="section in settingsLaunchSections"
           :key="section.id"
           class="settings-nav-item"
           :class="{ active: activeSettingsSection === section.id }"
@@ -907,7 +941,7 @@ function formatTime(value?: string) {
 
         <section class="settings-overview-grid">
           <button
-            v-for="(section, index) in settingsSections"
+            v-for="(section, index) in settingsLaunchSections"
             :key="section.id"
             class="settings-overview-card settings-launch-card"
             :class="{ 'primary-card': index < 2, active: activeSettingsSection === section.id }"
@@ -930,7 +964,7 @@ function formatTime(value?: string) {
             <span class="soft-badge">Web 对话页生效</span>
           </div>
           <div class="appearance-layout">
-            <section class="appearance-card appearance-card--compact">
+            <section class="appearance-block appearance-block--compact">
               <div class="appearance-card-head">
                 <strong>界面</strong>
                 <small>主题与字号</small>
@@ -941,7 +975,7 @@ function formatTime(value?: string) {
               </div>
               <label class="compact-field"><span>页面文字大小</span><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
             </section>
-            <section class="appearance-card appearance-identity-card">
+            <section class="appearance-block appearance-identity-card">
               <div class="identity-preview">
                 <img v-if="form.web_user_avatar_url" :src="form.web_user_avatar_url" alt="我的头像" />
                 <span v-else>我</span>
@@ -959,7 +993,7 @@ function formatTime(value?: string) {
                 </div>
               </div>
             </section>
-            <section class="appearance-card appearance-identity-card">
+            <section class="appearance-block appearance-identity-card">
               <div class="identity-preview">
                 <img v-if="form.web_assistant_avatar_url" :src="form.web_assistant_avatar_url" alt="AI 头像" />
                 <span v-else>枝</span>
@@ -1052,48 +1086,65 @@ function formatTime(value?: string) {
               <h2>联网工具</h2>
             </div>
             <div class="inline-actions">
-              <span class="soft-badge">{{ tools.loading ? "加载中" : tools.dirty ? "有未保存修改" : "Provider Config" }}</span>
-              <button class="secondary-action" type="button" :disabled="tools.saving || !tools.dirty" @click="saveToolsOnly">
+              <span class="soft-badge">{{ tools.loading ? "加载中" : toolsAnyDirty ? "有未保存修改" : "Provider Config" }}</span>
+              <button class="secondary-action" type="button" :disabled="tools.saving || !toolsAnyDirty" @click="saveToolsOnly">
                 <Save :size="15" />{{ tools.saving ? "保存中..." : "保存联网工具" }}
               </button>
             </div>
           </div>
-          <div class="form-grid compact">
+          <section class="tools-control-strip">
             <label><span>工具总开关</span><select v-model="form.tools_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
             <label><span>自动调用</span><select v-model="form.tools_auto_call"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
             <label><span>工具超时秒</span><input v-model.number="form.tools_timeout" type="number" min="2" max="60" step="1" /></label>
             <label><span>结果最大字符</span><input v-model.number="form.tools_max_result_chars" type="number" min="500" max="16000" step="100" /></label>
-          </div>
+          </section>
 
-          <div class="tool-provider-grid tool-provider-overview">
-            <section v-for="providerKey in providerKeys" :key="providerKey" class="tool-provider-card overview-card" :class="{ disabled: tools.config[providerKey]?.enabled === false }">
-              <div class="tool-provider-head">
-                <strong>{{ PROVIDER_LABELS[providerKey] || providerKey }}</strong>
-                <small>{{ tools.config[providerKey]?.enabled === false ? "关闭" : "启用" }}</small>
-              </div>
-              <div class="tool-provider-status">
-                <span v-if="tools.config[providerKey]?.provider">{{ tools.config[providerKey]?.provider }}</span>
-                <span v-if="PROVIDER_FIELDS[providerKey]?.includes('api_key') || PROVIDER_FIELDS[providerKey]?.includes('webhook_url')">{{ providerSecretState(providerKey) }}</span>
-                <span v-if="tools.config[providerKey]?.limit">limit {{ tools.config[providerKey]?.limit }}</span>
-              </div>
-              <div class="form-grid compact">
-                <label v-for="field in PROVIDER_FIELDS[providerKey]" :key="field" :class="{ wide: field === 'base_url' || field === 'api_key' || field === 'webhook_url' || field === 'user_agent' }">
-                  <span>{{ providerFieldLabel(field) }}</span>
-                  <select v-if="field === 'enabled' || field.endsWith('_enabled')" :value="providerFieldValue(providerKey, field)" @change="setProviderField(providerKey, field, eventValue($event))">
-                    <option value="true">启用</option>
-                    <option value="false">关闭</option>
-                  </select>
-                  <select v-else-if="field === 'provider'" :value="providerFieldValue(providerKey, field)" @change="setProviderField(providerKey, field, eventValue($event))">
-                    <option v-for="[value, label] in PROVIDER_OPTIONS[providerKey] || []" :key="value" :value="value">{{ label }}</option>
-                  </select>
-                  <input
-                    v-else
-                    :type="providerInputType(field)"
-                    :value="providerFieldValue(providerKey, field)"
-                    :placeholder="field === 'api_key' || field === 'webhook_url' ? providerSecretState(providerKey) : ''"
-                    @input="setProviderField(providerKey, field, eventValue($event))"
-                  />
-                </label>
+          <div class="tool-provider-groups">
+            <section v-for="group in providerGroups" :key="group.id" class="tool-provider-group">
+              <header class="tool-provider-group-head">
+                <div>
+                  <strong>{{ group.title }}</strong>
+                  <small>{{ group.summary }}</small>
+                </div>
+                <span class="soft-badge">{{ group.keys.length }} 项</span>
+              </header>
+
+              <div class="tool-provider-list">
+                <section v-for="providerKey in group.keys" :key="providerKey" class="tool-provider-card overview-card" :class="{ disabled: tools.config[providerKey]?.enabled === false }">
+                  <div class="tool-provider-head">
+                    <div>
+                      <strong>{{ PROVIDER_LABELS[providerKey] || providerKey }}</strong>
+                      <small>{{ providerKey }}</small>
+                    </div>
+                    <span class="tool-provider-state" :class="{ off: tools.config[providerKey]?.enabled === false }">
+                      {{ tools.config[providerKey]?.enabled === false ? "关闭" : "启用" }}
+                    </span>
+                  </div>
+                  <div class="tool-provider-status">
+                    <span v-if="tools.config[providerKey]?.provider">{{ tools.config[providerKey]?.provider }}</span>
+                    <span v-if="PROVIDER_FIELDS[providerKey]?.includes('api_key') || PROVIDER_FIELDS[providerKey]?.includes('webhook_url')">{{ providerSecretState(providerKey) }}</span>
+                    <span v-if="tools.config[providerKey]?.limit">limit {{ tools.config[providerKey]?.limit }}</span>
+                  </div>
+                  <div class="form-grid compact">
+                    <label v-for="field in PROVIDER_FIELDS[providerKey]" :key="field" :class="{ wide: field === 'base_url' || field === 'api_key' || field === 'webhook_url' || field === 'user_agent' }">
+                      <span>{{ providerFieldLabel(field) }}</span>
+                      <select v-if="field === 'enabled' || field.endsWith('_enabled')" :value="providerFieldValue(providerKey, field)" @change="setProviderField(providerKey, field, eventValue($event))">
+                        <option value="true">启用</option>
+                        <option value="false">关闭</option>
+                      </select>
+                      <select v-else-if="field === 'provider'" :value="providerFieldValue(providerKey, field)" @change="setProviderField(providerKey, field, eventValue($event))">
+                        <option v-for="[value, label] in PROVIDER_OPTIONS[providerKey] || []" :key="value" :value="value">{{ label }}</option>
+                      </select>
+                      <input
+                        v-else
+                        :type="providerInputType(field)"
+                        :value="providerFieldValue(providerKey, field)"
+                        :placeholder="field === 'api_key' || field === 'webhook_url' ? providerSecretState(providerKey) : ''"
+                        @input="setProviderField(providerKey, field, eventValue($event))"
+                      />
+                    </label>
+                  </div>
+                </section>
               </div>
             </section>
           </div>

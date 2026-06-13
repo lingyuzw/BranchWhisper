@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 
 from api.dependencies import require_local_service_control
 from core.config import public_settings, save_persisted_settings, update_llm_api_key
@@ -20,10 +21,20 @@ def create_config_router() -> APIRouter:
     @router.patch("/api/config")
     async def update_config(request: Request, payload: dict | None = Body(default=None)):
         payload = dict(payload or {})
-        update_llm_api_key(request.app.state.settings, payload)
-        request.app.state.settings.update_from_dict(payload)
-        save_persisted_settings(request.app.state.settings, SETTINGS_CONFIG)
-        return public_settings(request.app.state.settings)
+        settings = request.app.state.settings
+        before = asdict(settings)
+        try:
+            update_llm_api_key(settings, payload)
+            settings.update_from_dict(payload)
+            save_persisted_settings(settings, SETTINGS_CONFIG)
+        except Exception as exc:
+            for key, value in before.items():
+                setattr(settings, key, value)
+            raise HTTPException(
+                status_code=500,
+                detail=f"保存配置失败：path={SETTINGS_CONFIG} error={exc}",
+            ) from exc
+        return public_settings(settings)
 
     @router.get("/api/config/tools")
     async def tool_provider_config(request: Request):

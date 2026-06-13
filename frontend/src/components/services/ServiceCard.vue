@@ -27,10 +27,12 @@ const healthPayload = computed(() => {
 const warmup = computed(() => props.service.warmup || {});
 const isLoading = computed(() => Boolean(props.pending) || ["starting", "warming", "loading"].includes(String(runtimeState.value)));
 const isDegraded = computed(() => String(runtimeState.value) === "running_degraded");
+const isReady = computed(() => ["ready", "running", "running_degraded"].includes(String(runtimeState.value)));
 const isFailed = computed(
-  () => ["error", "failed"].includes(String(runtimeState.value)) || (Boolean(props.service.error) && !isDegraded.value && !isLoading.value),
+  () =>
+    ["error", "failed"].includes(String(runtimeState.value)) ||
+    (Boolean(props.service.error) && !isReady.value && !isDegraded.value && !isLoading.value),
 );
-const isReady = computed(() => props.service.running || ["ready", "running", "running_degraded"].includes(String(runtimeState.value)));
 
 const stateLabel = computed(() => {
   const value = String(runtimeState.value || "");
@@ -89,11 +91,12 @@ const healthLatency = computed(() => {
 });
 
 const advice = computed(() => {
-  if (props.service.error) return props.service.error;
+  if (isLoading.value) return "服务正在启动，健康检查可能会短暂不可用。页面会继续刷新直到就绪或超时。";
+  if (props.service.command_mismatch) return "配置未生效：最近实际启动命令和当前配置不一致，请重启该服务。";
   if (isDegraded.value) return "服务端口已响应，但健康接口不支持或未提供标准 ready 信息。";
+  if (props.service.error && !isReady.value) return props.service.error;
   if (warmup.value?.error) return String(warmup.value.error);
   if (warmup.value?.detail) return String(warmup.value.detail);
-  if (isLoading.value) return "服务启动后会持续刷新健康状态和日志。";
   if (!props.service.running) return "可单独启动，或在页头一键启动全部服务。";
   return props.service.external ? "检测到外部进程正在提供服务。" : "服务已纳入当前运行时管理。";
 });

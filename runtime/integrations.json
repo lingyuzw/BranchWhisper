@@ -1,0 +1,44 @@
+{
+  "integrations": [
+    {
+      "id": "weixin_personal",
+      "type": "weixin_oc",
+      "enabled": true,
+      "chat_name": "我的微信聊天",
+      "openclaw_profile": "branchwhisper",
+      "bot_profile_id": "default",
+      "reply_mode": "text",
+      "voice_trigger_keywords": [
+        "发语音",
+        "发条语音",
+        "发句语音",
+        "说两句",
+        "说句话",
+        "讲句话",
+        "想听你说",
+        "念给我听",
+        "读出来",
+        "语音回复",
+        "我想听你说话"
+      ],
+      "status": "running",
+      "last_error": "",
+      "last_login_at": "2026-06-13 10:13:08"
+    }
+  ],
+  "sessions": {
+    "weixin_personal:o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat:o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat": "20260613_154443_1e8729",
+    "weixin_personal:codex_verify_song:codex_verify_user": "20260613_161015_49eb97",
+    "weixin_personal:codex_final_verify:codex_verify_user": "20260613_161850_97a341"
+  },
+  "my_weixin_session": {
+    "platform_id": "weixin_personal",
+    "account_id": "test-account",
+    "session_id": "codex_final_verify",
+    "sender_id": "codex_verify_user",
+    "conversation_id": "20260613_161850_97a341",
+    "context_token_set": false,
+    "updated_at": "2026-06-13 16:18:51",
+    "updated_at_ts": 1781338731.8686905
+  }
+}

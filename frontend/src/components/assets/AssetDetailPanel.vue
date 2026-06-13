@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BadgeCheck, RefreshCw, Save, Trash2 } from "@lucide/vue";
+import { BadgeCheck, RefreshCw, Save, Trash2, X } from "@lucide/vue";
 import { reactive, watch } from "vue";
 import type { Sticker } from "@/api/assets";
 import { useAssetsStore } from "@/stores/assets";
@@ -7,6 +7,10 @@ import { useUiStore } from "@/stores/ui";
 
 const props = defineProps<{
   selected: Sticker | null;
+}>();
+
+const emit = defineEmits<{
+  close: [];
 }>();
 
 const assets = useAssetsStore();
@@ -144,6 +148,7 @@ function formatTime(value?: string) {
           <strong>{{ selected.name }}</strong>
           <small>{{ selected.emotion || selected.tag || "-" }} · {{ selected.review_status || "pending" }}</small>
         </div>
+        <button class="icon-button asset-detail-close" type="button" title="收起详情" @click="emit('close')"><X :size="15" /></button>
       </div>
 
       <div class="asset-detail-meta">

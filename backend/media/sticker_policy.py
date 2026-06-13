@@ -15,21 +15,29 @@ STICKER_ACTIVITY = {
 }
 
 STICKER_TAG_RULES = [
-    ("早安", r"早安|早上好|起床"),
-    ("晚安", r"晚安|睡觉|困了|睡不着"),
-    ("吃饭", r"吃饭|好吃|饿|火锅|奶茶|辣"),
-    ("安慰", r"累|难受|不开心|委屈|烦|压力|崩溃|抱抱"),
-    ("开心", r"开心|哈哈|笑死|好耶|太棒|夸|喜欢"),
+    ("早安", r"早安|早上好|起床啦|起床了"),
+    ("晚安", r"晚安|睡觉了|困死|睡不着|哄睡"),
+    ("吃饭", r"饿死|好饿|干饭|火锅|奶茶|馋"),
+    ("安慰", r"难受|不开心|委屈|烦死|压力好大|崩溃|抱抱|哭了|emo"),
+    ("开心", r"哈哈哈+|笑死|笑疯|好耶|太棒了|开心死|夸夸"),
     ("挑衅", r"打一架|打架|揍你|欠揍|想打|来打|单挑|不服|挑衅"),
-    ("互怼", r"怼|骂|sb|傻|笨|滚|你牛|阴阳怪气"),
-    ("无语", r"无语|离谱|服了|绷不住|尴尬"),
-    ("疑惑", r"什么|为啥|为什么|怎么会|真的假的"),
-    ("鼓励", r"加油|努力|考试|面试|工作|项目|训练"),
-    ("撒娇", r"想你|陪我|理我|哄我"),
+    ("互怼", r"怼|骂|sb|傻逼|笨蛋|笨死|滚|阴阳怪气"),
+    ("无语", r"无语|离谱|服了|绷不住|尴尬|汗流浃背"),
+    ("疑惑", r"啥意思|什么鬼|为啥啊|为什么啊|怎么会这样|真的假的|真的假的啊"),
+    ("鼓励", r"加油|努力|考试|面试|工作|项目|训练|冲呀|稳住"),
+    ("撒娇", r"想你|陪我|理我|哄我|贴贴"),
 ]
 
 SERIOUS_TEXT_RE = re.compile(r"(报错|失败|异常|HTTP|Traceback|代码|接口|配置|安装|日志|测试失败|无法连接|图片理解失败|连接尝试失败|All connection attempts failed)", re.I)
 TOOL_TEXT_RE = re.compile(r"(天气|新闻|搜索|股价|汇率|地图|路线|网址|网页|查询结果|API)", re.I)
+PLAIN_TEXT_RE = re.compile(
+    r"(推荐|首歌|歌名|歌曲|音乐|听听|看看|等下|等会|稍后|回头|时间|慢慢|品|收到|知道|了解|好的|行|可以|嗯嗯|好吧|那行|谢谢|辛苦)",
+    re.I,
+)
+STRONG_STICKER_SIGNAL_RE = re.compile(
+    r"(哈哈哈+|笑死|笑疯|好耶|抱抱|哭了|呜呜|贴贴|晚安|早安|难受|崩溃|无语|离谱|服了|绷不住|打一架|单挑|不服|笨蛋|傻逼|什么鬼|真的假的)",
+    re.I,
+)
 
 
 @dataclass
@@ -91,6 +99,8 @@ class StickerPolicy:
             return {"send": False, "reason": "image_vision_failed"}
         if SERIOUS_TEXT_RE.search(text) or TOOL_TEXT_RE.search(user_text):
             return {"send": False, "reason": "serious_or_tool"}
+        if PLAIN_TEXT_RE.search(user_text) and not STRONG_STICKER_SIGNAL_RE.search(text):
+            return {"send": False, "reason": "plain_context"}
 
         now = time.time()
         day = time.strftime("%Y-%m-%d")
@@ -115,6 +125,8 @@ class StickerPolicy:
         tag = self.infer_tag(user_text, reply_text)
         if not tag:
             return {"send": False, "reason": "no_semantic_tag", "config": config, "state": self.state_snapshot(state)}
+        if not self.has_strong_signal(text, tag):
+            return {"send": False, "reason": "weak_context", "tag": tag, "config": config, "state": self.state_snapshot(state)}
         score = self.score(text, tag)
         if score < config["probability"]:
             return {"send": False, "reason": "probability", "tag": tag, "score": score, "config": config, "state": self.state_snapshot(state)}
@@ -147,14 +159,23 @@ class StickerPolicy:
                 return tag
         return ""
 
+    def has_strong_signal(self, text: str, tag: str) -> bool:
+        if tag in {"早安", "晚安", "安慰", "挑衅", "互怼", "无语", "撒娇"}:
+            return True
+        return bool(STRONG_STICKER_SIGNAL_RE.search(text))
+
     def score(self, text: str, tag: str) -> float:
-        value = 0.28
+        value = 0.2
         if tag:
-            value += 0.22
+            value += 0.18
         if tag in {"挑衅", "互怼"}:
-            value += 0.15
-        if re.search(r"[!！~～]|哈哈|笑死|好耶|抱抱|呜|哎呀", text):
-            value += 0.25
-        if len(text) <= 80:
+            value += 0.18
+        if tag in {"安慰", "晚安", "早安", "无语", "撒娇"}:
             value += 0.12
+        if tag == "开心":
+            value += 0.12
+        if re.search(r"[!！~～]|哈哈|笑死|好耶|抱抱|呜|哎呀", text):
+            value += 0.26
+        if len(text) <= 80:
+            value += 0.08
         return min(1.0, value)

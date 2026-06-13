@@ -4,7 +4,7 @@
       "label": "Qwen3-ASR vLLM",
       "description": "Speech recognition service, started by qwen-asr-serve.",
       "cwd": "${WORKSPACE_ROOT}",
-      "command": "conda run --no-capture-output -n qwen3-asr qwen-asr-serve \"${WORKSPACE_ROOT}/Qwen3-ASR-1.7B\" --served-model-name qwen3-asr --gpu-memory-utilization 0.60 --max-model-len 2048 --max-num-seqs 1 --enforce-eager --host 0.0.0.0 --port 8001",
+      "command": "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 conda run --no-capture-output -n qwen3-asr qwen-asr-serve \"${WORKSPACE_ROOT}/Qwen3-ASR-0.6B\" --served-model-name qwen3-asr --gpu-memory-utilization 0.25 --max-model-len 1024 --max-num-seqs 1 --enforce-eager --host 0.0.0.0 --port 8001",
       "health_url": "http://127.0.0.1:8001/health",
       "startup_wait_sec": 0,
       "startup_ready_timeout_sec": 120

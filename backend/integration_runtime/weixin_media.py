@@ -61,9 +61,15 @@ def send_weixin_voice(
             check=False,
         )
     except FileNotFoundError as exc:
-        raise WeixinVoiceSendError("node is not available in PATH") from exc
+        raise WeixinVoiceSendError(
+            "node is not available in PATH",
+            payload={"stage": "start", "target_url": base_url, "receiver": to_user_id},
+        ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise WeixinVoiceSendError("voice sender timed out") from exc
+        raise WeixinVoiceSendError(
+            "voice sender timed out",
+            payload={"stage": "timeout", "target_url": base_url, "receiver": to_user_id},
+        ) from exc
 
     stdout = (proc.stdout or "").strip()
     stderr = (proc.stderr or "").strip()
@@ -71,11 +77,16 @@ def send_weixin_voice(
         payload = json.loads(stdout) if stdout else {}
     except json.JSONDecodeError as exc:
         detail = stderr or stdout or f"exit {proc.returncode}"
-        raise WeixinVoiceSendError(f"voice sender returned invalid JSON: {detail[:240]}") from exc
+        raise WeixinVoiceSendError(
+            f"voice sender returned invalid JSON: {detail[:240]}",
+            payload={"stage": "parse", "target_url": base_url, "receiver": to_user_id, "stderr": stderr[:500]},
+        ) from exc
 
     if proc.returncode != 0 or not payload.get("ok"):
         detail = str(payload.get("error") or stderr or f"exit {proc.returncode}")
         stage = str(payload.get("stage") or "unknown")
+        payload.setdefault("target_url", base_url)
+        payload.setdefault("receiver", to_user_id)
         raise WeixinVoiceSendError(f"{stage}: {detail[:220]}", payload=payload)
     return payload
 
@@ -117,9 +128,15 @@ def send_weixin_image(
             check=False,
         )
     except FileNotFoundError as exc:
-        raise WeixinImageSendError("node is not available in PATH") from exc
+        raise WeixinImageSendError(
+            "node is not available in PATH",
+            payload={"stage": "start", "target_url": base_url, "receiver": to_user_id},
+        ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise WeixinImageSendError("image sender timed out") from exc
+        raise WeixinImageSendError(
+            "image sender timed out",
+            payload={"stage": "timeout", "target_url": base_url, "receiver": to_user_id},
+        ) from exc
 
     stdout = (proc.stdout or "").strip()
     stderr = (proc.stderr or "").strip()
@@ -127,11 +144,16 @@ def send_weixin_image(
         payload = json.loads(stdout) if stdout else {}
     except json.JSONDecodeError as exc:
         detail = stderr or stdout or f"exit {proc.returncode}"
-        raise WeixinImageSendError(f"image sender returned invalid JSON: {detail[:240]}") from exc
+        raise WeixinImageSendError(
+            f"image sender returned invalid JSON: {detail[:240]}",
+            payload={"stage": "parse", "target_url": base_url, "receiver": to_user_id, "stderr": stderr[:500]},
+        ) from exc
 
     if proc.returncode != 0 or not payload.get("ok"):
         detail = str(payload.get("error") or stderr or f"exit {proc.returncode}")
         stage = str(payload.get("stage") or "unknown")
+        payload.setdefault("target_url", base_url)
+        payload.setdefault("receiver", to_user_id)
         raise WeixinImageSendError(f"{stage}: {detail[:220]}", payload=payload)
     return payload
 

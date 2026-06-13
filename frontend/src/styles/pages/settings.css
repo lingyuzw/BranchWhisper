@@ -589,8 +589,18 @@
 .appearance-layout {
   display: grid;
   grid-template-columns: minmax(190px, 0.72fr) repeat(2, minmax(250px, 1fr));
-  gap: 10px;
+  gap: 0;
   align-items: stretch;
+}
+.appearance-block {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 4px 18px 4px 0;
+}
+.appearance-block + .appearance-block {
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
 }
 .appearance-card {
   min-width: 0;
@@ -604,6 +614,9 @@
     var(--surface-muted);
 }
 .appearance-card--compact {
+  align-content: start;
+}
+.appearance-block--compact {
   align-content: start;
 }
 .appearance-card-head {
@@ -696,7 +709,6 @@
   border: 0 !important;
 }
 
-.tool-provider-grid,
 .bot-profile-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -704,15 +716,15 @@
   margin-top: 10px;
 }
 
-.tool-provider-card,
 .bot-profile-card {
   min-width: 0;
   display: grid;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 0 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
 }
 
 #commands .profile-list {
@@ -757,16 +769,85 @@
   line-height: 1.55;
 }
 
-.tool-provider-overview {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+.tools-control-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--border);
 }
+
+.tools-control-strip label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.tool-provider-groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.tool-provider-group {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 68%, transparent), transparent 96px),
+    color-mix(in srgb, var(--surface) 94%, transparent);
+}
+
+.tool-provider-group-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tool-provider-group-head div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.tool-provider-group-head strong {
+  color: var(--text);
+  font-size: var(--font-md);
+}
+
+.tool-provider-group-head small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+}
+
+.tool-provider-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.tool-provider-card {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
 .tool-provider-card.overview-card {
   align-content: start;
   gap: 12px;
-  min-height: 154px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--info) 6%), transparent 88px),
-    var(--surface-muted);
+  min-height: 0;
 }
 .tool-provider-card.overview-card.disabled {
   opacity: 0.72;
@@ -779,6 +860,7 @@
 .bot-profile-card .form-grid.compact,
 #commands .form-grid.compact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
 }
 
 .tool-provider-card .form-grid .wide,
@@ -791,14 +873,49 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  min-width: 0;
 }
-.tool-provider-head strong { color: var(--text); font-size: var(--font-md); }
-.tool-provider-head small { color: var(--text-muted); font-size: var(--font-xs); }
+.tool-provider-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.tool-provider-head strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-provider-head small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+}
+.tool-provider-state {
+  flex: 0 0 auto;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--success) 34%, var(--border));
+  border-radius: 999px;
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: var(--font-xs);
+  font-weight: 800;
+}
+.tool-provider-state.off {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+}
 .tool-provider-status {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-height: 26px;
 }
 .tool-provider-status span,
 .tool-provider-modal-summary span {
@@ -1447,6 +1564,8 @@
 
 @media (max-width: 860px) {
   .proactive-card > .form-grid.compact,
+  .tools-control-strip,
+  .tool-provider-list,
   .tool-provider-card .form-grid.compact,
   .bot-profile-card .form-grid.compact,
   #commands .form-grid.compact,
@@ -1459,6 +1578,10 @@
   .sticker-review-toolbar,
   .sticker-test-row {
     grid-template-columns: 1fr;
+  }
+  .tool-provider-group-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .sticker-review-editor.active {
     grid-template-columns: 1fr;

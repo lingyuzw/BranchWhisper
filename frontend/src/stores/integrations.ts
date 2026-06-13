@@ -80,6 +80,7 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
     `阶段：${result.stage || "--"}`,
     `目标：${target.account_id || "--"} -> ${target.sender_id || "--"}`,
   ];
+  if (result.target_url) lines.push(`目标 URL：${result.target_url}`);
   if (kind === "voice") {
     if (result.tts_done) lines.push(`TTS：完成 · ${result.tts_ms || 0}ms`);
     if (result.voice_file) lines.push(`文件：${result.voice_file}`);
@@ -95,6 +96,7 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
   }
   if (result.client_delivery) lines.push(`客户端：${result.client_delivery}`);
   if (result.error) lines.push(`错误：${result.error}`);
+  if (result.sender_payload) lines.push(`发送器：${JSON.stringify(result.sender_payload, null, 2)}`);
   return lines.join("\n");
 }
 

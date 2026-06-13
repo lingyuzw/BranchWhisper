@@ -15,6 +15,29 @@ function applyUiPreferences(config: PublicConfig | null) {
   document.documentElement.classList.toggle("theme-light", window.localStorage.getItem("branchwhisper:theme") === "light");
 }
 
+const SECRET_KEYS = new Set(["llm_api_key", "api_llm_api_key", "sticker_vision_api_key"]);
+
+function normalizedConfigValue(value: unknown) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "number") return Number.isFinite(value) ? value : "";
+  return value;
+}
+
+function verifySavedConfig(patch: Partial<PublicConfig>, verified: PublicConfig) {
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined || value === null) continue;
+    if (SECRET_KEYS.has(key)) {
+      if (String(value || "").trim() && !verified[`${key}_set`]) {
+        throw new Error(`保存后校验失败：${key} 未写入`);
+      }
+      continue;
+    }
+    if (JSON.stringify(normalizedConfigValue(value)) !== JSON.stringify(normalizedConfigValue(verified[key]))) {
+      throw new Error(`保存后校验失败：${key} 回显不一致`);
+    }
+  }
+}
+
 export const useAppStore = defineStore("app", {
   state: (): AppState => ({
     config: null,
@@ -41,7 +64,10 @@ export const useAppStore = defineStore("app", {
       this.loading = true;
       this.error = "";
       try {
-        this.config = await saveConfig(patch);
+        await saveConfig(patch);
+        const verified = await loadConfig();
+        verifySavedConfig(patch, verified);
+        this.config = verified;
         applyUiPreferences(this.config);
         window.dispatchEvent(new CustomEvent("branchwhisper:config-updated", { detail: { config: this.config } }));
       } catch (error) {

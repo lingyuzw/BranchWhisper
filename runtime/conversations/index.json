@@ -1,0 +1,62 @@
+[
+  {
+    "id": "20260613_095211_e097f5",
+    "title": "主动消息测试",
+    "sequence": 2,
+    "created_at": "2026-06-13 09:52:11",
+    "updated_at": "2026-06-13 09:52:11",
+    "archived": false,
+    "favorite": false,
+    "summary": "这是一条主动消息测试。它会按当前主动性通道发送；如果启用了微信，会发到已绑定的微信会话。",
+    "message_count": 1,
+    "last_message": "这是一条主动消息测试。它会按当前主动性通道发送；如果启用了微信，会发到已绑定的微信会话。",
+    "source": "proactive_test",
+    "platform_id": "",
+    "sender_id": ""
+  },
+  {
+    "id": "20260613_154443_1e8729",
+    "title": "我的微信聊天",
+    "sequence": 2,
+    "created_at": "2026-06-13 15:44:43",
+    "updated_at": "2026-06-13 15:51:58",
+    "archived": false,
+    "favorite": false,
+    "summary": "[已发送表情包:",
+    "message_count": 23,
+    "last_message": "[已发送表情包:",
+    "source": "weixin_personal",
+    "platform_id": "weixin_personal",
+    "sender_id": "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat"
+  },
+  {
+    "id": "20260613_161015_49eb97",
+    "title": "我的微信聊天",
+    "sequence": 3,
+    "created_at": "2026-06-13 16:10:15",
+    "updated_at": "2026-06-13 16:10:17",
+    "archived": false,
+    "favorite": false,
+    "summary": "嗯嗯好歌都是要单曲循环的我先去忙别的了你听完了说一声",
+    "message_count": 5,
+    "last_message": "嗯嗯好歌都是要单曲循环的我先去忙别的了你听完了说一声",
+    "source": "weixin_personal",
+    "platform_id": "weixin_personal",
+    "sender_id": "codex_verify_user"
+  },
+  {
+    "id": "20260613_161850_97a341",
+    "title": "我的微信聊天",
+    "sequence": 4,
+    "created_at": "2026-06-13 16:18:50",
+    "updated_at": "2026-06-13 16:18:53",
+    "archived": false,
+    "favorite": false,
+    "summary": "嗯嗯好歌值得循环我也在听呢",
+    "message_count": 5,
+    "last_message": "嗯嗯好歌值得循环我也在听呢",
+    "source": "weixin_personal",
+    "platform_id": "weixin_personal",
+    "sender_id": "codex_verify_user"
+  }
+]

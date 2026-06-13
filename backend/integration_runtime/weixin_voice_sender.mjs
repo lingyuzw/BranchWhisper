@@ -96,16 +96,24 @@ function endpoint(baseUrl, apiPath) {
 async function postJson({ baseUrl, apiPath, token, body, timeoutMs = 15_000 }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const targetUrl = endpoint(baseUrl, apiPath);
   try {
-    const response = await fetch(endpoint(baseUrl, apiPath), {
+    const response = await fetch(targetUrl, {
       method: "POST",
       headers: buildHeaders(token),
       body: JSON.stringify(body),
       signal: controller.signal,
+    }).catch((error) => {
+      error.target_url = targetUrl;
+      error.stage = error.stage || apiPath;
+      throw error;
     });
     const text = await response.text();
     if (!response.ok) {
-      throw new Error(`${apiPath} HTTP ${response.status}: ${text.slice(0, 300)}`);
+      const error = new Error(`${apiPath} HTTP ${response.status}: ${text.slice(0, 300)}`);
+      error.target_url = targetUrl;
+      error.stage = apiPath;
+      throw error;
     }
     return text ? JSON.parse(text) : {};
   } finally {
@@ -872,6 +880,11 @@ async function main() {
   } catch (error) {
     fail(error?.message || String(error), {
       stage: error?.stage || "unknown",
+      target_url: error?.target_url || (args.baseUrl ? String(args.baseUrl) : ""),
+      base_url: args.baseUrl || "",
+      cdn_base_url: args.cdnBaseUrl || "",
+      receiver: args.to || "",
+      media_file: args.voiceFile || args.imageFile || args.outputFile || "",
       response_shape: error?.response_shape,
     });
   }

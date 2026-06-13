@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import httpx
 
+from core.http_client import httpx_client_for_url
 from core.tool_config import DEFAULT_TOOL_PROVIDER_CONFIG, deep_merge
 
 
@@ -212,7 +213,7 @@ class MemoryStore:
     async def _get_embedding(self, text: str, llm_url: str = "http://127.0.0.1:8080/v1/embeddings") -> list[float] | None:
         """调用 llama.cpp /v1/embeddings 获取文本的向量表示。"""
         try:
-            async with httpx.AsyncClient(timeout=8) as client:
+            async with httpx_client_for_url(llm_url, timeout=8) as client:
                 resp = await client.post(
                     llm_url,
                     json={"input": text, "model": "text-embedding"},
@@ -1275,7 +1276,7 @@ class ToolManager:
             return {"id": "hot_news", "arguments": {"topic": topic[:40], "limit": 6}}
         if has_any(text, ("天气", "下雨", "气温", "温度", "冷不冷", "热不热", "降雨", "空气质量")) and self.tool_exists("weather"):
             location = re.sub(r"(天气|下雨|气温|温度|今天|现在|查一下|怎么样|如何)", "", text).strip(" ，。？?")
-            return {"id": "weather", "arguments": {"location": location or "北京"}}
+            return {"id": "weather", "arguments": {"location": location}}
         if looks_like_metaphorical_direction(text):
             return None
         if looks_like_geo_question(text):
@@ -1302,7 +1303,7 @@ class ToolManager:
             elif tool_id == "url_fetch":
                 result = await self.url_fetch(str(args.get("url") or ""), timeout, providers)
             elif tool_id == "weather":
-                result = await self.weather(str(args.get("location") or "北京"), timeout, providers)
+                result = await self.weather(str(args.get("location") or ""), timeout, providers)
             elif tool_id == "finance":
                 result = await self.web_search(str(args.get("query") or ""), int(args.get("limit") or 5), timeout, providers)
                 result["kind"] = "finance_search"
@@ -1344,7 +1345,7 @@ class ToolManager:
         limit = max(1, min(10, limit))
         url = str(provider.get("base_url") or "https://duckduckgo.com/html/")
         headers = {"User-Agent": str((providers or {}).get("url_fetch", {}).get("user_agent") or "Mozilla/5.0 BranchWhisper/1.0")}
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
+        async with httpx_client_for_url(url, timeout=timeout, follow_redirects=True, headers=headers) as client:
             resp = await client.get(url, params={"q": query})
         resp.raise_for_status()
         parser = LinkTextParser()
@@ -1362,7 +1363,7 @@ class ToolManager:
         else:
             url = f"https://news.google.com/rss?hl=zh-CN&gl={region}&ceid={region}:zh-Hans"
         headers = {"User-Agent": str((providers or {}).get("url_fetch", {}).get("user_agent") or "Mozilla/5.0 BranchWhisper/1.0")}
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
+        async with httpx_client_for_url(url, timeout=timeout, follow_redirects=True, headers=headers) as client:
             resp = await client.get(url)
         resp.raise_for_status()
         root = ET.fromstring(resp.text)
@@ -1387,7 +1388,7 @@ class ToolManager:
             return {"ok": False, "error": "Only http/https URLs are supported"}
         max_chars = int(provider.get("max_chars") or 2500)
         headers = {"User-Agent": str(provider.get("user_agent") or "Mozilla/5.0 BranchWhisper/1.0")}
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
+        async with httpx_client_for_url(url, timeout=timeout, follow_redirects=True, headers=headers) as client:
             resp = await client.get(url)
         resp.raise_for_status()
         content_type = resp.headers.get("content-type", "")
@@ -1410,7 +1411,7 @@ class ToolManager:
             return {"ok": False, "error": f"weather provider {provider.get('provider')} is not implemented yet"}
         base_url = str(provider.get("base_url") or "https://wttr.in").rstrip("/")
         url = f"{base_url}/{quote(location)}"
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx_client_for_url(url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(url, params={"format": "j1", "lang": "zh"})
         resp.raise_for_status()
         data = resp.json()
@@ -1449,9 +1450,10 @@ class ToolManager:
             return {"ok": False, "error": "gaode weather api_key is not configured"}
         base_url = gaode_base_url(provider)
         city = await self.gaode_city_adcode(location, timeout, providers) or location
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        weather_url = f"{base_url}/weather/weatherInfo"
+        async with httpx_client_for_url(weather_url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(
-                f"{base_url}/weather/weatherInfo",
+                weather_url,
                 params={"key": api_key, "city": city, "extensions": "base", "output": "JSON"},
             )
         resp.raise_for_status()
@@ -1506,9 +1508,10 @@ class ToolManager:
         api_key = gaode_api_key(providers, "map")
         if not api_key:
             return {"ok": False, "tool": "map", "provider": "gaode", "error": "gaode api_key is not configured"}
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        geocode_url = f"{gaode_base_url(provider)}/geocode/geo"
+        async with httpx_client_for_url(geocode_url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(
-                f"{gaode_base_url(provider)}/geocode/geo",
+                geocode_url,
                 params={"key": api_key, "address": address, "output": "JSON"},
             )
         resp.raise_for_status()
@@ -1537,9 +1540,10 @@ class ToolManager:
         api_key = gaode_api_key(providers, "map")
         if not api_key:
             return {"ok": False, "tool": "map", "provider": "gaode", "error": "gaode api_key is not configured"}
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        regeo_url = f"{gaode_base_url(provider)}/geocode/regeo"
+        async with httpx_client_for_url(regeo_url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(
-                f"{gaode_base_url(provider)}/geocode/regeo",
+                regeo_url,
                 params={"key": api_key, "location": location, "extensions": "base", "output": "JSON"},
             )
         resp.raise_for_status()
@@ -1564,9 +1568,10 @@ class ToolManager:
         if not api_key:
             return {"ok": False, "tool": "web_search" if provider_key == "search" else "map", "provider": "gaode", "error": "gaode api_key is not configured", "results": []}
         limit = max(1, min(20, int(limit or 6)))
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        place_url = f"{gaode_base_url(provider)}/place/text"
+        async with httpx_client_for_url(place_url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(
-                f"{gaode_base_url(provider)}/place/text",
+                place_url,
                 params={"key": api_key, "keywords": query, "offset": limit, "page": 1, "extensions": "base", "output": "JSON"},
             )
         resp.raise_for_status()
@@ -1616,9 +1621,10 @@ class ToolManager:
         api_key = gaode_api_key(providers, "map")
         route_type = "walking" if re.search(r"(步行|走路)", query) else "driving"
         path = "direction/walking" if route_type == "walking" else "direction/driving"
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        route_url = f"{gaode_base_url(provider)}/{path}"
+        async with httpx_client_for_url(route_url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(
-                f"{gaode_base_url(provider)}/{path}",
+                route_url,
                 params={"key": api_key, "origin": origin, "destination": destination, "output": "JSON"},
             )
         resp.raise_for_status()
@@ -1657,7 +1663,7 @@ class ToolManager:
         headers = render_structure(tool.get("headers") or {}, args)
         query = render_structure(tool.get("query") or {}, args)
         body = render_structure(tool.get("body") or {}, args)
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx_client_for_url(url, timeout=timeout, follow_redirects=True) as client:
             resp = await client.request(method, url, headers=headers, params=query, json=body if body not in ({}, "") else None)
         content_type = resp.headers.get("content-type", "")
         try:

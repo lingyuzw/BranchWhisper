@@ -22,8 +22,8 @@ export async function fetchJson<T>(url: string, options: RequestInit = {}): Prom
     }
   }
   if (!response.ok) {
-    const payload = data as { detail?: string; error?: string };
-    throw new ApiError(payload.detail || payload.error || `HTTP ${response.status}`, response.status, data);
+    const payload = data as { detail?: string; error?: string; message?: string };
+    throw new ApiError(payload.message || payload.detail || payload.error || `HTTP ${response.status}`, response.status, data);
   }
   return data as T;
 }

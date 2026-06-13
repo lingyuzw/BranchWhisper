@@ -7,12 +7,24 @@ import re
 import wave
 from typing import Any
 
-import httpx
 import numpy as np
+
+from core.http_client import httpx_client_for_url
 
 MIC_SAMPLE_RATE = 16000
 END_PUNCT = "\u3002\uff01\uff1f\uff1b.!?"
 SOFT_PUNCT = "\uff0c\u3001,~\uff5e"
+INTERNAL_STICKER_MARKER_RE = re.compile(
+    r"[\[【]\s*已发送(?:微信)?表情包\s*[:：][^\]】]{0,240}[\]】]",
+    re.I,
+)
+OPEN_INTERNAL_STICKER_MARKER_RE = re.compile(
+    r"[\[【]\s*已发送(?:微信)?表情包\s*[:：][\s\S]*$",
+    re.I,
+)
+STANDALONE_STICKER_NAME_RE = re.compile(
+    r"(?m)^\s*表情包_[^\]\r\n]{1,180}\]\s*$",
+)
 
 
 def wav_bytes_from_float32(audio: np.ndarray) -> bytes:
@@ -37,7 +49,7 @@ async def transcribe_audio(settings: Any, audio_bytes: bytes) -> str:
 async def transcribe_via_transcriptions(settings: Any, audio_bytes: bytes) -> str:
     files = {"file": ("speech.wav", audio_bytes, "audio/wav")}
     data = {"model": settings.asr_model}
-    async with httpx.AsyncClient(timeout=settings.asr_timeout) as client:
+    async with httpx_client_for_url(settings.asr_url, timeout=settings.asr_timeout) as client:
         resp = await client.post(settings.asr_url, data=data, files=files)
     resp.raise_for_status()
     return parse_asr_text(extract_asr_response_text(resp.json()))
@@ -61,7 +73,7 @@ async def transcribe_via_chat(settings: Any, audio_bytes: bytes) -> str:
         "temperature": 0,
         "max_tokens": settings.asr_max_tokens,
     }
-    async with httpx.AsyncClient(timeout=settings.asr_timeout) as client:
+    async with httpx_client_for_url(settings.asr_url, timeout=settings.asr_timeout) as client:
         resp = await client.post(settings.asr_url, json=payload)
     resp.raise_for_status()
     return parse_asr_text(extract_asr_response_text(resp.json()))
@@ -262,12 +274,27 @@ def clean_reply_text(text: str) -> str:
     text = strip_reasoning_text(text)
     if not text:
         return ""
+    text = strip_internal_attachment_markers(text)
     text = text.replace("<s>", "").replace("</s>", "")
     text = re.sub(r"<\|.*?\|>", "", text)
     text = re.sub(r"(?im)^\s*(system|user|assistant)\s*[:：]\s*", "", text)
     text = re.sub(r"(?:^|\s)END\s*$", "", text, flags=re.I)
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
     text = re.sub(r" *\n+ *", "\n", text)
+    return text.strip()
+
+
+def strip_internal_attachment_markers(text: str) -> str:
+    """Remove internal delivery notes that should never be shown to users."""
+
+    text = str(text or "")
+    if not text:
+        return ""
+    text = INTERNAL_STICKER_MARKER_RE.sub("", text)
+    text = OPEN_INTERNAL_STICKER_MARKER_RE.sub("", text)
+    text = STANDALONE_STICKER_NAME_RE.sub("", text)
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 

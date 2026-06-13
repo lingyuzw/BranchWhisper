@@ -366,6 +366,87 @@
   padding-inline: 8px;
 }
 
+.integration-step-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.integration-step-list span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 4px 7px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+.integration-step-list b {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--text-muted);
+}
+.integration-step-list strong,
+.integration-step-list small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.integration-step-list strong {
+  color: var(--text);
+  font-size: var(--font-xs);
+  font-weight: 800;
+}
+.integration-step-list small {
+  grid-column: 2;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.integration-step-list .ok {
+  border-color: rgba(120,199,122,0.24);
+  background: var(--success-soft);
+}
+.integration-step-list .ok b { background: var(--success); }
+.integration-step-list .pending b { background: var(--warning); }
+.integration-step-list .failed {
+  border-color: rgba(231,104,104,0.24);
+  background: var(--danger-soft);
+}
+.integration-step-list .failed b { background: var(--danger); }
+
+.integration-probe-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+.probe-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.integration-probe-panel pre {
+  max-height: 118px;
+  margin: -2px 0 2px;
+  padding: 8px 9px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  background: var(--log-bg);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .integration-log {
   height: 360px;
   white-space: pre-wrap;
@@ -408,12 +489,14 @@
   }
   .integration-meta,
   .integration-timing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .integration-step-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .integration-actions .secondary-action {
     flex: 1 1 118px;
   }
   .integration-log-toolbar {
     justify-content: flex-start;
   }
-  .integration-bridge-row { grid-template-columns: 1fr; }
+  .integration-bridge-row,
+  .probe-row { grid-template-columns: 1fr; }
   .integration-qr { align-items: flex-start; flex-direction: column; }
 }

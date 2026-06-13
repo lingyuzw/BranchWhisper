@@ -16,6 +16,7 @@ const selected = computed(() => assets.selected);
 const visibleLimit = ref(36);
 const uploadInput = ref<HTMLInputElement | null>(null);
 const uploadDragging = ref(false);
+const detailOpen = ref(false);
 const visibleStickers = computed(() => assets.stickers.slice(0, visibleLimit.value));
 const hasMoreStickers = computed(() => visibleLimit.value < assets.stickers.length);
 const stats = computed(() => {
@@ -57,17 +58,18 @@ async function uploadFiles(files: File[]) {
     if (files.length) ui.warning("只支持 PNG / JPG / WebP 图片");
     return;
   }
-  assets.progress = { active: true, label: "读取文件", done: 0, total: accepted.length, failed: 0 };
+  assets.progress = { active: true, label: "读取文件", done: 0, total: 100, failed: 0 };
   const payload = [];
   try {
-    for (const file of accepted) {
+    for (const [index, file] of accepted.entries()) {
       try {
         payload.push(await readFile(file));
       } finally {
-        assets.progress.done += 1;
+        assets.progress.done = Math.round(((index + 1) / accepted.length) * 100);
       }
     }
     await assets.upload(payload);
+    visibleLimit.value = Math.max(visibleLimit.value, assets.selectedIds.length, 36);
     ui.success(`已导入 ${accepted.length} 张素材`);
   } catch (error) {
     assets.progress.active = false;
@@ -115,6 +117,28 @@ function openUploadPicker() {
 
 function toggle(id: string, checked: boolean) {
   assets.selectedIds = checked ? [...new Set([...assets.selectedIds, id])] : assets.selectedIds.filter((item) => item !== id);
+}
+
+function selectSticker(id: string) {
+  assets.selectedId = id;
+  detailOpen.value = true;
+}
+
+async function removeOne(id: string) {
+  const item = assets.stickers.find((sticker) => sticker.id === id);
+  const confirmed = await ui.confirmAction({
+    title: "删除素材",
+    message: `确定删除「${item?.name || id}」？这个操作会移除素材文件。`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
+  try {
+    await assets.remove([id]);
+    ui.success("素材已删除");
+  } catch (error) {
+    ui.error(`删除失败：${errorText(error)}`);
+  }
 }
 </script>
 
@@ -174,18 +198,19 @@ function toggle(id: string, checked: boolean) {
 
       <p v-if="assets.error" class="asset-error">{{ assets.error }}</p>
 
-      <section class="asset-workbench">
+      <section class="asset-workbench" :class="{ 'detail-open': detailOpen }">
         <AssetSidebar />
         <AssetGallery
           :stickers="visibleStickers"
           :selected-id="assets.selectedId"
           :selected-ids="assets.selectedIds"
           :has-more="hasMoreStickers"
-          @select="assets.selectedId = $event"
+          @select="selectSticker"
           @toggle="toggle"
+          @remove="removeOne"
           @load-more="visibleLimit += 36"
         />
-        <AssetDetailPanel :selected="selected" />
+        <AssetDetailPanel v-if="detailOpen" :selected="selected" @close="detailOpen = false" />
       </section>
     </div>
   </main>

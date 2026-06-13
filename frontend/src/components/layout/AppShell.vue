@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Activity, Bot, Brain, ClipboardCheck, Library, MessagesSquare, Settings2 } from "@lucide/vue";
-import { onMounted, watchEffect } from "vue";
+import { onBeforeUnmount, onMounted, watch, watchEffect } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
 import FeedbackLayer from "@/components/layout/FeedbackLayer.vue";
 import { useAppStore } from "@/stores/app";
+import { useUiStore } from "@/stores/ui";
 
 const app = useAppStore();
+const ui = useUiStore();
 const route = useRoute();
 
 const navItems = [
@@ -20,12 +22,55 @@ const navItems = [
 
 onMounted(() => {
   void app.bootstrap();
+  document.addEventListener("keydown", handleGlobalKeydown);
+  document.addEventListener("click", handleDocumentClick);
 });
+
+onBeforeUnmount(() => {
+  document.removeEventListener("keydown", handleGlobalKeydown);
+  document.removeEventListener("click", handleDocumentClick);
+});
+
+watch(
+  () => route.fullPath,
+  () => {
+    ui.closeTransientUi();
+  },
+);
 
 watchEffect(() => {
   const page = route.path === "/" ? "dashboard" : route.path.replace(/^\//, "") || "dashboard";
   document.body.dataset.page = page;
 });
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape") ui.closeTransientUi();
+}
+
+function handleDocumentClick(event: MouseEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  if (
+    target.closest(
+      [
+        ".modal-panel",
+        ".confirm-dialog",
+        ".toast-container",
+        ".topbar",
+        "button",
+        "a",
+        "input",
+        "textarea",
+        "select",
+        "label",
+        "summary",
+      ].join(","),
+    )
+  ) {
+    return;
+  }
+  ui.closeTransientUi();
+}
 </script>
 
 <template>

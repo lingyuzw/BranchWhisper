@@ -5,10 +5,13 @@ import sys
 import time
 from pathlib import Path
 from shutil import which
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Request
 
+from core.http_client import httpx_client_for_url
+from service_runtime.services import check_openai_compatible_endpoint, check_service, health_url_from
 from domain.paths import (
     FRONTEND_DIST_DIR,
     INTEGRATIONS_CONFIG,
@@ -24,6 +27,11 @@ from domain.paths import (
     STICKER_LIBRARY_INDEX,
     TOOL_PROVIDERS_CONFIG,
     TOOLS_CONFIG,
+)
+
+TINY_PNG_DATA_URL = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGklEQVR4nGMIWHDnPyWYYdSAUQNGDRguBgAAjJXLH15wN5kAAAAASUVORK5CYII="
 )
 
 
@@ -136,7 +144,7 @@ def create_diagnostics_router() -> APIRouter:
         started = time.perf_counter()
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
-            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
+            async with httpx_client_for_url(url, timeout=httpx.Timeout(15.0, connect=5.0)) as client:
                 resp = await client.post(url, json=payload, headers=headers)
             latency_ms = int((time.perf_counter() - started) * 1000)
             try:
@@ -165,7 +173,159 @@ def create_diagnostics_router() -> APIRouter:
                 "error": str(exc),
             }
 
+    @router.get("/api/diagnostics/local-models")
+    async def local_model_diagnostics(request: Request):
+        settings = request.app.state.settings
+        branch_url = f"http://127.0.0.1:{int(getattr(request.app.state, 'server_port', 7860) or 7860)}/api/health"
+        targets = [
+            {"id": "asr", "name": "ASR 服务", "url": health_url_from(settings.asr_url)},
+            {"id": "llm", "name": "LLM 服务", "url": health_url_from(settings.llm_url), "compatible": True},
+            {"id": "tts", "name": "TTS 服务", "url": health_url_from(settings.tts_url)},
+        ]
+        checks = []
+        for target in targets:
+            health = await check_service(target["id"], target["url"])
+            if target.get("compatible") and not health.get("ok") and health.get("status") in {404, 405}:
+                compatible = await check_openai_compatible_endpoint(target["id"], target["url"])
+                if compatible.get("ok"):
+                    health = {**health, "ok": True, "compatible": compatible, "url": compatible.get("url") or target["url"]}
+            checks.append(local_model_result(target["name"], target["url"], health))
+        checks.append(
+            {
+                "id": "branchwhisper",
+                "name": "BranchWhisper 主后端",
+                "ok": True,
+                "status": "正常",
+                "latency_ms": 0,
+                "port": str(urlsplit(branch_url).port or ""),
+                "url": branch_url,
+                "error": "",
+                "message": "可以正常调用 API",
+                "curl": f"curl -sS {branch_url}",
+                "detail": {"self": True, "pid": os.getpid()},
+            }
+        )
+        return {"ok": all(item["ok"] for item in checks), "checks": checks}
+
+    @router.post("/api/diagnostics/vision-api-test")
+    async def vision_api_test(request: Request):
+        settings = request.app.state.settings
+        url = str(getattr(settings, "sticker_vision_url", "") or getattr(settings, "vision_url", "") or "").strip()
+        model = str(getattr(settings, "sticker_vision_model", "") or getattr(settings, "vision_model", "") or "").strip()
+        api_key = str(getattr(settings, "sticker_vision_api_key", "") or "").strip()
+        prompt = "请识别这张图片。"
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": TINY_PNG_DATA_URL}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ],
+            "max_tokens": 1024,
+            "temperature": 0.3,
+        }
+        request_shape = {
+            **payload,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ],
+        }
+        if not url:
+            return vision_result(False, url, model, bool(api_key), "Vision API URL 未配置", request_shape=request_shape)
+        if not model:
+            return vision_result(False, url, model, bool(api_key), "Vision API 模型未配置", request_shape=request_shape)
+        if not api_key:
+            return vision_result(False, url, model, False, "Vision API Key 未配置", request_shape=request_shape)
+
+        started = time.perf_counter()
+        try:
+            async with httpx_client_for_url(url, timeout=httpx.Timeout(30.0, connect=8.0)) as client:
+                resp = await client.post(url, json=payload, headers={"Authorization": f"Bearer {api_key}"})
+            latency_ms = int((time.perf_counter() - started) * 1000)
+            try:
+                body = resp.json()
+            except Exception:
+                body = {"text": resp.text[:800]}
+            ok = 200 <= resp.status_code < 400 and isinstance(body, dict) and bool(body.get("choices"))
+            error = "" if ok else (extract_api_error(body) or f"HTTP {resp.status_code}")
+            return vision_result(
+                ok,
+                url,
+                model,
+                True,
+                error,
+                status_code=resp.status_code,
+                latency_ms=latency_ms,
+                request_shape=request_shape,
+                response=shrink_response(body),
+            )
+        except Exception as exc:
+            return vision_result(
+                False,
+                url,
+                model,
+                True,
+                str(exc),
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                request_shape=request_shape,
+            )
+
     return router
+
+
+def local_model_result(name: str, health_url: str, health: dict) -> dict:
+    ok = bool(health.get("ok"))
+    url = str(health.get("url") or health_url)
+    error_text = "" if ok else str(health.get("error") or (f"HTTP {health.get('status')}" if health.get("status") else "连接失败"))
+    return {
+        "id": str(health.get("name") or name).lower(),
+        "name": name,
+        "ok": ok,
+        "status": "正常" if ok else "异常",
+        "latency_ms": health.get("latency_ms"),
+        "port": str(urlsplit(url).port or ""),
+        "url": url,
+        "error": error_text,
+        "message": "可以正常调用 API" if ok else f"调用失败：{error_text}",
+        "curl": f"curl -sS {url}",
+        "detail": health,
+    }
+
+
+def vision_result(
+    ok: bool,
+    url: str,
+    model: str,
+    api_key_set: bool,
+    error: str = "",
+    *,
+    status_code: int | None = None,
+    latency_ms: int | None = None,
+    request_shape: dict | None = None,
+    response=None,
+) -> dict:
+    return {
+        "ok": ok,
+        "url": url,
+        "model": model,
+        "api_key_set": api_key_set,
+        "status_code": status_code,
+        "latency_ms": latency_ms,
+        "error": "" if ok else error,
+        "message": "可以正常调用识图 API" if ok else f"调用失败：{error or '未知错误'}",
+        "request_shape": request_shape or {},
+        "response": response or {},
+    }
 
 
 def extract_api_error(body) -> str:

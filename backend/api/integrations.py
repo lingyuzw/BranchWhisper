@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable
 
+import re
+
 from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from api.dependencies import require_integration_dialog_access, require_local_service_control
 
@@ -214,8 +217,56 @@ def create_integrations_router(
         try:
             return await request.app.state.external_dialog_engine.handle(payload or {}, request.app.state.settings)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return JSONResponse(
+                status_code=400,
+                content={"ok": False, "data": {}, "error": str(exc), "message": f"消息格式不合法：{exc}"},
+            )
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Integration dialog failed: {exc}") from exc
+            details = integration_error_details(exc)
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "ok": False,
+                    "data": details,
+                    "error": str(exc),
+                    "message": integration_error_message(details, exc),
+                },
+            )
 
     return router
+
+
+def integration_error_details(exc: Exception) -> dict:
+    text = str(exc)
+    stage = match_error_token(text, "stage") or "dialog"
+    url = match_error_token(text, "url")
+    account = match_error_token(text, "account")
+    message_id = match_error_token(text, "message_id")
+    service = {
+        "llm": "LLM",
+        "tts": "TTS",
+        "tool": "工具调用",
+        "send": "账号发送",
+        "branchwhisper_dialog": "BranchWhisper 主后端",
+        "dialog": "微信消息处理",
+    }.get(stage, stage)
+    return {
+        "stage": stage,
+        "downstream_service": service,
+        "downstream_url": url,
+        "account": account,
+        "message_id": message_id,
+    }
+
+
+def match_error_token(text: str, key: str) -> str:
+    match = re.search(rf"(?:^|\s){re.escape(key)}=([^\s]+)", str(text or ""))
+    return match.group(1) if match else ""
+
+
+def integration_error_message(details: dict, exc: Exception) -> str:
+    stage = details.get("stage") or "dialog"
+    service = details.get("downstream_service") or stage
+    url = details.get("downstream_url") or ""
+    target = f"（{url}）" if url else ""
+    return f"微信消息处理失败：{service}{target} 阶段异常。{str(exc)[:180]}"

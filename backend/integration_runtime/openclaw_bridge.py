@@ -12,6 +12,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -20,7 +21,12 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.text_utils import split_reply_messages
-from weixin_media import WeixinImageSendError, WeixinVoiceSendError, download_weixin_media, send_weixin_image, send_weixin_voice
+from service_runtime.audio_pipeline import strip_internal_attachment_markers
+
+try:
+    from integration_runtime.weixin_media import WeixinImageSendError, WeixinVoiceSendError, download_weixin_media, send_weixin_image, send_weixin_voice
+except ModuleNotFoundError:
+    from weixin_media import WeixinImageSendError, WeixinVoiceSendError, download_weixin_media, send_weixin_image, send_weixin_voice
 
 
 DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com"
@@ -39,6 +45,19 @@ SESSION_EXPIRED = -14
 
 STOP = False
 IMAGE_FOLLOWUP_WAIT_SEC = 3.0
+SENT_REPLY_TTL_SEC = 10 * 60
+PROCESSED_MESSAGE_TTL_SEC = 30 * 60
+LOCAL_HOST_NAMES = {"localhost"}
+
+
+def is_local_http_url(url: str) -> bool:
+    host = (urlsplit(str(url or "")).hostname or "").lower()
+    return host in LOCAL_HOST_NAMES or host.startswith("127.") or host == "::1"
+
+
+def httpx_client_for_url(url: str, **kwargs) -> httpx.Client:
+    kwargs.setdefault("trust_env", not is_local_http_url(url))
+    return httpx.Client(**kwargs)
 
 
 def build_client_version(version: str) -> int:
@@ -174,6 +193,33 @@ def load_context_tokens(state_dir: Path, account_id: str) -> dict[str, str]:
 
 def save_context_tokens(state_dir: Path, account_id: str, tokens: dict[str, str]) -> None:
     save_json(context_token_path(state_dir, account_id), tokens)
+
+
+def sent_replies_dir(state_dir: Path, account_id: str) -> Path:
+    return accounts_dir(state_dir) / f"{account_id}.sent-replies"
+
+
+def processed_messages_dir(state_dir: Path, account_id: str) -> Path:
+    return accounts_dir(state_dir) / f"{account_id}.processed-messages"
+
+
+def mark_once(directory: Path, fingerprint: str, suffix: str, ttl_sec: int) -> bool:
+    directory.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    for path in directory.glob(f"*{suffix}"):
+        try:
+            if now - path.stat().st_mtime > ttl_sec:
+                path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    marker = directory / f"{fingerprint}{suffix}"
+    try:
+        fd = os.open(str(marker), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return False
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(str(now))
+    return True
 
 
 def body_from_items(items: list[dict] | None) -> str:
@@ -331,6 +377,7 @@ def notify_stop(client: httpx.Client, account: dict) -> None:
 
 def send_text(client: httpx.Client, account: dict, to_user_id: str, text: str, context_token: str = "") -> str:
     client_id = f"branchwhisper-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}"
+    target_url = endpoint(account["base_url"], "ilink/bot/sendmessage")
     payload = {
         "msg": {
             "from_user_id": "",
@@ -343,13 +390,19 @@ def send_text(client: httpx.Client, account: dict, to_user_id: str, text: str, c
         },
         "base_info": build_base_info(),
     }
-    resp = client.post(
-        endpoint(account["base_url"], "ilink/bot/sendmessage"),
-        json=payload,
-        headers=build_headers(account["token"]),
-        timeout=20,
-    )
-    resp.raise_for_status()
+    try:
+        resp = client.post(
+            target_url,
+            json=payload,
+            headers=build_headers(account["token"]),
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except Exception as exc:
+        raise RuntimeError(
+            f"stage=send url={target_url} account={account.get('account_id') or ''} "
+            f"receiver={to_user_id} message_id={client_id} error={exc}"
+        ) from exc
     return client_id
 
 
@@ -372,14 +425,26 @@ def call_branchwhisper(branchwhisper_url: str, integration_id: str, account_id: 
         },
     }
     url = f"{branchwhisper_url.rstrip('/')}/api/integrations/dialog"
-    with httpx.Client(timeout=120) as client:
+    with httpx_client_for_url(url, timeout=120) as client:
         try:
             resp = client.post(url, json=payload)
         except httpx.ConnectError as exc:
-            raise RuntimeError(f"BranchWhisper dialog endpoint refused connection: {url}") from exc
+            raise RuntimeError(
+                f"stage=branchwhisper_dialog url={url} account={account_id} "
+                f"message_id={msg.get('message_id') or msg.get('client_id') or ''} error=connection_refused"
+            ) from exc
         except httpx.TimeoutException as exc:
-            raise RuntimeError(f"BranchWhisper dialog endpoint timed out: {url}") from exc
-    resp.raise_for_status()
+            raise RuntimeError(
+                f"stage=branchwhisper_dialog url={url} account={account_id} "
+                f"message_id={msg.get('message_id') or msg.get('client_id') or ''} error=timeout"
+            ) from exc
+    if resp.status_code >= 400:
+        body = resp.text[:500].replace("\n", " ")
+        raise RuntimeError(
+            f"stage=branchwhisper_dialog url={url} account={account_id} "
+            f"message_id={msg.get('message_id') or msg.get('client_id') or ''} "
+            f"status={resp.status_code} body={body}"
+        )
     return resp.json()
 
 
@@ -387,9 +452,10 @@ def report_branchwhisper_timing(branchwhisper_url: str, integration_id: str, tra
     if not trace_id:
         return
     try:
-        with httpx.Client(timeout=10) as client:
+        url = f"{branchwhisper_url.rstrip('/')}/api/integrations/{integration_id}/timings/{trace_id}"
+        with httpx_client_for_url(url, timeout=10) as client:
             resp = client.post(
-                f"{branchwhisper_url.rstrip('/')}/api/integrations/{integration_id}/timings/{trace_id}",
+                url,
                 json=patch,
             )
             resp.raise_for_status()
@@ -467,6 +533,9 @@ def send_voice_reply(
     except (WeixinVoiceSendError, Exception) as exc:
         voice_send_ms = int((time.perf_counter() - started) * 1000)
         error = str(exc)
+        payload = getattr(exc, "payload", {}) if isinstance(getattr(exc, "payload", {}), dict) else {}
+        stage = str(payload.get("stage") or (error.split(":", 1)[0][:80] if ":" in error else "unknown"))
+        target_url = str(payload.get("target_url") or "")
         report_branchwhisper_timing(
             branchwhisper_url,
             integration_id,
@@ -475,11 +544,15 @@ def send_voice_reply(
                 "voice_send_ms": voice_send_ms,
                 "voice_send_status": "failed",
                 "voice_error": error[:240],
-                "voice_stage": error.split(":", 1)[0][:80] if ":" in error else "unknown",
+                "voice_stage": stage,
+                "voice_target_url": target_url,
             },
         )
         result["voice_error"] = error
-        log(f"voice send failed account={account['account_id']} to={to_user_id} err={error[:240]}")
+        log(
+            f"voice send failed account={account['account_id']} to={to_user_id} "
+            f"stage={stage} target_url={target_url or '-'} err={error[:240]}"
+        )
         return False
 
 
@@ -526,10 +599,13 @@ def send_sticker_replies(
             )
         except (WeixinImageSendError, Exception) as exc:
             error = str(exc)
+            payload = getattr(exc, "payload", {}) if isinstance(getattr(exc, "payload", {}), dict) else {}
+            target_url = str(payload.get("target_url") or "")
             errors.append(error[:180])
             log(
                 f"sticker send failed account={account['account_id']} to={to_user_id} "
-                f"sticker={sticker.get('asset_id') or sticker.get('id') or ''} err={error[:240]}"
+                f"sticker={sticker.get('asset_id') or sticker.get('id') or ''} "
+                f"target_url={target_url or '-'} err={error[:240]}"
             )
     report_branchwhisper_timing(
         branchwhisper_url,
@@ -541,6 +617,7 @@ def send_sticker_replies(
             "sticker_count": sent,
             "sticker_sent_ids": ",".join(sent_ids),
             "sticker_error": "; ".join(errors)[:240],
+            "sticker_target_url": target_url if "target_url" in locals() else "",
         },
     )
     return {"count": sent, "errors": errors}
@@ -558,6 +635,28 @@ def message_fingerprint(account_id: str, msg: dict, text: str) -> str:
         ]
     )
     return hashlib.sha256(material.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def reply_fingerprint(account_id: str, to_user_id: str, source_msg: dict, text: str) -> str:
+    material = "|".join(
+        [
+            account_id,
+            to_user_id,
+            str(source_msg.get("message_id") or ""),
+            str(source_msg.get("client_id") or ""),
+            str(source_msg.get("session_id") or source_msg.get("group_id") or ""),
+            text,
+        ]
+    )
+    return hashlib.sha256(material.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def mark_reply_sent_once(state_dir: Path, account_id: str, fingerprint: str) -> bool:
+    return mark_once(sent_replies_dir(state_dir, account_id), fingerprint, ".sent", SENT_REPLY_TTL_SEC)
+
+
+def mark_message_processed_once(state_dir: Path, account_id: str, fingerprint: str) -> bool:
+    return mark_once(processed_messages_dir(state_dir, account_id), fingerprint, ".seen", PROCESSED_MESSAGE_TTL_SEC)
 
 
 def dispatch_message(
@@ -578,6 +677,16 @@ def dispatch_message(
         log(f"inbound images account={account['account_id']} ok={ok_images}/{len(images)} errors={errors[:180]}")
     fingerprint = message_fingerprint(account["account_id"], msg, text)
     if fingerprint in seen:
+        log(
+            f"skip duplicate inbound memory account={account['account_id']} "
+            f"from={msg.get('from_user_id') or ''} message_id={msg.get('message_id') or msg.get('client_id') or ''}"
+        )
+        return
+    if not mark_message_processed_once(state_dir, account["account_id"], fingerprint):
+        log(
+            f"skip duplicate inbound account={account['account_id']} "
+            f"from={msg.get('from_user_id') or ''} message_id={msg.get('message_id') or msg.get('client_id') or ''}"
+        )
         return
     seen.add(fingerprint)
 
@@ -593,22 +702,28 @@ def dispatch_message(
     log(f"inbound account={account['account_id']} from={from_user_id} text={text[:120]}")
     branch_started = time.perf_counter()
     result = call_branchwhisper(branchwhisper_url, integration_id, account["account_id"], msg, text, images=images)
-    handle_branchwhisper_result(client, branchwhisper_url, integration_id, account, from_user_id, context_token, result, branch_started)
+    handle_branchwhisper_result(client, state_dir, branchwhisper_url, integration_id, account, msg, from_user_id, context_token, result, branch_started)
 
 
 def handle_branchwhisper_result(
     client: httpx.Client,
+    state_dir: Path,
     branchwhisper_url: str,
     integration_id: str,
     account: dict,
+    source_msg: dict,
     from_user_id: str,
     context_token: str,
     result: dict,
     branch_started: float,
 ) -> None:
     branch_ms = int((time.perf_counter() - branch_started) * 1000)
-    reply = str(result.get("reply_text") or "").strip()
-    reply_parts = [str(part).strip() for part in (result.get("reply_parts") or []) if str(part).strip()]
+    reply = strip_internal_attachment_markers(str(result.get("reply_text") or "")).strip()
+    reply_parts = [
+        strip_internal_attachment_markers(str(part)).strip()
+        for part in (result.get("reply_parts") or [])
+        if strip_internal_attachment_markers(str(part)).strip()
+    ]
     if not reply_parts and reply:
         reply_parts = split_reply_messages(reply)
     trace_id = str(result.get("trace_id") or "")
@@ -617,6 +732,13 @@ def handle_branchwhisper_result(
         try:
             message_ids: list[str] = []
             for index, part in enumerate(reply_parts):
+                fingerprint = reply_fingerprint(account["account_id"], from_user_id, source_msg, part)
+                if not mark_reply_sent_once(state_dir, account["account_id"], fingerprint):
+                    log(
+                        f"skip duplicate text reply account={account['account_id']} to={from_user_id} "
+                        f"source_message_id={source_msg.get('message_id') or source_msg.get('client_id') or ''}"
+                    )
+                    continue
                 message_ids.append(send_text(client, account, from_user_id, part, context_token=context_token))
                 if index < len(reply_parts) - 1:
                     time.sleep(0.18)
@@ -772,7 +894,8 @@ def main() -> int:
     seen: set[str] = set()
     pending_images: dict[str, dict] = {}
     connection_error_counts: dict[str, int] = {}
-    with httpx.Client() as client:
+    account_base_url = str(accounts[0].get("base_url") or DEFAULT_BASE_URL)
+    with httpx_client_for_url(account_base_url) as client:
         for account in accounts:
             notify_start(client, account)
         try:
@@ -834,7 +957,8 @@ def main() -> int:
                             except Exception as exc:
                                 log(
                                     f"message processing error account={account_id} "
-                                    f"message_id={msg.get('message_id')} err={exc}"
+                                    f"from={msg.get('from_user_id') or ''} message_id={msg.get('message_id')} "
+                                    f"branchwhisper_url={args.branchwhisper_url.rstrip('/')} err={exc}"
                                 )
                     flush_pending_images(client, state_dir, args.branchwhisper_url, args.integration_id, pending_images, seen)
                 if args.once:
