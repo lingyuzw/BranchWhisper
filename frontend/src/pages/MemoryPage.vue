@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { Brain, ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from "@lucide/vue";
+import InlineProbe from "@/components/layout/InlineProbe.vue";
 import { useMemoryStore } from "@/stores/memory";
 import { useUiStore } from "@/stores/ui";
 import type { MemoryLayer } from "@/api/memory";
@@ -8,6 +9,8 @@ import type { MemoryLayer } from "@/api/memory";
 const memory = useMemoryStore();
 const ui = useUiStore();
 const memoryBusy = ref(false);
+type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+const admissionProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
 
 const statCards = computed(() => [
   { label: "全部记忆", value: memory.stats.total, detail: "当前可用于上下文的记忆", layer: "" as MemoryLayer },
@@ -24,6 +27,42 @@ onMounted(() => {
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function formatProbeDetail(value: unknown) {
+  try {
+    return JSON.stringify(value ?? {}, null, 2);
+  } catch {
+    return String(value ?? "");
+  }
+}
+
+async function runAdmissionProbe() {
+  admissionProbe.value = { status: "running", text: "检测中", detail: "" };
+  try {
+    await memory.testAdmission();
+    const admitted = memory.admissionResults.filter((item) => item.admitted).length;
+    admissionProbe.value = {
+      status: admitted ? "ok" : "warning",
+      text: admitted ? `${admitted} 条会入库` : "不会入库",
+      detail: formatProbeDetail(memory.admissionResults),
+    };
+  } catch (error) {
+    admissionProbe.value = { status: "failed", text: errorText(error), detail: "" };
+  }
+}
+
+async function copyAdmissionProbe() {
+  if (!admissionProbe.value.detail.trim()) {
+    ui.warning("没有可复制的检测结果", 1200);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(admissionProbe.value.detail);
+    ui.success("记忆检测结果已复制", 1200);
+  } catch (error) {
+    ui.error(`复制失败：${errorText(error)}`);
+  }
 }
 
 async function refreshMemory() {
@@ -167,6 +206,7 @@ function formatTime(value?: string | number) {
               <Brain :size="16" /> 衰减清理
             </button>
           </div>
+
         </aside>
 
         <section class="memory-page-panel">
@@ -180,6 +220,25 @@ function formatTime(value?: string | number) {
               <button class="primary-action" type="button" :disabled="memoryBusy" @click="createMemory">{{ memoryBusy ? "处理中" : "添加" }}</button>
             </div>
           </header>
+
+          <section class="memory-admission-probe">
+            <label>
+              <span>入库测试文本</span>
+              <textarea v-model="memory.admissionText"></textarea>
+            </label>
+            <InlineProbe
+              variant="detail"
+              title="记忆入库回路"
+              summary="检查当前抽取规则会不会把这句话写入记忆。"
+              :status="admissionProbe.status"
+              :status-text="admissionProbe.text"
+              :detail="admissionProbe.detail"
+              :detail-open="Boolean(admissionProbe.detail)"
+              action-text="测试入库"
+              @run="runAdmissionProbe"
+              @copy="copyAdmissionProbe"
+            />
+          </section>
 
           <div class="memory-context-strip">
             <span><b>{{ activeLayerLabel }}</b> · {{ memory.filtered.length }} 条</span>

@@ -169,7 +169,8 @@ function formatTime(value?: string) {
 
       <span v-if="assets.detailMessage" class="asset-config-message">{{ assets.detailMessage }}</span>
 
-      <div class="asset-detail-grid">
+      <div class="asset-detail-scroll">
+        <div class="asset-detail-grid">
         <label><span>名称</span><input v-model="form.name" /></label>
         <label><span>主标签</span><input v-model="form.tag" /></label>
         <label><span>分类</span><input v-model="form.emotion" /></label>
@@ -183,6 +184,7 @@ function formatTime(value?: string) {
         <label class="wide"><span>说明</span><textarea v-model="form.caption"></textarea></label>
         <label class="wide"><span>OCR 文本</span><textarea v-model="form.ocr_text"></textarea></label>
         <label class="wide"><span>错误信息</span><textarea v-model="form.error"></textarea></label>
+        </div>
       </div>
     </template>
     <template v-else>

@@ -55,6 +55,13 @@ MEMORY_SECRET_HINTS = (
     "密码", "验证码", "token", "api key", "apikey", "密钥", "secret",
     "身份证", "银行卡", "支付密码", "私钥", "access key",
 )
+MEMORY_LOOKUP_QUESTION_HINTS = (
+    "你知道", "你记得", "还记得", "记不记得", "知道我", "记得我",
+)
+MEMORY_UNRESOLVED_QUESTION_HINTS = (
+    "是谁", "谁", "什么", "哪个", "哪位", "哪首", "哪里", "哪儿", "多少",
+    "为什么", "怎么", "吗", "么", "是不是", "是否",
+)
 
 
 def now_ts() -> float:
@@ -552,6 +559,7 @@ class MemoryStore:
             "- 长期事实（语义偏好/身份/习惯），每次对话可用",
             "- 具体事件（某个时间点发生的事），只在时间匹配时使用",
             "不要在用户没有问的情况下主动复述记忆。时间信息可以帮助你判断事件是否相关。",
+            "如果用户询问自己的偏好、身份、习惯，或问你是否记得某件事，优先使用这里的相关记忆回答；有相关记忆时不要说不知道。",
             "",
         ]
         for item in memories:
@@ -568,8 +576,10 @@ class MemoryStore:
                 )
             else:
                 label = {"short": "短期", "mid": "中期", "long": "长期"}.get(item["layer"], item["layer"])
+                key = compact_text(item.get("key") or "记忆", 80)
+                value = compact_text(item.get("value") or "", 260)
                 lines.append(
-                    f"- [{label}偏好] {item['value']}（{item['count']} 次）"
+                    f"- [{label}记忆] {key}：{value}（{item['count']} 次）"
                 )
         return "\n".join(lines)
 
@@ -708,6 +718,8 @@ def _extract_memory_fallback(text: str) -> list[dict]:
     text = compact_text(text, 500)
     if not text or is_low_value_memory_text(text):
         return []
+    if looks_like_memory_lookup_question(text):
+        return []
 
     candidates: list[dict] = []
 
@@ -839,6 +851,11 @@ def admit_memory_candidate(candidate: dict, user_text: str, settings: Any | None
         item["importance"] = max(safe_float(item.get("importance", 0.85), 0.85), 0.8)
         return item, "explicit"
 
+    if looks_like_memory_lookup_question(user_text):
+        return None, "memory_lookup_question"
+    if looks_like_unresolved_question_memory(joined):
+        return None, "unresolved_question"
+
     if (is_low_value_memory_text(value) or is_low_value_memory_text(key)) and not has_stable_memory_signal(joined):
         return None, "low_value"
     if (is_realtime_memory_text(user_text) or is_realtime_memory_text(value)) and not has_stable_memory_signal(joined):
@@ -891,6 +908,25 @@ def is_realtime_memory_text(text: str) -> bool:
 def looks_like_question(text: str) -> bool:
     value = str(text or "")
     return bool(re.search(r"[?？]|吗$|么$|什么|为什么|怎么|哪里|哪儿|多少|是否", value.strip()))
+
+
+def looks_like_memory_lookup_question(text: str) -> bool:
+    value = re.sub(r"\s+", "", str(text or ""))
+    if not value or not looks_like_question(value):
+        return False
+    has_lookup_hint = any(hint in value for hint in MEMORY_LOOKUP_QUESTION_HINTS)
+    asks_unresolved_slot = any(hint in value for hint in MEMORY_UNRESOLVED_QUESTION_HINTS)
+    asks_user_memory = bool(re.search(r"(我|我的).{0,12}(喜欢|讨厌|偏好|名字|身份|生日|住|来自|歌手|歌曲|爱好)", value))
+    return asks_user_memory and (has_lookup_hint or asks_unresolved_slot)
+
+
+def looks_like_unresolved_question_memory(text: str) -> bool:
+    value = re.sub(r"\s+", "", str(text or ""))
+    if not value:
+        return False
+    if not any(hint in value for hint in MEMORY_UNRESOLVED_QUESTION_HINTS):
+        return False
+    return bool(re.search(r"(是谁|谁|什么|哪个|哪位|哪首|吗|么|是不是|是否)", value))
 
 
 def has_stable_memory_signal(text: str) -> bool:
@@ -1082,6 +1118,16 @@ def looks_like_geo_question(text: str) -> bool:
     if explicit_geo:
         return True
     return bool(re.search(r"(从.+到.+(怎么走|路线|导航|多远|距离)|.+到.+怎么走)", text))
+
+
+def looks_like_web_knowledge_question(text: str) -> bool:
+    text = str(text or "")
+    return bool(
+        re.search(
+            r"(谁说的|谁写的|谁唱的|谁作的|谁提出的|出自|出处|典故|什么梗|哪来的|来源|原话|原句|作者|哪本书|哪首歌|什么意思)",
+            text,
+        )
+    )
 
 
 def looks_like_admin_area_question(text: str) -> bool:
@@ -1283,6 +1329,8 @@ class ToolManager:
             return {"id": "map", "arguments": {"query": text}} if self.tool_exists("map") else {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         if re.search(r"(股票|股价|汇率|币价|价格|金价|美股|基金|btc|eth|usd|cny|人民币|美元|港币)", lowered) and self.tool_exists("finance"):
             return {"id": "finance", "arguments": {"query": text}}
+        if looks_like_web_knowledge_question(text) and self.tool_exists("web_search"):
+            return {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         if (has_any(text, ("搜索", "查一下", "帮我查", "网上", "资料", "最新", "当前", "实时", "官网", "多少钱", "哪里买", "评价", "怎么样")) or looks_like_geo_question(text)) and self.tool_exists("web_search"):
             return {"id": "web_search", "arguments": {"query": text, "limit": 5}}
         return None
@@ -1341,7 +1389,9 @@ class ToolManager:
         if not provider.get("enabled", True):
             return {"ok": False, "error": "search tool is disabled", "results": []}
         if provider_name(provider) in {"gaode", "amap"}:
-            return await self.gaode_place_search(query, limit, timeout, providers, provider_key="search")
+            if looks_like_geo_question(query):
+                return await self.gaode_place_search(query, limit, timeout, providers, provider_key="search")
+            provider = {**provider, "provider": "duckduckgo", "base_url": "https://duckduckgo.com/html/"}
         limit = max(1, min(10, limit))
         url = str(provider.get("base_url") or "https://duckduckgo.com/html/")
         headers = {"User-Agent": str((providers or {}).get("url_fetch", {}).get("user_agent") or "Mozilla/5.0 BranchWhisper/1.0")}

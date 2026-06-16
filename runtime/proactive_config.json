@@ -1,13 +1,13 @@
 {
   "enabled": true,
   "ask_followup_enabled": true,
-  "followup_level": "restrained",
+  "followup_level": "standard",
   "quiet_hours_enabled": true,
   "quiet_start": "23:00",
   "quiet_end": "08:00",
   "daily_limit": 15,
   "channels": {
-    "web": true,
+    "web": false,
     "weixin": true
   },
   "tone": "warm",
@@ -48,6 +48,6 @@
     "weather": true,
     "news_watch": false,
     "emotion_care": true,
-    "long_goal_followup": false
+    "long_goal_followup": true
   }
 }

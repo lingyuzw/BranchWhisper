@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   AlarmPlus,
   Bot,
-  ClipboardCheck,
   Cloud,
   Copy,
   Cpu,
@@ -29,8 +28,10 @@ import {
   X,
 } from "@lucide/vue";
 import { uploadAvatar } from "@/api/assets";
+import { runLlmApiDiagnostic, runLocalModelsDiagnostic, runVisionApiDiagnostic } from "@/api/diagnostics";
 import { useAppStore } from "@/stores/app";
 import { listModelFiles, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
+import InlineProbe from "@/components/layout/InlineProbe.vue";
 import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
 import { useEngagementStore } from "@/stores/engagement";
@@ -61,6 +62,13 @@ const settingsMessage = ref("");
 const settingsHydrating = ref(false);
 const settingsSaving = ref(false);
 const formBaseline = ref<Partial<PublicConfig>>({});
+type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+const probeState = reactive<Record<string, { status: ProbeStatus; text: string; detail: string }>>({
+  llmApi: { status: "idle", text: "未检测", detail: "" },
+  localModels: { status: "idle", text: "未检测", detail: "" },
+  visionApi: { status: "idle", text: "未检测", detail: "" },
+  proactive: { status: "idle", text: "未检测", detail: "" },
+});
 interface ServiceDraft {
   id: string;
   cwd: string;
@@ -256,6 +264,10 @@ onMounted(() => {
   void hydrateSettings();
 });
 
+onBeforeUnmount(() => {
+  document.body.classList.remove("settings-modal-open");
+});
+
 watch(
   () => app.config,
   (config) => {
@@ -271,6 +283,14 @@ watch(
     syncServiceDrafts();
   },
   { immediate: true, deep: true },
+);
+
+watch(
+  activeSettingsSection,
+  (section) => {
+    document.body.classList.toggle("settings-modal-open", Boolean(section));
+  },
+  { immediate: true },
 );
 
 function announceSettings(message: string, type: ToastKind = "info", timeoutMs?: number) {
@@ -405,14 +425,113 @@ async function openAssets() {
   await router.push({ name: "assets" });
 }
 
-async function openDiagnostics() {
-  closeSettingsSection();
-  await router.push({ name: "diagnostics" });
-}
-
 async function openServices() {
   closeSettingsSection();
   await router.push({ name: "services" });
+}
+
+function formatProbeDetail(value: unknown) {
+  try {
+    return JSON.stringify(value ?? {}, null, 2);
+  } catch {
+    return String(value ?? "");
+  }
+}
+
+async function copyProbeDetail(key: keyof typeof probeState) {
+  const detail = probeState[key]?.detail || "";
+  if (!detail.trim()) {
+    announceSettings("没有可复制的检测结果", "warning", 1200);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(detail);
+    announceSettings("检测结果已复制", "success", 1200);
+  } catch (error) {
+    announceSettings(`复制失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
+async function runSettingsProbe(kind: keyof typeof probeState) {
+  probeState[kind] = { status: "running", text: "检测中", detail: "" };
+  try {
+    if (kind === "llmApi") {
+      const result = await runLlmApiDiagnostic();
+      probeState[kind] = {
+        status: result.ok ? "ok" : "failed",
+        text: result.ok ? `API 正常 · ${result.latency_ms ?? "--"}ms` : result.error || "调用失败",
+        detail: formatProbeDetail(result),
+      };
+      return;
+    }
+    if (kind === "visionApi") {
+      const result = await runVisionApiDiagnostic();
+      probeState[kind] = {
+        status: result.ok ? "ok" : "failed",
+        text: result.ok ? `识图正常 · ${result.latency_ms ?? "--"}ms` : result.error || result.message || "调用失败",
+        detail: formatProbeDetail(result),
+      };
+      return;
+    }
+    if (kind === "proactive") {
+      await engagement.runTest();
+      const latest = engagement.events[0] || {};
+      probeState[kind] = {
+        status: String(latest.status || "").includes("failed") ? "warning" : "ok",
+        text: latest.status ? `已生成事件 · ${latest.status}` : "主动消息测试已创建",
+        detail: formatProbeDetail(latest),
+      };
+      return;
+    }
+    const result = await runLocalModelsDiagnostic();
+    const failed = (result.checks || []).filter((item) => !item.ok);
+    probeState[kind] = {
+      status: failed.length ? "failed" : "ok",
+      text: failed.length ? `${failed.length} 项异常` : `${result.checks.length} 项正常`,
+      detail: formatProbeDetail(result),
+    };
+  } catch (error) {
+    probeState[kind] = { status: "failed", text: error instanceof Error ? error.message : String(error), detail: "" };
+  }
+}
+
+function toolProbeStatus(providerKey: string): ProbeStatus {
+  const text = tools.testResults[providerKey] || "";
+  if (!text) return "idle";
+  if (text === "测试中...") return "running";
+  if (text.startsWith("测试失败") || text.includes('"ok": false') || text.includes('"error"')) return "failed";
+  return "ok";
+}
+
+function toolProbeText(providerKey: string) {
+  const text = tools.testResults[providerKey] || "";
+  if (!text) return "未检测";
+  if (text === "测试中...") return "检测中";
+  if (toolProbeStatus(providerKey) === "failed") return "调用异常";
+  return "调用正常";
+}
+
+async function runToolProbe(providerKey: string) {
+  await tools.runProviderTest(providerKey);
+  if (toolProbeStatus(providerKey) === "ok") {
+    announceSettings(`${PROVIDER_LABELS[providerKey] || providerKey} 调用正常`, "success", 1400);
+  } else if (toolProbeStatus(providerKey) === "failed") {
+    announceSettings(`${PROVIDER_LABELS[providerKey] || providerKey} 调用异常`, "warning");
+  }
+}
+
+async function copyToolProbeDetail(providerKey: string) {
+  const detail = tools.testResults[providerKey] || "";
+  if (!detail.trim()) {
+    announceSettings("没有可复制的工具测试结果", "warning", 1200);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(detail);
+    announceSettings("工具测试结果已复制", "success", 1200);
+  } catch (error) {
+    announceSettings(`复制失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
 }
 
 async function addProfile() {
@@ -487,6 +606,7 @@ function applyTheme(nextTheme: "dark" | "light") {
   theme.value = nextTheme;
   window.localStorage.setItem("branchwhisper:theme", nextTheme);
   document.documentElement.classList.toggle("theme-light", nextTheme === "light");
+  document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
 }
 
 async function hydrateSettings() {
@@ -839,88 +959,81 @@ function formatTime(value?: string) {
         </button>
       </aside>
 
-      <section class="settings-content">
-        <section class="settings-hero">
-          <div>
+      <section class="settings-content settings-workspace">
+        <section class="settings-command-bar">
+          <div class="settings-title-block">
             <p class="eyebrow">Control Room</p>
-            <h2>本地模型与对话能力</h2>
-            <p>常用开关直接调整，复杂参数进入高级面板，检测和素材管理从这里快速跳转。</p>
+            <h2>配置中心</h2>
+            <p>高频项直接改，复杂参数进面板；检测、素材、服务入口保持在同一工作台。</p>
           </div>
-          <div class="settings-hero-actions">
+          <div class="settings-command-actions">
             <span v-if="settingsMessage" class="soft-badge">{{ settingsMessage }}</span>
-            <button class="secondary-action" type="button" @click="openDiagnostics">
-              <ClipboardCheck :size="16" /> 检测中心
-            </button>
-            <button class="secondary-action" type="button" @click="openAssets">
-              <Library :size="16" /> 素材库
-            </button>
+            <button class="secondary-action" type="button" @click="openAssets"><Library :size="16" />素材库</button>
             <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll">
-              <Save :size="16" /> {{ settingsSaving ? "保存中..." : "保存当前配置" }}
+              <Save :size="16" />{{ settingsSaving ? "保存中..." : "保存配置" }}
             </button>
           </div>
         </section>
 
-        <section class="settings-quick-console">
-          <article class="quick-panel quick-panel-appearance">
-            <div class="quick-panel-head">
-              <div>
-                <p class="eyebrow">Frequent</p>
-                <h2>常用配置</h2>
+        <section class="settings-ops-board" aria-label="常用配置">
+          <div class="settings-board-column settings-board-column--runtime">
+            <header>
+              <p class="eyebrow">Runtime</p>
+              <h2>运行模式</h2>
+            </header>
+            <div class="settings-control-line">
+              <span>主题</span>
+              <div class="theme-toggle-group">
+                <button :class="{ active: theme === 'dark' }" type="button" @click="applyTheme('dark')"><Moon :size="15" />深色</button>
+                <button :class="{ active: theme === 'light' }" type="button" @click="applyTheme('light')"><Sun :size="15" />浅色</button>
               </div>
-              <span class="soft-badge">{{ theme === "light" ? "浅色主题" : "深色主题" }}</span>
             </div>
-            <div class="quick-control-grid">
-              <section class="quick-control">
-                <strong>主题</strong>
-                <div class="theme-toggle-group">
-                  <button :class="{ active: theme === 'dark' }" type="button" @click="applyTheme('dark')"><Moon :size="15" />深色</button>
-                  <button :class="{ active: theme === 'light' }" type="button" @click="applyTheme('light')"><Sun :size="15" />浅色</button>
-                </div>
-              </section>
-              <section class="quick-control">
-                <strong>对话模式</strong>
-                <div class="theme-toggle-group">
-                  <button type="button" :class="{ active: form.dialog_mode !== 'api' }" @click="setMode('local')"><HardDrive :size="15" />本地</button>
-                  <button type="button" :class="{ active: form.dialog_mode === 'api' }" @click="setMode('api')"><Cloud :size="15" />API</button>
-                </div>
-              </section>
-              <label class="quick-control"><strong>文字大小</strong><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
-              <label class="quick-check"><input v-model="form.thinking_enabled" type="checkbox" />思考模式</label>
+            <div class="settings-control-line">
+              <span>对话模式</span>
+              <div class="theme-toggle-group">
+                <button type="button" :class="{ active: form.dialog_mode !== 'api' }" @click="setMode('local')"><HardDrive :size="15" />本地</button>
+                <button type="button" :class="{ active: form.dialog_mode === 'api' }" @click="setMode('api')"><Cloud :size="15" />API</button>
+              </div>
             </div>
-          </article>
+            <div class="settings-control-pair">
+              <label><span>文字大小</span><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
+              <label class="settings-inline-check"><input v-model="form.thinking_enabled" type="checkbox" />思考模式</label>
+            </div>
+          </div>
 
-          <article class="quick-panel quick-panel-identity">
-            <div class="quick-person">
+          <div class="settings-board-column settings-board-column--identity">
+            <header>
+              <p class="eyebrow">Identity</p>
+              <h2>外观与身份</h2>
+            </header>
+            <div class="settings-identity-row">
               <div class="identity-preview">
                 <img v-if="form.web_user_avatar_url" :src="form.web_user_avatar_url" alt="我的头像" />
                 <span v-else>我</span>
               </div>
               <label><span>我的名称</span><input v-model="form.web_user_name" maxlength="40" /></label>
               <input ref="userAvatarInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarSelected($event, 'user')" />
-              <button class="secondary-action" type="button" @click="userAvatarInput?.click()"><ImagePlus :size="15" />头像</button>
+              <button class="icon-button" type="button" title="选择我的头像" @click="userAvatarInput?.click()"><ImagePlus :size="15" /></button>
               <button class="small-button" type="button" @click="clearAvatar('user')">清除</button>
             </div>
-            <div class="quick-person">
+            <div class="settings-identity-row">
               <div class="identity-preview assistant">
                 <img v-if="form.web_assistant_avatar_url" :src="form.web_assistant_avatar_url" alt="AI 头像" />
                 <span v-else>枝</span>
               </div>
               <label><span>AI 名称</span><input v-model="form.web_assistant_name" maxlength="40" /></label>
               <input ref="assistantAvatarInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarSelected($event, 'assistant')" />
-              <button class="secondary-action" type="button" @click="assistantAvatarInput?.click()"><ImagePlus :size="15" />头像</button>
+              <button class="icon-button" type="button" title="选择 AI 头像" @click="assistantAvatarInput?.click()"><ImagePlus :size="15" /></button>
               <button class="small-button" type="button" @click="clearAvatar('assistant')">清除</button>
             </div>
-          </article>
+          </div>
 
-          <article class="quick-panel quick-panel-switches">
-            <div class="quick-panel-head">
-              <div>
-                <p class="eyebrow">Capabilities</p>
-                <h2>能力开关</h2>
-              </div>
-              <button class="secondary-action" type="button" @click="openDiagnostics"><ClipboardCheck :size="15" />检测中心</button>
-            </div>
-            <div class="quick-switch-grid">
+          <div class="settings-board-column settings-board-column--capabilities">
+            <header>
+              <p class="eyebrow">Capabilities</p>
+              <h2>能力开关</h2>
+            </header>
+            <div class="settings-toggle-matrix">
               <label><span>TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               <label><span>联网工具</span><select v-model="form.tools_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               <label><span>图片理解</span><select v-model="form.vision_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
@@ -928,91 +1041,36 @@ function formatTime(value?: string) {
               <label><span>主动消息</span><select v-model="engagement.config.enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               <label><span>表情发送</span><select v-model="form.stickers_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
             </div>
-          </article>
-        </section>
-
-        <div class="settings-section-label">
-          <div>
-            <p class="eyebrow">Advanced Panels</p>
-            <h2>高级配置</h2>
           </div>
-          <small>参数量大的功能仍然收进面板，日常修改不需要反复打开。</small>
-        </div>
-
-        <section class="settings-overview-grid">
-          <button
-            v-for="(section, index) in settingsLaunchSections"
-            :key="section.id"
-            class="settings-overview-card settings-launch-card"
-            :class="{ 'primary-card': index < 2, active: activeSettingsSection === section.id }"
-            type="button"
-            @click="openSettingsSection(section.id)"
-          >
-            <span><component :is="section.icon" :size="15" />{{ section.eyebrow }}</span>
-            <strong>{{ section.title }}</strong>
-            <small>{{ section.summary }}</small>
-            <em>{{ section.status }}</em>
-          </button>
         </section>
 
-        <article class="theme-section settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'appearance' }" id="appearance">
-          <div class="panel-head">
+        <section class="settings-panel-index">
+          <header class="settings-index-head">
             <div>
-              <p class="eyebrow">Appearance</p>
-              <h2>外观与身份</h2>
+              <p class="eyebrow">Advanced Panels</p>
+              <h2>高级配置</h2>
             </div>
-            <span class="soft-badge">Web 对话页生效</span>
+            <small>按链路进入大块参数，打开后底部统一保存。</small>
+          </header>
+          <div class="settings-index-list">
+            <button
+              v-for="section in settingsLaunchSections"
+              :key="section.id"
+              class="settings-index-row"
+              :class="{ active: activeSettingsSection === section.id }"
+              type="button"
+              @click="openSettingsSection(section.id)"
+            >
+              <span class="settings-index-icon"><component :is="section.icon" :size="17" /></span>
+              <span class="settings-index-copy">
+                <strong>{{ section.title }}</strong>
+                <small>{{ section.summary }}</small>
+              </span>
+              <em>{{ section.status }}</em>
+              <b>打开</b>
+            </button>
           </div>
-          <div class="appearance-layout">
-            <section class="appearance-block appearance-block--compact">
-              <div class="appearance-card-head">
-                <strong>界面</strong>
-                <small>主题与字号</small>
-              </div>
-              <div class="theme-toggle-group theme-toggle-group--compact">
-                <button :class="{ active: theme === 'dark' }" type="button" @click="applyTheme('dark')"><Moon :size="15" />深色</button>
-                <button :class="{ active: theme === 'light' }" type="button" @click="applyTheme('light')"><Sun :size="15" />浅色</button>
-              </div>
-              <label class="compact-field"><span>页面文字大小</span><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
-            </section>
-            <section class="appearance-block appearance-identity-card">
-              <div class="identity-preview">
-                <img v-if="form.web_user_avatar_url" :src="form.web_user_avatar_url" alt="我的头像" />
-                <span v-else>我</span>
-              </div>
-              <div class="identity-form">
-                <div class="appearance-card-head">
-                  <strong>我的显示</strong>
-                  <small>仅 Web 对话页生效</small>
-                </div>
-                <label><span>显示名称</span><input v-model="form.web_user_name" maxlength="40" /></label>
-                <input ref="userAvatarInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarSelected($event, 'user')" />
-                <div class="avatar-upload-row">
-                  <button class="secondary-action avatar-upload-btn" type="button" @click="userAvatarInput?.click()"><ImagePlus :size="15" />选择头像</button>
-                  <button class="small-button avatar-clear-btn" type="button" @click="clearAvatar('user')">清除</button>
-                </div>
-              </div>
-            </section>
-            <section class="appearance-block appearance-identity-card">
-              <div class="identity-preview">
-                <img v-if="form.web_assistant_avatar_url" :src="form.web_assistant_avatar_url" alt="AI 头像" />
-                <span v-else>枝</span>
-              </div>
-              <div class="identity-form">
-                <div class="appearance-card-head">
-                  <strong>AI 显示</strong>
-                  <small>用于 Web 对话气泡</small>
-                </div>
-                <label><span>显示名称</span><input v-model="form.web_assistant_name" maxlength="40" /></label>
-                <input ref="assistantAvatarInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarSelected($event, 'assistant')" />
-                <div class="avatar-upload-row">
-                  <button class="secondary-action avatar-upload-btn" type="button" @click="assistantAvatarInput?.click()"><ImagePlus :size="15" />选择头像</button>
-                  <button class="small-button avatar-clear-btn" type="button" @click="clearAvatar('assistant')">清除</button>
-                </div>
-              </div>
-            </section>
-          </div>
-        </article>
+        </section>
 
         <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'engine' }" id="engine">
           <div class="panel-head">
@@ -1033,6 +1091,32 @@ function formatTime(value?: string) {
               <button type="button" :class="{ active: form.dialog_mode === 'api' }" @click="setMode('api')"><Cloud :size="15" />API 模型</button>
             </div>
             <label class="thinking-toggle"><input v-model="form.thinking_enabled" type="checkbox" /> 启用思考模式，仅输出最终结果</label>
+          </div>
+
+          <div class="settings-probe-grid">
+            <InlineProbe
+              variant="strip"
+              title="API 对话模型"
+              summary="使用已保存的 OpenAI-compatible 配置发送 ping。"
+              :status="probeState.llmApi.status"
+              :status-text="probeState.llmApi.text"
+              :detail="probeState.llmApi.detail"
+              action-text="测试 API"
+              :disabled="apiDisabled"
+              @run="runSettingsProbe('llmApi')"
+              @copy="copyProbeDetail('llmApi')"
+            />
+            <InlineProbe
+              variant="strip"
+              title="本地模型与主后端"
+              summary="检查 ASR、LLM、TTS 与 BranchWhisper API 的 health。"
+              :status="probeState.localModels.status"
+              :status-text="probeState.localModels.text"
+              :detail="probeState.localModels.detail"
+              action-text="测试本地"
+              @run="runSettingsProbe('localModels')"
+              @copy="copyProbeDetail('localModels')"
+            />
           </div>
 
           <div class="dialog-feature-card compact-feature-card">
@@ -1144,6 +1228,19 @@ function formatTime(value?: string) {
                       />
                     </label>
                   </div>
+                  <InlineProbe
+                    class="provider-inline-probe"
+                    variant="compact"
+                    :title="`${PROVIDER_LABELS[providerKey] || providerKey} API`"
+                    :summary="providerKey === 'weather' ? `默认地区：${tools.config.weather?.default_location || '漳州'}` : '按当前 Provider 配置执行一次最小调用。'"
+                    :status="toolProbeStatus(providerKey)"
+                    :status-text="toolProbeText(providerKey)"
+                    :detail="tools.testResults[providerKey]"
+                    action-text="调用测试"
+                    :disabled="tools.config[providerKey]?.enabled === false"
+                    @run="runToolProbe(providerKey)"
+                    @copy="copyToolProbeDetail(providerKey)"
+                  />
                 </section>
               </div>
             </section>
@@ -1151,11 +1248,12 @@ function formatTime(value?: string) {
 
           <div class="settings-diagnostics-callout">
             <div>
-              <strong>工具测试已集中到检测中心</strong>
-              <small>Provider 连通性、工具路由解析和失败日志都在检测页统一查看。</small>
+              <strong>工具路由测试</strong>
+              <small>用“漳州今天天气怎么样”检查工具解析，并按各 Provider 卡片逐项调用。</small>
             </div>
-            <button class="secondary-action" type="button" @click="openDiagnostics"><ClipboardCheck :size="15" />去检测中心</button>
+            <button class="secondary-action" type="button" @click="tools.runResolve"><Globe2 :size="15" />解析测试</button>
           </div>
+          <pre v-if="tools.resolveResult" class="settings-probe-result">{{ formatProbeDetail(tools.resolveResult) }}</pre>
           <p v-if="tools.error" class="muted-copy">工具配置读取失败：{{ tools.error }}</p>
         </article>
 
@@ -1178,13 +1276,23 @@ function formatTime(value?: string) {
                 <label><span>图片上限 MB</span><input v-model.number="form.vision_max_image_mb" type="number" min="1" max="64" step="1" /></label>
                 <label><span>提取记忆</span><select v-model="form.vision_memory_extract_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               </div>
+              <InlineProbe
+                variant="compact"
+                title="图片理解 API"
+                summary="用极小图片请求当前 Vision 配置，验证接口、模型和 Key。"
+                :status="probeState.visionApi.status"
+                :status-text="probeState.visionApi.text"
+                :detail="probeState.visionApi.detail"
+                action-text="测试识图"
+                @run="runSettingsProbe('visionApi')"
+                @copy="copyProbeDetail('visionApi')"
+              />
             </section>
             <section class="dialog-feature-card compact-feature-card asset-jump-card">
               <div class="appearance-card-head"><strong>素材库</strong><small>表情包识别、审核、策略和微信发送链路已迁移到独立页面</small></div>
               <p class="muted-copy">批量上传、批量识别、一键通过和删除都在素材库统一处理。</p>
               <div class="inline-actions">
                 <button class="primary-action" type="button" @click="openAssets"><Library :size="16" />打开素材库</button>
-                <button class="secondary-action" type="button" @click="openDiagnostics"><ClipboardCheck :size="16" />去检测中心</button>
               </div>
             </section>
             <section class="dialog-feature-card wide">
@@ -1266,9 +1374,20 @@ function formatTime(value?: string) {
                 <label><input v-model="engagement.config.triggers.long_goal_followup" type="checkbox" />长期目标追踪</label>
               </div>
               <div class="settings-diagnostics-callout compact">
-                <span>主动消息测试已迁移到检测中心。</span>
-                <button class="secondary-action" type="button" @click="openDiagnostics"><ClipboardCheck :size="15" />去检测中心</button>
+                <span>主动消息最小回路</span>
+                <button class="secondary-action" type="button" @click="runSettingsProbe('proactive')"><Sparkles :size="15" />生成测试</button>
               </div>
+              <InlineProbe
+                variant="compact"
+                title="主动消息测试"
+                summary="按当前主动性通道生成一条测试事件，检查调度和发送结果。"
+                :status="probeState.proactive.status"
+                :status-text="probeState.proactive.text"
+                :detail="probeState.proactive.detail"
+                action-text="运行"
+                @run="runSettingsProbe('proactive')"
+                @copy="copyProbeDetail('proactive')"
+              />
             </section>
 
             <section class="proactive-card">

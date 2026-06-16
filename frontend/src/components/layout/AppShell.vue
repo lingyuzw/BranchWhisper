@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, Bot, Brain, ClipboardCheck, Library, MessagesSquare, Settings2 } from "@lucide/vue";
+import { Activity, Bot, Brain, Library, MessagesSquare, Settings2 } from "@lucide/vue";
 import { onBeforeUnmount, onMounted, watch, watchEffect } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
 import FeedbackLayer from "@/components/layout/FeedbackLayer.vue";
@@ -14,21 +14,23 @@ const navItems = [
   { to: "/", label: "对话", icon: MessagesSquare },
   { to: "/services", label: "服务", icon: Activity },
   { to: "/integrations", label: "接入", icon: Bot },
-  { to: "/diagnostics", label: "检测", icon: ClipboardCheck },
   { to: "/memory", label: "记忆", icon: Brain },
   { to: "/assets", label: "素材库", icon: Library },
   { to: "/settings", label: "配置", icon: Settings2 },
 ];
 
 onMounted(() => {
+  applyStoredTheme();
   void app.bootstrap();
   document.addEventListener("keydown", handleGlobalKeydown);
   document.addEventListener("click", handleDocumentClick);
+  window.addEventListener("storage", handleStorageChange);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", handleGlobalKeydown);
   document.removeEventListener("click", handleDocumentClick);
+  window.removeEventListener("storage", handleStorageChange);
 });
 
 watch(
@@ -70,6 +72,16 @@ function handleDocumentClick(event: MouseEvent) {
     return;
   }
   ui.closeTransientUi();
+}
+
+function applyStoredTheme() {
+  const nextTheme = window.localStorage.getItem("branchwhisper:theme") === "light" ? "light" : "dark";
+  document.documentElement.classList.toggle("theme-light", nextTheme === "light");
+  document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+}
+
+function handleStorageChange(event: StorageEvent) {
+  if (event.key === "branchwhisper:theme") applyStoredTheme();
 }
 </script>
 

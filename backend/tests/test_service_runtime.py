@@ -17,7 +17,7 @@ from integration_runtime.manager import ExternalDialogEngine, IntegrationManager
 from media.sticker_policy import StickerPolicy
 from service_runtime.audio_pipeline import clean_reply_text, strip_internal_attachment_markers
 from service_runtime.services import ServiceManager, service_runtime_state, tune_start_command
-from tools.runtime_brain import ToolManager
+from tools.runtime_brain import MemoryStore, ToolManager, admit_memory_candidate, extract_memory_candidates
 
 
 def default_settings() -> SessionSettings:
@@ -225,6 +225,123 @@ class ToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
             result = await manager.execute("weather", suggestion["arguments"])
 
         self.assertEqual(result["location"], "漳州")
+
+    def test_knowledge_source_question_uses_web_search(self) -> None:
+        class ProviderConfigStub:
+            def load(self) -> dict:
+                return {
+                    "enabled": True,
+                    "search": {
+                        "enabled": True,
+                        "provider": "gaode",
+                        "base_url": "https://restapi.amap.com/v3",
+                        "api_key": "test",
+                    },
+                    "map": {"enabled": True, "provider": "gaode", "api_key": "test"},
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = ToolManager(Path(tmp) / "tools.json", ProviderConfigStub())
+
+            suggestion = manager.suggest_from_text("周瑜无谋，诸葛少智这是谁说的？")
+
+        self.assertEqual(suggestion, {"id": "web_search", "arguments": {"query": "周瑜无谋，诸葛少智这是谁说的？", "limit": 5}})
+
+
+class MemoryRuntimeTests(unittest.TestCase):
+    def test_memory_context_keeps_key_value_relation_for_user_preferences(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "最喜欢的歌手",
+                    "value": "周杰伦",
+                    "layer": "short",
+                    "confidence": 0.8,
+                    "importance": 0.8,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+
+            context = store.format_context(settings, "你知道我最喜欢的歌手是谁吗？", mode="api")
+
+        self.assertIn("最喜欢的歌手：周杰伦", context)
+        self.assertIn("有相关记忆时不要说不知道", context)
+
+    def test_memory_lookup_question_is_not_saved_as_user_preference(self) -> None:
+        text = "你知道我最喜欢的歌手是谁吗？"
+
+        self.assertEqual(extract_memory_candidates(text), [])
+        admitted, reason = admit_memory_candidate(
+            {
+                "key": "用户偏好:的歌手是谁吗",
+                "value": "用户喜欢的歌手是谁吗",
+                "layer": "short",
+                "confidence": 0.55,
+                "importance": 0.65,
+                "source": "chat",
+                "memory_type": "semantic_fact",
+            },
+            text,
+            default_settings(),
+        )
+
+        self.assertIsNone(admitted)
+        self.assertIn(reason, {"memory_lookup_question", "unresolved_question"})
+
+    def test_external_dialog_answers_memory_lookup_directly(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "最喜欢的歌手",
+                    "value": "周杰伦",
+                    "layer": "short",
+                    "confidence": 0.8,
+                    "importance": 0.8,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+            engine = ExternalDialogEngine(
+                integration_manager=None,
+                conversation_store=None,
+                memory_store=store,
+                tool_manager=None,
+                bot_profiles=None,
+                media_dir=Path(tmp),
+            )
+
+            answer = engine.answer_from_memory_lookup(settings, "你知道我最喜欢的歌手是谁吗？")
+
+        self.assertEqual(answer, "记得，是周杰伦。")
+
+    def test_reference_question_expands_tool_query_with_previous_user_message(self) -> None:
+        engine = ExternalDialogEngine(
+            integration_manager=None,
+            conversation_store=None,
+            memory_store=None,
+            tool_manager=None,
+            bot_profiles=None,
+            media_dir=Path(tempfile.gettempdir()),
+        )
+        conversation = {
+            "messages": [
+                {"role": "user", "content": "哦，原话是周瑜无谋，诸葛少智"},
+                {"role": "assistant", "content": "你这记错了还能圆回来？"},
+            ]
+        }
+
+        query = engine.expand_tool_query("这是谁说的？", conversation)
+
+        self.assertEqual(query, "哦，原话是周瑜无谋，诸葛少智 这是谁说的？")
 
 
 class ExternalDialogHistoryTests(unittest.TestCase):

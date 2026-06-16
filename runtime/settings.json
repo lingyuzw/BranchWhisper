@@ -14,7 +14,7 @@
   "api_temperature": 0.65,
   "api_max_tokens": 512,
   "api_history_turns": 8,
-  "thinking_enabled": false,
+  "thinking_enabled": true,
   "temperature": 0.35,
   "max_tokens": 512,
   "history_turns": 8,

@@ -17,6 +17,12 @@ const canvas = ref<HTMLCanvasElement | null>(null);
 const levels = ref<number[]>(Array.from({ length: 48 }, () => 0));
 let frame = 0;
 
+function cssValue(name: string, fallback: string) {
+  const node = canvas.value;
+  const source = node ? getComputedStyle(node) : getComputedStyle(document.documentElement);
+  return source.getPropertyValue(name).trim() || fallback;
+}
+
 watch(
   () => props.level,
   (level) => {
@@ -41,12 +47,20 @@ function drawScope() {
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
+  const surface = cssValue("--scope-surface", "rgba(18, 22, 27, 0.92)");
+  const primary = cssValue("--scope-primary", "rgba(240, 199, 100, 0.32)");
+  const info = cssValue("--scope-info", "rgba(106, 213, 207, 0.14)");
+  const line = cssValue("--scope-line", "rgba(106, 213, 207, 0.72)");
+  const activeLine = cssValue("--scope-active-line", "#f0c764");
+  const midLine = cssValue("--scope-midline", "rgba(255,255,255,0.12)");
+  ctx.fillStyle = surface;
+  ctx.fillRect(0, 0, width, height);
   const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "rgba(240, 199, 100, 0.32)");
-  gradient.addColorStop(1, "rgba(106, 213, 207, 0.14)");
+  gradient.addColorStop(0, primary);
+  gradient.addColorStop(1, info);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = props.metrics.status === "收音" || props.metrics.status === "监听中" ? "#f0c764" : "rgba(106, 213, 207, 0.72)";
+  ctx.strokeStyle = props.metrics.status === "收音" || props.metrics.status === "监听中" ? activeLine : line;
   ctx.lineWidth = 2;
   ctx.beginPath();
   levels.value.forEach((item, index) => {
@@ -56,7 +70,7 @@ function drawScope() {
     else ctx.lineTo(x, y);
   });
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.strokeStyle = midLine;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(0, height / 2);

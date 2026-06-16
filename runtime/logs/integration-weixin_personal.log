@@ -3325,3 +3325,797 @@ Channel login failed: Error: 二维码多次失效，连接流程已停止。请
 [2026-06-13 16:37:48] received signal 2, stopping after current poll
 [2026-06-13 16:37:48] received signal 2, stopping after current poll
 [2026-06-13 16:37:48] received signal 2, stopping after current poll
+[2026-06-13 16:37:59] bridge stopped
+
+===== 2026-06-13 16:40:20 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 16:40:20 =====
+[config] updated integration
+
+===== 2026-06-13 16:40:20 =====
+[session] bridge started pid=11338
+
+===== 2026-06-13 16:40:20 =====
+[watchdog] bridge restart requested
+[2026-06-13 16:40:20] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 16:40:20] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 16:47:02] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你知道我最喜欢的歌手是谁吗？
+
+===== 2026-06-13 16:47:02 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 16:47:02 =====
+[dialog:ext_e18ec2b872] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你知道我最喜欢的歌手是谁吗？
+
+===== 2026-06-13 16:47:03 =====
+[dialog:ext_e18ec2b872] reply text_len=8 parts=1 clean_len=8 diag={'finish_reason': 'stop', 'llm_reply_len': 8, 'llm_clean_len': 8, 'reply_len': 8, 'reply_clean_len': 8} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 891, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 893} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 16:47:03] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781340423591-6b319e24 branch_ms=909 send_ms=200 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 891, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 893}
+[2026-06-13 16:55:19] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=讲个冷笑话我听听
+
+===== 2026-06-13 16:55:19 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 16:55:19 =====
+[dialog:ext_82be4f43f5] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=讲个冷笑话我听听
+
+===== 2026-06-13 16:55:21 =====
+[dialog:ext_82be4f43f5] reply text_len=46 parts=3 clean_len=46 diag={'finish_reason': 'stop', 'llm_reply_len': 46, 'llm_clean_len': 46, 'reply_len': 46, 'reply_clean_len': 46} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1949, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1956} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 16:55:22] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=3 client_ids=branchwhisper-1781340921508-becf6a88,branchwhisper-1781340921913-28356bbb,branchwhisper-1781340922305-d7c639b4 branch_ms=1973 send_ms=984 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1949, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1956}
+[2026-06-13 16:55:23] sent sticker account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781340923555-f47a42c0 sticker=laugh_012 upload_ms=869 send_ms=246
+[2026-06-13 17:02:39] received signal 15, stopping after current poll
+[2026-06-13 17:02:53] received signal 15, stopping after current poll
+[2026-06-13 17:02:56] bridge stopped
+
+===== 2026-06-13 17:04:49 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:04:49 =====
+[config] updated integration
+
+===== 2026-06-13 17:04:49 =====
+[session] bridge started pid=19910
+
+===== 2026-06-13 17:04:49 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:04:49] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:04:49] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 17:04:50] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=一点都不好笑
+
+===== 2026-06-13 17:04:50 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:04:50 =====
+[dialog:ext_7ec5715649] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=一点都不好笑
+
+===== 2026-06-13 17:04:51 =====
+[dialog:ext_7ec5715649] reply text_len=3 parts=1 clean_len=3 diag={'finish_reason': 'stop', 'llm_reply_len': 3, 'llm_clean_len': 3, 'reply_len': 3, 'reply_clean_len': 3} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1226, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1229} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:04:52] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341491875-0ac57692 branch_ms=1250 send_ms=212 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1226, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1229}
+[2026-06-13 17:05:08] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=？？？
+
+===== 2026-06-13 17:05:08 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:05:08 =====
+[dialog:ext_5456a8b1e6] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=？？？
+
+===== 2026-06-13 17:05:09 =====
+[dialog:ext_5456a8b1e6] reply text_len=7 parts=1 clean_len=7 diag={'finish_reason': 'stop', 'llm_reply_len': 7, 'llm_clean_len': 7, 'reply_len': 7, 'reply_clean_len': 7} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 874, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 876} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:05:09] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341509497-60610297 branch_ms=892 send_ms=198 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 874, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 876}
+[2026-06-13 17:05:36] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=干啥，明明是你讲的不好笑好不好
+
+===== 2026-06-13 17:05:36 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:05:36 =====
+[dialog:ext_9ebcf0ad5e] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=干啥，明明是你讲的不好笑好不好
+
+===== 2026-06-13 17:05:36 =====
+[dialog:ext_9ebcf0ad5e] reply text_len=6 parts=1 clean_len=6 diag={'finish_reason': 'stop', 'llm_reply_len': 6, 'llm_clean_len': 6, 'reply_len': 6, 'reply_clean_len': 6} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 956, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 958} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:05:37] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341536983-3dcc956c branch_ms=976 send_ms=196 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 956, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 958}
+[2026-06-13 17:05:37] received signal 15, stopping after current poll
+
+===== 2026-06-13 17:05:37 =====
+[process] stopped orphan bridge pid=19910
+
+===== 2026-06-13 17:05:38 =====
+[process] killed orphan bridge pid=19910
+
+===== 2026-06-13 17:05:38 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:05:38 =====
+[config] updated integration
+
+===== 2026-06-13 17:05:38 =====
+[session] bridge started pid=20279
+
+===== 2026-06-13 17:05:38 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:05:38] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:05:38] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-13 17:05:43 =====
+[process] process exited with code -9
+[2026-06-13 17:05:47] received signal 15, stopping after current poll
+
+===== 2026-06-13 17:05:47 =====
+[process] stopped orphan bridge pid=20279
+
+===== 2026-06-13 17:05:48 =====
+[process] killed orphan bridge pid=20279
+
+===== 2026-06-13 17:05:48 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:05:48 =====
+[config] updated integration
+
+===== 2026-06-13 17:05:48 =====
+[session] bridge started pid=20420
+
+===== 2026-06-13 17:05:48 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:05:48] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:05:48] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-13 17:08:00 =====
+[dialog:ext_1e1bda9952] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=??????????????
+
+===== 2026-06-13 17:08:01 =====
+[dialog:ext_1e1bda9952] reply text_len=4 parts=1 clean_len=4 diag={'finish_reason': 'stop', 'llm_reply_len': 4, 'llm_clean_len': 4, 'reply_len': 4, 'reply_clean_len': 4} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 740, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 742} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:08:56] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[微笑][微笑]
+
+===== 2026-06-13 17:08:56 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:08:56 =====
+[dialog:ext_7394717616] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[微笑][微笑]
+
+===== 2026-06-13 17:08:57 =====
+[dialog:ext_7394717616] reply text_len=3 parts=1 clean_len=3 diag={'finish_reason': 'stop', 'llm_reply_len': 3, 'llm_clean_len': 3, 'reply_len': 3, 'reply_clean_len': 3} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 708, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 710} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:08:57] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341737221-dab3872d branch_ms=727 send_ms=230 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 708, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 710}
+[2026-06-13 17:10:51] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我笑诸葛无谋，鬼谷少智
+
+===== 2026-06-13 17:10:51 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:10:51 =====
+[dialog:ext_1ad7918287] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我笑诸葛无谋，鬼谷少智
+
+===== 2026-06-13 17:10:52 =====
+[dialog:ext_1ad7918287] reply text_len=6 parts=1 clean_len=6 diag={'finish_reason': 'stop', 'llm_reply_len': 6, 'llm_clean_len': 6, 'reply_len': 6, 'reply_clean_len': 6} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 820, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 822} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:10:52] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341852724-0cb14b8d branch_ms=837 send_ms=211 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 820, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 822}
+
+===== 2026-06-13 17:10:54 =====
+[dialog:ext_1ad7918287] memory background failed: [Errno 32] Broken pipe
+[2026-06-13 17:10:59] received signal 15, stopping after current poll
+
+===== 2026-06-13 17:10:59 =====
+[process] stopped orphan bridge pid=20420
+
+===== 2026-06-13 17:10:59 =====
+[process] killed orphan bridge pid=20420
+
+===== 2026-06-13 17:10:59 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:10:59 =====
+[config] updated integration
+
+===== 2026-06-13 17:10:59 =====
+[session] bridge started pid=22672
+
+===== 2026-06-13 17:10:59 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:10:59] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:10:59] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-13 17:11:01 =====
+[process] process exited with code -9
+
+===== 2026-06-13 17:11:05 =====
+[process] stopped orphan bridge pid=22672
+[2026-06-13 17:11:05] received signal 15, stopping after current poll
+
+===== 2026-06-13 17:11:05 =====
+[process] killed orphan bridge pid=22672
+
+===== 2026-06-13 17:11:05 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:11:05 =====
+[config] updated integration
+
+===== 2026-06-13 17:11:05 =====
+[session] bridge started pid=22798
+
+===== 2026-06-13 17:11:05 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:11:05] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:11:05] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 17:11:09] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不然呢？
+
+===== 2026-06-13 17:11:09 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:11:09 =====
+[dialog:ext_79c222af34] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不然呢？
+
+===== 2026-06-13 17:11:10 =====
+[dialog:ext_79c222af34] reply text_len=5 parts=1 clean_len=5 diag={'finish_reason': 'stop', 'llm_reply_len': 5, 'llm_clean_len': 5, 'reply_len': 5, 'reply_clean_len': 5} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 751, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 752} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:11:10] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341870097-0b8b9851 branch_ms=773 send_ms=255 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 751, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 752}
+
+===== 2026-06-13 17:11:34 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:11:34 =====
+[config] updated integration
+
+===== 2026-06-13 17:11:34 =====
+[session] bridge started pid=23041
+
+===== 2026-06-13 17:11:34 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:11:34] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:11:34] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 17:11:38] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=还是加个思考模式把，不然感觉笨笨的
+
+===== 2026-06-13 17:11:38 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:11:38 =====
+[dialog:ext_140a7c773a] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=还是加个思考模式把，不然感觉笨笨的
+
+===== 2026-06-13 17:11:39 =====
+[dialog:ext_140a7c773a] reply text_len=5 parts=1 clean_len=5 diag={'finish_reason': 'stop', 'llm_reply_len': 5, 'llm_clean_len': 5, 'reply_len': 5, 'reply_clean_len': 5} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 803, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 807} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:11:39] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341899601-03c26ef1 branch_ms=825 send_ms=216 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 803, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 807}
+
+===== 2026-06-13 17:11:48 =====
+[dialog:ext_5f051a2637] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=??????????????
+
+===== 2026-06-13 17:11:48 =====
+[dialog:ext_5f051a2637] reply text_len=8 parts=1 clean_len=8 diag={'finish_reason': 'stop', 'llm_reply_len': 8, 'llm_clean_len': 8, 'reply_len': 8, 'reply_clean_len': 8} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 687, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 689} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:11:56] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不然呢，我笑诸葛无谋，鬼谷少智
+
+===== 2026-06-13 17:11:57 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:11:57 =====
+[dialog:ext_96c4f2f6a1] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不然呢，我笑诸葛无谋，鬼谷少智
+
+===== 2026-06-13 17:11:58 =====
+[dialog:ext_96c4f2f6a1] reply text_len=6 parts=1 clean_len=6 diag={'finish_reason': 'stop', 'llm_reply_len': 6, 'llm_clean_len': 6, 'reply_len': 6, 'reply_clean_len': 6} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 861, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 863} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:11:58] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341918649-753247d9 branch_ms=2021 send_ms=225 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 861, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 863}
+[2026-06-13 17:12:08] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你没听过吗
+
+===== 2026-06-13 17:12:08 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:12:08 =====
+[dialog:ext_40e6d4733d] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你没听过吗
+
+===== 2026-06-13 17:12:10 =====
+[dialog:ext_40e6d4733d] reply text_len=3 parts=1 clean_len=3 diag={'finish_reason': 'stop', 'llm_reply_len': 3, 'llm_clean_len': 3, 'reply_len': 3, 'reply_clean_len': 3} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 872, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 874} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:12:10] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341930021-af3ee522 branch_ms=889 send_ms=171 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 872, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 874}
+[2026-06-13 17:12:27] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=没有去学
+
+===== 2026-06-13 17:12:27 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:12:27 =====
+[dialog:ext_674a07255e] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=没有去学
+
+===== 2026-06-13 17:12:27 =====
+[dialog:ext_674a07255e] reply text_len=4 parts=1 clean_len=4 diag={'finish_reason': 'stop', 'llm_reply_len': 4, 'llm_clean_len': 4, 'reply_len': 4, 'reply_clean_len': 4} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 662, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 666} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:12:27] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341947698-9b92f9f1 branch_ms=682 send_ms=196 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 662, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 666}
+[2026-06-13 17:13:03] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=哦，原话是周瑜无谋，诸葛少智
+
+===== 2026-06-13 17:13:04 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:13:04 =====
+[dialog:ext_1ec91396e3] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=哦，原话是周瑜无谋，诸葛少智
+
+===== 2026-06-13 17:13:05 =====
+[dialog:ext_1ec91396e3] reply text_len=11 parts=1 clean_len=11 diag={'finish_reason': 'stop', 'llm_reply_len': 11, 'llm_clean_len': 11, 'reply_len': 11, 'reply_clean_len': 11} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1301, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1303} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:13:05] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341985466-95c8c23c branch_ms=2097 send_ms=232 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1301, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1303}
+[2026-06-13 17:13:14] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=这是谁说的？
+
+===== 2026-06-13 17:13:14 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:13:14 =====
+[dialog:ext_9ceaddb3ac] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=这是谁说的？
+
+===== 2026-06-13 17:13:16 =====
+[dialog:ext_9ceaddb3ac] reply text_len=5 parts=1 clean_len=5 diag={'finish_reason': 'stop', 'llm_reply_len': 5, 'llm_clean_len': 5, 'reply_len': 5, 'reply_clean_len': 5} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1576, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1578} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:13:16] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781341996412-b79c70a6 branch_ms=1594 send_ms=221 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1576, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1578}
+
+===== 2026-06-13 17:19:42 =====
+[process] stopped orphan bridge pid=23041
+[2026-06-13 17:19:42] received signal 15, stopping after current poll
+
+===== 2026-06-13 17:19:42 =====
+[process] killed orphan bridge pid=23041
+
+===== 2026-06-13 17:19:42 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:19:42 =====
+[config] updated integration
+
+===== 2026-06-13 17:19:42 =====
+[session] bridge started pid=26634
+
+===== 2026-06-13 17:19:42 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:19:42] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:19:42] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-13 17:19:47 =====
+[process] process exited with code -9
+[2026-06-13 17:19:50] received signal 15, stopping after current poll
+===== 2026-06-13 17:19:50 =====
+[process] stopped orphan bridge pid=26634
+
+
+===== 2026-06-13 17:19:50 =====
+[process] killed orphan bridge pid=26634
+
+===== 2026-06-13 17:19:50 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:19:50 =====
+[config] updated integration
+
+===== 2026-06-13 17:19:50 =====
+[session] bridge started pid=26770
+
+===== 2026-06-13 17:19:50 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:19:50] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:19:50] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-13 17:20:58 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:20:58 =====
+[config] updated integration
+
+===== 2026-06-13 17:20:58 =====
+[session] bridge started pid=27172
+
+===== 2026-06-13 17:20:58 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:20:58] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:20:58] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-13 17:22:29 =====
+[dialog:ext_3f6213a7a5] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你知道我最喜欢的歌手是谁吗？
+
+===== 2026-06-13 17:22:29 =====
+[dialog:ext_3f6213a7a5] reply text_len=8 parts=1 clean_len=8 diag={'memory_direct_answer': True} tool=- direct=True timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 0, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2} voice_requested=False send_voice=False voice_file= voice_error=
+
+===== 2026-06-13 17:23:57 =====
+[dialog:ext_9a46234cd4] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=这是谁说的？
+
+===== 2026-06-13 17:24:03 =====
+[dialog:ext_9a46234cd4] reply text_len=29 parts=2 clean_len=29 diag={'finish_reason': 'stop', 'llm_reply_len': 29, 'llm_clean_len': 29, 'reply_len': 29, 'reply_clean_len': 29} tool=web_search direct=False timings={'receive_ms': 0, 'tool_ms': 4056, 'llm_ms': 1112, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 5172} voice_requested=False send_voice=False voice_file= voice_error=
+
+===== 2026-06-13 17:26:29 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-13 17:26:29 =====
+[config] updated integration
+
+===== 2026-06-13 17:26:29 =====
+[session] bridge started pid=29506
+
+===== 2026-06-13 17:26:29 =====
+[watchdog] bridge restart requested
+[2026-06-13 17:26:29] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-13 17:26:29] loaded accounts: 8397c5c17324-im-bot
+[2026-06-13 17:27:54] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=要下班了，晚上吃啥
+
+===== 2026-06-13 17:27:54 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:27:54 =====
+[dialog:ext_deff7e5a70] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=要下班了，晚上吃啥
+
+===== 2026-06-13 17:27:55 =====
+[dialog:ext_deff7e5a70] reply text_len=7 parts=1 clean_len=7 diag={'finish_reason': 'stop', 'llm_reply_len': 7, 'llm_clean_len': 7, 'reply_len': 7, 'reply_clean_len': 7} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1650, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1654} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:27:56] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781342875833-6c8de8ae branch_ms=1670 send_ms=208 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1650, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1654}
+[2026-06-13 17:28:26] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我喜欢的歌手是谁？
+
+===== 2026-06-13 17:28:26 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:28:26 =====
+[dialog:ext_b787c6e3f7] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我喜欢的歌手是谁？
+
+===== 2026-06-13 17:28:26 =====
+[dialog:ext_b787c6e3f7] reply text_len=8 parts=1 clean_len=8 diag={'memory_direct_answer': True} tool=- direct=True timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 0, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:28:26] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781342906538-ae61ee15 branch_ms=17 send_ms=210 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 0, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1}
+[2026-06-13 17:28:39] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那周瑜无谋，诸葛少智是谁说的？
+
+===== 2026-06-13 17:28:39 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:28:39 =====
+[dialog:ext_125ca42ba8] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那周瑜无谋，诸葛少智是谁说的？
+
+===== 2026-06-13 17:28:43 =====
+[dialog:ext_125ca42ba8] reply text_len=45 parts=2 clean_len=45 diag={'finish_reason': 'stop', 'llm_reply_len': 45, 'llm_clean_len': 45, 'reply_len': 45, 'reply_clean_len': 45} tool=web_search direct=False timings={'receive_ms': 0, 'tool_ms': 2936, 'llm_ms': 1358, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 4299} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:28:44] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781342923762-c915c203,branchwhisper-1781342924137-1ee05462 branch_ms=4315 send_ms=630 timings={'receive_ms': 0, 'tool_ms': 2936, 'llm_ms': 1358, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 4299}
+[2026-06-13 17:29:05] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那我晚上吃啥，有点想吃小龙虾
+
+===== 2026-06-13 17:29:05 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:29:05 =====
+[dialog:ext_93706de40e] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那我晚上吃啥，有点想吃小龙虾
+
+===== 2026-06-13 17:29:06 =====
+[dialog:ext_93706de40e] reply text_len=13 parts=1 clean_len=13 diag={'finish_reason': 'stop', 'llm_reply_len': 13, 'llm_clean_len': 13, 'reply_len': 13, 'reply_clean_len': 13} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 828, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 830} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:29:06] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781342946088-82412bfb branch_ms=845 send_ms=170 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 828, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 830}
+[2026-06-13 17:29:19] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=可是我不会喝啤酒
+
+===== 2026-06-13 17:29:19 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:29:19 =====
+[dialog:ext_5fe71308c2] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=可是我不会喝啤酒
+
+===== 2026-06-13 17:29:20 =====
+[dialog:ext_5fe71308c2] reply text_len=5 parts=1 clean_len=5 diag={'finish_reason': 'stop', 'llm_reply_len': 5, 'llm_clean_len': 5, 'reply_len': 5, 'reply_clean_len': 5} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1107, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1108} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:29:21] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781342960910-278df4a1 branch_ms=1787 send_ms=221 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1107, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1108}
+[2026-06-13 17:29:30] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我就爱喝可乐，还得是百事的
+
+===== 2026-06-13 17:29:30 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:29:30 =====
+[dialog:ext_8b5ede9287] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我就爱喝可乐，还得是百事的
+
+===== 2026-06-13 17:29:31 =====
+[dialog:ext_8b5ede9287] reply text_len=7 parts=1 clean_len=7 diag={'finish_reason': 'stop', 'llm_reply_len': 7, 'llm_clean_len': 7, 'reply_len': 7, 'reply_clean_len': 7} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 816, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 817} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:29:31] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781342971770-6fde14e9 branch_ms=833 send_ms=200 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 816, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 817}
+[2026-06-13 17:29:53] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不错，你现在开始有点聪明了
+
+===== 2026-06-13 17:29:53 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:29:53 =====
+[dialog:ext_82f1c72166] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不错，你现在开始有点聪明了
+
+===== 2026-06-13 17:29:54 =====
+[dialog:ext_82f1c72166] reply text_len=17 parts=1 clean_len=17 diag={'finish_reason': 'stop', 'llm_reply_len': 17, 'llm_clean_len': 17, 'reply_len': 17, 'reply_clean_len': 17} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1028, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1029} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:29:54] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781342994535-4f5181cc branch_ms=1046 send_ms=195 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1028, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1029}
+[2026-06-13 17:30:24] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你能帮我找一下漳州评分比较高的小龙虾外卖吗？
+
+===== 2026-06-13 17:30:24 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:30:24 =====
+[dialog:ext_dc6acb4aee] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你能帮我找一下漳州评分比较高的小龙虾外卖吗？
+
+===== 2026-06-13 17:30:26 =====
+[dialog:ext_dc6acb4aee] reply text_len=18 parts=2 clean_len=18 diag={'finish_reason': 'stop', 'llm_reply_len': 18, 'llm_clean_len': 18, 'reply_len': 18, 'reply_clean_len': 18} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1610, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1612} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:30:26] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781343026275-1dcb621b,branchwhisper-1781343026637-59231c41 branch_ms=1627 send_ms=550 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1610, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1612}
+[2026-06-13 17:30:45] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=包的，必须加辣，帮我找找
+
+===== 2026-06-13 17:30:45 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:30:45 =====
+[dialog:ext_8b67de0d39] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=包的，必须加辣，帮我找找
+
+===== 2026-06-13 17:30:47 =====
+[dialog:ext_8b67de0d39] reply text_len=23 parts=1 clean_len=23 diag={'finish_reason': 'stop', 'llm_reply_len': 23, 'llm_clean_len': 23, 'reply_len': 23, 'reply_clean_len': 23} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1310, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1312} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:30:47] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781343047183-dfaf7575 branch_ms=1327 send_ms=197 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1310, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1312}
+[2026-06-13 17:31:16] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在淘宝闪购里没找到这家店
+
+===== 2026-06-13 17:31:16 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:31:16 =====
+[dialog:ext_3499c3c1ac] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在淘宝闪购里没找到这家店
+
+===== 2026-06-13 17:31:17 =====
+[dialog:ext_3499c3c1ac] reply text_len=22 parts=1 clean_len=22 diag={'finish_reason': 'stop', 'llm_reply_len': 22, 'llm_clean_len': 22, 'reply_len': 22, 'reply_clean_len': 22} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1183, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1185} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:31:17] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781343077366-cf4984b1 branch_ms=1203 send_ms=208 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1183, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1185}
+[2026-06-13 17:31:25] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=666
+
+===== 2026-06-13 17:31:25 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:31:25 =====
+[dialog:ext_f1b2bbfc78] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=666
+
+===== 2026-06-13 17:31:26 =====
+[dialog:ext_f1b2bbfc78] reply text_len=22 parts=1 clean_len=22 diag={'finish_reason': 'stop', 'llm_reply_len': 22, 'llm_clean_len': 22, 'reply_len': 22, 'reply_clean_len': 22} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1020, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1022} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:31:26] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781343086095-ad7541dd branch_ms=1037 send_ms=211 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1020, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1022}
+[2026-06-13 17:31:39] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我怕拉肚子
+
+===== 2026-06-13 17:31:39 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:31:39 =====
+[dialog:ext_f979a4ea0d] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我怕拉肚子
+
+===== 2026-06-13 17:31:41 =====
+[dialog:ext_f979a4ea0d] reply text_len=7 parts=1 clean_len=7 diag={'finish_reason': 'stop', 'llm_reply_len': 7, 'llm_clean_len': 7, 'reply_len': 7, 'reply_clean_len': 7} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 2061, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2063} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:31:42] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781343101851-04f9a740 branch_ms=2239 send_ms=221 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 2061, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2063}
+[2026-06-13 17:34:58] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=之前找到一家好吃的小龙虾店，关门了
+
+===== 2026-06-13 17:34:58 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:34:58 =====
+[dialog:ext_a5d1faca32] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=之前找到一家好吃的小龙虾店，关门了
+
+===== 2026-06-13 17:34:59 =====
+[dialog:ext_a5d1faca32] reply text_len=11 parts=2 clean_len=11 diag={'finish_reason': 'stop', 'llm_reply_len': 11, 'llm_clean_len': 11, 'reply_len': 11, 'reply_clean_len': 11} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 934, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 936} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:34:59] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781343299076-e47c3dd1,branchwhisper-1781343299460-ce57548c branch_ms=953 send_ms=574 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 934, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 936}
+[2026-06-13 17:35:59] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=没事，我要回去享受假期了
+
+===== 2026-06-13 17:35:59 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 17:35:59 =====
+[dialog:ext_16968bc0c9] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=没事，我要回去享受假期了
+
+===== 2026-06-13 17:36:00 =====
+[dialog:ext_16968bc0c9] reply text_len=13 parts=1 clean_len=13 diag={'finish_reason': 'stop', 'llm_reply_len': 13, 'llm_clean_len': 13, 'reply_len': 13, 'reply_clean_len': 13} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1027, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1029} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 17:36:01] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781343360873-61a7bd04 branch_ms=1045 send_ms=210 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1027, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1029}
+[2026-06-13 23:32:21] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=好像谈恋爱啊
+
+===== 2026-06-13 23:32:21 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 23:32:21 =====
+[dialog:ext_c32065d5e2] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=好像谈恋爱啊
+
+===== 2026-06-13 23:32:23 =====
+[dialog:ext_c32065d5e2] reply text_len=9 parts=1 clean_len=9 diag={'finish_reason': 'stop', 'llm_reply_len': 9, 'llm_clean_len': 9, 'reply_len': 9, 'reply_clean_len': 9} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 2407, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2415} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 23:32:23] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781364743650-46072c6a branch_ms=2442 send_ms=211 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 2407, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2415}
+[2026-06-13 23:33:02] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=就是大晚上胡思乱想，我现在又想赚钱又想谈起恋爱
+
+===== 2026-06-13 23:33:02 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 23:33:02 =====
+[dialog:ext_e8462410f3] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=就是大晚上胡思乱想，我现在又想赚钱又想谈起恋爱
+
+===== 2026-06-13 23:33:03 =====
+[dialog:ext_e8462410f3] reply text_len=10 parts=1 clean_len=10 diag={'finish_reason': 'stop', 'llm_reply_len': 10, 'llm_clean_len': 10, 'reply_len': 10, 'reply_clean_len': 10} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 867, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 872} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 23:33:03] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781364783410-85a990b0 branch_ms=890 send_ms=238 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 867, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 872}
+[2026-06-13 23:33:14] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=要咋做？
+
+===== 2026-06-13 23:33:14 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 23:33:14 =====
+[dialog:ext_1cb05ef681] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=要咋做？
+
+===== 2026-06-13 23:33:15 =====
+[dialog:ext_1cb05ef681] reply text_len=16 parts=2 clean_len=16 diag={'finish_reason': 'stop', 'llm_reply_len': 16, 'llm_clean_len': 16, 'reply_len': 16, 'reply_clean_len': 16} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1297, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1300} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 23:33:16] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781364795480-036e931d,branchwhisper-1781364795870-fbc981f4 branch_ms=1320 send_ms=614 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1297, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1300}
+[2026-06-13 23:33:51] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=666，那谈恋爱呢，我都26了，满打满算30了，这个年纪不谈恋爱，以后就没机会找同龄人了
+
+===== 2026-06-13 23:33:51 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 23:33:51 =====
+[dialog:ext_fc3b4d3d1e] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=666，那谈恋爱呢，我都26了，满打满算30了，这个年纪不谈恋爱，以后就没机会找同龄人了
+
+===== 2026-06-13 23:33:52 =====
+[dialog:ext_fc3b4d3d1e] reply text_len=10 parts=1 clean_len=10 diag={'finish_reason': 'stop', 'llm_reply_len': 10, 'llm_clean_len': 10, 'reply_len': 10, 'reply_clean_len': 10} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 818, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 821} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 23:33:52] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781364832270-0dd3124c branch_ms=837 send_ms=209 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 818, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 821}
+[2026-06-13 23:34:02] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=很急
+
+===== 2026-06-13 23:34:02 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-13 23:34:02 =====
+[dialog:ext_61675b1e68] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=很急
+
+===== 2026-06-13 23:34:03 =====
+[dialog:ext_61675b1e68] reply text_len=12 parts=1 clean_len=12 diag={'finish_reason': 'stop', 'llm_reply_len': 12, 'llm_clean_len': 12, 'reply_len': 12, 'reply_clean_len': 12} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 894, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 897} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-13 23:34:03] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781364843542-9dc4ddc4 branch_ms=914 send_ms=201 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 894, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 897}
+
+===== 2026-06-14 12:00:09 =====
+[proactive] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat client_id=branchwhisper-proactive-1781409608880-aeb82e75
+                                                                                                                                                                                                                                                                                             
+===== 2026-06-16 10:18:34 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-16 10:18:34 =====
+[config] updated integration
+
+===== 2026-06-16 10:18:34 =====
+[session] bridge started pid=4019
+
+===== 2026-06-16 10:18:34 =====
+[watchdog] bridge restart requested
+[2026-06-16 10:18:34] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-16 10:18:34] loaded accounts: 8397c5c17324-im-bot
+[2026-06-16 10:19:05] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=hello
+
+===== 2026-06-16 10:19:05 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 10:19:05 =====
+[dialog:ext_52dcf3acc6] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=hello
+
+===== 2026-06-16 10:19:06 =====
+[dialog:ext_52dcf3acc6] reply text_len=16 parts=1 clean_len=16 diag={'finish_reason': 'stop', 'llm_reply_len': 16, 'llm_clean_len': 16, 'reply_len': 16, 'reply_clean_len': 16} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 970, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 974} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 10:19:06] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781576346079-5b8b6ce8 branch_ms=994 send_ms=218 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 970, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 974}
+[2026-06-16 10:30:37] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=倒是没有那么焦虑。很多事情也不是我一个人就能决定的
+
+===== 2026-06-16 10:30:37 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 10:30:37 =====
+[dialog:ext_5763858675] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=倒是没有那么焦虑。很多事情也不是我一个人就能决定的
+
+===== 2026-06-16 10:30:38 =====
+[dialog:ext_5763858675] reply text_len=14 parts=1 clean_len=14 diag={'finish_reason': 'stop', 'llm_reply_len': 14, 'llm_clean_len': 14, 'reply_len': 14, 'reply_clean_len': 14} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 899, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 905} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 10:30:38] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781577038755-1ff3ff9c branch_ms=926 send_ms=190 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 899, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 905}
+[2026-06-16 10:47:59] received signal 2, stopping after current poll
+[2026-06-16 10:47:59] received signal 2, stopping after current poll
+[2026-06-16 10:48:00] received signal 2, stopping after current poll
+[2026-06-16 10:48:08] bridge stopped
+
+===== 2026-06-16 10:50:04 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-16 10:50:04 =====
+[config] updated integration
+
+===== 2026-06-16 10:50:04 =====
+[session] bridge started pid=15288
+
+===== 2026-06-16 10:50:04 =====
+[watchdog] bridge restart requested
+[2026-06-16 10:50:04] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-16 10:50:04] loaded accounts: 8397c5c17324-im-bot
+[2026-06-16 11:04:13] received signal 2, stopping after current poll
+[2026-06-16 11:04:14] received signal 2, stopping after current poll
+[2026-06-16 11:04:14] received signal 2, stopping after current poll
+[2026-06-16 11:04:15] bridge stopped
+
+===== 2026-06-16 11:04:41 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-16 11:04:41 =====
+[config] updated integration
+
+===== 2026-06-16 11:04:41 =====
+[session] bridge started pid=20249
+
+===== 2026-06-16 11:04:41 =====
+[watchdog] bridge restart requested
+[2026-06-16 11:04:41] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-16 11:04:41] loaded accounts: 8397c5c17324-im-bot
+[2026-06-16 11:21:32] received signal 2, stopping after current poll
+[2026-06-16 11:21:32] received signal 2, stopping after current poll
+[2026-06-16 11:21:35] bridge stopped
+
+===== 2026-06-16 11:21:55 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-16 11:21:55 =====
+[config] updated integration
+
+===== 2026-06-16 11:21:55 =====
+[session] bridge started pid=26404
+
+===== 2026-06-16 11:21:55 =====
+[watchdog] bridge restart requested
+[2026-06-16 11:21:55] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-16 11:21:55] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-16 12:00:06 =====
+[proactive] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat client_id=branchwhisper-proactive-1781582406413-a239e653
+[2026-06-16 12:00:30] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[微笑][微笑]吃完了都
+
+===== 2026-06-16 12:00:30 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:00:30 =====
+[dialog:ext_7078a6802e] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[微笑][微笑]吃完了都
+
+===== 2026-06-16 12:00:31 =====
+[dialog:ext_7078a6802e] reply text_len=7 parts=1 clean_len=7 diag={'finish_reason': 'stop', 'llm_reply_len': 7, 'llm_clean_len': 7, 'reply_len': 7, 'reply_clean_len': 7} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 752, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 758} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:00:31] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582431638-f74d7194 branch_ms=781 send_ms=200 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 752, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 758}
+[2026-06-16 12:00:55] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不好干活，前两天买的辣椒酱没到，伤心
+
+===== 2026-06-16 12:00:55 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:00:55 =====
+[dialog:ext_d1ae58bc02] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=不好干活，前两天买的辣椒酱没到，伤心
+
+===== 2026-06-16 12:00:56 =====
+[dialog:ext_d1ae58bc02] reply text_len=10 parts=1 clean_len=10 diag={'finish_reason': 'stop', 'llm_reply_len': 10, 'llm_clean_len': 10, 'reply_len': 10, 'reply_clean_len': 10} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1217, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1220} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:00:56] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582456577-76ea3c5b branch_ms=1238 send_ms=200 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1217, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1220}
+[2026-06-16 12:02:18] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=是的，派送中，但是没在吃饭前送到
+
+===== 2026-06-16 12:02:18 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:02:18 =====
+[dialog:ext_56e224ac88] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=是的，派送中，但是没在吃饭前送到
+
+===== 2026-06-16 12:02:19 =====
+[dialog:ext_56e224ac88] reply text_len=15 parts=1 clean_len=15 diag={'finish_reason': 'stop', 'llm_reply_len': 15, 'llm_clean_len': 15, 'reply_len': 15, 'reply_clean_len': 15} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1182, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1185} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:02:19] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582539264-a982a2a9 branch_ms=1204 send_ms=176 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1182, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1185}
+[2026-06-16 12:04:18] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=很急，食堂饭菜都没什么味道，不加辣不好吃
+
+===== 2026-06-16 12:04:18 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:04:18 =====
+[dialog:ext_71a17f8d4b] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=很急，食堂饭菜都没什么味道，不加辣不好吃
+
+===== 2026-06-16 12:04:19 =====
+[dialog:ext_71a17f8d4b] reply text_len=13 parts=1 clean_len=13 diag={'finish_reason': 'stop', 'llm_reply_len': 13, 'llm_clean_len': 13, 'reply_len': 13, 'reply_clean_len': 13} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 907, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 910} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:04:19] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582659724-815e471e branch_ms=929 send_ms=216 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 907, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 910}
+[2026-06-16 12:04:31] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=已经过去了，
+
+===== 2026-06-16 12:04:31 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:04:31 =====
+[dialog:ext_b1058d345e] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=已经过去了，
+
+===== 2026-06-16 12:04:32 =====
+[dialog:ext_b1058d345e] reply text_len=10 parts=1 clean_len=10 diag={'finish_reason': 'stop', 'llm_reply_len': 10, 'llm_clean_len': 10, 'reply_len': 10, 'reply_clean_len': 10} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 851, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 854} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:04:32] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582672424-0b2ce038 branch_ms=872 send_ms=155 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 851, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 854}
+[2026-06-16 12:04:44] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[凋谢]
+
+===== 2026-06-16 12:04:44 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:04:44 =====
+[dialog:ext_af916b2436] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[凋谢]
+
+===== 2026-06-16 12:04:45 =====
+[dialog:ext_af916b2436] reply text_len=13 parts=1 clean_len=13 diag={'finish_reason': 'stop', 'llm_reply_len': 13, 'llm_clean_len': 13, 'reply_len': 13, 'reply_clean_len': 13} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 742, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 745} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:04:45] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582685131-52486b22 branch_ms=762 send_ms=191 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 742, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 745}
+[2026-06-16 12:05:03] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=有意思吗？我只看到了一个悲伤的男孩
+
+===== 2026-06-16 12:05:03 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260613_154443_1e8729
+
+===== 2026-06-16 12:05:03 =====
+[dialog:ext_f9c5e69b61] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=有意思吗？我只看到了一个悲伤的男孩
+
+===== 2026-06-16 12:05:04 =====
+[dialog:ext_f9c5e69b61] reply text_len=10 parts=1 clean_len=10 diag={'finish_reason': 'stop', 'llm_reply_len': 10, 'llm_clean_len': 10, 'reply_len': 10, 'reply_clean_len': 10} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 853, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 856} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-16 12:05:04] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781582704117-ab80764b branch_ms=875 send_ms=197 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 853, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 856}
+[2026-06-16 14:13:12] received signal 2, stopping after current poll
+[2026-06-16 14:13:12] received signal 2, stopping after current poll
+[2026-06-16 14:13:12] received signal 2, stopping after current poll
+[2026-06-16 14:13:28] bridge stopped
+
+===== 2026-06-16 14:13:36 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-16 14:13:36 =====
+[config] updated integration
+
+===== 2026-06-16 14:13:36 =====
+[session] bridge started pid=96222
+
+===== 2026-06-16 14:13:36 =====
+[watchdog] bridge restart requested
+[2026-06-16 14:13:36] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-16 14:13:36] loaded accounts: 8397c5c17324-im-bot
+[2026-06-16 15:38:01] received signal 2, stopping after current poll
+[2026-06-16 15:38:01] received signal 2, stopping after current poll
+[2026-06-16 15:38:01] received signal 2, stopping after current poll
+[2026-06-16 15:38:01] bridge stopped

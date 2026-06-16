@@ -99,6 +99,10 @@ html.theme-light {
 html, body { min-height: 100%; }
 html, body { overflow-x: clip; }
 
+body.settings-modal-open {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   color: var(--text);
@@ -314,6 +318,137 @@ label.hidden { display: none; }
 .runtime-chips b { font-size: 10px; }
 .runtime-chips strong { font-size: var(--font-sm); }
 
+.inline-probe {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-muted) 78%, transparent);
+  overscroll-behavior: contain;
+}
+
+.inline-probe.ok {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background: color-mix(in srgb, var(--success-soft) 42%, var(--surface-muted));
+}
+
+.inline-probe.failed {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+  background: color-mix(in srgb, var(--danger-soft) 48%, var(--surface-muted));
+}
+
+.inline-probe.warning {
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--border));
+  background: color-mix(in srgb, var(--warning-soft) 48%, var(--surface-muted));
+}
+
+.inline-probe-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.inline-probe-copy strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-sm);
+  line-height: 1.25;
+}
+
+.inline-probe-copy small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.4;
+}
+
+.inline-probe-copy code {
+  max-height: 88px;
+  margin-top: 5px;
+  padding: 7px 8px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  background: var(--log-bg);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overscroll-behavior: contain;
+}
+
+.inline-probe-state {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inline-probe--compact {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-content: start;
+  padding: 9px;
+}
+
+.inline-probe--compact .inline-probe-copy {
+  gap: 0;
+}
+
+.inline-probe--compact .inline-probe-copy strong {
+  font-size: var(--font-xs);
+}
+
+.inline-probe--compact .inline-probe-state {
+  justify-content: flex-start;
+}
+
+.inline-probe--compact .soft-badge {
+  min-height: 28px;
+  max-width: 100%;
+}
+
+.inline-probe--compact .secondary-action {
+  min-height: 28px;
+  padding-inline: 9px;
+  font-size: var(--font-xs);
+}
+
+.inline-probe--strip {
+  grid-template-columns: minmax(220px, 1fr) auto;
+  padding: 11px 12px;
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--surface-muted) 88%, var(--primary) 6%), transparent 72%),
+    var(--surface);
+}
+
+.inline-probe--detail {
+  align-items: start;
+}
+
+.inline-probe--detail .inline-probe-state {
+  padding-top: 1px;
+}
+
+.inline-probe.ok .soft-badge { color: var(--success); border-color: color-mix(in srgb, var(--success) 34%, var(--border)); background: var(--success-soft); }
+.inline-probe.failed .soft-badge { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 38%, var(--border)); background: var(--danger-soft); }
+.inline-probe.warning .soft-badge { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, var(--border)); background: var(--warning-soft); }
+
+.spin-icon {
+  animation: probeSpin 900ms linear infinite;
+}
+
+@keyframes probeSpin {
+  to { transform: rotate(360deg); }
+}
+
 .metric-grid { display: grid; gap: 8px; }
 .block-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -418,6 +553,13 @@ label.hidden { display: none; }
   .toast { width: 100%; min-width: 0; max-width: none; }
   .confirm-dialog { width: calc(100vw - 24px); min-width: 0; }
   .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .inline-probe {
+    grid-template-columns: 1fr;
+  }
+  .inline-probe-state {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 ::selection { color: var(--bg); background: var(--primary); }

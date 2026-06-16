@@ -76,7 +76,7 @@ watch(activeStoreKey, () => {
   if (busy.value && !isWeixinConversation(active)) return;
   const shouldFollow = isNearBottom();
   liveMessages.value = nextMessages;
-  scrollToBottom({ force: shouldFollow });
+  scrollToBottom({ force: shouldFollow, smooth: shouldFollow });
 });
 
 function isWeixinConversation(item: ConversationSummary) {
@@ -89,7 +89,7 @@ function isNearBottom(threshold = 100) {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
 }
 
-function scrollToBottom(options: { smooth?: boolean; force?: boolean } = {}) {
+function scrollToBottom(options: { smooth?: boolean; force?: boolean; doublePass?: boolean } = {}) {
   const run = () => {
     const el = scroller.value;
     if (!el) return;
@@ -100,7 +100,7 @@ function scrollToBottom(options: { smooth?: boolean; force?: boolean } = {}) {
   if (options.force || isNearBottom()) {
     void nextTick(() => {
       run();
-      requestAnimationFrame(run);
+      if (options.doublePass) requestAnimationFrame(run);
     });
   }
 }
@@ -114,7 +114,7 @@ async function openConversation(id: string, options: { force?: boolean } = {}) {
   await conversations.select(id, { force: true });
   liveMessages.value = [...(conversations.active?.messages || [])];
   connectSocket(id);
-  scrollToBottom({ force: true });
+  scrollToBottom({ force: true, doublePass: true });
 }
 
 function newConversation() {
@@ -297,7 +297,7 @@ function handleSocketEvent(data: Record<string, any>) {
     conversations.active = data.conversation;
     if (data.conversation?.messages?.length) liveMessages.value = [...data.conversation.messages];
     void conversations.reloadList(true);
-    scrollToBottom({ force: shouldFollow });
+    scrollToBottom({ force: shouldFollow, smooth: shouldFollow, doublePass: shouldFollow });
   }
   if (data.type === "trace") {
     metrics.trace = data.trace_id ? String(data.trace_id).slice(-10) : "--";
@@ -357,7 +357,7 @@ function handleSocketEvent(data: Record<string, any>) {
     metrics.status = data.message || "出错";
   }
   if (shouldFollow || ["user", "assistant_start", "llm_delta", "assistant_attachment", "turn_done"].includes(String(data.type))) {
-    scrollToBottom({ force: shouldFollow });
+    scrollToBottom({ force: shouldFollow, smooth: shouldFollow, doublePass: shouldFollow });
   }
 }
 

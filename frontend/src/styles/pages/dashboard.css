@@ -174,12 +174,19 @@
 .sidebar-scope {
   padding: 8px 8px 6px; border: 1px solid var(--border);
   border-radius: var(--radius-md); background: var(--surface-muted);
+  --scope-surface: color-mix(in srgb, var(--surface-muted) 94%, var(--info) 6%);
+  --scope-primary: color-mix(in srgb, var(--primary) 26%, transparent);
+  --scope-info: color-mix(in srgb, var(--info) 15%, transparent);
+  --scope-line: color-mix(in srgb, var(--info) 76%, var(--text-muted));
+  --scope-active-line: var(--primary);
+  --scope-midline: color-mix(in srgb, var(--text-muted) 18%, transparent);
 }
 .scope-header { display: flex; justify-content: space-between; color: var(--text-muted); font-size: var(--font-xs); font-weight: 700; margin-bottom: 4px; }
 .sidebar-scope canvas {
   display: block; width: 100%; aspect-ratio: 4 / 1;
-  border-radius: var(--radius-sm); background: #0b0d0b;
-  border: 1px solid rgba(255,255,255,0.03);
+  border-radius: var(--radius-sm);
+  background: var(--scope-surface);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 .sidebar-scope .level-track { height: 3px; margin-top: 4px; overflow: hidden; border-radius: 999px; background: var(--border); }
 .sidebar-scope .level-bar { display: block; width: 0%; height: 100%; background: var(--primary); transition: width 50ms linear; }
@@ -223,7 +230,7 @@
 
 .transcript {
   flex: 1; min-height: 0; overflow-y: auto;
-  padding: 18px 12px 10px; scroll-behavior: smooth;
+  padding: 18px 12px 10px;
 }
 
 .message-row {

@@ -22,6 +22,7 @@ interface AssetProgress {
   done: number;
   total: number;
   failed: number;
+  phase: "idle" | "reading" | "uploading" | "processing" | "refreshing" | "saving";
 }
 
 interface AssetConfigForm {
@@ -63,7 +64,7 @@ const DASHSCOPE_CHAT_COMPLETIONS_URL = "https://dashscope.aliyuncs.com/compatibl
 const DEFAULT_STICKER_VISION_MODEL = "qwen3-vl-plus";
 
 function initialProgress(): AssetProgress {
-  return { active: false, label: "", done: 0, total: 0, failed: 0 };
+  return { active: false, label: "", done: 0, total: 0, failed: 0, phase: "idle" };
 }
 
 function defaultAssetConfig(): AssetConfigForm {
@@ -212,33 +213,47 @@ export const useAssetsStore = defineStore("assets", {
     },
     async upload(files: StickerUploadFile[]) {
       if (!files.length) return;
-      this.progress = { active: true, label: "上传素材", done: 0, total: 100, failed: 0 };
+      this.progress = { active: true, label: "准备上传", done: Math.max(this.progress.done, 18), total: 100, failed: 0, phase: "uploading" };
       this.error = "";
       try {
+        this.progress = { ...this.progress, label: "正在上传", phase: "uploading" };
         const data = await uploadStickerBatch(files, "all", true, {
           onUploadProgress: (progress) => {
-            this.progress.active = true;
-            this.progress.label = progress.percent >= 100 ? "服务端识别中" : "上传素材";
-            this.progress.total = 100;
-            this.progress.done = progress.percent;
+            const percent = Number.isFinite(progress.percent) ? Math.max(0, Math.min(100, progress.percent)) : 0;
+            const done = Math.round(18 + percent * 0.54);
+            this.progress = {
+              active: true,
+              label: percent >= 100 ? "服务端识别中" : "正在上传",
+              done,
+              total: 100,
+              failed: 0,
+              phase: percent >= 100 ? "processing" : "uploading",
+            };
           },
         });
-        this.progress = { active: true, label: "刷新素材库", done: 96, total: 100, failed: 0 };
-        this.stickers = data.stickers || this.stickers;
+        this.progress = { active: true, label: "整理结果", done: 76, total: 100, failed: 0, phase: "processing" };
         const uploaded = (data.results || []).filter((item) => item.ok && item.sticker).map((item) => item.sticker as Sticker);
         this.progress.failed = (data.results || []).filter((item) => !item.ok).length;
+        if (uploaded.length) {
+          const merged = [...uploaded, ...this.stickers.filter((item) => !uploaded.some((next) => next.id === item.id))];
+          this.stickers = merged;
+        } else {
+          this.stickers = data.stickers || this.stickers;
+        }
         this.selectedIds = uploaded.map((item) => item.id);
         this.selectedId = uploaded[0]?.id || this.selectedId;
-        await this.reload(this.filters);
+        this.progress = { active: true, label: "刷新素材库", done: 94, total: 100, failed: this.progress.failed, phase: "refreshing" };
+        this.filters = {};
+        await this.reload({});
         if (this.selectedId && !this.stickers.some((item) => item.id === this.selectedId)) {
           this.selectedId = this.stickers[0]?.id || "";
         }
-        this.progress.done = 100;
+        this.progress = { active: true, label: "上传完成", done: 100, total: 100, failed: this.progress.failed, phase: "idle" };
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
         throw error;
       } finally {
-        this.progress.active = false;
+        this.progress = { ...this.progress, active: false, phase: "idle" };
       }
     },
     async saveSticker(stickerId: string, patch: Partial<Sticker>) {
@@ -258,7 +273,7 @@ export const useAssetsStore = defineStore("assets", {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
       this.cancelRequested = false;
-      this.progress = { active: true, label, done: 0, total: targets.length, failed: 0 };
+      this.progress = { active: true, label, done: 0, total: targets.length, failed: 0, phase: "processing" };
       for (const id of targets) {
         if (this.cancelRequested) break;
         try {
@@ -304,7 +319,7 @@ export const useAssetsStore = defineStore("assets", {
     async bulk(action: "reanalyze" | "approve" | "delete", ids: string[], label: string, includeFiltered = false) {
       const targets = ids.filter(Boolean);
       if (!includeFiltered && !targets.length) return;
-      this.progress = { active: true, label, done: 0, total: includeFiltered ? this.stickers.length || 1 : targets.length, failed: 0 };
+      this.progress = { active: true, label, done: 0, total: includeFiltered ? this.stickers.length || 1 : targets.length, failed: 0, phase: "processing" };
       try {
         const data = await bulkStickerAction({ action, ids: targets, include_filtered: includeFiltered, filters: this.filters });
         this.stickers = data.stickers || this.stickers;
@@ -326,7 +341,7 @@ export const useAssetsStore = defineStore("assets", {
     async approve(ids: string[]) {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
-      this.progress = { active: true, label: "通过素材", done: 0, total: targets.length, failed: 0 };
+      this.progress = { active: true, label: "通过素材", done: 0, total: targets.length, failed: 0, phase: "processing" };
       try {
         for (const id of targets) {
           const data = await approveSticker(id);
@@ -345,7 +360,7 @@ export const useAssetsStore = defineStore("assets", {
     async remove(ids: string[]) {
       const targets = ids.filter(Boolean);
       if (!targets.length) return;
-      this.progress = { active: true, label: "删除素材", done: 0, total: targets.length, failed: 0 };
+      this.progress = { active: true, label: "删除素材", done: 0, total: targets.length, failed: 0, phase: "processing" };
       try {
         for (const id of targets) {
           const data = await deleteSticker(id);

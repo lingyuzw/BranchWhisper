@@ -419,7 +419,7 @@
 
 .integration-probe-panel {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -432,19 +432,12 @@
   gap: 8px;
   align-items: center;
 }
-.integration-probe-panel pre {
-  max-height: 118px;
-  margin: -2px 0 2px;
-  padding: 8px 9px;
-  overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-soft);
-  background: var(--log-bg);
-  font-size: 11px;
-  line-height: 1.45;
+.integration-probe-panel .inline-probe {
+  background: var(--surface);
+}
+
+.integration-probe-panel .inline-probe + .probe-row {
+  margin-top: 4px;
 }
 
 .integration-log {

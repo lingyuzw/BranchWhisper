@@ -18,6 +18,7 @@ import {
   X,
 } from "@lucide/vue";
 import type { IntegrationItem } from "@/api/integrations";
+import InlineProbe from "@/components/layout/InlineProbe.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
 import { useUiStore } from "@/stores/ui";
@@ -35,6 +36,25 @@ const bridgeRunning = computed(() => ["running", "starting"].includes(String(sel
 const loginReady = computed(() => selectedAccounts.value.length > 0);
 const textProbeReady = computed(() => Boolean(integrations.testResult && !integrations.testResult.startsWith("失败")));
 const voiceProbeReady = computed(() => Boolean(integrations.voiceResult && integrations.voiceResult.includes("接口已接收")));
+type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+const dialogProbeRunning = ref(false);
+const voiceProbeRunning = ref(false);
+const stickerProbeRunning = ref(false);
+const dialogProbeStatus = computed<ProbeStatus>(() => {
+  if (dialogProbeRunning.value) return "running";
+  if (!integrations.testResult) return "idle";
+  return integrations.testResult.startsWith("失败") ? "failed" : "ok";
+});
+const voiceProbeStatus = computed<ProbeStatus>(() => {
+  if (voiceProbeRunning.value) return "running";
+  if (!integrations.voiceResult) return "idle";
+  return integrations.voiceResult.includes("失败") ? "failed" : "ok";
+});
+const stickerProbeStatus = computed<ProbeStatus>(() => {
+  if (stickerProbeRunning.value) return "running";
+  if (!integrations.stickerResult) return "idle";
+  return integrations.stickerResult.includes("失败") ? "failed" : "ok";
+});
 const integrationSteps = computed(() => [
   {
     label: "登录",
@@ -211,34 +231,56 @@ async function startBridge() {
 
 async function runDialogProbe() {
   showActionMessage("正在测试真实微信 dialog 链路...");
+  dialogProbeRunning.value = true;
   try {
     await integrations.runDialogTest();
     showActionMessage("文本回复链路正常", "success");
   } catch (error) {
     integrations.testResult = `失败：${errorText(error)}`;
     showActionMessage(`文本回复测试失败：${errorText(error)}`, "error");
+  } finally {
+    dialogProbeRunning.value = false;
   }
 }
 
 async function runVoiceProbe() {
   showActionMessage("正在测试语音发送...");
+  voiceProbeRunning.value = true;
   try {
     await integrations.runVoiceTest();
     showActionMessage(integrations.voiceResult.includes("失败") ? "语音测试失败，已生成诊断" : "语音测试已发送", integrations.voiceResult.includes("失败") ? "warning" : "success");
   } catch (error) {
     integrations.voiceResult = `失败：${errorText(error)}`;
     showActionMessage(`语音测试失败：${errorText(error)}`, "error");
+  } finally {
+    voiceProbeRunning.value = false;
   }
 }
 
 async function runStickerProbe() {
   showActionMessage("正在测试素材发送...");
+  stickerProbeRunning.value = true;
   try {
     await integrations.runStickerTest();
     showActionMessage(integrations.stickerResult.includes("失败") ? "素材测试失败，已生成诊断" : "素材测试已发送", integrations.stickerResult.includes("失败") ? "warning" : "success");
   } catch (error) {
     integrations.stickerResult = `失败：${errorText(error)}`;
     showActionMessage(`素材测试失败：${errorText(error)}`, "error");
+  } finally {
+    stickerProbeRunning.value = false;
+  }
+}
+
+async function copyProbeResult(label: string, detail: string) {
+  if (!detail.trim()) {
+    showActionMessage(`${label}没有可复制结果`, "warning");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(detail);
+    showActionMessage(`${label}结果已复制`, "success");
+  } catch {
+    showActionMessage(`${label}结果复制失败`, "error");
   }
 }
 
@@ -455,19 +497,52 @@ function downloadLogs() {
             <section class="integration-probe-panel">
               <div class="probe-row">
                 <input v-model="integrations.testText" type="text" placeholder="测试文本回复" @keydown.enter="runDialogProbe" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="runDialogProbe"><Play :size="15" />文本回复</button>
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning || dialogProbeRunning" @click="runDialogProbe"><Play :size="15" />文本回复</button>
               </div>
-              <pre v-if="integrations.testResult">{{ integrations.testResult }}</pre>
+              <InlineProbe
+                variant="strip"
+                title="文本回复链路"
+                summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
+                :status="dialogProbeStatus"
+                :status-text="dialogProbeStatus === 'ok' ? '回复正常' : dialogProbeStatus === 'failed' ? '回复失败' : dialogProbeStatus === 'running' ? '检测中' : '未检测'"
+                :detail="integrations.testResult"
+                action-text="运行"
+                :disabled="!selected || integrations.actioning"
+                @run="runDialogProbe"
+                @copy="copyProbeResult('文本回复', integrations.testResult)"
+              />
               <div class="probe-row">
                 <input v-model="integrations.voiceText" type="text" placeholder="测试语音发送" @keydown.enter="runVoiceProbe" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="runVoiceProbe"><Play :size="15" />语音发送</button>
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning || voiceProbeRunning" @click="runVoiceProbe"><Play :size="15" />语音发送</button>
               </div>
-              <pre v-if="integrations.voiceResult">{{ integrations.voiceResult }}</pre>
+              <InlineProbe
+                variant="strip"
+                title="语音发送链路"
+                summary="生成一段短语音并调用微信发送，验证 TTS、转码和发送器。"
+                :status="voiceProbeStatus"
+                :status-text="voiceProbeStatus === 'ok' ? '接口已接收' : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
+                :detail="integrations.voiceResult"
+                action-text="运行"
+                :disabled="!selected || integrations.actioning"
+                @run="runVoiceProbe"
+                @copy="copyProbeResult('语音发送', integrations.voiceResult)"
+              />
               <div class="probe-row">
                 <input v-model="integrations.stickerText" type="text" placeholder="测试素材发送" @keydown.enter="runStickerProbe" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="runStickerProbe"><Play :size="15" />素材发送</button>
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning || stickerProbeRunning" @click="runStickerProbe"><Play :size="15" />素材发送</button>
               </div>
-              <pre v-if="integrations.stickerResult">{{ integrations.stickerResult }}</pre>
+              <InlineProbe
+                variant="strip"
+                title="素材发送链路"
+                summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
+                :status="stickerProbeStatus"
+                :status-text="stickerProbeStatus === 'ok' ? '接口已接收' : stickerProbeStatus === 'failed' ? '发送失败' : stickerProbeStatus === 'running' ? '检测中' : '未检测'"
+                :detail="integrations.stickerResult"
+                action-text="运行"
+                :disabled="!selected || integrations.actioning"
+                @run="runStickerProbe"
+                @copy="copyProbeResult('素材发送', integrations.stickerResult)"
+              />
             </section>
             <div class="integration-log-toolbar">
               <select v-model="integrations.logScope" @change="refreshLogs">

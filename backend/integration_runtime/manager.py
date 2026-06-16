@@ -83,6 +83,16 @@ VOICE_FALSE_POSITIVE_RE = re.compile(
     r"(推荐|歌|歌曲|音乐|听歌|听听歌|歌名|听听看|听听看看|好不好听|听起来|听上去|听着|试听|听听这首)"
 )
 VOICE_EXACT_TEXTS = {"语音", "说话", "你说话", "说两句", "说一句", "说呀", "说嘛", "说吗", "快说", "那你快说呀", "听听"}
+KNOWLEDGE_REFERENCE_RE = re.compile(r"(这|这个|那|那个|这句|这话|这句话).{0,8}(谁说的|谁写的|出自|出处|典故|什么梗|哪来的|来源|什么意思)")
+MEMORY_LOOKUP_SLOTS = [
+    ("最喜欢的歌手", ("最喜欢的歌手", "喜欢的歌手", "歌手")),
+    ("音乐偏好", ("喜欢的歌", "喜欢的歌曲", "音乐偏好", "单曲循环", "听什么歌")),
+    ("名字", ("名字", "叫什么")),
+    ("身份", ("身份", "是谁")),
+    ("生日", ("生日",)),
+    ("住址", ("住哪", "住在哪里", "住在", "现居", "来自")),
+    ("爱好", ("爱好", "喜欢什么")),
+]
 DEFAULT_WEIXIN_OC_BASE_URL = "https://ilinkai.weixin.qq.com"
 DEFAULT_WEIXIN_CDN_BASE_URL = "https://novac2c.cdn.weixin.qq.com/c2c"
 DEFAULT_WEIXIN_OC_BOT_TYPE = "3"
@@ -1778,11 +1788,17 @@ class ExternalDialogEngine:
             reply = format_reply_paragraphs(clean_reply_text(repeat_text) or repeat_text)
             return reply, None, "", 0, 0, diag
 
+        memory_answer = self.answer_from_memory_lookup(settings, user_text)
+        if memory_answer:
+            diag["memory_direct_answer"] = True
+            return memory_answer, None, memory_answer, 0, 0, diag
+
         request_text = self.build_request_text(user_text, conversation)
         if voice_requested:
             request_text += "\n\n本轮任务：用户要听语音。请直接写一段会被朗读的自然内容，不要拒绝，不要说自己是文字 AI。"
         tool_started = time.perf_counter()
-        tool_result = await self.maybe_execute_tool(settings, user_text)
+        tool_query_text = self.expand_tool_query(user_text, conversation)
+        tool_result = await self.maybe_execute_tool(settings, tool_query_text)
         tool_ms = int((time.perf_counter() - tool_started) * 1000) if tool_result else 0
         direct_answer = direct_answer_from_tool(tool_result)
         if direct_answer:
@@ -1804,6 +1820,84 @@ class ExternalDialogEngine:
         diag["reply_len"] = len(reply)
         diag["reply_clean_len"] = len(clean_for_tts(reply))
         return reply, tool_result, "", tool_ms, llm_ms, diag
+
+    def expand_tool_query(self, user_text: str, conversation: dict) -> str:
+        text = str(user_text or "").strip()
+        if not KNOWLEDGE_REFERENCE_RE.search(text):
+            return text
+        history = conversation.get("messages") or []
+        for item in reversed(history[-8:]):
+            if item.get("role") != "user":
+                continue
+            previous = compact_text(str(item.get("content") or "").strip(), 120)
+            if not previous or previous == text:
+                continue
+            if re.search(r"[?？]|吗$|么$|(谁说的|谁写的|出自|出处|典故|什么梗|哪来的|来源|什么意思)$", previous):
+                continue
+            return f"{previous} {text}"
+        return text
+
+    def answer_from_memory_lookup(self, settings: SessionSettings, user_text: str) -> str:
+        if not self.memory_store:
+            return ""
+        text = re.sub(r"\s+", "", str(user_text or ""))
+        if not text or not re.search(r"[?？]|吗$|么$|谁|什么|哪个|哪位|哪首|记得|知道", text):
+            return ""
+        if not re.search(r"(我|我的)", text):
+            return ""
+        if not any(hint in text for hint in ("你知道", "知道我", "你记得", "记得我", "还记得", "记不记得", "是谁", "什么", "哪个", "哪位", "哪首")):
+            return ""
+
+        memories = self.memory_store.relevant_memories(settings, user_text, mode=memory_mode(settings))
+        if not memories:
+            return ""
+        slot_labels = self.memory_lookup_slots(text)
+        best = self.best_memory_lookup_match(memories, slot_labels, text)
+        if not best:
+            return ""
+        value = compact_text(str(best.get("value") or ""), 80).strip()
+        if not value:
+            return ""
+        value = re.sub(r"^用户(?:喜欢|不喜欢|名字或身份是|提到在|最近/当前|觉得)", "", value).strip()
+        value = re.sub(r"^(是|为|：|:)", "", value).strip()
+        if not value:
+            return ""
+        return f"记得，是{value}。"
+
+    def memory_lookup_slots(self, text: str) -> list[str]:
+        if "歌手" in text:
+            return ["最喜欢的歌手"]
+        slots = []
+        for slot, hints in MEMORY_LOOKUP_SLOTS:
+            if any(hint in text for hint in hints):
+                slots.append(slot)
+        return slots
+
+    def best_memory_lookup_match(self, memories: list[dict], slots: list[str], text: str) -> dict | None:
+        best: tuple[float, dict] | None = None
+        text_chars = set(text)
+        for item in memories:
+            if item.get("memory_type", "semantic_fact") == "episodic_event":
+                continue
+            key = str(item.get("key") or "")
+            value = str(item.get("value") or "")
+            haystack = key + value
+            score = 0.0
+            for slot in slots:
+                if slot and slot in haystack:
+                    score += 8.0
+                else:
+                    slot_chars = set(slot)
+                    if slot_chars:
+                        score += len(slot_chars.intersection(set(haystack))) / len(slot_chars)
+            if not slots and text_chars:
+                score += len(text_chars.intersection(set(haystack))) / max(1, min(len(text_chars), 18))
+            score += float(item.get("confidence") or 0) + float(item.get("importance") or 0)
+            if item.get("pinned"):
+                score += 1.0
+            if score >= 3.0 and (best is None or score > best[0]):
+                best = (score, item)
+        return best[1] if best else None
 
     def build_messages(self, settings: SessionSettings, conversation: dict, user_text: str, request_text: str, *, voice_requested: bool = False) -> list[dict[str, str]]:
         messages = [{"role": "system", "content": settings.system}]

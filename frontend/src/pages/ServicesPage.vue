@@ -4,6 +4,8 @@ import { Copy, Power, RefreshCcw, RefreshCw, Square, Trash2, X } from "@lucide/v
 import ResourceSection from "@/components/services/ResourceSection.vue";
 import ServiceCard from "@/components/services/ServiceCard.vue";
 import ServiceLogsPanel from "@/components/services/ServiceLogsPanel.vue";
+import InlineProbe from "@/components/layout/InlineProbe.vue";
+import { runLocalModelsDiagnostic } from "@/api/diagnostics";
 import type { ServiceSummary } from "@/api/services";
 import { useServicesStore } from "@/stores/services";
 import { useUiStore } from "@/stores/ui";
@@ -13,6 +15,8 @@ const ui = useUiStore();
 const bulkBusy = computed(() => Boolean(services.bulkPending));
 const detailServiceId = ref("");
 const detailService = computed(() => services.services.find((item) => item.id === detailServiceId.value) || null);
+type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+const serviceProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
 
 onMounted(async () => {
   try {
@@ -163,6 +167,29 @@ function formatJson(value: unknown) {
   }
 }
 
+async function runServiceProbe() {
+  serviceProbe.value = { status: "running", text: "检测中", detail: "" };
+  try {
+    const result = await runLocalModelsDiagnostic();
+    const failed = (result.checks || []).filter((item) => !item.ok);
+    serviceProbe.value = {
+      status: failed.length ? "failed" : "ok",
+      text: failed.length ? `${failed.length} 项异常` : `${result.checks.length} 项正常`,
+      detail: formatJson(result),
+    };
+  } catch (error) {
+    serviceProbe.value = { status: "failed", text: errorMessage(error), detail: "" };
+  }
+}
+
+async function copyServiceProbe() {
+  if (!serviceProbe.value.detail.trim()) {
+    ui.warning("没有可复制的检测结果");
+    return;
+  }
+  await copyText("服务检测结果", serviceProbe.value.detail);
+}
+
 async function copyText(label: string, text: string) {
   const value = String(text || "").trim();
   if (!value) {
@@ -193,6 +220,18 @@ async function copyText(label: string, text: string) {
       </section>
 
       <ResourceSection :resources="services.resources" />
+
+      <InlineProbe
+        variant="strip"
+        title="本地服务 Health"
+        summary="最小调用 ASR、LLM、TTS 和 BranchWhisper 主后端，定位端口、路径和健康检查问题。"
+        :status="serviceProbe.status"
+        :status-text="serviceProbe.text"
+        :detail="serviceProbe.detail"
+        action-text="运行检测"
+        @run="runServiceProbe"
+        @copy="copyServiceProbe"
+      />
 
       <div class="service-list">
         <ServiceCard

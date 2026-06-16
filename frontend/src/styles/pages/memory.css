@@ -9,11 +9,11 @@
 
 .memory-workbench {
   min-width: 0;
-  min-height: calc(100vh - var(--topbar-h) - 142px);
+  min-height: clamp(520px, calc(100vh - var(--topbar-h) - 142px), 760px);
   display: grid;
   grid-template-columns: minmax(244px, 260px) minmax(0, 1fr);
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .memory-side-panel,
@@ -27,10 +27,11 @@
 
 .memory-side-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: start;
   gap: 12px;
   padding: 14px;
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .memory-side-head {
@@ -127,10 +128,30 @@
   border-top: 1px solid var(--border);
 }
 
+.memory-admission-probe {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  align-items: stretch;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 92%, var(--primary) 5%);
+}
+
+.memory-admission-probe textarea {
+  min-height: 104px;
+  height: 100%;
+  max-height: 180px;
+  resize: vertical;
+  font-size: var(--font-sm);
+}
+
 .memory-page-panel {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 14px;
   overflow: hidden;
@@ -338,6 +359,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .memory-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .memory-admission-probe {
     grid-template-columns: 1fr;
   }
 }

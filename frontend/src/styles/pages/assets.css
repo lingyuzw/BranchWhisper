@@ -1,6 +1,7 @@
 .assets-page {
   display: grid;
-  gap: 16px;
+  gap: 12px;
+  align-content: start;
 }
 
 .assets-head small {
@@ -96,16 +97,71 @@
 .asset-config-strip {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(6, minmax(128px, 1fr));
-  gap: 12px;
-  align-items: end;
-  padding: 14px;
+  grid-template-columns: minmax(420px, 1.35fr) minmax(360px, 1fr) minmax(160px, auto);
+  gap: 14px;
+  align-items: stretch;
+  padding: 12px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--primary) 6%), var(--surface));
 }
 
-.asset-config-strip label:nth-child(2),
-.asset-config-strip label:nth-child(4) {
-  grid-column: span 2;
+.asset-probe-strip {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.asset-config-group {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  padding-right: 14px;
+  border-right: 1px solid var(--border);
+}
+
+.asset-config-group header {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.asset-config-group strong {
+  color: var(--text);
+  font-size: var(--font-sm);
+}
+
+.asset-config-group small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-config-fields {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.52fr) minmax(220px, 1.3fr) repeat(2, minmax(116px, 0.72fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.asset-config-fields.policy {
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+}
+
+.asset-config-fields .wide {
+  grid-column: span 1;
+}
+
+.asset-config-actions {
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  gap: 8px;
 }
 
 .asset-config-strip label,
@@ -202,7 +258,7 @@
 
 .asset-progress-panel {
   display: grid;
-  gap: 10px;
+  gap: 9px;
   padding: 12px 14px;
   background: color-mix(in srgb, var(--surface) 92%, var(--primary) 8%);
 }
@@ -219,10 +275,30 @@
   color: var(--text);
 }
 
-.asset-progress-head span,
+.asset-progress-head strong {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.asset-progress-head strong span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+  border-radius: 999px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: var(--font-xs);
+}
+
+.asset-progress-head em,
 .asset-progress-panel small {
   color: var(--text-muted);
   font-size: var(--font-sm);
+  font-style: normal;
 }
 
 .asset-progress-track {
@@ -249,47 +325,58 @@
 
 .asset-workbench {
   min-width: 0;
+  height: clamp(520px, calc(100vh - var(--topbar-h) - 360px), 760px);
+  min-height: 0;
   display: grid;
-  grid-template-columns: 220px minmax(360px, 1fr);
-  gap: 14px;
-  align-items: start;
+  grid-template-columns: 210px minmax(360px, 1fr);
+  gap: 12px;
+  align-items: stretch;
 }
 
 .asset-workbench.detail-open {
-  grid-template-columns: 220px minmax(360px, 1fr) minmax(300px, 340px);
+  grid-template-columns: 210px minmax(420px, 1fr) minmax(320px, 360px);
 }
 
 .asset-sidebar,
 .asset-detail-panel,
 .asset-gallery-panel {
   min-width: 0;
+  min-height: 0;
 }
 
 .asset-sidebar {
   display: grid;
   gap: 12px;
+  align-content: start;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
 .asset-filter-card,
 .asset-detail-panel {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .asset-gallery-panel {
-  padding: 12px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding: 10px;
+  overflow: hidden;
 }
 
 .asset-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 148px));
+  grid-template-columns: repeat(auto-fill, minmax(118px, 142px));
   justify-content: start;
   align-items: start;
-  gap: 10px;
-  max-height: calc(100vh - 350px);
-  min-height: min(440px, calc(100vh - 350px));
+  gap: 9px;
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   padding-right: 2px;
 }
 
@@ -349,7 +436,7 @@
 
 .asset-card-preview img {
   width: 100%;
-  max-height: 148px;
+  max-height: 132px;
   aspect-ratio: 1;
   border-radius: calc(var(--radius-md) - 3px);
   object-fit: cover;
@@ -394,7 +481,7 @@
 
 .asset-card-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 26px;
   gap: 4px;
 }
 
@@ -410,6 +497,12 @@
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.asset-load-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
 }
 
 .asset-card-actions button:hover {
@@ -441,17 +534,28 @@
 }
 
 .asset-detail-panel.empty {
-  min-height: 260px;
   place-items: center;
   color: var(--text-muted);
   text-align: center;
 }
 
+.asset-detail-panel {
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden;
+}
+
 .asset-detail-head {
+  position: sticky;
+  z-index: 2;
+  top: 0;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .asset-detail-close {
@@ -459,8 +563,8 @@
 }
 
 .asset-detail-head img {
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--radius-md);
   object-fit: cover;
   background: var(--surface-muted);
@@ -483,15 +587,15 @@
 
 .asset-detail-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .asset-detail-meta span {
   min-width: 0;
   display: grid;
   gap: 2px;
-  padding: 8px 10px;
+  padding: 6px 7px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-soft);
@@ -509,8 +613,15 @@
 }
 
 .asset-detail-panel textarea {
-  min-height: 72px;
+  min-height: 58px;
   resize: vertical;
+}
+
+.asset-detail-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
 .asset-detail-grid {
@@ -524,14 +635,16 @@
 }
 
 .asset-detail-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
   align-items: center;
 }
 .asset-detail-actions .primary-action,
 .asset-detail-actions .secondary-action {
-  flex: 1 1 92px;
+  min-height: 32px;
+  padding-inline: 8px;
+  font-size: var(--font-xs);
 }
 
 .asset-error {
@@ -550,16 +663,34 @@
 
 @media (max-width: 1320px) {
   .asset-config-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+  .asset-config-group {
+    padding-right: 0;
+    padding-bottom: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
   }
   .asset-workbench {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 200px minmax(360px, 1fr);
   }
   .asset-workbench.detail-open {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 200px minmax(360px, 1fr) minmax(300px, 340px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .asset-workbench,
+  .asset-workbench.detail-open {
+    height: auto;
+    grid-template-columns: 220px minmax(0, 1fr);
   }
   .asset-detail-panel {
     grid-column: 1 / -1;
+    max-height: 560px;
+  }
+  .asset-gallery-panel {
+    max-height: 560px;
   }
 }
 
@@ -575,13 +706,14 @@
     width: 100%;
   }
   .asset-config-strip,
+  .asset-probe-strip,
   .asset-bulk-bar,
   .asset-workbench {
     grid-template-columns: 1fr;
   }
-  .asset-config-strip label:nth-child(2),
-  .asset-config-strip label:nth-child(4) {
-    grid-column: auto;
+  .asset-config-fields,
+  .asset-config-fields.policy {
+    grid-template-columns: 1fr;
   }
   .asset-bulk-actions {
     justify-content: flex-start;
