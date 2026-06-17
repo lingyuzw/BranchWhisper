@@ -204,8 +204,13 @@ export const useServicesStore = defineStore("services", {
       await logReloadPromise;
     },
     async select(id: string) {
+      if (this.selectedId === id) {
+        await this.refreshLogs();
+        return;
+      }
       this.selectedId = id;
-      await this.refreshLogs();
+      this.logs = "日志读取中...";
+      void this.refreshLogs();
     },
     async start(id: string) {
       if (this.pending[id]) return;
@@ -337,7 +342,7 @@ export const useServicesStore = defineStore("services", {
       }, 6000);
       this.logHandle = window.setInterval(() => {
         if (this.live) void this.refreshLogs(true);
-      }, 1600);
+      }, 3000);
     },
     stopPolling() {
       if (this.pollHandle) window.clearInterval(this.pollHandle);

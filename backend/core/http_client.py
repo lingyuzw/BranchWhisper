@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from ipaddress import ip_address
 from urllib.parse import urlsplit
 
@@ -30,3 +31,32 @@ def trust_env_for_url(url: str) -> bool:
 def httpx_client_for_url(url: str, **kwargs) -> httpx.AsyncClient:
     kwargs.setdefault("trust_env", trust_env_for_url(url))
     return httpx.AsyncClient(**kwargs)
+
+
+async def request_with_retries(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    attempts: int = 2,
+    delay: float = 0.35,
+    **kwargs,
+) -> httpx.Response:
+    """Retry short-lived connection failures from remote API providers."""
+    attempts = max(1, int(attempts or 1))
+    last_error: httpx.HTTPError | None = None
+    for index in range(attempts):
+        try:
+            request = getattr(client, "request", None)
+            if request is not None:
+                return await request(method, url, **kwargs)
+            method_func = getattr(client, method.lower())
+            return await method_func(url, **kwargs)
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadError) as exc:
+            last_error = exc
+            if index >= attempts - 1:
+                raise
+            if delay > 0:
+                await asyncio.sleep(delay)
+    if last_error:
+        raise last_error
+    raise RuntimeError("request retry loop ended unexpectedly")

@@ -63,7 +63,7 @@ export async function stopAllServices(): Promise<ServiceActionResponse> {
 }
 
 export async function fetchServiceLogs(serviceId: string) {
-  const data = await fetchJson<{ logs?: string }>(`/api/services/${encodeURIComponent(serviceId)}/logs?max_bytes=50000`);
+  const data = await fetchJson<{ logs?: string }>(`/api/services/${encodeURIComponent(serviceId)}/logs?max_bytes=24000`);
   return data.logs || "";
 }
 

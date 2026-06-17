@@ -31,7 +31,9 @@ from core.config import (
 )
 from service_runtime.audio_pipeline import build_asr_request
 from service_runtime.tts_clients import (
+    TtsServiceNotReady,
     build_tts_request,
+    ensure_local_tts_ready,
     save_voice_sample_data_url,
     synthesize_tts_bytes,
     synthesize_tts_wav_bytes,
@@ -292,6 +294,79 @@ class TtsClientRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(captured["url"], "https://api.openai.com/v1/audio/speech")
         self.assertEqual(captured["json"]["input"], "测试语音")
         self.assertEqual(captured["headers"]["Authorization"], "Bearer sk-test")
+
+    async def test_local_tts_health_loading_blocks_tts_request(self) -> None:
+        import service_runtime.tts_clients as tts_clients
+
+        settings = default_settings()
+        settings.tts_provider_mode = "local"
+        settings.tts_url = "http://127.0.0.1:50000/tts"
+        calls: list[tuple[str, str]] = []
+
+        class FakeHealthResponse:
+            status_code = 200
+
+            def json(self):
+                return {"status": "loading", "ready": False}
+
+        class FakeClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, url):
+                calls.append(("GET", url))
+                return FakeHealthResponse()
+
+            def stream(self, method, url, json=None, headers=None):
+                calls.append((method, url))
+                raise AssertionError("POST /tts should not be called while health is not ready")
+
+        original = tts_clients.httpx_client_for_url
+        tts_clients.httpx_client_for_url = lambda url, timeout=None: FakeClient()
+        try:
+            with self.assertRaises(TtsServiceNotReady) as ctx:
+                await synthesize_tts_bytes(settings, "测试语音")
+        finally:
+            tts_clients.httpx_client_for_url = original
+
+        self.assertIn("加载", str(ctx.exception))
+        self.assertEqual(calls, [("GET", "http://127.0.0.1:50000/health")])
+
+    async def test_local_tts_health_error_raises_not_ready_with_detail(self) -> None:
+        import service_runtime.tts_clients as tts_clients
+
+        settings = default_settings()
+        settings.tts_provider_mode = "local"
+        settings.tts_url = "http://127.0.0.1:50000/tts"
+
+        class FakeHealthResponse:
+            status_code = 503
+
+            def json(self):
+                return {"status": "error", "ready": False, "error": "CUDA out of memory"}
+
+        class FakeClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, url):
+                return FakeHealthResponse()
+
+        original = tts_clients.httpx_client_for_url
+        tts_clients.httpx_client_for_url = lambda url, timeout=None: FakeClient()
+        try:
+            with self.assertRaises(TtsServiceNotReady) as ctx:
+                await ensure_local_tts_ready(settings)
+        finally:
+            tts_clients.httpx_client_for_url = original
+
+        self.assertIn("CUDA out of memory", str(ctx.exception))
 
     async def test_synthesize_tts_wav_bytes_wraps_current_voice_pcm(self) -> None:
         import service_runtime.tts_clients as tts_clients

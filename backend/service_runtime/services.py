@@ -92,7 +92,7 @@ class ServiceManager:
         for sid in self.services:
             pid = self._read_service_pid(sid)
             if pid and _is_pid_alive(pid):
-                self.started_at[sid] = time.time()
+                self.started_at[sid] = linux_process_started_at(pid) or time.time()
                 proc = _create_virtual_process(pid)
                 if proc:
                     self.processes[sid] = proc
@@ -204,10 +204,22 @@ class ServiceManager:
             port_open=port_open,
             returncode=returncode,
         )
+        log_error = self.latest_log_error(service_id)
+        if service_log_error_is_fatal(log_error) and runtime_state in {"starting", "warming"}:
+            runtime_state = "failed"
+        if service_startup_timed_out(
+            state=runtime_state,
+            started_at=self.started_at.get(service_id),
+            timeout_sec=float(service.get("startup_ready_timeout_sec", 0) or 0),
+            health=health,
+        ):
+            runtime_state = "failed"
         if runtime_state == "failed" and not running and not port_open and returncode is None:
             runtime_state = "stopped"
-        log_error = self.latest_log_error(service_id)
         runtime_error = service_runtime_error(health, returncode, log_error)
+        if runtime_state == "failed" and returncode is None and not runtime_error and self.started_at.get(service_id):
+            timeout_sec = float(service.get("startup_ready_timeout_sec", 0) or 0)
+            runtime_error = f"服务启动超过 {timeout_sec:g}s 仍未通过健康检查。"
         if runtime_state in {"starting", "warming"}:
             runtime_error = friendly_service_error(log_error) if log_error else ""
         if runtime_state in {"ready", "running", "running_degraded"}:
@@ -283,8 +295,7 @@ class ServiceManager:
         log_handle.write((f"configured command: {configured_command}\n").encode("utf-8", errors="replace"))
         log_handle.write((f"final command: {command}\n").encode("utf-8", errors="replace"))
 
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
+        env = service_process_env()
         kwargs = {
             "cwd": cwd,
             "stdout": log_handle,
@@ -492,6 +503,28 @@ def final_service_command(service_id: str, service: dict) -> str:
     return tune_start_command(service_id, command)
 
 
+def service_process_env(base_env: dict[str, str] | None = None, *, home: Path | None = None) -> dict[str, str]:
+    env = dict(base_env or os.environ)
+    env["PYTHONUNBUFFERED"] = "1"
+    if platform.system() == "Windows":
+        return env
+
+    home_dir = Path(home or env.get("HOME") or Path.home()).expanduser()
+    candidates = (
+        home_dir / "miniconda3" / "bin",
+        home_dir / "miniconda3" / "condabin",
+        home_dir / "anaconda3" / "bin",
+        home_dir / "anaconda3" / "condabin",
+        Path("/opt/conda/bin"),
+        Path("/opt/conda/condabin"),
+    )
+    path_parts = [part for part in env.get("PATH", "").split(os.pathsep) if part]
+    prepend = [str(path) for path in candidates if path.exists() and str(path) not in path_parts]
+    if prepend:
+        env["PATH"] = os.pathsep.join(prepend + path_parts)
+    return env
+
+
 def expand_service_paths(value: str) -> str:
     text = str(value or "")
     if not text:
@@ -528,24 +561,37 @@ def service_runtime_state(
     payload = normalized_health_payload(health)
     compatible = (health or {}).get("compatible") if isinstance(health, dict) else None
     model_status = str(payload.get("status") or "").lower()
+    detail = str(payload.get("detail") or payload.get("message") or payload.get("error") or "").lower()
     ready = payload.get("ready")
 
     if returncode is not None:
         return "failed"
     if isinstance(compatible, dict) and compatible.get("ok") and (running or tracked_running or port_open):
         return "running_degraded"
-    if model_status in {"loading", "warming", "starting"}:
-        return "warming" if model_status == "warming" else "starting"
-    if ready is False:
-        return "starting"
     if model_status in {"error", "failed"}:
         return "failed"
+    if any(marker in model_status for marker in ("failed", "failure", "error", "exception", "traceback")):
+        return "failed"
+    if model_status in {"loading", "warming", "starting"}:
+        return "warming" if model_status == "warming" else "starting"
+    if any(marker in model_status for marker in ("loading", "warming", "starting", "not_started", "not started")):
+        return "warming" if "warming" in model_status else "starting"
+    if health and health.get("ok") is False:
+        status = health.get("status")
+        if isinstance(status, int) and status >= 500 and (running or tracked_running or port_open):
+            if any(marker in detail for marker in ("failed", "failure", "error", "exception", "traceback")):
+                return "failed"
+            if any(marker in detail for marker in ("loading", "warming", "starting", "not_started", "not started")):
+                return "warming" if "warming" in detail else "starting"
+            if ready is False and not detail:
+                return "starting"
+            return "failed"
+    if ready is False:
+        return "starting"
     if health and health.get("ok"):
         return "ready"
     if health and health.get("ok") is False:
         status = health.get("status")
-        if isinstance(status, int) and status >= 500 and (running or tracked_running or port_open):
-            return "failed"
         if status in {404, 405} and (running or tracked_running or port_open):
             return "running_degraded"
         if running or tracked_running or port_open:
@@ -574,12 +620,76 @@ def service_runtime_error(health: dict | None, returncode: int | None, log_error
     return ""
 
 
+def service_startup_timed_out(
+    *,
+    state: str,
+    started_at: float | int | None,
+    timeout_sec: float | int,
+    health: dict | None,
+    now: float | None = None,
+) -> bool:
+    if str(state or "") not in {"starting", "warming"}:
+        return False
+    try:
+        started = float(started_at or 0)
+        timeout = float(timeout_sec or 0)
+    except (TypeError, ValueError):
+        return False
+    if started <= 0 or timeout <= 0:
+        return False
+    if health and health.get("ok"):
+        return False
+    return float(now if now is not None else time.time()) - started > timeout
+
+
+def linux_process_started_at(pid: int, *, proc_root: Path = Path("/proc"), clock_ticks: int | None = None) -> float | None:
+    if platform.system() == "Windows":
+        return None
+    try:
+        stat_text = (proc_root / str(pid) / "stat").read_text(encoding="utf-8", errors="replace")
+        system_stat = (proc_root / "stat").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+    match = re.match(r"^\d+\s+\(.+\)\s+(.+)$", stat_text.strip())
+    if not match:
+        return None
+    fields_after_comm = match.group(1).split()
+    if len(fields_after_comm) < 20:
+        return None
+    try:
+        start_ticks = float(fields_after_comm[19])
+    except ValueError:
+        return None
+
+    boot_time = None
+    for line in system_stat.splitlines():
+        if line.startswith("btime "):
+            try:
+                boot_time = float(line.split()[1])
+            except (IndexError, ValueError):
+                return None
+            break
+    if boot_time is None:
+        return None
+    ticks = clock_ticks or os.sysconf(os.sysconf_names.get("SC_CLK_TCK", "SC_CLK_TCK"))
+    try:
+        return boot_time + start_ticks / float(ticks)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
 def extract_service_log_error(text: str) -> str:
     if not text:
         return ""
+    start_match = list(re.finditer(r"^=+\s*start\s+\d{4}-\d{2}-\d{2}", text, flags=re.MULTILINE))
+    if start_match:
+        text = text[start_match[-1].start() :]
     lower = text.lower()
     markers = (
         "no available memory for the cache blocks",
+        "error in memory profiling",
+        "engine core initialization failed",
         "cuda out of memory",
         "outofmemoryerror",
         "address already in use",
@@ -597,28 +707,80 @@ def extract_service_log_error(text: str) -> str:
     return ""
 
 
+def service_log_error_is_fatal(text: str) -> bool:
+    lower = str(text or "").lower()
+    fatal_markers = (
+        "no available memory for the cache blocks",
+        "error in memory profiling",
+        "engine core initialization failed",
+        "cuda out of memory",
+        "outofmemoryerror",
+        "address already in use",
+        "port already in use",
+        "conda: command not found",
+        "conda': no such file or directory",
+        "conda: no such file",
+        "no such file or directory",
+        "does not exist",
+    )
+    return any(marker in lower for marker in fatal_markers)
+
+
 def extract_latest_started_command(text: str) -> str:
     if not text:
         return ""
     latest = ""
+    collecting_final = False
+    final_lines: list[str] = []
+
+    def flush_final() -> None:
+        nonlocal latest, final_lines
+        if final_lines:
+            latest = collapse_multiline_command(final_lines)
+            final_lines = []
+
     for raw_line in text.splitlines():
-        line = raw_line.strip()
-        lower = line.lower()
+        stripped = raw_line.strip()
+        lower = stripped.lower()
         if lower.startswith("final command:"):
-            latest = line.split(":", 1)[1].strip()
-        elif latest == "" and line and not line.startswith("=") and " command:" not in lower:
-            latest = line
+            flush_final()
+            collecting_final = True
+            final_lines = [stripped.split(":", 1)[1].strip()]
+            continue
+        if collecting_final:
+            if raw_line.startswith((" ", "\t")) and stripped:
+                final_lines.append(stripped)
+                continue
+            flush_final()
+            collecting_final = False
+    if collecting_final:
+        flush_final()
     return latest
+
+
+def collapse_multiline_command(lines: list[str]) -> str:
+    parts = []
+    for line in lines:
+        part = str(line or "").strip()
+        if part.endswith("\\"):
+            part = part[:-1].rstrip()
+        if part:
+            parts.append(part)
+    return " ".join(parts)
 
 
 def friendly_service_error(text: str) -> str:
     lower = str(text or "").lower()
     if "no available memory for the cache blocks" in lower:
         return "ASR vLLM KV cache 显存不足：建议使用 --gpu-memory-utilization 0.25 和 --max-model-len 1024，仍失败再停止其他模型服务后重试。"
+    if "error in memory profiling" in lower or "engine core initialization failed" in lower:
+        return "vLLM 显存 profiling 失败：启动时 GPU 显存被其他模型释放或占用，建议停止/等待其他 GPU 服务稳定后单独重启该服务。"
     if "cuda out of memory" in lower or "outofmemoryerror" in lower:
         return "CUDA 显存不足：请先停止其他模型服务，或降低模型长度/显存占用后重试。"
     if "address already in use" in lower or "port already in use" in lower:
         return "端口已被占用：请停止旧服务或修改端口。"
+    if "conda: command not found" in lower or "conda': no such file or directory" in lower or "conda: no such file" in lower:
+        return "Conda 未进入服务进程 PATH：请确认 /home/me/miniconda3 存在，或在服务命令中使用 conda 的绝对路径。"
     if "no such file or directory" in lower or "does not exist" in lower:
         return "路径不存在：请检查服务命令里的模型路径、conda 路径或工作目录。"
     return str(text or "")
@@ -654,7 +816,8 @@ def ensure_arg(command: str, name: str, value: str) -> str:
 
 
 def normalize_command_for_compare(command: str) -> str:
-    return " ".join(str(command or "").split())
+    text = re.sub(r"\\\s*(?:\r?\n|\s+)", " ", str(command or ""))
+    return " ".join(text.split())
 
 
 def normalize_conda_env_threads(command: str) -> str:
@@ -757,7 +920,15 @@ def is_tcp_port_open(url: str, timeout: float = SERVICE_PORT_TIMEOUT_SEC) -> boo
         return False
 
 
-def _is_pid_alive(pid: int) -> bool:
+def _is_pid_alive(pid: int, *, proc_root: Path = Path("/proc")) -> bool:
+    if platform.system() != "Windows":
+        try:
+            stat_text = (proc_root / str(pid) / "stat").read_text(encoding="utf-8", errors="replace")
+            match = re.match(r"^\d+\s+\(.+\)\s+(\S+)", stat_text.strip())
+            if match and match.group(1) == "Z":
+                return False
+        except OSError:
+            pass
     try:
         os.kill(pid, 0)
         return True

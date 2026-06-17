@@ -16,12 +16,15 @@ function assert(condition, message) {
 
 const settingsPage = read("src/pages/SettingsPage.vue");
 const settingsCss = read("src/styles/pages/settings.css");
+const memoryPage = read("src/pages/MemoryPage.vue");
+const memoryCss = read("src/styles/pages/memory.css");
 const memoryStore = read("src/stores/memory.ts");
 const integrationsCss = read("src/styles/pages/integrations.css");
 const integrationsPage = read("src/pages/IntegrationsPage.vue");
 const servicesPage = read("src/pages/ServicesPage.vue");
 const servicesCss = read("src/styles/pages/services.css");
 const resourceSection = read("src/components/services/ResourceSection.vue");
+const baseCss = read("src/styles/base.css");
 
 assert(!settingsPage.includes('"dialogFeatures"'), "配置页不应再保留独立的对话能力 section");
 assert(!settingsPage.includes("id=\"dialogFeatures\""), "配置页不应渲染对话能力页面");
@@ -37,14 +40,38 @@ assert(settingsPage.includes("selectedToolKey"), "联网工具应使用九宫格
 assert(!settingsPage.includes('class="form-grid compact">\n                <label v-for="field in item.fields"'), "联网工具概览卡内不应直接展开完整配置表单");
 assert(settingsPage.includes("commandsExpanded"), "服务命令页需要支持展开/收起");
 assert(!memoryStore.includes("我喜欢晚上写代码，猫叫布丁。"), "记忆入库默认测试文本需要换成自然稳定偏好句");
-assert(integrationsCss.includes("integration-console-grid"), "接入页需要使用均衡的控制台网格");
+assert(integrationsCss.includes("integration-shell"), "接入页需要保持两栏布局");
+assert(integrationsCss.includes("integration-test-column") && integrationsCss.includes("integration-log-column"), "接入页左侧需要放链路测试和运行日志");
+assert(integrationsCss.includes("integration-workbench"), "接入页右侧需要保留登录与聊天卡片工作区");
+assert(integrationsCss.includes("integration-session-grid") && integrationsCss.includes("grid-template-columns: repeat(2, minmax(0, 1fr))"), "接入页微信聊天需要使用紧凑两列卡片网格");
+assert(integrationsCss.includes("overscroll-behavior: contain"), "接入页侧栏需要独立滚动，不能挤压另一侧");
 assert(!integrationsPage.includes('class="integration-probe-card">\n                <div class="probe-row"'), "接入页探测卡不能把输入行和 InlineProbe 分成错位两块");
 assert(!integrationsPage.includes('variant="strip"\n                  title="文本回复链路"'), "接入页三列探测卡应使用 compact 布局，避免状态按钮溢出");
-assert(integrationsCss.includes("min-height: 154px") && integrationsCss.includes(".integration-console-accounts .integration-account-list"), "接入页登录框和账号框需要统一高度规则");
-assert(integrationsPage.includes("integration-workbench-panel"), "接入页测试和日志应拆成全宽工作区，避免右侧单列过长");
+assert(integrationsCss.includes(".integration-status-card") && integrationsCss.includes("min-height: 96px"), "接入页登录控制里的桥接状态和当前账号需要统一紧凑高度规则");
+assert(integrationsPage.includes("integration-test-column") && integrationsPage.includes("integration-log-column"), "接入页模板需要把测试和日志放到左栏");
+assert(integrationsPage.includes("integration-login-panel") && integrationsPage.includes("integration-sessions-panel"), "接入页右栏需要上方登录控制、下方微信聊天列表");
+assert(integrationsPage.includes("integration-step-track") && integrationsCss.includes(".integration-step-track"), "接入页登录状态需要使用紧凑状态轨道");
+assert(!integrationsPage.includes("Login & Logs"), "接入页不应再保留重复的登录与日志标题");
+assert(integrationsPage.includes("integration-status-grid") && integrationsPage.includes("integration-selected-account-card"), "接入页登录控制需要把桥接状态和当前账号做成等高状态卡，避免错位重叠");
+assert(!integrationsPage.includes("integration-console-accounts"), "接入页登录控制不应再嵌入可滚动账号列表，账号列表应只在下方微信聊天区展示");
+assert(integrationsCss.includes("grid-template-rows: minmax(0, auto) minmax(320px, 1fr)"), "接入页右栏需要给微信聊天区保留稳定高度，避免卡片被登录区挤压");
+assert(integrationsCss.includes("grid-auto-rows: minmax(160px, auto)"), "接入页微信聊天卡片需要使用稳定的自动行高度，避免一张卡也被裁切");
+assert(integrationsCss.includes(".integration-card-note"), "接入页微信聊天卡片需要使用单行状态说明，保持紧凑不溢出");
+assert(memoryPage.includes("memory-probe-cell memory-probe-text") && memoryPage.includes("memory-probe-cell memory-probe-loop"), "记忆入库测试两侧需要使用统一 cell 结构");
+assert(memoryCss.includes(".memory-probe-cell") && memoryCss.includes("grid-template-rows: auto auto minmax(0, 1fr)"), "记忆入库测试两侧需要统一高度和内部行轨道");
+assert(memoryPage.includes("memory-admission-card") && memoryPage.includes("memory-admission-action-card"), "记忆入库回路需要使用重新设计的统一工具卡");
+assert(!memoryPage.includes("检查当前抽取规则会不会把这句话写入记忆。"), "记忆入库回路说明文案需要更简洁自然，避免当前生硬描述");
+assert(memoryCss.includes(".memory-admission-card") && memoryCss.includes(".memory-admission-action-card"), "记忆入库回路新版工具卡需要专用样式");
+assert(memoryPage.includes("memory-decay-panel"), "记忆页面需要暴露衰减清理配置面板");
+assert(memoryPage.includes("decayOpen") && memoryPage.includes("memory-decay-summary"), "衰减清理条件需要做成可展开关闭的卡片");
+assert(memoryStore.includes("decayOptions"), "记忆衰减清理条件需要进入 store 状态并随清理请求提交");
+assert(!baseCss.includes("--bg: #0d1013;") && baseCss.includes("--bg: #171912;"), "深色主题背景需要从纯黑感改成柔和墨绿灰底色");
+assert(settingsPage.includes('class="theme-preview-button"') && settingsPage.includes("@click=\"applyTheme('dark')\"") && settingsPage.includes("@click=\"applyTheme('light')\""), "深浅色预览必须是可点击按钮并绑定主题切换");
+assert(settingsCss.includes(".theme-preview-button"), "深浅色预览按钮需要专用样式");
 assert(servicesPage.includes("serviceDetailExpanded"), "服务详情需要默认收起命令详情，并支持展开关闭");
 assert(resourceSection.includes("resource-platform-badge"), "资源状态平台信息需要独立样式，避免长系统字符串被裁剪");
 assert(servicesCss.includes("overflow-wrap: anywhere"), "资源状态长文本需要允许按内容换行");
-assert(servicesCss.includes("grid-template-rows: auto auto auto"), "资源卡片需要统一内容行，避免 GPU 进度条和其他卡片错位");
+assert(servicesCss.includes("grid-template-rows: auto auto minmax(42px, auto) auto"), "资源卡片信息行需要固定轨道，让进度条保持同一水平线");
+assert(servicesCss.includes("align-self: end"), "资源卡片进度条需要固定贴底对齐");
 
 console.log("UI structure checks passed");

@@ -32,10 +32,11 @@ const configSaving = ref(false);
 
 const selected = computed(() => integrations.selected);
 const selectedAccounts = computed(() => accounts(selected.value));
+const selectedAccount = computed(() => selectedAccounts.value[0] || null);
 const bridgeRunning = computed(() => ["running", "starting"].includes(String(selected.value?.status || "")));
 const loginReady = computed(() => selectedAccounts.value.length > 0);
-const textProbeReady = computed(() => Boolean(integrations.testResult && !integrations.testResult.startsWith("失败")));
-const voiceProbeReady = computed(() => Boolean(integrations.voiceResult && integrations.voiceResult.includes("接口已接收")));
+const textProbeReady = computed(() => integrations.testOk === true);
+const voiceProbeReady = computed(() => integrations.voiceOk === true);
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
 const dialogProbeRunning = ref(false);
 const voiceProbeRunning = ref(false);
@@ -43,17 +44,24 @@ const stickerProbeRunning = ref(false);
 const dialogProbeStatus = computed<ProbeStatus>(() => {
   if (dialogProbeRunning.value) return "running";
   if (!integrations.testResult) return "idle";
-  return integrations.testResult.startsWith("失败") ? "failed" : "ok";
+  if (integrations.testOk === true) return "ok";
+  if (integrations.testOk === false || integrations.testResult.includes("失败")) return "failed";
+  return "idle";
 });
 const voiceProbeStatus = computed<ProbeStatus>(() => {
   if (voiceProbeRunning.value) return "running";
   if (!integrations.voiceResult) return "idle";
-  return integrations.voiceResult.includes("失败") ? "failed" : "ok";
+  if (integrations.voiceOk === true) return "ok";
+  if (integrations.voiceResult.includes("等待 TTS")) return "warning";
+  if (integrations.voiceOk === false || integrations.voiceResult.includes("失败")) return "failed";
+  return "idle";
 });
 const stickerProbeStatus = computed<ProbeStatus>(() => {
   if (stickerProbeRunning.value) return "running";
   if (!integrations.stickerResult) return "idle";
-  return integrations.stickerResult.includes("失败") ? "failed" : "ok";
+  if (integrations.stickerOk === true) return "ok";
+  if (integrations.stickerOk === false || integrations.stickerResult.includes("失败")) return "failed";
+  return "idle";
 });
 const integrationSteps = computed(() => [
   {
@@ -73,8 +81,8 @@ const integrationSteps = computed(() => [
   },
   {
     label: "发送",
-    status: voiceProbeReady.value ? "发送正常" : integrations.voiceResult ? "失败" : "未测试",
-    state: voiceProbeReady.value ? "ok" : integrations.voiceResult ? "failed" : "idle",
+    status: voiceProbeReady.value ? "发送正常" : voiceProbeStatus.value === "warning" ? "等待 TTS" : integrations.voiceResult ? "失败" : "未测试",
+    state: voiceProbeReady.value ? "ok" : voiceProbeStatus.value === "warning" ? "pending" : integrations.voiceResult ? "failed" : "idle",
   },
 ]);
 
@@ -125,10 +133,6 @@ async function copyAccountDiagnostic(account: Record<string, any>) {
   } catch {
     showActionMessage("账号诊断复制失败", "error");
   }
-}
-
-function timings(item: Record<string, any> | null | undefined) {
-  return Array.isArray(item?.recent_timings) ? item.recent_timings.slice(0, 4) : [];
 }
 
 function profileName(id?: string) {
@@ -236,6 +240,7 @@ async function runDialogProbe() {
     await integrations.runDialogTest();
     showActionMessage("文本回复链路正常", "success");
   } catch (error) {
+    integrations.testOk = false;
     integrations.testResult = `失败：${errorText(error)}`;
     showActionMessage(`文本回复测试失败：${errorText(error)}`, "error");
   } finally {
@@ -248,8 +253,13 @@ async function runVoiceProbe() {
   voiceProbeRunning.value = true;
   try {
     await integrations.runVoiceTest();
-    showActionMessage(integrations.voiceResult.includes("失败") ? "语音测试失败，已生成诊断" : "语音测试已发送", integrations.voiceResult.includes("失败") ? "warning" : "success");
+    const waitingTts = integrations.voiceResult.includes("等待 TTS");
+    showActionMessage(
+      integrations.voiceOk ? "语音测试已发送，请到微信端确认" : waitingTts ? "TTS 还在加载，稍后再测语音" : "语音测试失败，已生成诊断",
+      integrations.voiceOk ? "success" : "warning",
+    );
   } catch (error) {
+    integrations.voiceOk = false;
     integrations.voiceResult = `失败：${errorText(error)}`;
     showActionMessage(`语音测试失败：${errorText(error)}`, "error");
   } finally {
@@ -262,8 +272,9 @@ async function runStickerProbe() {
   stickerProbeRunning.value = true;
   try {
     await integrations.runStickerTest();
-    showActionMessage(integrations.stickerResult.includes("失败") ? "素材测试失败，已生成诊断" : "素材测试已发送", integrations.stickerResult.includes("失败") ? "warning" : "success");
+    showActionMessage(integrations.stickerOk ? "素材测试已发送，请到微信端确认" : "素材测试失败，已生成诊断", integrations.stickerOk ? "success" : "warning");
   } catch (error) {
+    integrations.stickerOk = false;
     integrations.stickerResult = `失败：${errorText(error)}`;
     showActionMessage(`素材测试失败：${errorText(error)}`, "error");
   } finally {
@@ -371,215 +382,223 @@ function downloadLogs() {
       </section>
 
       <section class="integration-shell">
-        <div class="integration-list">
-          <article
-            v-for="item in integrations.items"
-            :key="item.id"
-            class="integration-card"
-            :class="[statusClass(item.status), { selected: item.id === integrations.selectedId }]"
-            @click="integrations.select(item.id)"
-          >
-            <div class="integration-card-head">
-              <div class="integration-title">
-                <span class="status-dot"></span>
-                <strong>{{ item.chat_name || item.id }}</strong>
-                <small>微信个人号 · {{ item.id }} · OpenClaw {{ item.openclaw_profile || "branchwhisper" }}</small>
-              </div>
-              <span class="service-badge">{{ integrations.humanStatus(item) }}</span>
-            </div>
-
-            <div class="integration-meta">
-              <span class="meta-cell"><span>启用</span><strong>{{ item.enabled ? "自动守护" : "手动" }}</strong></span>
-              <span class="meta-cell"><span>人格</span><strong>{{ profileName(item.bot_profile_id) }}</strong></span>
-              <span class="meta-cell"><span>回复</span><strong>{{ item.reply_mode || "text" }}</strong></span>
-              <span class="meta-cell"><span>账号</span><strong>{{ item.runtime?.account_count ?? item.accounts?.length ?? 0 }}</strong></span>
-              <span class="meta-cell"><span>PID</span><strong>{{ item.pid || "--" }}</strong></span>
-              <span class="meta-cell"><span>提示</span><strong>{{ item.last_error ? "有错误" : "--" }}</strong></span>
-            </div>
-
-            <p class="integration-state-note" :class="statusClass(item.status)">
-              {{ item.last_error || item.runtime?.last_error || (item.status === "running" ? "桥接进程运行中，微信消息会进入 BranchWhisper。" : "首次使用请先扫码登录。") }}
-            </p>
-
-            <div class="integration-actions" @click.stop>
-              <button class="secondary-action" type="button" @click="openEdit(item)">
-                <Edit3 :size="15" /> 编辑
-              </button>
-              <button class="secondary-action" type="button" :disabled="integrations.actioning" @click="runIntegration(item, 'start')">
-                <Play :size="15" /> {{ integrations.actioning && selected?.id === item.id ? "处理中" : "启动" }}
-              </button>
-              <button class="secondary-action" type="button" :disabled="integrations.actioning" @click="runIntegration(item, 'stop')">
-                <Square :size="15" /> 停止
-              </button>
-              <button class="secondary-action" type="button" :disabled="integrations.actioning" @click="runIntegration(item, 'restart')">
-                <RefreshCw :size="15" /> 重启
-              </button>
-              <button class="secondary-action danger" type="button" :disabled="integrations.actioning" @click="removeIntegration(item)">
-                <Trash2 :size="15" /> 删除
-              </button>
-            </div>
-          </article>
-          <p v-if="!integrations.items.length" class="integration-empty">还没有接入实例。添加微信个人号后会显示在这里。</p>
-        </div>
-
-        <aside class="integration-side">
-          <section class="integration-panel">
+        <div class="integration-test-column">
+          <section class="integration-panel integration-tests-panel">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Login & Logs</p>
-                <h2>登录与日志</h2>
+                <p class="eyebrow">Loop Checks</p>
+                <h2>链路测试</h2>
+              </div>
+              <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
+            </div>
+            <section class="integration-probe-panel">
+              <div class="integration-probe-card">
+                <input v-model="integrations.testText" type="text" placeholder="你好，测试一下" @keydown.enter="runDialogProbe" />
+                <InlineProbe
+                  variant="compact"
+                  title="文本回复链路"
+                  summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
+                  :status="dialogProbeStatus"
+                  :status-text="dialogProbeStatus === 'ok' ? '回复正常' : dialogProbeStatus === 'failed' ? '回复失败' : dialogProbeStatus === 'running' ? '检测中' : '未检测'"
+                  :detail="integrations.testResult"
+                  action-text="运行"
+                  :disabled="!selected || integrations.actioning"
+                  @run="runDialogProbe"
+                  @copy="copyProbeResult('文本回复', integrations.testResult)"
+                />
+              </div>
+              <div class="integration-probe-card">
+                <input v-model="integrations.voiceText" type="text" placeholder="我在，听得到的话我们继续。" @keydown.enter="runVoiceProbe" />
+                <InlineProbe
+                  variant="compact"
+                  title="语音发送链路"
+                  summary="生成一段短语音并调用微信发送，验证 TTS、转码和发送器。"
+                  :status="voiceProbeStatus"
+                  :status-text="voiceProbeStatus === 'ok' ? '接口已接收' : voiceProbeStatus === 'warning' ? '等待 TTS' : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
+                  :detail="integrations.voiceResult"
+                  action-text="运行"
+                  :disabled="!selected || integrations.actioning"
+                  @run="runVoiceProbe"
+                  @copy="copyProbeResult('语音发送', integrations.voiceResult)"
+                />
+              </div>
+              <div class="integration-probe-card">
+                <input v-model="integrations.stickerText" type="text" placeholder="打一架" @keydown.enter="runStickerProbe" />
+                <InlineProbe
+                  variant="compact"
+                  title="素材发送链路"
+                  summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
+                  :status="stickerProbeStatus"
+                  :status-text="stickerProbeStatus === 'ok' ? '接口已接收' : stickerProbeStatus === 'failed' ? '发送失败' : stickerProbeStatus === 'running' ? '检测中' : '未检测'"
+                  :detail="integrations.stickerResult"
+                  action-text="运行"
+                  :disabled="!selected || integrations.actioning"
+                  @run="runStickerProbe"
+                  @copy="copyProbeResult('素材发送', integrations.stickerResult)"
+                />
+              </div>
+            </section>
+          </section>
+
+          <section class="integration-panel integration-log-panel integration-log-column">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Runtime Logs</p>
+                <h2>运行日志</h2>
+              </div>
+              <div class="integration-log-toolbar">
+                <select v-model="integrations.logScope" @change="refreshLogs">
+                  <option value="current">本次启动</option>
+                  <option value="all">全部日志</option>
+                </select>
+                <button class="icon-button" type="button" title="刷新日志" @click="refreshLogs"><RotateCw :size="16" /></button>
+                <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
+                <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
+                <button class="icon-button danger" type="button" title="清空日志" @click="clearLogs"><Eraser :size="16" /></button>
+              </div>
+            </div>
+            <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
+          </section>
+        </div>
+
+        <aside class="integration-workbench">
+          <section class="integration-panel integration-login-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Login</p>
+                <h2>登录控制</h2>
               </div>
               <span class="soft-badge">{{ selected?.id || "--" }}</span>
             </div>
             <div class="integration-console-grid">
-              <div class="integration-console-main">
-                <div class="integration-qr">
+              <div class="integration-status-grid">
+                <div class="integration-status-card integration-bridge-card" :class="statusClass(selected?.status)">
+                  <div class="integration-status-card-head">
+                    <span class="status-dot" :class="statusClass(selected?.status)"></span>
+                    <span>桥接状态</span>
+                  </div>
                   <img v-if="qrImage(integrations.qrSession)" class="integration-qr-image" :src="qrImage(integrations.qrSession)" alt="微信扫码二维码" />
-                  <div v-else class="integration-login-placeholder">
+                  <div v-else class="integration-status-copy">
                     <strong>{{ selected?.status === "running" ? "桥接运行中" : selected ? "等待扫码" : "请选择实例" }}</strong>
-                    <span>{{ integrations.qrSession?.message || (selected?.runtime?.manual_stop ? "实例已手动停止。" : "点击扫码登录后，这里会显示二维码。") }}</span>
+                    <small>{{ integrations.qrSession?.message || (selected?.runtime?.manual_stop ? "实例已手动停止。" : "扫码后会在这里显示登录状态。") }}</small>
                   </div>
                 </div>
-                <div v-if="integrations.qrSession" class="integration-login-meta">
-                  <strong>{{ integrations.qrSession.status || "login" }}</strong>
-                  <span>{{ integrations.qrSession.message || integrations.qrSession.qrcode_url || "--" }}</span>
-                  <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
-                </div>
-                <div class="integration-step-list">
-                  <span v-for="step in integrationSteps" :key="step.label" :class="step.state">
-                    <b></b>
-                    <strong>{{ step.label }}</strong>
-                    <small>{{ step.status }}</small>
-                  </span>
+                <div class="integration-status-card integration-selected-account-card" :class="{ active: selectedAccount }">
+                  <div class="integration-status-card-head">
+                    <span class="status-dot" :class="{ active: selectedAccount }"></span>
+                    <span>当前账号</span>
+                  </div>
+                  <div class="integration-status-copy">
+                    <strong>{{ selectedAccount?.nickname || selectedAccount?.name || selectedAccount?.account_id || selectedAccount?.id || "暂无账号" }}</strong>
+                    <small>{{ selectedAccount?.account_id || selectedAccount?.id || "扫码登录成功后显示" }}</small>
+                    <small v-if="selectedAccount?.base_url">Base URL: {{ selectedAccount.base_url }}</small>
+                  </div>
+                  <button
+                    v-if="selectedAccount?.diagnostic_hint || selectedAccount?.connectivity_error"
+                    class="small-button"
+                    type="button"
+                    @click="copyAccountDiagnostic(selectedAccount)"
+                  >
+                    <Copy :size="13" />复制诊断
+                  </button>
                 </div>
               </div>
-              <div class="integration-console-accounts">
-                <div class="integration-account-list">
-                  <div v-for="account in selectedAccounts" :key="account.account_id || account.id" class="integration-account-item">
-                    <span>账号</span>
-                    <strong>{{ account.nickname || account.name || account.account_id || account.id }}</strong>
-                    <small>{{ account.account_id || account.id || "--" }}</small>
-                    <small v-if="account.base_url">Base URL: {{ account.base_url }}</small>
-                    <div v-if="account.diagnostic_hint || account.connectivity_error" class="integration-account-diagnostic">
-                      <span>{{ account.diagnostic_hint || "账号本地服务不可达" }}</span>
-                      <small v-if="account.connectivity_error">{{ account.connectivity_error }}</small>
-                      <button class="small-button" type="button" @click="copyAccountDiagnostic(account)"><Copy :size="13" />复制诊断</button>
-                    </div>
-                  </div>
-                  <div v-if="!selectedAccounts.length" class="integration-account-item muted">
-                    <span>账号</span>
-                    <strong>暂无账号</strong>
-                    <small>扫码登录成功后显示</small>
-                  </div>
-                </div>
+              <div v-if="integrations.qrSession" class="integration-login-meta">
+                <strong>{{ integrations.qrSession.status || "login" }}</strong>
+                <span>{{ integrations.qrSession.message || integrations.qrSession.qrcode_url || "--" }}</span>
+                <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
+              </div>
+              <div class="integration-step-track">
+                <span v-for="step in integrationSteps" :key="step.label" :class="step.state">
+                  <b></b>
+                  <em>{{ step.label }}</em>
+                  <strong>{{ step.status }}</strong>
+                </span>
               </div>
             </div>
-            <div v-if="timings(selected).length" class="integration-timing-summary">
-              <span v-for="timing in timings(selected)" :key="timing.message_id || timing.created_at || timing.total_ms">
-                <b>{{ timing.total_ms || timing.branch_ms || "--" }}ms</b>
-                <small>{{ timing.text || timing.message || "最近消息" }}</small>
-              </span>
-            </div>
-            <div class="inline-actions">
-              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startQrLogin">
-                <QrCode :size="16" /> 扫码登录
-              </button>
-              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="selected && runIntegration(selected, 'install')">
-                <PackagePlus :size="16" /> 安装适配器
-              </button>
-            </div>
-            <div class="integration-bridge-row">
-              <input v-model="integrations.bridgeUrl" type="text" placeholder="http://127.0.0.1:7860" />
-              <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startBridge">
-                <Link2 :size="16" /> 启动桥接
-              </button>
-            </div>
-            <div class="integration-bridge-row">
-              <input v-model="integrations.verifyCode" type="text" placeholder="验证码 / verify_code" @keydown.enter="pollLogin" />
-              <button class="secondary-action" type="button" :disabled="!integrations.qrSession" @click="pollLogin">
-                <RefreshCw :size="16" /> 轮询登录
-              </button>
+            <div class="integration-login-actions">
+              <div class="inline-actions">
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startQrLogin">
+                  <QrCode :size="16" /> 扫码登录
+                </button>
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="selected && runIntegration(selected, 'install')">
+                  <PackagePlus :size="16" /> 安装适配器
+                </button>
+              </div>
+              <div class="integration-bridge-row">
+                <input v-model="integrations.bridgeUrl" type="text" placeholder="http://127.0.0.1:7860" />
+                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startBridge">
+                  <Link2 :size="16" /> 启动桥接
+                </button>
+              </div>
+              <div class="integration-bridge-row wide">
+                <input v-model="integrations.verifyCode" type="text" placeholder="验证码 / verify_code" @keydown.enter="pollLogin" />
+                <button class="secondary-action" type="button" :disabled="!integrations.qrSession" @click="pollLogin">
+                  <RefreshCw :size="16" /> 轮询登录
+                </button>
+              </div>
             </div>
           </section>
 
+          <section class="integration-panel integration-sessions-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">WeChat Sessions</p>
+                <h2>我的微信聊天</h2>
+              </div>
+              <span class="soft-badge">{{ integrations.summary }}</span>
+            </div>
+            <div class="integration-session-grid">
+              <article
+                v-for="item in integrations.items"
+                :key="item.id"
+                class="integration-card integration-card--mini"
+                :class="[statusClass(item.status), { selected: item.id === integrations.selectedId }]"
+                @click="integrations.select(item.id)"
+              >
+                <div class="integration-card-head">
+                  <div class="integration-title">
+                    <span class="status-dot"></span>
+                    <strong>{{ item.chat_name || item.id }}</strong>
+                    <small>{{ item.id }} · {{ profileName(item.bot_profile_id) }}</small>
+                  </div>
+                  <span class="service-badge">{{ integrations.humanStatus(item) }}</span>
+                </div>
+
+                <div class="integration-meta integration-meta--mini">
+                  <span class="meta-cell"><span>启用</span><strong>{{ item.enabled ? "守护" : "手动" }}</strong></span>
+                  <span class="meta-cell"><span>回复</span><strong>{{ item.reply_mode || "text" }}</strong></span>
+                  <span class="meta-cell"><span>账号</span><strong>{{ item.runtime?.account_count ?? item.accounts?.length ?? 0 }}</strong></span>
+                  <span class="meta-cell"><span>PID</span><strong>{{ item.pid || "--" }}</strong></span>
+                </div>
+
+                <div class="integration-card-foot">
+                  <p class="integration-card-note" :class="statusClass(item.status)">
+                    {{ item.last_error || item.runtime?.last_error || (item.status === "running" ? "桥接运行中，微信消息会进入 BranchWhisper。" : "首次使用请先扫码登录。") }}
+                  </p>
+                  <div class="integration-actions integration-actions--mini" @click.stop>
+                    <button class="icon-button" type="button" title="编辑" aria-label="编辑接入实例" @click="openEdit(item)">
+                      <Edit3 :size="15" />
+                    </button>
+                    <button class="icon-button" type="button" title="启动" aria-label="启动接入" :disabled="integrations.actioning" @click="runIntegration(item, 'start')">
+                      <Play :size="15" />
+                    </button>
+                    <button class="icon-button" type="button" title="停止" aria-label="停止接入" :disabled="integrations.actioning" @click="runIntegration(item, 'stop')">
+                      <Square :size="15" />
+                    </button>
+                    <button class="icon-button" type="button" title="重启" aria-label="重启接入" :disabled="integrations.actioning" @click="runIntegration(item, 'restart')">
+                      <RefreshCw :size="15" />
+                    </button>
+                    <button class="icon-button danger" type="button" title="删除" aria-label="删除接入实例" :disabled="integrations.actioning" @click="removeIntegration(item)">
+                      <Trash2 :size="15" />
+                    </button>
+                  </div>
+                </div>
+              </article>
+              <p v-if="!integrations.items.length" class="integration-empty compact">还没有接入实例。添加微信个人号后会显示在这里。</p>
+            </div>
+          </section>
         </aside>
-      </section>
-
-      <section class="integration-workbench-panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Loop Checks</p>
-            <h2>链路测试</h2>
-          </div>
-          <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
-        </div>
-        <section class="integration-probe-panel">
-          <div class="integration-probe-card">
-            <input v-model="integrations.testText" type="text" placeholder="你好，测试一下" @keydown.enter="runDialogProbe" />
-            <InlineProbe
-              variant="compact"
-              title="文本回复链路"
-              summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
-              :status="dialogProbeStatus"
-              :status-text="dialogProbeStatus === 'ok' ? '回复正常' : dialogProbeStatus === 'failed' ? '回复失败' : dialogProbeStatus === 'running' ? '检测中' : '未检测'"
-              :detail="integrations.testResult"
-              action-text="运行"
-              :disabled="!selected || integrations.actioning"
-              @run="runDialogProbe"
-              @copy="copyProbeResult('文本回复', integrations.testResult)"
-            />
-          </div>
-          <div class="integration-probe-card">
-            <input v-model="integrations.voiceText" type="text" placeholder="我在，听得到的话我们继续。" @keydown.enter="runVoiceProbe" />
-            <InlineProbe
-              variant="compact"
-              title="语音发送链路"
-              summary="生成一段短语音并调用微信发送，验证 TTS、转码和发送器。"
-              :status="voiceProbeStatus"
-              :status-text="voiceProbeStatus === 'ok' ? '接口已接收' : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
-              :detail="integrations.voiceResult"
-              action-text="运行"
-              :disabled="!selected || integrations.actioning"
-              @run="runVoiceProbe"
-              @copy="copyProbeResult('语音发送', integrations.voiceResult)"
-            />
-          </div>
-          <div class="integration-probe-card">
-            <input v-model="integrations.stickerText" type="text" placeholder="打一架" @keydown.enter="runStickerProbe" />
-            <InlineProbe
-              variant="compact"
-              title="素材发送链路"
-              summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
-              :status="stickerProbeStatus"
-              :status-text="stickerProbeStatus === 'ok' ? '接口已接收' : stickerProbeStatus === 'failed' ? '发送失败' : stickerProbeStatus === 'running' ? '检测中' : '未检测'"
-              :detail="integrations.stickerResult"
-              action-text="运行"
-              :disabled="!selected || integrations.actioning"
-              @run="runStickerProbe"
-              @copy="copyProbeResult('素材发送', integrations.stickerResult)"
-            />
-          </div>
-        </section>
-      </section>
-
-      <section class="integration-workbench-panel integration-log-panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Runtime Logs</p>
-            <h2>运行日志</h2>
-          </div>
-          <div class="integration-log-toolbar">
-            <select v-model="integrations.logScope" @change="refreshLogs">
-              <option value="current">本次启动</option>
-              <option value="all">全部日志</option>
-            </select>
-            <button class="icon-button" type="button" title="刷新日志" @click="refreshLogs"><RotateCw :size="16" /></button>
-            <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
-            <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
-            <button class="icon-button danger" type="button" title="清空日志" @click="clearLogs"><Eraser :size="16" /></button>
-          </div>
-        </div>
-        <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
       </section>
 
       <div v-if="configOpen" class="modal-overlay" @click.self="configOpen = false">

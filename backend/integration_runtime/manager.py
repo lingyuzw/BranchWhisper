@@ -20,7 +20,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from service_runtime.audio_pipeline import clean_for_tts, clean_reply_text, extract_chat_message_text, extract_finish_reason, strip_internal_attachment_markers
-from service_runtime.tts_clients import build_tts_request, synthesize_tts_bytes, wav_bytes_from_pcm16
+from service_runtime.tts_clients import TtsServiceNotReady, build_tts_request, synthesize_tts_bytes, wav_bytes_from_pcm16
 from core.config import (
     SessionSettings,
     active_dialog_mode,
@@ -32,7 +32,7 @@ from core.config import (
     llm_headers,
     memory_mode,
 )
-from core.http_client import httpx_client_for_url
+from core.http_client import httpx_client_for_url, request_with_retries
 from data.conversations import ConversationStore
 from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
@@ -60,6 +60,7 @@ DEFAULT_VOICE_TRIGGERS = [
     "语音回复",
     "我想听你说话",
 ]
+LOCAL_NO_PROXY_HOSTS = "127.0.0.1,localhost,::1"
 VOICE_INTENT_RE = re.compile(
     r"(发|来|给我|要|想听)(一|1)?(条|段|句)?语音"
     r"|(一|1)?(条|段|句)语音"
@@ -953,7 +954,8 @@ class IntegrationManager:
         self.append_log(integration_id, f"[process] start: {' '.join(command)}")
         stream = path.open("ab")
         try:
-            proc = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+            env = self.process_env()
+            proc = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env)
         except Exception as exc:
             stream.close()
             self.mark_status(integration_id, "failed", str(exc))
@@ -968,6 +970,17 @@ class IntegrationManager:
         self.mark_status(integration_id, status)
         self.append_log(integration_id, f"[session] bridge started pid={proc.pid}")
         return {"ok": True, "status": status, "pid": proc.pid, "log_file": str(path)}
+
+    def process_env(self) -> dict[str, str]:
+        env = dict(os.environ)
+        for key in ("NO_PROXY", "no_proxy"):
+            current = str(env.get(key) or "")
+            parts = [item.strip() for item in current.split(",") if item.strip()]
+            for host in LOCAL_NO_PROXY_HOSTS.split(","):
+                if host not in parts:
+                    parts.append(host)
+            env[key] = ",".join(parts)
+        return env
 
     def stop_process(self, integration_id: str) -> dict:
         integration_id = safe_id(integration_id)
@@ -1608,6 +1621,7 @@ class ExternalDialogEngine:
         self.integration_manager.append_log(platform_id, f"[voice-test:{trace_id}] start account={target['account_id']} to={target['sender_id']} text={compact_text(text, 120)}")
         try:
             tts_started = time.perf_counter()
+            result["stage"] = "tts"
             voice_file = await self.synthesize_voice(settings, text, trace_id)
             result.update(
                 {
@@ -1618,6 +1632,7 @@ class ExternalDialogEngine:
                 }
             )
             send_started = time.perf_counter()
+            result["stage"] = "send"
             sent = send_weixin_voice(
                 base_url=target["base_url"],
                 token=target["token"],
@@ -1657,6 +1672,22 @@ class ExternalDialogEngine:
                 platform_id,
                 f"[voice-test:{trace_id}] voice api accepted account={target['account_id']} to={target['sender_id']} "
                 f"message_id={result['voice_message_id']} format={result['voice_format']} diagnostic={result['voice_diagnostic']}",
+            )
+            return result
+        except TtsServiceNotReady as exc:
+            result.update(
+                {
+                    "ok": False,
+                    "error": str(exc),
+                    "stage": "tts_loading",
+                    "sender_payload": {"status": exc.status, "health": exc.health},
+                    "total_ms": int((time.perf_counter() - started_at) * 1000),
+                }
+            )
+            self.integration_manager.append_log(
+                platform_id,
+                f"[voice-test:{trace_id}] tts not ready account={target['account_id']} "
+                f"to={target['sender_id']} status={exc.status or '-'} error={exc}",
             )
             return result
         except (WeixinVoiceSendError, Exception) as exc:
@@ -2044,9 +2075,9 @@ class ExternalDialogEngine:
             payload["enable_thinking"] = True
         llm_url = active_llm_url(settings_snapshot)
         async with httpx_client_for_url(llm_url, timeout=self.llm_request_timeout(settings_snapshot, timeout)) as client:
-            resp = await client.post(llm_url, json=payload, headers=llm_headers(settings_snapshot))
+            resp = await request_with_retries(client, "POST", llm_url, json=payload, headers=llm_headers(settings_snapshot))
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
-                resp = await client.post(llm_url, json=payload, headers=llm_headers(settings_snapshot))
+                resp = await request_with_retries(client, "POST", llm_url, json=payload, headers=llm_headers(settings_snapshot))
             resp.raise_for_status()
             data = resp.json()
             text = clean_reply_text(extract_chat_message_text(data))
@@ -2055,7 +2086,7 @@ class ExternalDialogEngine:
                 if diag is not None:
                     diag["thinking_empty_retry"] = True
                 payload.pop("enable_thinking", None)
-                resp = await client.post(active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
+                resp = await request_with_retries(client, "POST", active_llm_url(settings_snapshot), json=payload, headers=llm_headers(settings_snapshot))
                 resp.raise_for_status()
                 data = resp.json()
                 text = clean_reply_text(extract_chat_message_text(data))
@@ -2138,7 +2169,7 @@ class ExternalDialogEngine:
         }
         llm_url = active_llm_url(settings)
         async with httpx_client_for_url(llm_url, timeout=self.llm_request_timeout(settings, timeout)) as client:
-            resp = await client.post(llm_url, json=payload, headers=llm_headers(settings))
+            resp = await request_with_retries(client, "POST", llm_url, json=payload, headers=llm_headers(settings))
         resp.raise_for_status()
         return clean_reply_text(extract_chat_message_text(resp.json()))
 

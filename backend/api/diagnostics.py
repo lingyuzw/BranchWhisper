@@ -16,7 +16,7 @@ from core.config import active_asr_api_key, active_asr_model, active_asr_provide
 from core.http_client import httpx_client_for_url
 from service_runtime.audio_pipeline import transcribe_audio, wav_bytes_from_float32
 from service_runtime.services import check_openai_compatible_endpoint, check_service, health_url_from
-from service_runtime.tts_clients import synthesize_tts_bytes, synthesize_tts_wav_bytes, tts_provider_capabilities
+from service_runtime.tts_clients import TtsServiceNotReady, synthesize_tts_bytes, synthesize_tts_wav_bytes, tts_provider_capabilities
 from domain.paths import (
     FRONTEND_DIST_DIR,
     INTEGRATIONS_CONFIG,
@@ -202,6 +202,18 @@ def create_diagnostics_router() -> APIRouter:
                 headers={
                     "Cache-Control": "no-store",
                     "Content-Disposition": 'inline; filename="tts-preview.wav"',
+                },
+            )
+        except TtsServiceNotReady as exc:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "ok": False,
+                    "kind": "tts",
+                    "error": str(exc),
+                    "message": str(exc),
+                    "stage": "tts_loading",
+                    "health": exc.health,
                 },
             )
         except Exception as exc:
@@ -393,6 +405,19 @@ async def run_tts_api_probe(settings) -> dict:
             "" if ok else "TTS 返回空音频",
             latency_ms=int((time.perf_counter() - started) * 1000),
             response={"audio_bytes": len(audio)},
+            capabilities=tts_provider_capabilities(provider),
+        )
+    except TtsServiceNotReady as exc:
+        return audio_probe_result(
+            False,
+            "tts",
+            provider,
+            url,
+            model,
+            bool(api_key),
+            str(exc),
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            response={"stage": "tts_loading", "health": exc.health},
             capabilities=tts_provider_capabilities(provider),
         )
     except Exception as exc:

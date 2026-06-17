@@ -464,16 +464,28 @@ class MemoryStore:
             row = conn.execute("SELECT * FROM memory_items WHERE id = ?", (memory_id,)).fetchone()
 
         return self.row_to_dict(row)
-    def apply_decay(self, settings: Any, mode: str | None = None) -> dict:
+    def apply_decay(self, settings: Any, mode: str | None = None, options: dict | None = None) -> dict:
         now = now_ts()
         mode = normalize_memory_mode(mode, settings)
-        short_delete_days = float(getattr(settings, "memory_short_delete_days", 180))
-        mid_downgrade_days = float(getattr(settings, "memory_mid_downgrade_days", 180))
-        long_downgrade_days = float(getattr(settings, "memory_long_downgrade_days", 365))
-        short_to_mid_days = float(getattr(settings, "memory_short_to_mid_days", 60))
-        short_to_mid_count = int(getattr(settings, "memory_short_to_mid_count", 3))
-        mid_to_long_days = float(getattr(settings, "memory_mid_to_long_days", 180))
-        mid_to_long_count = int(getattr(settings, "memory_mid_to_long_count", 5))
+        options = options or {}
+
+        def option_float(name: str, setting_name: str, default: float) -> float:
+            raw = options.get(name, options.get(setting_name, getattr(settings, setting_name, default)))
+            return max(0.0, safe_float(raw, default))
+
+        def option_int(name: str, setting_name: str, default: int) -> int:
+            try:
+                return max(1, int(options.get(name, options.get(setting_name, getattr(settings, setting_name, default)))))
+            except (TypeError, ValueError):
+                return default
+
+        short_delete_days = option_float("short_delete_days", "memory_short_delete_days", 180)
+        mid_downgrade_days = option_float("mid_downgrade_days", "memory_mid_downgrade_days", 180)
+        long_downgrade_days = option_float("long_downgrade_days", "memory_long_downgrade_days", 365)
+        short_to_mid_days = option_float("short_to_mid_days", "memory_short_to_mid_days", 60)
+        short_to_mid_count = option_int("short_to_mid_count", "memory_short_to_mid_count", 3)
+        mid_to_long_days = option_float("mid_to_long_days", "memory_mid_to_long_days", 180)
+        mid_to_long_count = option_int("mid_to_long_count", "memory_mid_to_long_count", 5)
 
         promoted = downgraded = deleted = 0
         with self.session() as conn:
@@ -511,7 +523,20 @@ class MemoryStore:
                     if count >= mid_to_long_count:
                         conn.execute("UPDATE memory_items SET layer = 'long', last_changed_at = ? WHERE id = ?", (now, memory_id))
                         promoted += 1
-        return {"promoted": promoted, "downgraded": downgraded, "deleted": deleted}
+        return {
+            "promoted": promoted,
+            "downgraded": downgraded,
+            "deleted": deleted,
+            "options": {
+                "short_delete_days": short_delete_days,
+                "mid_downgrade_days": mid_downgrade_days,
+                "long_downgrade_days": long_downgrade_days,
+                "short_to_mid_days": short_to_mid_days,
+                "short_to_mid_count": short_to_mid_count,
+                "mid_to_long_days": mid_to_long_days,
+                "mid_to_long_count": mid_to_long_count,
+            },
+        }
 
     def count_events_since(self, conn: sqlite3.Connection, memory_id: str, since: float) -> int:
         row = conn.execute(

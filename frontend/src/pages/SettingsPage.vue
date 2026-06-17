@@ -1393,8 +1393,8 @@ function formatTime(value?: string) {
                 <label><span>文字大小</span><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
               </div>
               <div class="theme-preview-strip">
-                <span :class="{ active: theme === 'dark' }"><Moon :size="15" />深色</span>
-                <span :class="{ active: theme === 'light' }"><Sun :size="15" />浅色</span>
+                <button class="theme-preview-button" type="button" :class="{ active: theme === 'dark' }" @click="applyTheme('dark')"><Moon :size="15" />深色</button>
+                <button class="theme-preview-button" type="button" :class="{ active: theme === 'light' }" @click="applyTheme('light')"><Sun :size="15" />浅色</button>
               </div>
             </section>
             <section class="appearance-balance-card">

@@ -25,6 +25,16 @@ export interface MemoryAdmissionResult {
   memory?: Record<string, unknown>;
 }
 
+export interface MemoryDecayOptions {
+  short_delete_days: number;
+  short_to_mid_days: number;
+  short_to_mid_count: number;
+  mid_to_long_days: number;
+  mid_to_long_count: number;
+  mid_downgrade_days: number;
+  long_downgrade_days: number;
+}
+
 export async function loadMemory(limit = 240, query = "", layer: MemoryLayer = "", mode = "") {
   const params = new URLSearchParams({ limit: String(limit) });
   if (query.trim()) params.set("query", query.trim());
@@ -53,11 +63,11 @@ export async function deleteMemory(memoryId: string) {
   return fetchJson<{ ok: boolean }>(`/api/memory/${encodeURIComponent(memoryId)}`, { method: "DELETE" });
 }
 
-export async function runMemoryDecay(mode = "") {
+export async function runMemoryDecay(mode = "", options: Partial<MemoryDecayOptions> = {}) {
   return fetchJson<Record<string, unknown>>("/api/memory/decay", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify({ mode, ...options }),
   });
 }
 

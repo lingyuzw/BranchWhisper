@@ -35,7 +35,8 @@ def create_memory_router() -> APIRouter:
     @router.post("/api/memory/decay")
     async def decay_memory(request: Request, payload: dict | None = Body(default=None)):
         payload = payload or {}
-        return request.app.state.memory_store.apply_decay(request.app.state.settings, mode=payload.get("mode"))
+        options = {key: value for key, value in payload.items() if key != "mode"}
+        return request.app.state.memory_store.apply_decay(request.app.state.settings, mode=payload.get("mode"), options=options)
 
     @router.post("/api/memory/admission-test")
     async def memory_admission_test(request: Request, payload: dict | None = Body(default=None)):

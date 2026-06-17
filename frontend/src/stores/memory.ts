@@ -6,6 +6,7 @@ import {
   runMemoryDecay,
   testMemoryAdmission,
   type MemoryAdmissionResult,
+  type MemoryDecayOptions,
   type MemoryItem,
   type MemoryLayer,
 } from "@/api/memory";
@@ -24,6 +25,7 @@ interface MemoryState {
   addText: string;
   admissionText: string;
   admissionResults: MemoryAdmissionResult[];
+  decayOptions: MemoryDecayOptions;
 }
 
 export const useMemoryStore = defineStore("memory", {
@@ -41,6 +43,15 @@ export const useMemoryStore = defineStore("memory", {
     addText: "",
     admissionText: "我平时更喜欢晚上写代码，也希望你以后优先用简洁一点的回复。",
     admissionResults: [],
+    decayOptions: {
+      short_delete_days: 180,
+      short_to_mid_days: 60,
+      short_to_mid_count: 3,
+      mid_to_long_days: 180,
+      mid_to_long_count: 5,
+      mid_downgrade_days: 180,
+      long_downgrade_days: 365,
+    },
   }),
   getters: {
     stats(state) {
@@ -108,7 +119,7 @@ export const useMemoryStore = defineStore("memory", {
       await this.reload();
     },
     async decay() {
-      await runMemoryDecay(this.mode || "");
+      await runMemoryDecay(this.mode || "", this.decayOptions);
       await this.reload();
     },
     async testAdmission() {

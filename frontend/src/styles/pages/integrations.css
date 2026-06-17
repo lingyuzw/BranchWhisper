@@ -18,27 +18,53 @@
 .integration-shell {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(420px, 0.92fr) minmax(520px, 1.08fr);
+  height: calc(100vh - var(--topbar-h) - 136px);
+  min-height: 680px;
+  grid-template-columns: minmax(440px, 0.88fr) minmax(600px, 1.12fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
-.integration-list {
+.integration-test-column {
   min-width: 0;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
 }
 
-.integration-side { display: grid; gap: 12px; }
+.integration-workbench {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, auto) minmax(320px, 1fr);
+  gap: 12px;
+  overflow: visible;
+}
 
-.integration-side .integration-panel {
-  min-height: 318px;
+.integration-login-panel,
+.integration-sessions-panel,
+.integration-log-column {
+  min-width: 0;
+  min-height: 0;
+}
+
+.integration-login-panel {
+  align-content: start;
+  gap: 9px;
+  padding: 14px;
+}
+
+.integration-log-column {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.integration-sessions-panel {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .integration-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   padding: 16px 18px;
   border: 1px solid var(--border);
@@ -51,6 +77,13 @@
   cursor: pointer;
   position: relative;
   overflow: hidden;
+}
+
+.integration-card--mini {
+  min-height: 160px;
+  gap: 8px;
+  padding: 11px;
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .integration-card::before {
@@ -72,6 +105,7 @@
 }
 
 .integration-card-head {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -85,9 +119,13 @@
   align-items: center;
 }
 .integration-title strong {
+  min-width: 0;
   color: var(--text);
   font-size: calc(15px * var(--ui-font-scale));
   font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .integration-title small {
   grid-column: 2;
@@ -104,10 +142,27 @@
 .integration-card.failed .status-dot { background: var(--danger); }
 
 .integration-meta {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.integration-meta--mini {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.integration-meta--mini .meta-cell {
+  min-width: 0;
+  padding: 6px 7px;
+}
+.integration-meta--mini .meta-cell span {
+  font-size: 10.5px;
+  line-height: 1.1;
+}
+.integration-meta--mini .meta-cell strong {
+  font-size: calc(12px * var(--ui-font-scale));
+  line-height: 1.15;
 }
 .integration-meta .meta-cell strong {
   min-width: 0;
@@ -117,17 +172,18 @@
 }
 
 .integration-actions {
-  grid-column: 1 / -1;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 .integration-actions .secondary-action {
-  min-width: 86px;
+  min-width: 0;
+  flex: 1 1 72px;
+  min-height: 32px;
+  padding-inline: 8px;
 }
 
 .integration-state-note {
-  grid-column: 1 / -1;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -139,6 +195,7 @@
   background: var(--surface-muted);
   font-size: var(--font-xs);
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 .integration-state-note .lucide {
   width: 15px;
@@ -176,11 +233,11 @@
 }
 
 .integration-qr {
-  min-height: 154px;
+  min-height: 96px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px;
+  padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-muted);
@@ -192,29 +249,73 @@
 .integration-console-grid {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(280px, 0.92fr) minmax(260px, 1fr);
-  gap: 10px;
-  align-items: stretch;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: start;
 }
 
-.integration-console-main,
-.integration-console-accounts {
+.integration-status-grid {
   min-width: 0;
   display: grid;
-  align-content: start;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.integration-console-main {
-  grid-template-rows: minmax(154px, auto) auto;
+.integration-status-card {
+  min-width: 0;
+  min-height: 96px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: center;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 86%, transparent), transparent 90px),
+    var(--surface-muted);
+  overflow: hidden;
 }
-
-.integration-console-accounts .integration-account-list {
-  min-height: 154px;
+.integration-status-card.active,
+.integration-status-card.active .status-dot {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
 }
-
-.integration-console-accounts .integration-account-item {
-  min-height: 154px;
+.integration-status-card-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.integration-status-copy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+}
+.integration-status-copy strong,
+.integration-status-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.integration-status-copy strong {
+  color: var(--text);
+  font-size: var(--font-sm);
+}
+.integration-status-copy small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+}
+.integration-status-card .small-button {
+  justify-self: start;
+  min-height: 28px;
+  padding-inline: 8px;
+  font-size: var(--font-xs);
 }
 
 .integration-login-placeholder,
@@ -239,11 +340,11 @@
 }
 
 .integration-qr-image {
-  width: 136px;
-  height: 136px;
-  flex: 0 0 136px;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
   object-fit: contain;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: #fff;
@@ -253,6 +354,9 @@
   display: grid;
   gap: 6px;
   height: 100%;
+  max-height: 126px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .integration-log-toolbar {
   display: flex;
@@ -281,6 +385,26 @@
   gap: 8px;
   align-items: center;
 }
+
+.integration-login-actions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.integration-login-actions .inline-actions {
+  justify-content: flex-start;
+}
+
+.integration-login-actions .inline-actions .secondary-action {
+  flex: 1 1 116px;
+}
+
+.integration-login-actions .wide {
+  grid-column: 1 / -1;
+}
 .integration-action-message {
   justify-self: end;
 }
@@ -293,25 +417,37 @@
 .integration-timing-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
+}
+
+.integration-timing-summary--mini {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.integration-timing-summary--mini span {
+  padding: 7px 8px;
 }
 .integration-timing-summary span {
   min-width: 0;
   display: grid;
   gap: 2px;
-  padding: 9px 10px;
+  padding: 7px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-muted);
 }
 .integration-timing-summary b {
   color: var(--text);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   font-weight: 700;
 }
 .integration-timing-summary small {
   color: var(--text-muted);
   font-size: var(--font-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .integration-timing-item {
@@ -350,6 +486,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-muted) 92%, var(--success) 8%);
+}
+
+.integration-account-item--compact {
+  min-height: 76px;
+  align-content: center;
 }
 .integration-account-item.muted {
   background: var(--surface-muted);
@@ -399,56 +540,63 @@
   padding-inline: 8px;
 }
 
-.integration-step-list {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-.integration-step-list span {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
-  gap: 4px 7px;
+.integration-step-track {
+  display: flex;
   align-items: center;
-  padding: 8px 9px;
+  gap: 4px;
+  padding: 6px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
 }
-.integration-step-list b {
-  width: 8px;
-  height: 8px;
+.integration-step-track span {
+  min-width: 0;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.integration-step-track b {
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   background: var(--text-muted);
 }
-.integration-step-list strong,
-.integration-step-list small {
+.integration-step-track strong,
+.integration-step-track em {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.integration-step-list strong {
-  color: var(--text);
-  font-size: var(--font-xs);
+.integration-step-track em {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-style: normal;
   font-weight: 800;
 }
-.integration-step-list small {
-  grid-column: 2;
-  color: var(--text-muted);
-  font-size: 11px;
+.integration-step-track strong {
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 800;
 }
-.integration-step-list .ok {
-  border-color: rgba(120,199,122,0.24);
+.integration-step-track .ok {
   background: var(--success-soft);
 }
-.integration-step-list .ok b { background: var(--success); }
-.integration-step-list .pending b { background: var(--warning); }
-.integration-step-list .failed {
-  border-color: rgba(231,104,104,0.24);
+.integration-step-track .ok b { background: var(--success); }
+.integration-step-track .pending {
+  background: var(--warning-soft);
+}
+.integration-step-track .pending b { background: var(--warning); }
+.integration-step-track .failed {
   background: var(--danger-soft);
 }
-.integration-step-list .failed b { background: var(--danger); }
+.integration-step-track .failed b { background: var(--danger); }
 
 .integration-probe-panel {
   display: grid;
@@ -460,10 +608,81 @@
   background: transparent;
 }
 
+.integration-session-grid {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(160px, auto);
+  gap: 10px;
+  align-content: start;
+  overflow-y: auto;
+  padding: 2px 4px 2px 2px;
+  overscroll-behavior: contain;
+}
+
+.integration-card-foot {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.integration-card-note {
+  min-width: 0;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: var(--font-xs);
+  font-weight: 650;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.integration-card-note.active {
+  color: color-mix(in srgb, var(--success) 84%, var(--text) 16%);
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+}
+.integration-card-note.loading {
+  color: color-mix(in srgb, var(--warning) 86%, var(--text) 14%);
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--border));
+}
+.integration-card-note.failed {
+  color: color-mix(in srgb, var(--danger) 86%, var(--text) 14%);
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+}
+
+.integration-actions--mini {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.integration-actions--mini .icon-button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  flex: 0 0 30px;
+  padding: 0;
+}
+.integration-actions--mini .danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
 .integration-probe-card {
   min-width: 0;
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--border);
@@ -485,6 +704,7 @@
 }
 .integration-probe-panel .inline-probe {
   width: 100%;
+  height: 100%;
   background: var(--surface-muted);
   align-content: start;
 }
@@ -512,22 +732,15 @@
 }
 
 .integration-log {
-  height: clamp(220px, 30vh, 360px);
+  height: 100%;
+  min-height: 210px;
+  overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  overscroll-behavior: contain;
   background:
     linear-gradient(180deg, rgba(120,199,122,0.04), transparent 120px),
     var(--log-bg);
-}
-
-.integration-workbench-panel {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface) 94%, var(--success) 6%);
-  box-shadow: var(--shadow-sm);
 }
 
 .integration-log-panel {
@@ -547,14 +760,22 @@
 }
 
 @media (max-width: 1180px) {
-  .integration-shell { grid-template-columns: 1fr; }
-  .integration-console-grid { grid-template-columns: 1fr; }
+  .integration-shell {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+  .integration-workbench {
+    max-height: none;
+    overflow: visible;
+  }
   .integration-probe-panel { grid-template-columns: 1fr; }
   .integration-timing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
-  .integration-list { grid-template-columns: 1fr; }
+  .integration-session-grid { grid-template-columns: 1fr; }
+  .integration-status-grid { grid-template-columns: 1fr; }
   .integration-card {
     grid-template-columns: minmax(0, 1fr);
     padding: 14px;
@@ -569,7 +790,7 @@
   }
   .integration-meta,
   .integration-timing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .integration-step-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .integration-step-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .integration-actions .secondary-action {
     flex: 1 1 118px;
   }
@@ -577,6 +798,8 @@
     justify-content: flex-start;
   }
   .integration-bridge-row,
+  .integration-login-actions,
+  .integration-card-foot,
   .probe-row { grid-template-columns: 1fr; }
   .integration-qr { align-items: flex-start; flex-direction: column; }
 }

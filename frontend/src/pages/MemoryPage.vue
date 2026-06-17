@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { Brain, ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from "@lucide/vue";
-import InlineProbe from "@/components/layout/InlineProbe.vue";
+import { Brain, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from "@lucide/vue";
 import { useMemoryStore } from "@/stores/memory";
 import { useUiStore } from "@/stores/ui";
 import type { MemoryLayer } from "@/api/memory";
@@ -9,6 +8,7 @@ import type { MemoryLayer } from "@/api/memory";
 const memory = useMemoryStore();
 const ui = useUiStore();
 const memoryBusy = ref(false);
+const decayOpen = ref(false);
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
 const admissionProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
 
@@ -202,11 +202,39 @@ function formatTime(value?: string | number) {
                 <option value="long">长期</option>
               </select>
             </label>
-            <button class="secondary-action full" type="button" :disabled="memoryBusy" @click="decayMemory">
-              <Brain :size="16" /> 衰减清理
-            </button>
           </div>
 
+          <section class="memory-decay-panel" :class="{ expanded: decayOpen }">
+            <div class="memory-decay-card-head">
+              <button class="memory-decay-toggle" type="button" @click="decayOpen = !decayOpen">
+                <span>
+                  <strong>衰减清理条件</strong>
+                  <small>只影响本次清理</small>
+                </span>
+                <ChevronDown v-if="decayOpen" :size="15" />
+                <ChevronRight v-else :size="15" />
+              </button>
+              <button class="secondary-action compact-action" type="button" :disabled="memoryBusy" @click="decayMemory">
+                <Brain :size="14" /> 清理
+              </button>
+            </div>
+            <div class="memory-decay-summary">
+              <span>删短期 {{ memory.decayOptions.short_delete_days }} 天</span>
+              <span>短转中 {{ memory.decayOptions.short_to_mid_count }} 次</span>
+              <span>长降级 {{ memory.decayOptions.long_downgrade_days }} 天</span>
+            </div>
+            <div v-if="decayOpen" class="memory-decay-body">
+              <div class="memory-decay-grid">
+                <label><span>短期删除/天</span><input v-model.number="memory.decayOptions.short_delete_days" type="number" min="1" /></label>
+                <label><span>短期晋升/天</span><input v-model.number="memory.decayOptions.short_to_mid_days" type="number" min="1" /></label>
+                <label><span>短期次数</span><input v-model.number="memory.decayOptions.short_to_mid_count" type="number" min="1" /></label>
+                <label><span>中期晋升/天</span><input v-model.number="memory.decayOptions.mid_to_long_days" type="number" min="1" /></label>
+                <label><span>中期次数</span><input v-model.number="memory.decayOptions.mid_to_long_count" type="number" min="1" /></label>
+                <label><span>中期降级/天</span><input v-model.number="memory.decayOptions.mid_downgrade_days" type="number" min="1" /></label>
+                <label class="wide"><span>长期降级/天</span><input v-model.number="memory.decayOptions.long_downgrade_days" type="number" min="1" /></label>
+              </div>
+            </div>
+          </section>
         </aside>
 
         <section class="memory-page-panel">
@@ -222,22 +250,27 @@ function formatTime(value?: string | number) {
           </header>
 
           <section class="memory-admission-probe">
-            <label>
+            <label class="memory-probe-cell memory-probe-text memory-admission-card">
               <span>入库测试文本</span>
+              <small>输入一句偏好、身份或长期事实，先看它是否值得进入记忆。</small>
               <textarea v-model="memory.admissionText"></textarea>
             </label>
-            <InlineProbe
-              variant="detail"
-              title="记忆入库回路"
-              summary="检查当前抽取规则会不会把这句话写入记忆。"
-              :status="admissionProbe.status"
-              :status-text="admissionProbe.text"
-              :detail="admissionProbe.detail"
-              :detail-open="Boolean(admissionProbe.detail)"
-              action-text="测试入库"
-              @run="runAdmissionProbe"
-              @copy="copyAdmissionProbe"
-            />
+            <div class="memory-probe-cell memory-probe-loop memory-admission-action-card" :class="admissionProbe.status">
+              <div class="memory-admission-action-copy">
+                <span>记忆入库回路</span>
+                <strong>{{ admissionProbe.text }}</strong>
+                <small>使用当前抽取规则做一次最小检测。</small>
+              </div>
+              <div class="memory-admission-actions">
+                <button class="primary-action" type="button" :disabled="admissionProbe.status === 'running'" @click="runAdmissionProbe">
+                  <Brain :size="16" /> {{ admissionProbe.status === "running" ? "检测中" : "测试入库" }}
+                </button>
+                <button class="secondary-action" type="button" :disabled="!admissionProbe.detail" @click="copyAdmissionProbe">
+                  复制结果
+                </button>
+              </div>
+              <code v-if="admissionProbe.detail">{{ admissionProbe.detail }}</code>
+            </div>
           </section>
 
           <div class="memory-context-strip">

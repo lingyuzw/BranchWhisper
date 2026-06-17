@@ -27,7 +27,8 @@
     }
   ],
   "sessions": {
-    "weixin_personal:o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat:o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat": "20260617_160208_9e2f06"
+    "weixin_personal:o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat:o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat": "20260617_160208_9e2f06",
+    "weixin_personal:web_probe:integration_console": "20260617_185506_4f8955"
   },
   "my_weixin_session": {
     "platform_id": "weixin_personal",
@@ -36,7 +37,7 @@
     "sender_id": "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat",
     "conversation_id": "20260617_160208_9e2f06",
     "context_token_set": true,
-    "updated_at": "2026-06-17 16:02:08",
-    "updated_at_ts": 1781683328.0222263
+    "updated_at": "2026-06-17 21:41:42",
+    "updated_at_ts": 1781703702.3645017
   }
 }

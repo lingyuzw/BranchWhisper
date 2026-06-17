@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import io
 import re
 import uuid
@@ -18,8 +19,17 @@ from core.config import (
     active_tts_provider_mode,
     active_tts_url,
 )
-from core.http_client import httpx_client_for_url
+from core.http_client import httpx_client_for_url, request_with_retries
 from service_runtime.audio_pipeline import clean_for_tts
+
+
+class TtsServiceNotReady(RuntimeError):
+    """Raised when local TTS is reachable but the model has not finished loading."""
+
+    def __init__(self, message: str, *, status: str = "", health: dict | None = None):
+        super().__init__(message)
+        self.status = status
+        self.health = health or {}
 
 
 @dataclass
@@ -156,6 +166,7 @@ def build_tts_request(settings: Any, text: str, stream: bool = True) -> TtsReque
 
 async def iter_tts_audio(settings: Any, text: str) -> AsyncIterator[bytes]:
     request = build_tts_request(settings, text, stream=True)
+    await ensure_local_tts_ready(settings, request)
     url = request.url
     if request.query:
         url = f"{url}?{request.query}"
@@ -170,6 +181,50 @@ async def iter_tts_audio(settings: Any, text: str) -> AsyncIterator[bytes]:
             async for chunk in resp.aiter_bytes():
                 if chunk:
                     yield chunk
+
+
+async def ensure_local_tts_ready(settings: Any, request: TtsRequest | None = None) -> None:
+    request = request or build_tts_request(settings, "", stream=True)
+    if request.provider != "local":
+        return
+    health_url = local_tts_health_url(request.url)
+    try:
+        async with httpx_client_for_url(health_url, timeout=1.5) as client:
+            resp = await client.get(health_url)
+        payload = {}
+        with contextlib.suppress(Exception):
+            data = resp.json()
+            if isinstance(data, dict):
+                payload = data
+    except Exception:
+        return
+
+    status = str(payload.get("status") or "").strip().lower()
+    ready = payload.get("ready")
+    detail = str(payload.get("detail") or payload.get("message") or payload.get("error") or "").strip()
+    if 200 <= int(getattr(resp, "status_code", 0) or 0) < 400 and ready is not False and status not in {"loading", "warming", "starting", "not_started", "error", "failed"}:
+        return
+    if ready is True and status not in {"error", "failed"}:
+        return
+    raise TtsServiceNotReady(local_tts_not_ready_message(status, detail), status=status, health=payload)
+
+
+def local_tts_health_url(tts_url: str) -> str:
+    from service_runtime.services import health_url_from
+
+    return health_url_from(tts_url)
+
+
+def local_tts_not_ready_message(status: str, detail: str = "") -> str:
+    status = str(status or "").strip().lower()
+    detail = str(detail or "").strip()
+    if status in {"error", "failed"} or detail:
+        return f"TTS 服务未就绪：{detail or status}"
+    if status == "warming":
+        return "TTS 模型正在预热，稍后再测试语音。"
+    if status in {"loading", "starting", "not_started", ""}:
+        return "TTS 模型还在加载，稍后再测试语音。"
+    return f"TTS 服务未就绪：{status}"
 
 
 async def synthesize_tts_bytes(settings: Any, text: str) -> bytes:
@@ -203,7 +258,7 @@ async def synthesize_tts_wav_bytes(settings: Any, text: str) -> bytes:
 
 async def request_json_audio(request: TtsRequest) -> bytes:
     async with httpx_client_for_url(request.url, timeout=None) as client:
-        resp = await client.post(request.url, json=request.json, headers=request.headers)
+        resp = await request_with_retries(client, "POST", request.url, json=request.json, headers=request.headers)
         resp.raise_for_status()
         data = resp.json()
         audio = extract_json_audio_bytes(data)
@@ -211,7 +266,7 @@ async def request_json_audio(request: TtsRequest) -> bytes:
             return normalize_audio_to_pcm(audio)
         audio_url = extract_json_audio_url(data)
         if audio_url:
-            audio_resp = await client.get(audio_url)
+            audio_resp = await request_with_retries(client, "GET", audio_url)
             audio_resp.raise_for_status()
             return normalize_audio_to_pcm(bytes(audio_resp.content or b""))
     raise ValueError("TTS response did not contain audio data")

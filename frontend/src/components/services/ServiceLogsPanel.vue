@@ -23,11 +23,16 @@ const logBox = ref<HTMLElement | null>(null);
 const actionMessage = ref("");
 const ui = useUiStore();
 const selectedService = computed(() => props.services.find((service) => service.id === props.selectedId) || null);
-const logSections = computed(() => splitLogSections(props.logs));
+const logSections = computed(() => {
+  const text = String(props.logs || "");
+  if (!/^=+\s*start\s+/im.test(text) || text.length > 32000) return [];
+  return splitLogSections(text);
+});
 
 watch(
   () => props.logs,
   () => {
+    if (!props.live) return;
     void nextTick(() => {
       if (logBox.value) logBox.value.scrollTop = logBox.value.scrollHeight;
     });

@@ -42,7 +42,7 @@ from service_runtime.audio_pipeline import (
     transcribe_audio,
     wav_bytes_from_float32,
 )
-from service_runtime.tts_clients import build_tts_request, iter_tts_audio
+from service_runtime.tts_clients import TtsServiceNotReady, build_tts_request, iter_tts_audio
 from service_runtime.vad import MIC_SAMPLE_RATE, VadModelStore, VoiceVadSession
 from tools.direct_answers import direct_answer_from_tool
 from tools.runtime_brain import MemoryStore, ToolManager, parse_tool_call
@@ -1045,6 +1045,10 @@ class DialogSession:
                 if tail:
                     await self.send_audio(tail)
 
+            except TtsServiceNotReady as exc:
+                self.trace_log(self.current_trace_id, f"tts:not_ready status={exc.status or '-'} error={exc}")
+                await self.send_event("status", stage="tts", label="loading")
+                await self.send_event("error", message=str(exc))
             except httpx.ConnectError as exc:
                 self.trace_log(self.current_trace_id, f"tts:connect_error {exc}")
                 await self.send_event(
@@ -1211,4 +1215,3 @@ def last_assistant_content(messages: list[dict[str, str]]) -> str | None:
         if message.get("role") == "assistant" and message.get("content"):
             return message["content"]
     return None
-

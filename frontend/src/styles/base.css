@@ -5,18 +5,18 @@
 
 :root {
   /* ---- dark theme (default) ---- */
-  --bg: #0d1013;
-  --bg-elevated: #14181d;
-  --surface: #1b2026;
-  --surface-hover: #252c33;
-  --surface-muted: #12161b;
+  --bg: #171912;
+  --bg-elevated: #202118;
+  --surface: #28281f;
+  --surface-hover: #333229;
+  --surface-muted: #1f2119;
   --panel: var(--surface);
   --text: #f4f1e8;
   --text-soft: #cfc8b9;
-  --text-muted: #8d938f;
+  --text-muted: #9a9a8e;
   --muted: var(--text-muted);
-  --border: #2c3338;
-  --border-strong: #4c555b;
+  --border: #3a392f;
+  --border-strong: #5b5749;
   --primary: #d6b56d;
   --primary-hover: #ead08a;
   --primary-soft: rgba(214, 181, 109, 0.13);
@@ -34,7 +34,7 @@
   --accent-rose: #cf8190;
   --accent-soft: rgba(207, 129, 144, 0.14);
   --accent-lilac: #a9b0bc;
-  --log-bg: #090c0f;
+  --log-bg: #14160f;
   --log-panel: rgba(255,255,255,0.025);
   --log-panel-head: rgba(255,255,255,0.035);
   --log-border: rgba(255,255,255,0.06);
@@ -110,10 +110,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background:
-    radial-gradient(circle at 12% -8%, rgba(214, 181, 109, 0.12), transparent 30vw),
-    radial-gradient(circle at 92% 12%, rgba(117, 200, 189, 0.08), transparent 28vw),
-    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 280px),
-    linear-gradient(135deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 24px),
+    radial-gradient(circle at 12% -8%, rgba(214, 181, 109, 0.09), transparent 30vw),
+    radial-gradient(circle at 92% 12%, rgba(117, 200, 189, 0.055), transparent 28vw),
+    linear-gradient(180deg, rgba(246,241,224,0.035), transparent 280px),
+    linear-gradient(135deg, rgba(246,241,224,0.018) 0 1px, transparent 1px 24px),
     var(--bg);
   font-size: var(--font-body);
   line-height: 1.6;

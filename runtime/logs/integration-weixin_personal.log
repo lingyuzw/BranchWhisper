@@ -1,136 +1,463 @@
 
-===== 2026-06-17 14:04:15 =====
+===== 2026-06-17 17:34:02 =====
 [logs] cleared
 
-===== 2026-06-17 14:34:10 =====
-[process] stopped orphan bridge pid=653140
+===== 2026-06-17 18:54:56 =====
+[sticker-test:sticker_test_09bdd74d76] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
 
-===== 2026-06-17 14:34:11 =====
-[process] killed orphan bridge pid=653140
+===== 2026-06-17 18:54:57 =====
+[sticker-test:sticker_test_09bdd74d76] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781693697643-be439d12 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 872, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 200}
 
-===== 2026-06-17 14:34:11 =====
-[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+===== 2026-06-17 18:55:02 =====
+[voice-test:voice_test_843cbf2594] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
 
-===== 2026-06-17 14:34:11 =====
-[config] updated integration
+===== 2026-06-17 18:55:02 =====
+[voice-test:voice_test_843cbf2594] failed stage=start target_url=- account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=All connection attempts failed
 
-===== 2026-06-17 14:34:11 =====
-[session] bridge started pid=704281
+===== 2026-06-17 18:55:04 =====
+[voice-test:voice_test_80326b526d] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
 
-===== 2026-06-17 14:34:11 =====
-[watchdog] bridge restart requested
-[2026-06-17 14:34:11] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
-[2026-06-17 14:34:11] loaded accounts: 8397c5c17324-im-bot
-[2026-06-17 14:34:47] received signal 15, stopping after current poll
+===== 2026-06-17 18:55:04 =====
+[voice-test:voice_test_80326b526d] failed stage=start target_url=- account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=All connection attempts failed
 
-===== 2026-06-17 14:34:47 =====
-[process] stopped orphan bridge pid=704281
+===== 2026-06-17 18:55:06 =====
+[dialog:ext_af6a0dc5aa] recv sender=integration_console text=你好，测试一下
 
-===== 2026-06-17 14:34:48 =====
-[process] killed orphan bridge pid=704281
+===== 2026-06-17 18:55:06 =====
+[dialog:ext_af6a0dc5aa] stage=llm url=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions sender=integration_console message_id= error=ConnectError: All connection attempts failed
 
-===== 2026-06-17 14:34:48 =====
-[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+===== 2026-06-17 18:55:12 =====
+[dialog:ext_3aaf4e54f4] recv sender=integration_console text=你好，测试一下
 
-===== 2026-06-17 14:34:48 =====
-[config] updated integration
+===== 2026-06-17 18:55:12 =====
+[dialog:ext_3aaf4e54f4] stage=llm url=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions sender=integration_console message_id= error=ConnectError: All connection attempts failed
 
-===== 2026-06-17 14:34:48 =====
-[session] bridge started pid=704592
-
-===== 2026-06-17 14:34:48 =====
-[watchdog] bridge restart requested
-[2026-06-17 14:34:48] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
-[2026-06-17 14:34:48] loaded accounts: 8397c5c17324-im-bot
-
-===== 2026-06-17 14:34:56 =====
-[process] process exited with code -9
-[2026-06-17 14:35:02] received signal 15, stopping after current poll
-===== 2026-06-17 14:35:02 =====
-[process] stopped orphan bridge pid=704592
-
-
-===== 2026-06-17 14:35:03 =====
-[process] killed orphan bridge pid=704592
-
-===== 2026-06-17 14:35:03 =====
-[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
-
-===== 2026-06-17 14:35:03 =====
-[config] updated integration
-
-===== 2026-06-17 14:35:03 =====
-[session] bridge started pid=704748
-
-===== 2026-06-17 14:35:03 =====
-[watchdog] bridge restart requested
-[2026-06-17 14:35:03] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
-[2026-06-17 14:35:03] loaded accounts: 8397c5c17324-im-bot
-
-===== 2026-06-17 14:36:17 =====
-[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
-
-===== 2026-06-17 14:36:17 =====
-[config] updated integration
-
-===== 2026-06-17 14:36:17 =====
-[session] bridge started pid=705413
-
-===== 2026-06-17 14:36:17 =====
-[watchdog] bridge restart requested
-[2026-06-17 14:36:17] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
-[2026-06-17 14:36:17] loaded accounts: 8397c5c17324-im-bot
-
-===== 2026-06-17 14:37:08 =====
-[dialog:ext_4e531b6ab2] recv sender=codex-test-user@im.wechat text=????
-
-===== 2026-06-17 14:37:36 =====
-[dialog:ext_4e531b6ab2] reply text_len=9 parts=2 clean_len=9 diag={'finish_reason': 'stop', 'llm_reply_len': 9, 'llm_clean_len': 9, 'reply_len': 9, 'reply_clean_len': 9} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 26260, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 26265} voice_requested=False send_voice=False voice_file= voice_error=
-
-===== 2026-06-17 15:02:02 =====
-[process] stopped orphan bridge pid=705413
-[2026-06-17 15:02:02] received signal 15, stopping after current poll
-
-===== 2026-06-17 15:02:02 =====
-[process] killed orphan bridge pid=705413
-
-===== 2026-06-17 15:02:02 =====
-[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
-
-===== 2026-06-17 15:02:02 =====
-[config] updated integration
-
-===== 2026-06-17 15:02:02 =====
-[session] bridge started pid=716898
-
-===== 2026-06-17 15:02:02 =====
-[watchdog] bridge restart requested
-[2026-06-17 15:02:03] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
-[2026-06-17 15:02:03] loaded accounts: 8397c5c17324-im-bot
-[2026-06-17 15:02:06] received signal 15, stopping after current poll
-
-===== 2026-06-17 15:11:45 =====
-[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
-
-===== 2026-06-17 15:11:45 =====
-[config] updated integration
-
-===== 2026-06-17 15:11:45 =====
-[session] bridge started pid=720940
-
-===== 2026-06-17 15:11:45 =====
-[watchdog] bridge restart requested
-[2026-06-17 15:11:45] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
-[2026-06-17 15:11:45] loaded accounts: 8397c5c17324-im-bot
-[2026-06-17 16:02:08] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=说句话听听
-
-===== 2026-06-17 16:02:08 =====
+===== 2026-06-17 18:56:04 =====
 [weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
 
-===== 2026-06-17 16:02:08 =====
-[dialog:ext_3ad2db8b3c] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=说句话听听
+===== 2026-06-17 18:56:04 =====
+[dialog:ext_56f2654827] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=说句话听听
 
-===== 2026-06-17 16:02:55 =====
-[dialog:ext_3ad2db8b3c] reply text_len=12 parts=1 clean_len=12 diag={'finish_reason': 'stop', 'llm_reply_len': 12, 'llm_clean_len': 12, 'reply_len': 12, 'reply_clean_len': 12} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 44415, 'tts_ms': 1645, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 46065} voice_requested=True send_voice=True voice_file=/home/me/workspace/BranchWhisper/runtime/integration_media/ext_3ad2db8b3c.wav voice_error=
-[2026-06-17 16:02:58] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781683375379-0e161751 branch_ms=46073 send_ms=244 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 44415, 'tts_ms': 1645, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 46065}
-[2026-06-17 16:03:00] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781683379928-5d4bdb31 voice_send_ms=1288 playtime_ms=2420 format=silk encode_type=6 client_delivery=unconfirmed
+===== 2026-06-17 18:56:29 =====
+[dialog:ext_56f2654827] reply text_len=15 parts=2 clean_len=15 diag={'finish_reason': 'stop', 'llm_reply_len': 15, 'llm_clean_len': 15, 'reply_len': 15, 'reply_clean_len': 15} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 21531, 'tts_ms': 2158, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 23693} voice_requested=True send_voice=True voice_file=/home/me/workspace/BranchWhisper/runtime/integration_media/ext_56f2654827.wav voice_error=
+
+===== 2026-06-17 19:01:57 =====
+[dialog:ext_c25e6f6083] recv sender=integration_console text=你好，测试一下
+
+===== 2026-06-17 19:02:22 =====
+[dialog:ext_c25e6f6083] reply text_len=8 parts=2 clean_len=8 diag={'finish_reason': 'stop', 'llm_reply_len': 8, 'llm_clean_len': 8, 'reply_len': 8, 'reply_clean_len': 8} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 25095, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 25098} voice_requested=False send_voice=False voice_file= voice_error=
+
+===== 2026-06-17 19:06:23 =====
+[voice-test:voice_test_f32f496c6f] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你好，今天过得怎么样
+
+===== 2026-06-17 19:06:27 =====
+[voice-test:voice_test_f32f496c6f] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781694387352-d4f783ab format=silk diagnostic={'encode_type': 6, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 2400, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 2400, 'mean_volume_db': -22.3, 'max_volume_db': -6.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 2400, 'mean_volume_db': -14.3, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 95}, 'upload_ms': 698, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 19:19:42 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 19:19:42 =====
+[config] updated integration
+
+===== 2026-06-17 19:19:42 =====
+[session] bridge started pid=823454
+
+===== 2026-06-17 19:19:42 =====
+[watchdog] bridge restart requested
+[2026-06-17 19:19:43] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 19:19:43] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 19:20:56 =====
+[dialog:ext_481e237298] recv sender=integration_console text=你好，测试一下文本链路
+
+===== 2026-06-17 19:20:56 =====
+[voice-test:voice_test_46189e6fc2] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你好，今天过得怎么样
+
+===== 2026-06-17 19:20:59 =====
+[voice-test:voice_test_46189e6fc2] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781695259118-f7e0f5ac format=silk diagnostic={'encode_type': 6, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 2440, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 2440, 'mean_volume_db': -22, 'max_volume_db': -4.3}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 2440, 'mean_volume_db': -14, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 95}, 'upload_ms': 697, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 19:21:06 =====
+[dialog:ext_481e237298] reply text_len=15 parts=2 clean_len=15 diag={'finish_reason': 'stop', 'llm_reply_len': 15, 'llm_clean_len': 15, 'reply_len': 15, 'reply_clean_len': 15} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 9090, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 9095} voice_requested=False send_voice=False voice_file= voice_error=
+
+===== 2026-06-17 19:32:18 =====
+[process] stopped orphan bridge pid=823454
+[2026-06-17 19:32:18] received signal 15, stopping after current poll
+
+===== 2026-06-17 19:32:19 =====
+[process] killed orphan bridge pid=823454
+
+===== 2026-06-17 19:32:19 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 19:32:19 =====
+[config] updated integration
+
+===== 2026-06-17 19:32:19 =====
+[session] bridge started pid=829461
+
+===== 2026-06-17 19:32:19 =====
+[watchdog] bridge restart requested
+[2026-06-17 19:32:19] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 19:32:19] loaded accounts: 8397c5c17324-im-bot
+[2026-06-17 19:32:22] received signal 15, stopping after current poll
+
+===== 2026-06-17 19:32:37 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 19:32:37 =====
+[config] updated integration
+
+===== 2026-06-17 19:32:37 =====
+[session] bridge started pid=829606
+
+===== 2026-06-17 19:32:37 =====
+[watchdog] bridge restart requested
+[2026-06-17 19:32:37] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 19:32:37] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 19:33:07 =====
+[voice-test:voice_test_1433153735] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你好，今天过得怎么样
+
+===== 2026-06-17 19:33:07 =====
+[dialog:ext_f6fad4b48f] recv sender=integration_console text=你好，测试一下文本链路
+
+===== 2026-06-17 19:33:09 =====
+[voice-test:voice_test_1433153735] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781695989734-b6e9a4e5 format=silk diagnostic={'encode_type': 6, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 2340, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 2340, 'mean_volume_db': -22, 'max_volume_db': -6.7}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 2340, 'mean_volume_db': -14, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 92}, 'upload_ms': 576, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 19:33:43 =====
+[dialog:ext_f6fad4b48f] reply text_len=13 parts=1 clean_len=13 diag={'finish_reason': 'stop', 'llm_reply_len': 13, 'llm_clean_len': 13, 'reply_len': 13, 'reply_clean_len': 13} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 35198, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 35203} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-17 20:02:35] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你再说一句
+
+===== 2026-06-17 20:02:35 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 20:02:35 =====
+[dialog:ext_f837015698] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你再说一句
+
+===== 2026-06-17 20:02:54 =====
+[voice-test:voice_test_2231951bbf] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 20:02:58 =====
+[voice-test:voice_test_2231951bbf] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781697777908-6e90478a format=silk diagnostic={'encode_type': 6, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 3120, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3120, 'mean_volume_db': -19.2, 'max_volume_db': -2.7}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3120, 'mean_volume_db': -11.4, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 96}, 'upload_ms': 655, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 20:03:14 =====
+[dialog:ext_f837015698] reply text_len=12 parts=2 clean_len=12 diag={'finish_reason': 'stop', 'llm_reply_len': 12, 'llm_clean_len': 12, 'reply_len': 12, 'reply_clean_len': 12} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 35655, 'tts_ms': 1827, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 37485} voice_requested=True send_voice=True voice_file=/home/me/workspace/BranchWhisper/runtime/integration_media/ext_f837015698.wav voice_error=
+[2026-06-17 20:03:14] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781697794103-0d64d187,branchwhisper-1781697794579-dda6fc38 branch_ms=37492 send_ms=682 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 35655, 'tts_ms': 1827, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 37485}
+[2026-06-17 20:03:15] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781697795739-7bbfc0ff voice_send_ms=1132 playtime_ms=2940 format=silk encode_type=6 client_delivery=unconfirmed
+[2026-06-17 20:17:36] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=在干嘛？
+
+===== 2026-06-17 20:17:36 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 20:17:36 =====
+[dialog:ext_1e941414d8] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=在干嘛？
+
+===== 2026-06-17 20:17:39 =====
+[dialog:ext_1e941414d8] reply text_len=12 parts=2 clean_len=12 diag={'finish_reason': 'stop', 'llm_reply_len': 12, 'llm_clean_len': 12, 'reply_len': 12, 'reply_clean_len': 12} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 3026, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 3055} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-17 20:17:40] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781698659929-26381832,branchwhisper-1781698660303-3426b7c9 branch_ms=3164 send_ms=569 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 3026, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 3055}
+
+===== 2026-06-17 20:28:08 =====
+[voice-test:voice_test_e50b438b0c] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 20:28:12 =====
+[voice-test:voice_test_e50b438b0c] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781699291890-2fdb13d2 format=silk diagnostic={'encode_type': 6, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 3260, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3260, 'mean_volume_db': -19.3, 'max_volume_db': -3.7}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3260, 'mean_volume_db': -11.4, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 99}, 'upload_ms': 534, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 20:29:37 =====
+[process] stopped orphan bridge pid=829606
+[2026-06-17 20:29:37] received signal 15, stopping after current poll
+
+===== 2026-06-17 20:29:37 =====
+[process] killed orphan bridge pid=829606
+
+===== 2026-06-17 20:29:37 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 20:29:37 =====
+[config] updated integration
+
+===== 2026-06-17 20:29:37 =====
+[session] bridge started pid=855006
+
+===== 2026-06-17 20:29:37 =====
+[watchdog] bridge restart requested
+[2026-06-17 20:29:38] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 20:29:38] loaded accounts: 8397c5c17324-im-bot
+[2026-06-17 20:29:39] received signal 15, stopping after current poll
+
+===== 2026-06-17 20:30:24 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 20:30:24 =====
+[config] updated integration
+
+===== 2026-06-17 20:30:24 =====
+[session] bridge started pid=855294
+
+===== 2026-06-17 20:30:24 =====
+[watchdog] bridge restart requested
+[2026-06-17 20:30:24] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 20:30:24] loaded accounts: 8397c5c17324-im-bot
+[2026-06-17 20:35:30] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我也在刷手机
+
+===== 2026-06-17 20:35:30 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 20:35:30 =====
+[dialog:ext_0863783100] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我也在刷手机
+
+===== 2026-06-17 20:35:38 =====
+[dialog:ext_0863783100] reply text_len=19 parts=1 clean_len=19 diag={'finish_reason': 'stop', 'llm_reply_len': 19, 'llm_clean_len': 19, 'reply_len': 19, 'reply_clean_len': 19} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 7230, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 7254} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-17 20:35:38] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781699738333-79893393 branch_ms=7434 send_ms=294 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 7230, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 7254}
+[2026-06-17 20:37:42] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你说句话给我听听
+
+===== 2026-06-17 20:37:42 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 20:37:42 =====
+[dialog:ext_703b2af485] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你说句话给我听听
+
+===== 2026-06-17 20:38:15 =====
+[dialog:ext_703b2af485] reply text_len=16 parts=1 clean_len=16 diag={'finish_reason': 'stop', 'llm_reply_len': 16, 'llm_clean_len': 16, 'reply_len': 16, 'reply_clean_len': 16} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 26563, 'tts_ms': 5438, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 32005} voice_requested=True send_voice=True voice_file=/home/me/workspace/BranchWhisper/runtime/integration_media/ext_703b2af485.wav voice_error=
+[2026-06-17 20:38:16] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781699895812-64523f0d branch_ms=32016 send_ms=273 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 26563, 'tts_ms': 5438, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 32005}
+[2026-06-17 20:38:17] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781699897100-f73e4d59 voice_send_ms=1242 playtime_ms=3360 format=silk encode_type=6 client_delivery=unconfirmed
+[2026-06-17 20:39:10] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你再说一句话我听听
+
+===== 2026-06-17 20:39:10 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 20:39:10 =====
+[dialog:ext_cc992fdab9] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你再说一句话我听听
+
+===== 2026-06-17 20:39:23 =====
+[dialog:ext_cc992fdab9] reply text_len=7 parts=1 clean_len=7 diag={'finish_reason': 'stop', 'llm_reply_len': 7, 'llm_clean_len': 7, 'reply_len': 7, 'reply_clean_len': 7} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1666, 'tts_ms': 9397, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 11065} voice_requested=True send_voice=True voice_file=/home/me/workspace/BranchWhisper/runtime/integration_media/ext_cc992fdab9.wav voice_error=
+[2026-06-17 20:39:23] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781699963134-c2a6173b branch_ms=11072 send_ms=273 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1666, 'tts_ms': 9397, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 11065}
+[2026-06-17 20:39:24] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781699964334-a0953678 voice_send_ms=1147 playtime_ms=5280 format=silk encode_type=6 client_delivery=unconfirmed
+
+===== 2026-06-17 20:53:33 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 20:53:33 =====
+[config] updated integration
+
+===== 2026-06-17 20:53:33 =====
+[session] bridge started pid=866427
+
+===== 2026-06-17 20:53:33 =====
+[watchdog] bridge restart requested
+[2026-06-17 20:53:33] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 20:53:33] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 20:55:30 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 20:55:30 =====
+[config] updated integration
+
+===== 2026-06-17 20:55:30 =====
+[session] bridge started pid=867427
+
+===== 2026-06-17 20:55:30 =====
+[watchdog] bridge restart requested
+[2026-06-17 20:55:31] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 20:55:31] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 21:08:34 =====
+[voice-test:voice_test_3eee324f19] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 21:08:36 =====
+[voice-test:voice_test_3eee324f19] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781701716778-873a9a88 format=silk diagnostic={'encode_type': 6, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 4720, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4720, 'mean_volume_db': -18.8, 'max_volume_db': -1.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4720, 'mean_volume_db': -11.2, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 89}, 'upload_ms': 713, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 21:24:07 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 21:24:07 =====
+[config] updated integration
+
+===== 2026-06-17 21:24:07 =====
+[session] bridge started pid=880955
+
+===== 2026-06-17 21:24:07 =====
+[watchdog] bridge restart requested
+[2026-06-17 21:24:07] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 21:24:07] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 21:25:39 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 21:25:39 =====
+[config] updated integration
+
+===== 2026-06-17 21:25:39 =====
+[session] bridge started pid=881733
+
+===== 2026-06-17 21:25:39 =====
+[watchdog] bridge restart requested
+[2026-06-17 21:25:39] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 21:25:39] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 21:32:50 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 21:32:50 =====
+[config] updated integration
+
+===== 2026-06-17 21:32:50 =====
+[session] bridge started pid=885079
+
+===== 2026-06-17 21:32:50 =====
+[watchdog] bridge restart requested
+[2026-06-17 21:32:51] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 21:32:51] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 21:34:55 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 21:34:55 =====
+[config] updated integration
+
+===== 2026-06-17 21:34:55 =====
+[session] bridge started pid=886126
+
+===== 2026-06-17 21:34:55 =====
+[watchdog] bridge restart requested
+[2026-06-17 21:34:55] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 21:34:55] loaded accounts: 8397c5c17324-im-bot
+[2026-06-17 21:41:14] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=今天都干了些啥呀
+
+===== 2026-06-17 21:41:18 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 21:41:18 =====
+[dialog:ext_95d71c21a2] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=今天都干了些啥呀
+
+===== 2026-06-17 21:41:21 =====
+[dialog:ext_95d71c21a2] reply text_len=8 parts=1 clean_len=8 diag={'finish_reason': 'stop', 'llm_reply_len': 8, 'llm_clean_len': 8, 'reply_len': 8, 'reply_clean_len': 8} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 2699, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2719} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-17 21:41:22] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=1 client_ids=branchwhisper-1781703681795-185dde38 branch_ms=7122 send_ms=298 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 2699, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 2719}
+[2026-06-17 21:41:42] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你摸鱼都干了些啥呀？用语音说
+
+===== 2026-06-17 21:41:42 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260617_160208_9e2f06
+
+===== 2026-06-17 21:41:42 =====
+[dialog:ext_51278c0e71] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=那你摸鱼都干了些啥呀？用语音说
+
+===== 2026-06-17 21:41:43 =====
+[dialog:ext_51278c0e71] reply text_len=12 parts=2 clean_len=12 diag={'finish_reason': 'stop', 'llm_reply_len': 12, 'llm_clean_len': 12, 'reply_len': 12, 'reply_clean_len': 12} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1105, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1111} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-17 21:41:44] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781703703483-2201f66c,branchwhisper-1781703703831-dc71d8c1 branch_ms=1124 send_ms=553 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 1105, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 1111}
+
+===== 2026-06-17 21:42:19 =====
+[voice-test:voice_test_cc84e1adc3] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 21:42:19 =====
+[voice-test:voice_test_cc84e1adc3] failed stage=tts target_url=- account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=Server error '503 Service Unavailable' for url 'http://127.0.0.1:50000/tts'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503
+
+===== 2026-06-17 21:59:59 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 21:59:59 =====
+[config] updated integration
+
+===== 2026-06-17 21:59:59 =====
+[session] bridge started pid=897186
+
+===== 2026-06-17 21:59:59 =====
+[watchdog] bridge restart requested
+[2026-06-17 22:00:00] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 22:00:00] loaded accounts: 8397c5c17324-im-bot
+[2026-06-17 22:00:05] received signal 15, stopping after current poll
+
+===== 2026-06-17 22:00:55 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 22:00:55 =====
+[config] updated integration
+
+===== 2026-06-17 22:00:55 =====
+[session] bridge started pid=897366
+
+===== 2026-06-17 22:00:55 =====
+[watchdog] bridge restart requested
+[2026-06-17 22:00:55] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 22:00:55] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 22:03:28 =====
+[voice-test:voice_test_1fdeddc9b6] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 22:03:30 =====
+[voice-test:voice_test_1fdeddc9b6] failed stage=cdn_verify target_url=https://ilinkai.weixin.qq.com account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=cdn_verify: voice CDN verify HTTP 400:
+[2026-06-17 22:03:37] received signal 15, stopping after current poll
+[2026-06-17 22:03:39] bridge stopped
+
+===== 2026-06-17 22:03:39 =====
+[config] updated integration
+
+===== 2026-06-17 22:03:39 =====
+[process] stopped
+
+===== 2026-06-17 22:03:39 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 22:03:39 =====
+[config] updated integration
+
+===== 2026-06-17 22:03:39 =====
+[session] bridge started pid=898521
+[2026-06-17 22:03:39] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 22:03:39] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 22:04:02 =====
+[voice-test:voice_test_e49ccff7b8] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 22:04:04 =====
+[voice-test:voice_test_e49ccff7b8] failed stage=cdn_verify target_url=https://ilinkai.weixin.qq.com account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=cdn_verify: voice CDN verify HTTP 400:
+
+===== 2026-06-17 22:04:09 =====
+[sticker-test:sticker_test_7746df5625] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-17 22:04:10 =====
+[sticker-test:sticker_test_7746df5625] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781705050350-74d5e56c diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 815, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 188}
+
+===== 2026-06-17 22:04:16 =====
+[dialog:ext_aa6eb6f2f7] recv sender=integration_console text=你好，测试一下
+
+===== 2026-06-17 22:04:23 =====
+[dialog:ext_aa6eb6f2f7] reply text_len=2 parts=1 clean_len=2 diag={'finish_reason': 'stop', 'llm_reply_len': 2, 'llm_clean_len': 2, 'reply_len': 2, 'reply_clean_len': 2} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 7058, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 7061} voice_requested=False send_voice=False voice_file= voice_error=
+
+===== 2026-06-17 22:05:53 =====
+[voice-test:voice_test_2000d23a20] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 22:05:56 =====
+[voice-test:voice_test_2000d23a20] failed stage=cdn_verify target_url=https://ilinkai.weixin.qq.com account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=cdn_verify: voice CDN verify HTTP 400:
+
+===== 2026-06-17 22:18:04 =====
+[voice-test:voice_test_29a173bb3f] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 22:18:10 =====
+[voice-test:voice_test_29a173bb3f] failed stage=cdn_verify target_url=https://ilinkai.weixin.qq.com account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=cdn_verify: voice CDN verify HTTP 400:
+
+===== 2026-06-17 22:21:09 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-17 22:21:09 =====
+[config] updated integration
+
+===== 2026-06-17 22:21:09 =====
+[session] bridge started pid=907638
+
+===== 2026-06-17 22:21:09 =====
+[watchdog] bridge restart requested
+[2026-06-17 22:21:09] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-17 22:21:09] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-17 22:24:09 =====
+[voice-test:voice_test_74672d5a9a] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 22:24:12 =====
+[voice-test:voice_test_74672d5a9a] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781706252638-2ab51ee9 format=ogg_opus diagnostic={'encode_type': 8, 'sample_rate': 48000, 'gain_db': 8, 'playtime_ms': 5047, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 5040, 'mean_volume_db': -19.4, 'max_volume_db': -1}, 'transcode_audio': {'codec': 'opus', 'sample_rate': 48000, 'channels': 1, 'duration_ms': 5047, 'mean_volume_db': -11.6, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 85}, 'upload_ms': 709, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}
+
+===== 2026-06-17 22:27:46 =====
+[voice-test:voice_test_a3e7306924] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-17 22:27:48 =====
+[voice-test:voice_test_a3e7306924] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781706468754-dfbd79bd format=ogg_opus diagnostic={'encode_type': 8, 'sample_rate': 48000, 'gain_db': 8, 'playtime_ms': 7127, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 7120, 'mean_volume_db': -20.5, 'max_volume_db': -1.8}, 'transcode_audio': {'codec': 'opus', 'sample_rate': 48000, 'channels': 1, 'duration_ms': 7127, 'mean_volume_db': -13.3, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 98}, 'upload_ms': 835, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}}

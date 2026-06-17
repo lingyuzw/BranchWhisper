@@ -52,8 +52,11 @@ interface IntegrationState {
   voiceText: string;
   stickerText: string;
   testResult: string;
+  testOk: boolean | null;
   voiceResult: string;
+  voiceOk: boolean | null;
   stickerResult: string;
+  stickerOk: boolean | null;
 }
 
 function defaultForm(): IntegrationForm {
@@ -73,20 +76,36 @@ function compact(value: unknown, limit = 52) {
   return text.length > limit ? `${text.slice(0, limit - 3)}...` : text;
 }
 
+export function probeStatusText(result: Record<string, any>) {
+  if (result.ok) return "接口已接收，请到微信端验证";
+  if (result.stage === "tts_loading") return "等待 TTS 加载/预热";
+  return "失败";
+}
+
 function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker") {
   const target = result.target || {};
+  const clientDelivery = result.client_delivery === "unconfirmed" ? "接口已接收，微信客户端需人工确认" : result.client_delivery || "--";
   const lines = [
-    `状态：${result.ok ? "接口已接收，请到微信端验证" : "失败"}`,
+    `状态：${probeStatusText(result)}`,
     `阶段：${result.stage || "--"}`,
     `目标：${target.account_id || "--"} -> ${target.sender_id || "--"}`,
   ];
   if (result.target_url) lines.push(`目标 URL：${result.target_url}`);
   if (kind === "voice") {
+    const diagnostic = result.voice_diagnostic || {};
+    const cdnVerify = diagnostic.cdn_verify || {};
     if (result.tts_done) lines.push(`TTS：完成 · ${result.tts_ms || 0}ms`);
     if (result.voice_file) lines.push(`文件：${result.voice_file}`);
     if (result.send_done) lines.push(`发送：完成 · ${result.send_ms || 0}ms · ${result.voice_format || "--"}`);
     if (result.voice_message_id) lines.push(`消息：${result.voice_message_id}`);
-    if (result.voice_diagnostic) lines.push(`诊断：${JSON.stringify(result.voice_diagnostic, null, 2)}`);
+    if (diagnostic.encode_type || diagnostic.sample_rate || diagnostic.playtime_ms) {
+      lines.push(`编码：type=${diagnostic.encode_type || "--"} · ${diagnostic.sample_rate || "--"}Hz · ${diagnostic.playtime_ms || 0}ms`);
+    }
+    if (cdnVerify.ok === false) {
+      lines.push(`CDN 回读：未通过自检（微信 CDN 对下载校验返回 400），发送请求已继续提交`);
+    } else if (cdnVerify.ok === true) {
+      lines.push(`CDN 回读：通过 · ${cdnVerify.verify_ms || 0}ms`);
+    }
   } else {
     const sticker = result.sticker || {};
     lines.push(`素材：${sticker.tag || "--"} · ${sticker.name || sticker.id || "--"} · ${sticker.mime || "--"}`);
@@ -95,7 +114,7 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
     if (result.image_diagnostic) lines.push(`诊断：${JSON.stringify(result.image_diagnostic, null, 2)}`);
     if (result.selection_diagnostic) lines.push(`选择诊断：${JSON.stringify(result.selection_diagnostic, null, 2)}`);
   }
-  if (result.client_delivery) lines.push(`客户端：${result.client_delivery}`);
+  if (result.client_delivery) lines.push(`客户端：${clientDelivery}`);
   if (result.error) lines.push(`错误：${result.error}`);
   if (result.sender_payload) lines.push(`发送器：${JSON.stringify(result.sender_payload, null, 2)}`);
   return lines.join("\n");
@@ -122,8 +141,11 @@ export const useIntegrationsStore = defineStore("integrations", {
     voiceText: "我在，听得到的话我们继续聊。",
     stickerText: "打一架",
     testResult: "",
+    testOk: null,
     voiceResult: "",
+    voiceOk: null,
     stickerResult: "",
+    stickerOk: null,
   }),
   getters: {
     selected(state): IntegrationItem | null {
@@ -283,23 +305,47 @@ export const useIntegrationsStore = defineStore("integrations", {
     async runDialogTest() {
       const id = this.selected?.id;
       if (!id || !this.testText.trim()) return;
-      const data = await testIntegrationDialog(id, this.testText.trim());
-      this.testResult = data.reply_text || JSON.stringify(data, null, 2);
-      await this.refreshLogs(true);
+      this.testResult = "正在请求对话模型...";
+      this.testOk = null;
+      try {
+        const data = await testIntegrationDialog(id, this.testText.trim());
+        this.testOk = Boolean(data.ok);
+        this.testResult = data.reply_text || JSON.stringify(data, null, 2);
+        await this.refreshLogs(true);
+      } catch (error) {
+        this.testOk = false;
+        throw error;
+      }
     },
     async runVoiceTest() {
       const id = this.selected?.id;
       if (!id || !this.voiceText.trim()) return;
       this.voiceResult = "正在合成并发送...";
-      this.voiceResult = formatProbeResult(await testIntegrationVoice(id, this.voiceText.trim()), "voice");
-      await this.reload(true);
+      this.voiceOk = null;
+      try {
+        const result = await testIntegrationVoice(id, this.voiceText.trim());
+        this.voiceOk = Boolean(result.ok);
+        this.voiceResult = formatProbeResult(result, "voice");
+        await this.reload(true);
+      } catch (error) {
+        this.voiceOk = false;
+        throw error;
+      }
     },
     async runStickerTest() {
       const id = this.selected?.id;
       if (!id || !this.stickerText.trim()) return;
       this.stickerResult = "正在选择素材并发送...";
-      this.stickerResult = formatProbeResult(await testIntegrationSticker(id, this.stickerText.trim()), "sticker");
-      await this.reload(true);
+      this.stickerOk = null;
+      try {
+        const result = await testIntegrationSticker(id, this.stickerText.trim());
+        this.stickerOk = Boolean(result.ok);
+        this.stickerResult = formatProbeResult(result, "sticker");
+        await this.reload(true);
+      } catch (error) {
+        this.stickerOk = false;
+        throw error;
+      }
     },
     humanStatus(item: IntegrationItem) {
       const status = String(item.status || "stopped");

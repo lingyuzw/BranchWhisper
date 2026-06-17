@@ -12,11 +12,26 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from core.config import SessionSettings, add_settings_args
+from integration_runtime import weixin_media
 from integration_runtime.openclaw_bridge import mark_message_processed_once, mark_reply_sent_once, message_fingerprint, reply_fingerprint
 from integration_runtime.manager import ExternalDialogEngine, IntegrationManager, attachment_history_text
+from integration_runtime.weixin_media import WeixinVoiceSendError, send_weixin_voice
 from media.sticker_policy import StickerPolicy
 from service_runtime.audio_pipeline import clean_reply_text, strip_internal_attachment_markers
-from service_runtime.services import ServiceManager, service_runtime_state, tune_start_command
+from service_runtime.services import (
+    ServiceManager,
+    check_service,
+    friendly_service_error,
+    extract_latest_started_command,
+    extract_service_log_error,
+    linux_process_started_at,
+    normalize_command_for_compare,
+    service_startup_timed_out,
+    service_process_env,
+    service_runtime_state,
+    tune_start_command,
+    _is_pid_alive,
+)
 from tools.runtime_brain import MemoryStore, ToolManager, admit_memory_candidate, extract_memory_candidates
 
 
@@ -65,6 +80,50 @@ class ServiceRuntimeStateTests(unittest.TestCase):
             running=False,
             tracked_running=False,
             health={"ok": False, "status": 503, "payload": {"error": "loading failed"}},
+            port_open=True,
+            returncode=None,
+        )
+
+        self.assertEqual(state, "failed")
+
+    def test_running_service_with_loading_503_health_is_starting(self) -> None:
+        state = service_runtime_state(
+            running=True,
+            tracked_running=True,
+            health={"ok": False, "status": 503, "payload": {"detail": "TTS model is loading"}},
+            port_open=True,
+            returncode=None,
+        )
+
+        self.assertEqual(state, "starting")
+
+    def test_running_service_with_loading_status_text_is_starting(self) -> None:
+        state = service_runtime_state(
+            running=True,
+            tracked_running=True,
+            health={"ok": False, "status": 503, "payload": {"status": "loading model"}},
+            port_open=True,
+            returncode=None,
+        )
+
+        self.assertEqual(state, "starting")
+
+    def test_running_service_with_warming_503_health_is_warming(self) -> None:
+        state = service_runtime_state(
+            running=True,
+            tracked_running=True,
+            health={"ok": False, "status": 503, "payload": {"status": "warming", "ready": False}},
+            port_open=True,
+            returncode=None,
+        )
+
+        self.assertEqual(state, "warming")
+
+    def test_health_error_status_is_failed_even_when_port_open(self) -> None:
+        state = service_runtime_state(
+            running=True,
+            tracked_running=True,
+            health={"ok": False, "status": 503, "payload": {"status": "error", "ready": False, "error": "boom"}},
             port_open=True,
             returncode=None,
         )
@@ -127,6 +186,220 @@ class ServiceRuntimeStateTests(unittest.TestCase):
         self.assertIn("--gpu-memory-utilization 0.35", saved["final_command"])
         self.assertIn("--max-model-len 2048", saved["final_command"])
         self.assertNotIn("--gpu-memory-utilization 0.60", saved["final_command"])
+
+    def test_service_process_env_adds_local_conda_paths(self) -> None:
+        env = service_process_env({"PATH": "/usr/bin:/bin"}, home=Path("/home/me"))
+
+        path_parts = env["PATH"].split(":")
+        self.assertEqual(env["PYTHONUNBUFFERED"], "1")
+        self.assertLess(path_parts.index("/home/me/miniconda3/bin"), path_parts.index("/usr/bin"))
+        self.assertIn("/home/me/miniconda3/condabin", path_parts)
+
+    def test_conda_missing_error_has_environment_hint(self) -> None:
+        message = friendly_service_error("env: 'conda': No such file or directory")
+
+        self.assertIn("Conda", message)
+        self.assertIn("PATH", message)
+
+    def test_running_service_exceeding_ready_timeout_is_not_left_starting_forever(self) -> None:
+        timed_out = service_startup_timed_out(
+            state="starting",
+            started_at=100.0,
+            timeout_sec=60,
+            health={"ok": False, "error": "All connection attempts failed"},
+            now=200.1,
+        )
+
+        self.assertTrue(timed_out)
+
+    def test_ready_service_does_not_time_out(self) -> None:
+        timed_out = service_startup_timed_out(
+            state="ready",
+            started_at=100.0,
+            timeout_sec=60,
+            health={"ok": True, "payload": {"ready": True}},
+            now=200.1,
+        )
+
+        self.assertFalse(timed_out)
+
+    def test_linux_process_started_at_reads_proc_start_ticks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = Path(tmp)
+            (proc / "stat").write_text("cpu 0 0 0 0\nbtime 1000\n", encoding="utf-8")
+            pid_dir = proc / "42"
+            pid_dir.mkdir()
+            # Field 2 may contain spaces in parentheses; field 22 is starttime.
+            fields = ["42", "(python worker)", "S", "1", "1", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "250"]
+            (pid_dir / "stat").write_text(" ".join(fields), encoding="utf-8")
+
+            started = linux_process_started_at(42, proc_root=proc, clock_ticks=100)
+
+        self.assertEqual(started, 1002.5)
+
+    def test_zombie_process_is_not_treated_as_alive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = Path(tmp)
+            pid_dir = proc / "42"
+            pid_dir.mkdir()
+            pid_dir.joinpath("stat").write_text("42 (conda) Z 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 250", encoding="utf-8")
+
+            alive = _is_pid_alive(42, proc_root=proc)
+
+        self.assertFalse(alive)
+
+    def test_extract_service_log_error_detects_vllm_memory_profile_failure(self) -> None:
+        text = """
+===== start 2026-06-17 21:11:05 =====
+INFO loading model
+AssertionError: Error in memory profiling. Initial free memory 8.46 GiB, current free memory 12.98 GiB.
+RuntimeError: Engine core initialization failed. See root cause above.
+"""
+
+        error = extract_service_log_error(text)
+
+        self.assertIn("Error in memory profiling", error)
+        self.assertIn("显存", friendly_service_error(error))
+
+    def test_extract_service_log_error_ignores_previous_start_failures(self) -> None:
+        text = """
+===== start 2026-06-17 20:00:00 =====
+/bin/bash: line 1: /missing/model: No such file or directory
+===== start 2026-06-17 21:27:42 =====
+final command: conda run --no-capture-output -n cosyvoice_vllm python server.py
+INFO:     Uvicorn running on http://0.0.0.0:50000
+"""
+
+        error = extract_service_log_error(text)
+
+        self.assertEqual(error, "")
+
+    def test_extract_service_log_error_ignores_transient_tts_503(self) -> None:
+        text = """
+===== start 2026-06-17 21:39:08 =====
+INFO:     Started server process [888090]
+INFO:     Uvicorn running on http://0.0.0.0:50000
+INFO:     127.0.0.1:44037 - "POST /tts HTTP/1.1" 503 Service Unavailable
+INFO 06-17 21:42:21 [backends.py:559] Dynamo bytecode transform time: 8.30 s
+Loaded model: /home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B
+"""
+
+        error = extract_service_log_error(text)
+
+        self.assertEqual(error, "")
+
+    def test_extract_latest_started_command_preserves_multiline_final_command(self) -> None:
+        text = """
+===== start 2026-06-17 20:33:11 =====
+configured command: old
+final command: ./build/bin/llama-server \\
+  -m ./BranchWhisper-Qwen3.5-9B-v12-reality-Q8_0.gguf \\
+  --host 127.0.0.1 \\
+  --port 8080
+0.00.320.284 I log_info: verbosity = 3
+"""
+
+        command = extract_latest_started_command(text)
+
+        self.assertIn("-m ./BranchWhisper-Qwen3.5-9B-v12-reality-Q8_0.gguf", command)
+        self.assertIn("--port 8080", command)
+        self.assertNotIn("log_info", command)
+
+    def test_extract_latest_started_command_ignores_runtime_noise_without_start_command(self) -> None:
+        text = "[rank0]:[W617 21:20:30.539654453 ProcessGroupNCCL.cpp:1538] Warning: destroy_process_group() was not called\n"
+
+        command = extract_latest_started_command(text)
+
+        self.assertEqual(command, "")
+
+    def test_normalize_command_for_compare_treats_wrapped_shell_command_as_same(self) -> None:
+        wrapped = "./build/bin/llama-server \\\n  -m model.gguf \\\n  --port 8080"
+        flat = "./build/bin/llama-server -m model.gguf --port 8080"
+
+        self.assertEqual(normalize_command_for_compare(wrapped), normalize_command_for_compare(flat))
+
+
+class ServiceHealthCheckTests(unittest.IsolatedAsyncioTestCase):
+    async def test_local_health_check_ignores_proxy_environment(self) -> None:
+        original_factory = check_service.__globals__["httpx_client_for_url"]
+        observed: dict[str, object] = {}
+
+        class FakeClient:
+            def __init__(self, **kwargs) -> None:
+                observed.update(kwargs)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb) -> None:
+                return None
+
+            async def get(self, url: str):
+                import httpx
+
+                return httpx.Response(200, json={"ready": True})
+
+        def fake_factory(url: str, **kwargs):
+            observed["url"] = url
+            return FakeClient(**kwargs)
+
+        check_service.__globals__["httpx_client_for_url"] = fake_factory
+        try:
+            result = await check_service("asr", "http://127.0.0.1:8001/health")
+        finally:
+            check_service.__globals__["httpx_client_for_url"] = original_factory
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(observed["url"], "http://127.0.0.1:8001/health")
+        self.assertIn("timeout", observed)
+
+
+class WeixinVoiceSenderTests(unittest.TestCase):
+    def test_voice_sender_accepts_sent_message_with_cdn_verify_warning(self) -> None:
+        original_run = weixin_media.subprocess.run
+
+        class FakeProc:
+            returncode = 0
+            stderr = ""
+            stdout = json.dumps(
+                {
+                    "ok": True,
+                    "stage": "sent",
+                    "cdn_verify": {"ok": False, "error": "voice CDN verify HTTP 400: "},
+                    "sendmessage_shape": {"ret": "number"},
+                }
+            )
+
+        def fake_run(*_args, **_kwargs):
+            return FakeProc()
+
+        weixin_media.subprocess.run = fake_run
+        try:
+            result = send_weixin_voice(base_url="https://example.test", token="token", to_user_id="u", voice_file="/tmp/a.wav")
+        finally:
+            weixin_media.subprocess.run = original_run
+
+        self.assertEqual(result["stage"], "sent")
+        self.assertEqual(result["cdn_verify"]["ok"], False)
+
+    def test_voice_sender_self_test_prefers_ogg_opus_outbound(self) -> None:
+        script = BACKEND_ROOT / "integration_runtime" / "weixin_voice_sender.mjs"
+
+        proc = weixin_media.subprocess.run(
+            ["node", str(script), "--self-test"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertEqual(payload.get("voice_format"), "ogg_opus")
+        self.assertEqual(payload.get("encode_type"), 8)
+        self.assertEqual(payload.get("sample_rate"), 48000)
 
 
 class IntegrationDiagnosticsTests(unittest.TestCase):
