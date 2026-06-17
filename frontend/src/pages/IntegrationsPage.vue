@@ -431,42 +431,48 @@ function downloadLogs() {
               </div>
               <span class="soft-badge">{{ selected?.id || "--" }}</span>
             </div>
-            <div class="integration-qr">
-              <img v-if="qrImage(integrations.qrSession)" class="integration-qr-image" :src="qrImage(integrations.qrSession)" alt="微信扫码二维码" />
-              <div v-else class="integration-login-placeholder">
-                <strong>{{ selected?.status === "running" ? "桥接运行中" : selected ? "等待扫码" : "请选择实例" }}</strong>
-                <span>{{ integrations.qrSession?.message || (selected?.runtime?.manual_stop ? "实例已手动停止。" : "点击扫码登录后，这里会显示二维码。") }}</span>
-              </div>
-            </div>
-            <div v-if="integrations.qrSession" class="integration-login-meta">
-              <strong>{{ integrations.qrSession.status || "login" }}</strong>
-              <span>{{ integrations.qrSession.message || integrations.qrSession.qrcode_url || "--" }}</span>
-              <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
-            </div>
-            <div class="integration-account-list">
-              <div v-for="account in selectedAccounts" :key="account.account_id || account.id" class="integration-account-item">
-                <span>账号</span>
-                <strong>{{ account.nickname || account.name || account.account_id || account.id }}</strong>
-                <small>{{ account.account_id || account.id || "--" }}</small>
-                <small v-if="account.base_url">Base URL: {{ account.base_url }}</small>
-                <div v-if="account.diagnostic_hint || account.connectivity_error" class="integration-account-diagnostic">
-                  <span>{{ account.diagnostic_hint || "账号本地服务不可达" }}</span>
-                  <small v-if="account.connectivity_error">{{ account.connectivity_error }}</small>
-                  <button class="small-button" type="button" @click="copyAccountDiagnostic(account)"><Copy :size="13" />复制诊断</button>
+            <div class="integration-console-grid">
+              <div class="integration-console-main">
+                <div class="integration-qr">
+                  <img v-if="qrImage(integrations.qrSession)" class="integration-qr-image" :src="qrImage(integrations.qrSession)" alt="微信扫码二维码" />
+                  <div v-else class="integration-login-placeholder">
+                    <strong>{{ selected?.status === "running" ? "桥接运行中" : selected ? "等待扫码" : "请选择实例" }}</strong>
+                    <span>{{ integrations.qrSession?.message || (selected?.runtime?.manual_stop ? "实例已手动停止。" : "点击扫码登录后，这里会显示二维码。") }}</span>
+                  </div>
+                </div>
+                <div v-if="integrations.qrSession" class="integration-login-meta">
+                  <strong>{{ integrations.qrSession.status || "login" }}</strong>
+                  <span>{{ integrations.qrSession.message || integrations.qrSession.qrcode_url || "--" }}</span>
+                  <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
+                </div>
+                <div class="integration-step-list">
+                  <span v-for="step in integrationSteps" :key="step.label" :class="step.state">
+                    <b></b>
+                    <strong>{{ step.label }}</strong>
+                    <small>{{ step.status }}</small>
+                  </span>
                 </div>
               </div>
-              <div v-if="!selectedAccounts.length" class="integration-account-item muted">
-                <span>账号</span>
-                <strong>暂无账号</strong>
-                <small>扫码登录成功后显示</small>
+              <div class="integration-console-accounts">
+                <div class="integration-account-list">
+                  <div v-for="account in selectedAccounts" :key="account.account_id || account.id" class="integration-account-item">
+                    <span>账号</span>
+                    <strong>{{ account.nickname || account.name || account.account_id || account.id }}</strong>
+                    <small>{{ account.account_id || account.id || "--" }}</small>
+                    <small v-if="account.base_url">Base URL: {{ account.base_url }}</small>
+                    <div v-if="account.diagnostic_hint || account.connectivity_error" class="integration-account-diagnostic">
+                      <span>{{ account.diagnostic_hint || "账号本地服务不可达" }}</span>
+                      <small v-if="account.connectivity_error">{{ account.connectivity_error }}</small>
+                      <button class="small-button" type="button" @click="copyAccountDiagnostic(account)"><Copy :size="13" />复制诊断</button>
+                    </div>
+                  </div>
+                  <div v-if="!selectedAccounts.length" class="integration-account-item muted">
+                    <span>账号</span>
+                    <strong>暂无账号</strong>
+                    <small>扫码登录成功后显示</small>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="integration-step-list">
-              <span v-for="step in integrationSteps" :key="step.label" :class="step.state">
-                <b></b>
-                <strong>{{ step.label }}</strong>
-                <small>{{ step.status }}</small>
-              </span>
             </div>
             <div v-if="timings(selected).length" class="integration-timing-summary">
               <span v-for="timing in timings(selected)" :key="timing.message_id || timing.created_at || timing.total_ms">
@@ -494,71 +500,86 @@ function downloadLogs() {
                 <RefreshCw :size="16" /> 轮询登录
               </button>
             </div>
-            <section class="integration-probe-panel">
-              <div class="probe-row">
-                <input v-model="integrations.testText" type="text" placeholder="测试文本回复" @keydown.enter="runDialogProbe" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning || dialogProbeRunning" @click="runDialogProbe"><Play :size="15" />文本回复</button>
-              </div>
-              <InlineProbe
-                variant="strip"
-                title="文本回复链路"
-                summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
-                :status="dialogProbeStatus"
-                :status-text="dialogProbeStatus === 'ok' ? '回复正常' : dialogProbeStatus === 'failed' ? '回复失败' : dialogProbeStatus === 'running' ? '检测中' : '未检测'"
-                :detail="integrations.testResult"
-                action-text="运行"
-                :disabled="!selected || integrations.actioning"
-                @run="runDialogProbe"
-                @copy="copyProbeResult('文本回复', integrations.testResult)"
-              />
-              <div class="probe-row">
-                <input v-model="integrations.voiceText" type="text" placeholder="测试语音发送" @keydown.enter="runVoiceProbe" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning || voiceProbeRunning" @click="runVoiceProbe"><Play :size="15" />语音发送</button>
-              </div>
-              <InlineProbe
-                variant="strip"
-                title="语音发送链路"
-                summary="生成一段短语音并调用微信发送，验证 TTS、转码和发送器。"
-                :status="voiceProbeStatus"
-                :status-text="voiceProbeStatus === 'ok' ? '接口已接收' : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
-                :detail="integrations.voiceResult"
-                action-text="运行"
-                :disabled="!selected || integrations.actioning"
-                @run="runVoiceProbe"
-                @copy="copyProbeResult('语音发送', integrations.voiceResult)"
-              />
-              <div class="probe-row">
-                <input v-model="integrations.stickerText" type="text" placeholder="测试素材发送" @keydown.enter="runStickerProbe" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning || stickerProbeRunning" @click="runStickerProbe"><Play :size="15" />素材发送</button>
-              </div>
-              <InlineProbe
-                variant="strip"
-                title="素材发送链路"
-                summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
-                :status="stickerProbeStatus"
-                :status-text="stickerProbeStatus === 'ok' ? '接口已接收' : stickerProbeStatus === 'failed' ? '发送失败' : stickerProbeStatus === 'running' ? '检测中' : '未检测'"
-                :detail="integrations.stickerResult"
-                action-text="运行"
-                :disabled="!selected || integrations.actioning"
-                @run="runStickerProbe"
-                @copy="copyProbeResult('素材发送', integrations.stickerResult)"
-              />
-            </section>
-            <div class="integration-log-toolbar">
-              <select v-model="integrations.logScope" @change="refreshLogs">
-                <option value="current">本次启动</option>
-                <option value="all">全部日志</option>
-              </select>
-              <button class="icon-button" type="button" title="刷新日志" @click="refreshLogs"><RotateCw :size="16" /></button>
-              <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
-              <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
-              <button class="icon-button danger" type="button" title="清空日志" @click="clearLogs"><Eraser :size="16" /></button>
-            </div>
-            <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
-            <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
           </section>
 
         </aside>
+      </section>
+
+      <section class="integration-workbench-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Loop Checks</p>
+            <h2>链路测试</h2>
+          </div>
+          <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
+        </div>
+        <section class="integration-probe-panel">
+          <div class="integration-probe-card">
+            <input v-model="integrations.testText" type="text" placeholder="你好，测试一下" @keydown.enter="runDialogProbe" />
+            <InlineProbe
+              variant="compact"
+              title="文本回复链路"
+              summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
+              :status="dialogProbeStatus"
+              :status-text="dialogProbeStatus === 'ok' ? '回复正常' : dialogProbeStatus === 'failed' ? '回复失败' : dialogProbeStatus === 'running' ? '检测中' : '未检测'"
+              :detail="integrations.testResult"
+              action-text="运行"
+              :disabled="!selected || integrations.actioning"
+              @run="runDialogProbe"
+              @copy="copyProbeResult('文本回复', integrations.testResult)"
+            />
+          </div>
+          <div class="integration-probe-card">
+            <input v-model="integrations.voiceText" type="text" placeholder="我在，听得到的话我们继续。" @keydown.enter="runVoiceProbe" />
+            <InlineProbe
+              variant="compact"
+              title="语音发送链路"
+              summary="生成一段短语音并调用微信发送，验证 TTS、转码和发送器。"
+              :status="voiceProbeStatus"
+              :status-text="voiceProbeStatus === 'ok' ? '接口已接收' : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
+              :detail="integrations.voiceResult"
+              action-text="运行"
+              :disabled="!selected || integrations.actioning"
+              @run="runVoiceProbe"
+              @copy="copyProbeResult('语音发送', integrations.voiceResult)"
+            />
+          </div>
+          <div class="integration-probe-card">
+            <input v-model="integrations.stickerText" type="text" placeholder="打一架" @keydown.enter="runStickerProbe" />
+            <InlineProbe
+              variant="compact"
+              title="素材发送链路"
+              summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
+              :status="stickerProbeStatus"
+              :status-text="stickerProbeStatus === 'ok' ? '接口已接收' : stickerProbeStatus === 'failed' ? '发送失败' : stickerProbeStatus === 'running' ? '检测中' : '未检测'"
+              :detail="integrations.stickerResult"
+              action-text="运行"
+              :disabled="!selected || integrations.actioning"
+              @run="runStickerProbe"
+              @copy="copyProbeResult('素材发送', integrations.stickerResult)"
+            />
+          </div>
+        </section>
+      </section>
+
+      <section class="integration-workbench-panel integration-log-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Runtime Logs</p>
+            <h2>运行日志</h2>
+          </div>
+          <div class="integration-log-toolbar">
+            <select v-model="integrations.logScope" @change="refreshLogs">
+              <option value="current">本次启动</option>
+              <option value="all">全部日志</option>
+            </select>
+            <button class="icon-button" type="button" title="刷新日志" @click="refreshLogs"><RotateCw :size="16" /></button>
+            <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
+            <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
+            <button class="icon-button danger" type="button" title="清空日志" @click="clearLogs"><Eraser :size="16" /></button>
+          </div>
+        </div>
+        <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
       </section>
 
       <div v-if="configOpen" class="modal-overlay" @click.self="configOpen = false">

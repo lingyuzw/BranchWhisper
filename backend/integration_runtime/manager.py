@@ -14,15 +14,16 @@ import subprocess
 import sys
 import time
 import uuid
-import wave
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 from service_runtime.audio_pipeline import clean_for_tts, clean_reply_text, extract_chat_message_text, extract_finish_reason, strip_internal_attachment_markers
+from service_runtime.tts_clients import build_tts_request, synthesize_tts_bytes, wav_bytes_from_pcm16
 from core.config import (
     SessionSettings,
+    active_dialog_mode,
     active_history_turns,
     active_llm_model,
     active_llm_url,
@@ -210,20 +211,6 @@ def derive_raw_account_id(account_id: str) -> str | None:
 
 def ilink_endpoint(base_url: str, path: str) -> str:
     return f"{str(base_url or DEFAULT_WEIXIN_OC_BASE_URL).rstrip('/')}/{path.lstrip('/')}"
-
-
-def wav_bytes_from_pcm16(pcm: bytes, sample_rate: int) -> bytes:
-    buffer = bytearray()
-    import io
-
-    stream = io.BytesIO()
-    with wave.open(stream, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(int(sample_rate))
-        wav.writeframes(pcm)
-    buffer.extend(stream.getvalue())
-    return bytes(buffer)
 
 
 def sniff_image_mime(path: Path, fallback: str = "image/jpeg") -> str:
@@ -1371,7 +1358,10 @@ class ExternalDialogEngine:
                 )
             except Exception as exc:
                 llm_url = active_llm_url(runtime_settings)
-                error = f"stage=llm url={llm_url} sender={sender_id} message_id={metadata.get('message_id') or ''} error={exc}"
+                error = (
+                    f"stage=llm url={llm_url} sender={sender_id} "
+                    f"message_id={metadata.get('message_id') or ''} error={self.describe_llm_error(exc)}"
+                )
                 self.integration_manager.append_log(platform_id, f"[dialog:{trace_id}] {error}")
                 raise RuntimeError(error) from exc
         directive_result = extract_sticker_directives(reply_text)
@@ -2053,7 +2043,7 @@ class ExternalDialogEngine:
         if thinking_requested:
             payload["enable_thinking"] = True
         llm_url = active_llm_url(settings_snapshot)
-        async with httpx_client_for_url(llm_url, timeout=timeout or settings_snapshot.tools_timeout) as client:
+        async with httpx_client_for_url(llm_url, timeout=self.llm_request_timeout(settings_snapshot, timeout)) as client:
             resp = await client.post(llm_url, json=payload, headers=llm_headers(settings_snapshot))
             if resp.status_code == 400 and payload.pop("enable_thinking", None):
                 resp = await client.post(llm_url, json=payload, headers=llm_headers(settings_snapshot))
@@ -2093,6 +2083,38 @@ class ExternalDialogEngine:
             diag["llm_clean_len"] = len(clean_for_tts(text))
         return text
 
+    def llm_request_timeout(self, settings: SessionSettings, timeout: float | None = None) -> float:
+        if timeout is not None:
+            return float(timeout)
+        if active_dialog_mode(settings) == "api":
+            return max(45.0, float(getattr(settings, "tools_timeout", 12.0) or 12.0))
+        return max(20.0, float(getattr(settings, "tools_timeout", 12.0) or 12.0))
+
+    def describe_llm_error(self, exc: Exception) -> str:
+        response = getattr(exc, "response", None)
+        if response is not None:
+            status = getattr(response, "status_code", "")
+            detail = ""
+            try:
+                body = response.json()
+                if isinstance(body, dict):
+                    detail = str(
+                        body.get("message")
+                        or body.get("error")
+                        or body.get("detail")
+                        or ((body.get("error") or {}).get("message") if isinstance(body.get("error"), dict) else "")
+                        or body
+                    )
+                else:
+                    detail = str(body)
+            except Exception:
+                detail = str(getattr(response, "text", "") or "")
+            return compact_text(f"HTTP {status} {detail}".strip(), 420)
+        text = str(exc)
+        if text:
+            return compact_text(f"{type(exc).__name__}: {text}", 420)
+        return type(exc).__name__
+
     async def complete_llm_continuation(
         self,
         settings: SessionSettings,
@@ -2115,7 +2137,7 @@ class ExternalDialogEngine:
             "max_tokens": min(220, max(80, active_max_tokens(settings))),
         }
         llm_url = active_llm_url(settings)
-        async with httpx_client_for_url(llm_url, timeout=timeout or settings.tools_timeout) as client:
+        async with httpx_client_for_url(llm_url, timeout=self.llm_request_timeout(settings, timeout)) as client:
             resp = await client.post(llm_url, json=payload, headers=llm_headers(settings))
         resp.raise_for_status()
         return clean_reply_text(extract_chat_message_text(resp.json()))
@@ -2150,24 +2172,15 @@ class ExternalDialogEngine:
             raise ValueError("empty text after tts cleanup")
         if not settings.tts_enabled:
             raise RuntimeError("TTS is disabled")
-        payload = {
-            "text": text,
-            "stream": True,
-            "speed": settings.tts_speed,
-            "seed": settings.tts_seed,
-        }
-        pcm = bytearray()
-        async with httpx_client_for_url(settings.tts_url, timeout=None) as client:
-            async with client.stream("POST", settings.tts_url, json=payload) as resp:
-                resp.raise_for_status()
-                async for chunk in resp.aiter_bytes():
-                    if chunk:
-                        pcm.extend(chunk)
+        request = build_tts_request(settings, text, stream=True)
+        pcm = await synthesize_tts_bytes(settings, text)
+        if request.output_format != "pcm_s16le":
+            raise RuntimeError(f"TTS returned unsupported audio format for WeChat voice: {request.output_format}")
         if len(pcm) % 2:
             pcm = pcm[:-1]
         if not pcm:
             raise RuntimeError("TTS returned empty audio")
-        wav = wav_bytes_from_pcm16(bytes(pcm), settings.tts_sample_rate)
+        wav = wav_bytes_from_pcm16(bytes(pcm), request.sample_rate)
         path = self.media_dir / f"{trace_id}.wav"
         path.write_bytes(wav)
         return str(path)

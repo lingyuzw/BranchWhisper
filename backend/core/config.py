@@ -10,6 +10,9 @@ MASKED_SECRET_CHARS = "*"
 DEFAULT_TTS_VOLUME = 0.88
 DEFAULT_TTS_FADE_MS = 5
 DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+DEFAULT_OPENAI_TRANSCRIPTIONS_URL = "https://api.openai.com/v1/audio/transcriptions"
+DEFAULT_OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech"
+DEFAULT_DASHSCOPE_MULTIMODAL_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
 DEFAULT_API_LLM_MODEL = "qwen-plus"
 DEFAULT_STICKER_VISION_MODEL = "qwen3-vl-plus"
 
@@ -56,11 +59,18 @@ DEFAULT_SYSTEM = (
 
 @dataclass
 class SessionSettings:
+    asr_provider_mode: str
     asr_mode: str
     asr_url: str
     asr_model: str
     asr_timeout: float
     asr_max_tokens: int
+    api_asr_provider: str
+    api_asr_url: str
+    api_asr_model: str
+    api_asr_api_key: str
+    api_asr_language: str
+    api_asr_timeout: float
     llm_url: str
     llm_model: str
     llm_api_key: str
@@ -121,6 +131,8 @@ class SessionSettings:
     tools_auto_call: bool
     tools_timeout: float
     tools_max_result_chars: int
+    tts_provider_mode: str
+    tts_model: str
     tts_url: str
     tts_sample_rate: int
     tts_speed: float
@@ -128,6 +140,20 @@ class SessionSettings:
     tts_volume: float
     tts_fade_ms: int
     tts_enabled: bool
+    api_tts_provider: str
+    api_tts_url: str
+    api_tts_model: str
+    api_tts_api_key: str
+    api_tts_voice_mode: str
+    api_tts_voice: str
+    api_tts_voice_id: str
+    api_tts_voice_name: str
+    api_tts_voice_profile_id: str
+    api_tts_instructions: str
+    api_tts_format: str
+    api_tts_sample_rate: int
+    api_tts_speed: float
+    api_tts_latency_mode: str
     vad_threshold: float
     vad_min_silence_ms: int
     vad_speech_pad_ms: int
@@ -138,11 +164,18 @@ class SessionSettings:
     @classmethod
     def from_args(cls, args) -> "SessionSettings":
         return cls(
+            asr_provider_mode=args.asr_provider_mode,
             asr_mode=args.asr_mode,
             asr_url=args.asr_url,
             asr_model=args.asr_model,
             asr_timeout=args.asr_timeout,
             asr_max_tokens=args.asr_max_tokens,
+            api_asr_provider=args.api_asr_provider,
+            api_asr_url=args.api_asr_url,
+            api_asr_model=args.api_asr_model,
+            api_asr_api_key=args.api_asr_api_key,
+            api_asr_language=args.api_asr_language,
+            api_asr_timeout=args.api_asr_timeout,
             llm_url=args.llm_url,
             llm_model=args.llm_model,
             llm_api_key=args.llm_api_key,
@@ -203,6 +236,8 @@ class SessionSettings:
             tools_auto_call=args.tools_auto_call,
             tools_timeout=args.tools_timeout,
             tools_max_result_chars=args.tools_max_result_chars,
+            tts_provider_mode=args.tts_provider_mode,
+            tts_model=args.tts_model,
             tts_url=args.tts_url,
             tts_sample_rate=args.tts_sample_rate,
             tts_speed=args.tts_speed,
@@ -210,6 +245,20 @@ class SessionSettings:
             tts_volume=args.tts_volume,
             tts_fade_ms=args.tts_fade_ms,
             tts_enabled=args.tts_enabled,
+            api_tts_provider=args.api_tts_provider,
+            api_tts_url=args.api_tts_url,
+            api_tts_model=args.api_tts_model,
+            api_tts_api_key=args.api_tts_api_key,
+            api_tts_voice_mode=args.api_tts_voice_mode,
+            api_tts_voice=args.api_tts_voice,
+            api_tts_voice_id=args.api_tts_voice_id,
+            api_tts_voice_name=args.api_tts_voice_name,
+            api_tts_voice_profile_id=args.api_tts_voice_profile_id,
+            api_tts_instructions=args.api_tts_instructions,
+            api_tts_format=args.api_tts_format,
+            api_tts_sample_rate=args.api_tts_sample_rate,
+            api_tts_speed=args.api_tts_speed,
+            api_tts_latency_mode=args.api_tts_latency_mode,
             vad_threshold=args.vad_threshold,
             vad_min_silence_ms=args.vad_min_silence_ms,
             vad_speech_pad_ms=args.vad_speech_pad_ms,
@@ -246,6 +295,18 @@ class SessionSettings:
                     value = max(0.0, min(1.0, float(value)))
                 if key == "dialog_mode":
                     value = str(value) if str(value) in {"local", "api"} else "local"
+                if key in {"asr_provider_mode", "tts_provider_mode"}:
+                    value = str(value) if str(value) in {"local", "api"} else "local"
+                if key == "api_asr_provider":
+                    value = normalize_provider(value, {"openai", "dashscope", "deepgram", "groq", "custom_openai"}, "openai")
+                if key == "api_tts_provider":
+                    value = normalize_provider(value, {"openai", "dashscope", "elevenlabs", "custom_openai"}, "openai")
+                if key == "api_tts_voice_mode":
+                    value = str(value) if str(value) in {"builtin", "cloned", "manual"} else "builtin"
+                if key == "api_tts_format":
+                    value = str(value) if str(value) in {"pcm", "wav", "mp3"} else "pcm"
+                if key == "api_tts_latency_mode":
+                    value = str(value) if str(value) in {"quality", "balanced", "fast"} else "balanced"
                 if key == "sticker_vision_max_tokens":
                     value = max(128, min(4096, int(value)))
             except (TypeError, ValueError):
@@ -265,6 +326,11 @@ def parse_bool_value(value) -> bool | None:
         if normalized in {"false", "0", "no", "n", "off", "disabled"}:
             return False
     return None
+
+
+def normalize_provider(value, allowed: set[str], fallback: str) -> str:
+    normalized = str(value or "").strip().lower().replace("-", "_")
+    return normalized if normalized in allowed else fallback
 
 
 def load_persisted_settings(settings: SessionSettings, path: Path) -> SessionSettings:
@@ -292,6 +358,20 @@ def migrate_legacy_defaults(settings: SessionSettings) -> None:
         settings.sticker_vision_url = DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL
     if not str(getattr(settings, "sticker_vision_model", "") or "").strip():
         settings.sticker_vision_model = DEFAULT_STICKER_VISION_MODEL
+    if not str(getattr(settings, "api_asr_url", "") or "").strip():
+        settings.api_asr_url = DEFAULT_OPENAI_TRANSCRIPTIONS_URL
+    if not str(getattr(settings, "api_asr_model", "") or "").strip():
+        settings.api_asr_model = "gpt-4o-mini-transcribe"
+    if not str(getattr(settings, "api_tts_url", "") or "").strip():
+        settings.api_tts_url = DEFAULT_OPENAI_TTS_URL
+    if not str(getattr(settings, "api_tts_model", "") or "").strip():
+        settings.api_tts_model = "gpt-4o-mini-tts"
+    if str(getattr(settings, "api_asr_provider", "") or "") == "dashscope" and "services/audio/asr/transcription" in str(getattr(settings, "api_asr_url", "") or ""):
+        settings.api_asr_url = DEFAULT_DASHSCOPE_CHAT_COMPLETIONS_URL
+        if str(getattr(settings, "api_asr_model", "") or "").startswith("paraformer"):
+            settings.api_asr_model = "qwen3-asr-flash"
+    if str(getattr(settings, "api_tts_provider", "") or "") == "dashscope" and not str(getattr(settings, "api_tts_url", "") or "").strip():
+        settings.api_tts_url = DEFAULT_DASHSCOPE_MULTIMODAL_URL
 
 
 def save_persisted_settings(settings: SessionSettings, path: Path) -> None:
@@ -321,6 +401,8 @@ def public_settings(settings: SessionSettings) -> dict:
     data = asdict(settings)
     api_key = str(data.pop("llm_api_key", "") or "")
     remote_api_key = str(data.pop("api_llm_api_key", "") or "")
+    api_asr_api_key = str(data.pop("api_asr_api_key", "") or "")
+    api_tts_api_key = str(data.pop("api_tts_api_key", "") or "")
     sticker_vision_api_key = str(data.pop("sticker_vision_api_key", "") or "")
     data["llm_api_key"] = ""
     data["llm_api_key_set"] = bool(api_key.strip())
@@ -328,6 +410,12 @@ def public_settings(settings: SessionSettings) -> dict:
     data["api_llm_api_key"] = ""
     data["api_llm_api_key_set"] = bool(remote_api_key.strip())
     data["api_llm_api_key_masked"] = mask_secret(remote_api_key)
+    data["api_asr_api_key"] = ""
+    data["api_asr_api_key_set"] = bool(api_asr_api_key.strip())
+    data["api_asr_api_key_masked"] = mask_secret(api_asr_api_key)
+    data["api_tts_api_key"] = ""
+    data["api_tts_api_key_set"] = bool(api_tts_api_key.strip())
+    data["api_tts_api_key_masked"] = mask_secret(api_tts_api_key)
     data["sticker_vision_api_key"] = ""
     data["sticker_vision_api_key_set"] = bool(sticker_vision_api_key.strip())
     data["sticker_vision_api_key_masked"] = mask_secret(sticker_vision_api_key)
@@ -338,6 +426,11 @@ def update_llm_api_key(settings: SessionSettings, payload: dict) -> None:
     update_secret_field(settings, payload, "llm_api_key")
     update_secret_field(settings, payload, "api_llm_api_key")
     update_secret_field(settings, payload, "sticker_vision_api_key")
+
+
+def update_audio_api_keys(settings: SessionSettings, payload: dict) -> None:
+    update_secret_field(settings, payload, "api_asr_api_key")
+    update_secret_field(settings, payload, "api_tts_api_key")
 
 
 def update_secret_field(settings: SessionSettings, payload: dict, key: str) -> None:
@@ -403,6 +496,68 @@ def llm_headers(settings: SessionSettings) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}"}
 
 
+def active_asr_provider_mode(settings: SessionSettings) -> str:
+    return "api" if str(getattr(settings, "asr_provider_mode", "local")) == "api" else "local"
+
+
+def active_asr_provider(settings: SessionSettings) -> str:
+    if active_asr_provider_mode(settings) == "api":
+        return normalize_provider(getattr(settings, "api_asr_provider", "openai"), {"openai", "dashscope", "deepgram", "groq", "custom_openai"}, "openai")
+    return "local"
+
+
+def active_asr_url(settings: SessionSettings) -> str:
+    if active_asr_provider_mode(settings) == "api":
+        return str(getattr(settings, "api_asr_url", "") or settings.asr_url)
+    return settings.asr_url
+
+
+def active_asr_model(settings: SessionSettings) -> str:
+    if active_asr_provider_mode(settings) == "api":
+        return str(getattr(settings, "api_asr_model", "") or settings.asr_model)
+    return settings.asr_model
+
+
+def active_asr_api_key(settings: SessionSettings) -> str:
+    if active_asr_provider_mode(settings) == "api":
+        return str(getattr(settings, "api_asr_api_key", "") or "")
+    return ""
+
+
+def active_asr_timeout(settings: SessionSettings) -> float:
+    if active_asr_provider_mode(settings) == "api":
+        return float(getattr(settings, "api_asr_timeout", settings.asr_timeout) or settings.asr_timeout)
+    return float(settings.asr_timeout)
+
+
+def active_tts_provider_mode(settings: SessionSettings) -> str:
+    return "api" if str(getattr(settings, "tts_provider_mode", "local")) == "api" else "local"
+
+
+def active_tts_provider(settings: SessionSettings) -> str:
+    if active_tts_provider_mode(settings) == "api":
+        return normalize_provider(getattr(settings, "api_tts_provider", "openai"), {"openai", "dashscope", "elevenlabs", "custom_openai"}, "openai")
+    return "local"
+
+
+def active_tts_url(settings: SessionSettings) -> str:
+    if active_tts_provider_mode(settings) == "api":
+        return str(getattr(settings, "api_tts_url", "") or settings.tts_url)
+    return settings.tts_url
+
+
+def active_tts_model(settings: SessionSettings) -> str:
+    if active_tts_provider_mode(settings) == "api":
+        return str(getattr(settings, "api_tts_model", "") or getattr(settings, "tts_model", "cosyvoice"))
+    return str(getattr(settings, "tts_model", "cosyvoice"))
+
+
+def active_tts_api_key(settings: SessionSettings) -> str:
+    if active_tts_provider_mode(settings) == "api":
+        return str(getattr(settings, "api_tts_api_key", "") or "")
+    return ""
+
+
 def enable_default_capabilities(settings: SessionSettings) -> None:
     """Compatibility hook kept for older launch scripts.
 
@@ -413,11 +568,18 @@ def enable_default_capabilities(settings: SessionSettings) -> None:
 
 
 def add_settings_args(parser) -> None:
+    parser.add_argument("--asr-provider-mode", choices=["local", "api"], default="local")
     parser.add_argument("--asr-mode", choices=["transcription", "chat"], default="transcription")
     parser.add_argument("--asr-url", default="http://127.0.0.1:8001/v1/audio/transcriptions")
     parser.add_argument("--asr-model", default="qwen3-asr")
     parser.add_argument("--asr-timeout", type=float, default=120)
     parser.add_argument("--asr-max-tokens", type=int, default=256)
+    parser.add_argument("--api-asr-provider", choices=["openai", "dashscope", "deepgram", "groq", "custom_openai"], default="openai")
+    parser.add_argument("--api-asr-url", default=os.environ.get("BRANCHWHISPER_API_ASR_URL", DEFAULT_OPENAI_TRANSCRIPTIONS_URL))
+    parser.add_argument("--api-asr-model", default=os.environ.get("BRANCHWHISPER_API_ASR_MODEL", "gpt-4o-mini-transcribe"))
+    parser.add_argument("--api-asr-api-key", default=os.environ.get("BRANCHWHISPER_API_ASR_API_KEY", ""))
+    parser.add_argument("--api-asr-language", default="zh")
+    parser.add_argument("--api-asr-timeout", type=float, default=60)
 
     parser.add_argument("--llm-url", default="http://127.0.0.1:8080/v1/chat/completions")
     parser.add_argument("--llm-model", default="qwen3.5-9b")
@@ -488,6 +650,8 @@ def add_settings_args(parser) -> None:
     parser.add_argument("--tools-timeout", type=float, default=12.0)
     parser.add_argument("--tools-max-result-chars", type=int, default=4000)
 
+    parser.add_argument("--tts-provider-mode", choices=["local", "api"], default="local")
+    parser.add_argument("--tts-model", default="cosyvoice")
     parser.add_argument("--tts-url", default="http://127.0.0.1:50000/tts")
     parser.add_argument("--tts-sample-rate", type=int, default=24000)
     parser.add_argument("--tts-speed", type=float, default=1.08)
@@ -495,6 +659,20 @@ def add_settings_args(parser) -> None:
     parser.add_argument("--tts-volume", type=float, default=DEFAULT_TTS_VOLUME)
     parser.add_argument("--tts-fade-ms", type=int, default=DEFAULT_TTS_FADE_MS)
     parser.add_argument("--tts-enabled", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--api-tts-provider", choices=["openai", "dashscope", "elevenlabs", "custom_openai"], default="openai")
+    parser.add_argument("--api-tts-url", default=os.environ.get("BRANCHWHISPER_API_TTS_URL", DEFAULT_OPENAI_TTS_URL))
+    parser.add_argument("--api-tts-model", default=os.environ.get("BRANCHWHISPER_API_TTS_MODEL", "gpt-4o-mini-tts"))
+    parser.add_argument("--api-tts-api-key", default=os.environ.get("BRANCHWHISPER_API_TTS_API_KEY", ""))
+    parser.add_argument("--api-tts-voice-mode", choices=["builtin", "cloned", "manual"], default="builtin")
+    parser.add_argument("--api-tts-voice", default="coral")
+    parser.add_argument("--api-tts-voice-id", default="")
+    parser.add_argument("--api-tts-voice-name", default="")
+    parser.add_argument("--api-tts-voice-profile-id", default="")
+    parser.add_argument("--api-tts-instructions", default="自然、亲近、像微信语音，不要播音腔。")
+    parser.add_argument("--api-tts-format", choices=["pcm", "wav", "mp3"], default="pcm")
+    parser.add_argument("--api-tts-sample-rate", type=int, default=24000)
+    parser.add_argument("--api-tts-speed", type=float, default=1.0)
+    parser.add_argument("--api-tts-latency-mode", choices=["quality", "balanced", "fast"], default="balanced")
 
     parser.add_argument("--vad-device", choices=["cpu", "cuda", "auto"], default="cpu")
     parser.add_argument("--vad-threshold", type=float, default=0.50)

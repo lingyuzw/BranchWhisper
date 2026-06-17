@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import {
   createReminder,
   deleteReminder,
+  deleteProactiveEvent,
   dismissProactiveEvent,
   loadProactiveConfig,
   loadProactiveEvents,
@@ -145,6 +146,10 @@ export const useEngagementStore = defineStore("engagement", {
     },
     async dismissEvent(id: string) {
       const data = await dismissProactiveEvent(id);
+      this.events = data.events || [];
+    },
+    async deleteEvent(id: string) {
+      const data = await deleteProactiveEvent(id);
       this.events = data.events || [];
     },
     async runTest() {

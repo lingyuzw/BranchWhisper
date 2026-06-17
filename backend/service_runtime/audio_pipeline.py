@@ -5,10 +5,19 @@ import io
 import json
 import re
 import wave
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
+from core.config import (
+    active_asr_api_key,
+    active_asr_model,
+    active_asr_provider,
+    active_asr_provider_mode,
+    active_asr_timeout,
+    active_asr_url,
+)
 from core.http_client import httpx_client_for_url
 
 MIC_SAMPLE_RATE = 16000
@@ -40,10 +49,96 @@ def wav_bytes_from_float32(audio: np.ndarray) -> bytes:
     return buffer.getvalue()
 
 
+@dataclass
+class AsrRequest:
+    url: str
+    data: dict
+    files: dict
+    headers: dict[str, str]
+    json: dict | None = None
+    content: bytes | None = None
+    params: dict | None = None
+
+
+def build_asr_request(settings: Any, audio_bytes: bytes) -> AsrRequest:
+    provider = active_asr_provider(settings)
+    url = active_asr_url(settings)
+    model = active_asr_model(settings)
+    api_key = active_asr_api_key(settings)
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key and provider != "deepgram" else {}
+
+    if provider == "dashscope":
+        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+        return AsrRequest(
+            url=url,
+            data={},
+            files={},
+            headers=headers,
+            json={
+                "model": model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_audio",
+                                "input_audio": {
+                                    "data": f"data:audio/wav;base64,{audio_b64}",
+                                    "format": "wav",
+                                },
+                            }
+                        ],
+                    }
+                ],
+                "stream": False,
+            },
+        )
+
+    if provider == "deepgram":
+        if api_key:
+            headers["Authorization"] = f"Token {api_key}"
+        headers["Content-Type"] = "audio/wav"
+        return AsrRequest(
+            url=url,
+            data={},
+            files={},
+            headers=headers,
+            content=audio_bytes,
+            params={"model": model, "language": str(getattr(settings, "api_asr_language", "zh") or "zh")},
+        )
+
+    data = {"model": model}
+    language = str(getattr(settings, "api_asr_language", "") or "").strip()
+    if active_asr_provider_mode(settings) == "api" and language:
+        data["language"] = language
+    return AsrRequest(
+        url=url,
+        data=data,
+        files={"file": ("speech.wav", audio_bytes, "audio/wav")},
+        headers=headers,
+    )
+
+
 async def transcribe_audio(settings: Any, audio_bytes: bytes) -> str:
+    if active_asr_provider_mode(settings) == "api":
+        return await transcribe_via_api(settings, audio_bytes)
     if settings.asr_mode == "chat":
         return await transcribe_via_chat(settings, audio_bytes)
     return await transcribe_via_transcriptions(settings, audio_bytes)
+
+
+async def transcribe_via_api(settings: Any, audio_bytes: bytes) -> str:
+    request = build_asr_request(settings, audio_bytes)
+    timeout = active_asr_timeout(settings)
+    async with httpx_client_for_url(request.url, timeout=timeout) as client:
+        if request.content is not None:
+            resp = await client.post(request.url, content=request.content, params=request.params, headers=request.headers)
+        elif request.json is not None:
+            resp = await client.post(request.url, json=request.json, headers=request.headers)
+        else:
+            resp = await client.post(request.url, data=request.data, files=request.files, headers=request.headers)
+    resp.raise_for_status()
+    return parse_asr_text(extract_asr_response_text(resp.json()))
 
 
 async def transcribe_via_transcriptions(settings: Any, audio_bytes: bytes) -> str:

@@ -42,6 +42,7 @@ from service_runtime.audio_pipeline import (
     transcribe_audio,
     wav_bytes_from_float32,
 )
+from service_runtime.tts_clients import build_tts_request, iter_tts_audio
 from service_runtime.vad import MIC_SAMPLE_RATE, VadModelStore, VoiceVadSession
 from tools.direct_answers import direct_answer_from_tool
 from tools.runtime_brain import MemoryStore, ToolManager, parse_tool_call
@@ -1022,45 +1023,35 @@ class DialogSession:
         async with GLOBAL_TTS_LOCK:
             await self.send_event("tts_segment", text=text)
             self.trace_log(self.current_trace_id, f"tts:start text_len={len(text)}")
-            payload = {
-                "text": text,
-                "stream": True,
-                "speed": self.settings.tts_speed,
-                "seed": self.settings.tts_seed,
-            }
+            request = build_tts_request(self.settings, text, stream=True)
             started = time.perf_counter()
             first_audio = True
             self.reset_tts_pcm_state()
 
             try:
-                async with httpx_client_for_url(self.settings.tts_url, timeout=None) as client:
-                    async with client.stream("POST", self.settings.tts_url, json=payload) as resp:
-                        resp.raise_for_status()
-                        async for chunk in resp.aiter_bytes():
-                            if not chunk:
-                                continue
-                            if first_audio:
-                                elapsed_ms = int((time.perf_counter() - started) * 1000)
-                                self.trace_log(self.current_trace_id, f"tts:first_audio ms={elapsed_ms}")
-                                await self.send_event("metric", name="tts_first_audio_ms", value=elapsed_ms)
-                                await self.send_event("audio_format", sample_rate=self.settings.tts_sample_rate, channels=1, format="pcm_s16le")
-                                first_audio = False
+                async for chunk in iter_tts_audio(self.settings, text):
+                    if first_audio:
+                        elapsed_ms = int((time.perf_counter() - started) * 1000)
+                        self.trace_log(self.current_trace_id, f"tts:first_audio ms={elapsed_ms}")
+                        await self.send_event("metric", name="tts_first_audio_ms", value=elapsed_ms)
+                        await self.send_event("audio_format", sample_rate=request.sample_rate, channels=1, format=request.output_format)
+                        first_audio = False
 
-                            safe_chunk = self.process_tts_pcm_chunk(chunk)
-                            if safe_chunk:
-                                await self.send_audio(safe_chunk)
+                    safe_chunk = self.process_tts_pcm_chunk(chunk)
+                    if safe_chunk:
+                        await self.send_audio(safe_chunk)
 
-                    tail = self.finish_tts_pcm_stream()
-                    if tail:
-                        await self.send_audio(tail)
+                tail = self.finish_tts_pcm_stream()
+                if tail:
+                    await self.send_audio(tail)
 
             except httpx.ConnectError as exc:
                 self.trace_log(self.current_trace_id, f"tts:connect_error {exc}")
                 await self.send_event(
                     "error",
                     message=(
-                        f"CosyVoice3 TTS 服务连接失败：{self.settings.tts_url}。"
-                        "请去“服务”页面启动 CosyVoice3 TTS，并查看 tts 日志。"
+                        f"TTS 服务连接失败：{request.url}。"
+                        "请检查配置页面的 TTS 模式、服务地址或 API Key。"
                         f"原始错误：{exc}"
                     ),
                 )
@@ -1075,11 +1066,11 @@ class DialogSession:
                     return
                 await self.send_event(
                     "error",
-                    message=f"CosyVoice3 TTS 返回 HTTP {exc.response.status_code}：请查看 tts 日志。",
+                    message=f"TTS 返回 HTTP {exc.response.status_code}：请查看服务日志或 API 配置。",
                 )
             except httpx.HTTPError as exc:
                 self.trace_log(self.current_trace_id, f"tts:http_error {exc}")
-                await self.send_event("error", message=f"CosyVoice3 TTS 请求失败：{exc}")
+                await self.send_event("error", message=f"TTS 请求失败：{exc}")
             finally:
                 self.trace_log(self.current_trace_id, "tts:finish")
                 self.reset_tts_pcm_state()
@@ -1220,5 +1211,4 @@ def last_assistant_content(messages: list[dict[str, str]]) -> str | None:
         if message.get("role") == "assistant" and message.get("content"):
             return message["content"]
     return None
-
 

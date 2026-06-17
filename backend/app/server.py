@@ -65,6 +65,9 @@ from media.avatars import AvatarStore
 from core.config import (
     SessionSettings,
     add_settings_args,
+    active_asr_model,
+    active_asr_timeout,
+    active_asr_url,
     active_llm_model,
     active_llm_url,
     enable_default_capabilities,
@@ -122,7 +125,7 @@ async def resolve_branchwhisper_url(request: Request, preferred: str = "") -> st
 
 def service_warmup_key(service_id: str, settings: SessionSettings) -> str:
     if service_id == "asr":
-        return f"asr:{settings.asr_url}:{settings.asr_model}"
+        return f"asr:{active_asr_url(settings)}:{active_asr_model(settings)}"
     if service_id == "llm":
         return f"llm:{active_llm_url(settings)}:{active_llm_model(settings)}"
     return service_id
@@ -243,7 +246,7 @@ async def run_service_warmup(service_id: str, key: str, warmup_factory) -> None:
 async def warmup_asr(settings: SessionSettings) -> None:
     silence = np.zeros(int(MIC_SAMPLE_RATE * 0.35), dtype=np.float32)
     wav = wav_bytes_from_float32(silence)
-    await asyncio.wait_for(transcribe_audio(settings, wav), timeout=min(35.0, float(settings.asr_timeout)))
+    await asyncio.wait_for(transcribe_audio(settings, wav), timeout=min(35.0, active_asr_timeout(settings)))
 
 
 async def warmup_llm(settings: SessionSettings) -> None:

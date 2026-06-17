@@ -98,4 +98,9 @@ def create_engagement_router(deliver_proactive_text: DeliverProactiveText) -> AP
         require_local_service_control(request)
         return {"ok": request.app.state.proactive_store.dismiss_event(event_id), "events": request.app.state.proactive_store.list_events()}
 
+    @router.delete("/api/proactive/events/{event_id}")
+    async def delete_proactive_event(event_id: str, request: Request):
+        require_local_service_control(request)
+        return {"ok": request.app.state.proactive_store.delete_event(event_id), "events": request.app.state.proactive_store.list_events()}
+
     return router

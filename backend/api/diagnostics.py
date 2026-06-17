@@ -7,11 +7,16 @@ from pathlib import Path
 from shutil import which
 from urllib.parse import urlsplit
 
-import httpx
+import numpy as np
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, Response
+import httpx
 
+from core.config import active_asr_api_key, active_asr_model, active_asr_provider, active_asr_provider_mode, active_asr_url, active_tts_api_key, active_tts_model, active_tts_provider, active_tts_provider_mode, active_tts_url
 from core.http_client import httpx_client_for_url
+from service_runtime.audio_pipeline import transcribe_audio, wav_bytes_from_float32
 from service_runtime.services import check_openai_compatible_endpoint, check_service, health_url_from
+from service_runtime.tts_clients import synthesize_tts_bytes, synthesize_tts_wav_bytes, tts_provider_capabilities
 from domain.paths import (
     FRONTEND_DIST_DIR,
     INTEGRATIONS_CONFIG,
@@ -173,6 +178,43 @@ def create_diagnostics_router() -> APIRouter:
                 "error": str(exc),
             }
 
+    @router.post("/api/diagnostics/asr-api-test")
+    async def asr_api_test(request: Request):
+        return await run_asr_api_probe(request.app.state.settings)
+
+    @router.post("/api/diagnostics/tts-api-test")
+    async def tts_api_test(request: Request):
+        return await run_tts_api_probe(request.app.state.settings)
+
+    @router.post("/api/diagnostics/tts-preview")
+    async def tts_preview(request: Request):
+        settings = request.app.state.settings
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        text = str((payload or {}).get("text") or "你好，今天过得怎么样。").strip() or "你好，今天过得怎么样。"
+        try:
+            wav = await synthesize_tts_wav_bytes(settings, text)
+            return Response(
+                content=wav,
+                media_type="audio/wav",
+                headers={
+                    "Cache-Control": "no-store",
+                    "Content-Disposition": 'inline; filename="tts-preview.wav"',
+                },
+            )
+        except Exception as exc:
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "ok": False,
+                    "kind": "tts",
+                    "error": str(exc),
+                    "message": f"TTS 试听生成失败：{exc}",
+                },
+            )
+
     @router.get("/api/diagnostics/local-models")
     async def local_model_diagnostics(request: Request):
         settings = request.app.state.settings
@@ -281,6 +323,119 @@ def create_diagnostics_router() -> APIRouter:
             )
 
     return router
+
+
+async def run_asr_api_probe(settings) -> dict:
+    provider_mode = active_asr_provider_mode(settings)
+    provider = active_asr_provider(settings)
+    url = active_asr_url(settings)
+    model = active_asr_model(settings)
+    api_key = active_asr_api_key(settings)
+    if provider_mode == "api" and not api_key:
+        return audio_probe_result(False, "asr", provider, url, model, False, "ASR API Key 未配置")
+    if not url:
+        return audio_probe_result(False, "asr", provider, url, model, bool(api_key), "ASR API URL 未配置")
+    if not model:
+        return audio_probe_result(False, "asr", provider, url, model, bool(api_key), "ASR API 模型未配置")
+
+    started = time.perf_counter()
+    try:
+        silence = np.zeros(1600, dtype=np.float32)
+        text = await transcribe_audio(settings, wav_bytes_from_float32(silence))
+        return audio_probe_result(
+            True,
+            "asr",
+            provider,
+            url,
+            model,
+            bool(api_key),
+            "",
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            response={"text": text},
+        )
+    except Exception as exc:
+        return audio_probe_result(
+            False,
+            "asr",
+            provider,
+            url,
+            model,
+            bool(api_key),
+            str(exc),
+            latency_ms=int((time.perf_counter() - started) * 1000),
+        )
+
+
+async def run_tts_api_probe(settings) -> dict:
+    provider_mode = active_tts_provider_mode(settings)
+    provider = active_tts_provider(settings)
+    url = active_tts_url(settings)
+    model = active_tts_model(settings)
+    api_key = active_tts_api_key(settings)
+    if provider_mode == "api" and not api_key:
+        return audio_probe_result(False, "tts", provider, url, model, False, "TTS API Key 未配置", capabilities=tts_provider_capabilities(provider))
+    if not url:
+        return audio_probe_result(False, "tts", provider, url, model, bool(api_key), "TTS API URL 未配置", capabilities=tts_provider_capabilities(provider))
+    if not model:
+        return audio_probe_result(False, "tts", provider, url, model, bool(api_key), "TTS API 模型未配置", capabilities=tts_provider_capabilities(provider))
+
+    started = time.perf_counter()
+    try:
+        audio = await synthesize_tts_bytes(settings, "你好，这是语音测试。")
+        ok = bool(audio)
+        return audio_probe_result(
+            ok,
+            "tts",
+            provider,
+            url,
+            model,
+            bool(api_key),
+            "" if ok else "TTS 返回空音频",
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            response={"audio_bytes": len(audio)},
+            capabilities=tts_provider_capabilities(provider),
+        )
+    except Exception as exc:
+        return audio_probe_result(
+            False,
+            "tts",
+            provider,
+            url,
+            model,
+            bool(api_key),
+            str(exc),
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            capabilities=tts_provider_capabilities(provider),
+        )
+
+
+def audio_probe_result(
+    ok: bool,
+    kind: str,
+    provider: str,
+    url: str,
+    model: str,
+    api_key_set: bool,
+    error: str = "",
+    *,
+    latency_ms: int | None = None,
+    response=None,
+    capabilities=None,
+) -> dict:
+    label = "ASR" if kind == "asr" else "TTS"
+    return {
+        "ok": ok,
+        "kind": kind,
+        "provider": provider,
+        "url": url,
+        "model": model,
+        "api_key_set": api_key_set,
+        "latency_ms": latency_ms,
+        "error": "" if ok else error,
+        "message": f"{label} 调用正常" if ok else f"{label} 调用失败：{error or '未知错误'}",
+        "response": response or {},
+        "capabilities": capabilities or {},
+    }
 
 
 def local_model_result(name: str, health_url: str, health: dict) -> dict:

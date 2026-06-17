@@ -55,13 +55,14 @@ function meterClass(value: unknown) {
 const cpu = computed(() => asRecord(props.resources?.cpu));
 const memory = computed(() => asRecord(props.resources?.memory));
 const gpus = computed(() => (Array.isArray(props.resources?.gpus) ? (props.resources?.gpus as Record<string, any>[]) : []));
+const platformText = computed(() => String(props.resources?.platform || props.resources?.os || "--"));
 </script>
 
 <template>
   <section class="resource-section">
     <div class="section-head">
       <div><p class="eyebrow">System Resources</p><h2>资源状态</h2></div>
-      <span class="soft-badge">{{ String(resources?.platform || resources?.os || "--") }}</span>
+      <span class="resource-platform-badge">{{ platformText }}</span>
     </div>
     <div class="resource-grid">
       <article class="resource-card">
@@ -90,9 +91,11 @@ const gpus = computed(() => (Array.isArray(props.resources?.gpus) ? (props.resou
           <strong>GPU {{ gpu.index ?? "" }}</strong>
         </div>
         <div class="resource-value">{{ percentText(gpu.memory_percent) }}</div>
-        <small>{{ gpu.name || "--" }} · 显存 {{ gpuMemory(gpu) }}</small>
+        <small class="resource-meta-line">
+          <span>{{ gpu.name || "--" }} · 显存 {{ gpuMemory(gpu) }}</span>
+          <span class="resource-temp"><Thermometer :size="13" /> {{ gpu.temperature_c ?? "--" }}°C · GPU {{ percentText(gpu.util_percent) }}</span>
+        </small>
         <div class="resource-meter" :class="meterClass(gpu.memory_percent)"><span :style="{ width: `${percent(gpu.memory_percent) || 0}%` }"></span></div>
-        <small class="resource-temp"><Thermometer :size="13" /> {{ gpu.temperature_c ?? "--" }}°C · GPU {{ percentText(gpu.util_percent) }}</small>
       </article>
 
       <article v-if="!gpus.length" class="resource-card muted">

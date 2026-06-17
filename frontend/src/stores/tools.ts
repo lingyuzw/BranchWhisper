@@ -9,6 +9,8 @@ export const PROVIDER_FIELDS: Record<string, string[]> = {
   map: ["enabled", "provider", "base_url", "api_key"],
   url_fetch: ["enabled", "user_agent", "max_chars"],
   reminder: ["enabled", "web_enabled", "weixin_enabled", "webhook_url"],
+  system_time: [],
+  direct_answer: [],
 };
 
 export const PROVIDER_LABELS: Record<string, string> = {
@@ -19,6 +21,8 @@ export const PROVIDER_LABELS: Record<string, string> = {
   map: "地图",
   url_fetch: "网页读取",
   reminder: "提醒通知",
+  system_time: "系统时间",
+  direct_answer: "直接回答",
 };
 
 export const PROVIDER_OPTIONS: Record<string, Array<[string, string]>> = {
@@ -29,6 +33,8 @@ export const PROVIDER_OPTIONS: Record<string, Array<[string, string]>> = {
   map: [["gaode", "高德地图 Web服务"]],
   url_fetch: [["built-in", "内置网页读取"]],
   reminder: [["default", "内置提醒"]],
+  system_time: [["built-in", "本机时间"]],
+  direct_answer: [["built-in", "工具直答"]],
 };
 
 interface ToolsState {
@@ -143,10 +149,11 @@ export const useToolsStore = defineStore("tools", {
         map: { query: `${weatherLocation}市政府` },
         url_fetch: { url: "https://example.com" },
         reminder: { title: "测试提醒", due_at: new Date(Date.now() + 3600_000).toISOString() },
+        system_time: {},
       };
       this.testResults[providerKey] = "测试中...";
       try {
-        const toolByProvider: Record<string, string> = { url_fetch: "url_fetch", reminder: "reminder" };
+        const toolByProvider: Record<string, string> = { url_fetch: "url_fetch", reminder: "reminder", system_time: "time" };
         const result = await testTool(toolByProvider[providerKey] || providerKey, args[providerKey] || {});
         this.testResults[providerKey] = JSON.stringify(result, null, 2);
       } catch (error) {

@@ -4,6 +4,8 @@ import { useRouter } from "vue-router";
 import {
   AlarmPlus,
   Bot,
+  ChevronDown,
+  ChevronUp,
   Cloud,
   Copy,
   Cpu,
@@ -12,7 +14,6 @@ import {
   Globe2,
   HardDrive,
   ImagePlus,
-  Library,
   MessageSquareText,
   MicVocal,
   Moon,
@@ -28,9 +29,9 @@ import {
   X,
 } from "@lucide/vue";
 import { uploadAvatar } from "@/api/assets";
-import { runLlmApiDiagnostic, runLocalModelsDiagnostic, runVisionApiDiagnostic } from "@/api/diagnostics";
+import { runAsrApiDiagnostic, runLlmApiDiagnostic, runLocalModelsDiagnostic, runTtsApiDiagnostic, runTtsVoicePreview } from "@/api/diagnostics";
 import { useAppStore } from "@/stores/app";
-import { listModelFiles, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
+import { listModelFiles, uploadVoiceSample, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
 import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
@@ -50,6 +51,7 @@ const ui = useUiStore();
 const form = reactive<Partial<PublicConfig>>({});
 const userAvatarInput = ref<HTMLInputElement | null>(null);
 const assistantAvatarInput = ref<HTMLInputElement | null>(null);
+const voiceSampleInput = ref<HTMLInputElement | null>(null);
 const theme = ref<"dark" | "light">("dark");
 const modelFileModalOpen = ref(false);
 const modelFileRoot = ref("");
@@ -62,11 +64,19 @@ const settingsMessage = ref("");
 const settingsHydrating = ref(false);
 const settingsSaving = ref(false);
 const formBaseline = ref<Partial<PublicConfig>>({});
+const ttsPreviewText = ref("你好，今天过得怎么样。");
+const ttsPreviewUrl = ref("");
+const ttsPreviewLoading = ref(false);
+const ttsPreviewStatus = ref("");
+const proactiveEventsExpanded = ref(false);
+const commandsExpanded = ref<Record<string, boolean>>({});
+const selectedToolKey = ref("weather");
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
 const probeState = reactive<Record<string, { status: ProbeStatus; text: string; detail: string }>>({
   llmApi: { status: "idle", text: "未检测", detail: "" },
+  asrApi: { status: "idle", text: "未检测", detail: "" },
+  ttsApi: { status: "idle", text: "未检测", detail: "" },
   localModels: { status: "idle", text: "未检测", detail: "" },
-  visionApi: { status: "idle", text: "未检测", detail: "" },
   proactive: { status: "idle", text: "未检测", detail: "" },
 });
 interface ServiceDraft {
@@ -80,14 +90,17 @@ const serviceDrafts = reactive<Record<string, ServiceDraft>>({});
 const serviceDraftDirty = reactive<Record<string, boolean>>({});
 const serviceSaving = reactive<Record<string, boolean>>({});
 const providerKeys = Object.keys(PROVIDER_FIELDS);
-interface ToolProviderGroup {
-  id: string;
-  title: string;
+interface ToolGridItem {
+  key: string;
+  label: string;
   summary: string;
-  keys: string[];
+  badge: string;
+  fields: string[];
 }
 const pendingReminders = computed(() => engagement.pendingReminders.slice(0, 8));
 const recentEvents = computed(() => engagement.recentEvents);
+const visibleRecentEvents = computed(() => (proactiveEventsExpanded.value ? recentEvents.value : recentEvents.value.slice(0, 3)));
+const hiddenRecentEventCount = computed(() => Math.max(0, recentEvents.value.length - visibleRecentEvents.value.length));
 const recommendedBooleanDefaults: Partial<PublicConfig> = {
   tts_enabled: true,
   tools_enabled: true,
@@ -97,11 +110,17 @@ const recommendedBooleanDefaults: Partial<PublicConfig> = {
   stickers_enabled: true,
   context_compaction_enabled: true,
 };
-const DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
-const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_BASE_URL}/chat/completions`;
+const DASHSCOPE_CHAT_COMPLETIONS_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 const DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions";
 const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENAI_ASR_URL = "https://api.openai.com/v1/audio/transcriptions";
+const GROQ_ASR_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
+const DEEPGRAM_ASR_URL = "https://api.deepgram.com/v1/listen";
+const DASHSCOPE_ASR_URL = DASHSCOPE_CHAT_COMPLETIONS_URL;
+const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
+const ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+const DASHSCOPE_TTS_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
 const DEFAULT_API_MODEL = "qwen-plus";
 const DEFAULT_VISION_MODEL = "qwen3-vl-plus";
 interface ApiModelPreset {
@@ -144,15 +163,85 @@ const API_MODEL_PRESETS: ApiModelPreset[] = [
 const API_MODEL_PRESET_URLS = API_MODEL_PRESETS.map((preset) => preset.url);
 const localDisabled = computed(() => form.dialog_mode === "api");
 const apiDisabled = computed(() => form.dialog_mode === "local");
+const asrApiDisabled = computed(() => form.asr_provider_mode !== "api");
+const ttsApiDisabled = computed(() => form.tts_provider_mode !== "api");
+interface AudioPreset {
+  id: string;
+  provider: string;
+  label: string;
+  summary: string;
+  url: string;
+  model: string;
+  language?: string;
+  voice?: string;
+  voiceMode?: "builtin" | "manual" | "cloned";
+  format?: "pcm" | "wav" | "mp3";
+  latency?: "quality" | "balanced" | "fast";
+  cloneSupport?: boolean;
+}
+const ASR_API_PRESETS: AudioPreset[] = [
+  { id: "openai-gpt4o", provider: "openai", label: "OpenAI 高精度", summary: "gpt-4o-transcribe，适合通用转写", url: OPENAI_ASR_URL, model: "gpt-4o-transcribe", language: "zh" },
+  { id: "openai-mini", provider: "openai", label: "OpenAI 轻量", summary: "gpt-4o-mini-transcribe，成本和延迟更低", url: OPENAI_ASR_URL, model: "gpt-4o-mini-transcribe", language: "zh" },
+  { id: "groq-whisper", provider: "groq", label: "Groq Whisper", summary: "whisper-large-v3-turbo，偏极速", url: GROQ_ASR_URL, model: "whisper-large-v3-turbo", language: "zh" },
+  { id: "deepgram-nova", provider: "deepgram", label: "Deepgram Nova-3", summary: "实时语音识别服务，英文生态成熟", url: DEEPGRAM_ASR_URL, model: "nova-3", language: "zh" },
+  { id: "dashscope-qwen-asr", provider: "dashscope", label: "百炼 Qwen-ASR", summary: "qwen3-asr-flash，同步识别，适合实时对话", url: DASHSCOPE_ASR_URL, model: "qwen3-asr-flash", language: "zh" },
+];
+const TTS_API_PRESETS: AudioPreset[] = [
+  { id: "openai-mini", provider: "openai", label: "OpenAI 自然音色", summary: "gpt-4o-mini-tts，预置 voice + 指令", url: OPENAI_TTS_URL, model: "gpt-4o-mini-tts", voice: "coral", voiceMode: "builtin", format: "pcm", latency: "balanced", cloneSupport: false },
+  { id: "eleven-flash", provider: "elevenlabs", label: "ElevenLabs 极速", summary: "eleven_flash_v2_5，支持 Instant Voice Cloning", url: ELEVENLABS_TTS_URL, model: "eleven_flash_v2_5", voiceMode: "manual", format: "pcm", latency: "fast", cloneSupport: true },
+  { id: "eleven-turbo", provider: "elevenlabs", label: "ElevenLabs Turbo", summary: "eleven_turbo_v2_5，质量和延迟均衡", url: ELEVENLABS_TTS_URL, model: "eleven_turbo_v2_5", voiceMode: "manual", format: "pcm", latency: "balanced", cloneSupport: true },
+  { id: "dashscope-qwen-tts", provider: "dashscope", label: "百炼 Qwen-TTS", summary: "Qwen 系列语音合成，返回 WAV 后内部转 PCM", url: DASHSCOPE_TTS_URL, model: "qwen-tts", voice: "Cherry", voiceMode: "builtin", format: "wav", latency: "balanced", cloneSupport: false },
+  { id: "dashscope-cosyvoice", provider: "dashscope", label: "百炼 CosyVoice", summary: "中文语音合成，音色复刻需远程 voice_id", url: DASHSCOPE_TTS_URL, model: "cosyvoice-v2", voiceMode: "manual", format: "wav", latency: "balanced", cloneSupport: true },
+];
 const recommendedStringDefaults: Partial<PublicConfig> = {
   api_llm_url: DASHSCOPE_CHAT_COMPLETIONS_URL,
   api_llm_model: DEFAULT_API_MODEL,
   sticker_vision_url: DASHSCOPE_CHAT_COMPLETIONS_URL,
   sticker_vision_model: DEFAULT_VISION_MODEL,
+  asr_provider_mode: "local",
+  api_asr_provider: "openai",
+  api_asr_url: OPENAI_ASR_URL,
+  api_asr_model: "gpt-4o-mini-transcribe",
+  api_asr_language: "zh",
+  tts_provider_mode: "local",
+  tts_model: "cosyvoice",
+  api_tts_provider: "openai",
+  api_tts_url: OPENAI_TTS_URL,
+  api_tts_model: "gpt-4o-mini-tts",
+  api_tts_voice_mode: "builtin",
+  api_tts_voice: "coral",
+  api_tts_format: "pcm",
+  api_tts_latency_mode: "balanced",
+  api_tts_instructions: "自然、亲近、像微信语音，不要播音腔。",
 };
-const SECRET_CONFIG_KEYS = new Set(["llm_api_key", "api_llm_api_key", "sticker_vision_api_key"]);
+const SECRET_CONFIG_KEYS = new Set(["llm_api_key", "api_llm_api_key", "sticker_vision_api_key", "api_asr_api_key", "api_tts_api_key"]);
 const SKIPPED_CONFIG_KEYS = new Set(["llm_model_file"]);
 const TOOL_CONFIG_KEYS = new Set(["tools_enabled", "tools_auto_call", "tools_timeout", "tools_max_result_chars"]);
+const TTS_CONFIG_KEYS = new Set([
+  "tts_enabled",
+  "tts_provider_mode",
+  "tts_model",
+  "tts_url",
+  "tts_speed",
+  "tts_seed",
+  "tts_volume",
+  "tts_fade_ms",
+  "tts_sample_rate",
+  "api_tts_provider",
+  "api_tts_url",
+  "api_tts_model",
+  "api_tts_api_key",
+  "api_tts_voice_mode",
+  "api_tts_voice",
+  "api_tts_voice_id",
+  "api_tts_voice_name",
+  "api_tts_voice_profile_id",
+  "api_tts_instructions",
+  "api_tts_format",
+  "api_tts_sample_rate",
+  "api_tts_speed",
+  "api_tts_latency_mode",
+]);
 const PROVIDER_BASE_URL_PRESETS: Record<string, Record<string, string>> = {
   weather: {
     gaode: "https://restapi.amap.com/v3/weather/weatherInfo",
@@ -176,76 +265,87 @@ const PROVIDER_BASE_URL_PRESETS: Record<string, Record<string, string>> = {
 type SettingsSectionId =
   | "appearance"
   | "engine"
+  | "asr"
   | "tools"
-  | "dialogFeatures"
   | "proactive"
   | "botProfiles"
   | "prompt"
   | "tts"
   | "vad"
   | "commands";
-const activeSettingsSection = ref<SettingsSectionId | "">("");
+const activeSettingsSection = ref<SettingsSectionId>("engine");
 const toolsConfigDirty = computed(() => Object.keys(buildConfigPatch(TOOL_CONFIG_KEYS)).length > 0);
 const toolsAnyDirty = computed(() => tools.dirty || toolsConfigDirty.value);
-const providerGroups = computed<ToolProviderGroup[]>(() => {
-  const groups: ToolProviderGroup[] = [
-    {
-      id: "external",
-      title: "外部接口",
-      summary: "需要服务商、Base URL 或 API Key 的联网能力",
-      keys: ["weather", "search", "news", "finance", "map"].filter((key) => providerKeys.includes(key)),
-    },
-    {
-      id: "builtin",
-      title: "内置能力",
-      summary: "由本地运行时处理的网页读取、提醒和通道能力",
-      keys: ["url_fetch", "reminder"].filter((key) => providerKeys.includes(key)),
-    },
-  ];
-  const groupedKeys = new Set(groups.flatMap((group) => group.keys));
-  const extraKeys = providerKeys.filter((key) => !groupedKeys.has(key));
-  if (extraKeys.length) {
-    groups.push({ id: "custom", title: "其他 Provider", summary: "插件或自定义工具", keys: extraKeys });
-  }
-  return groups.filter((group) => group.keys.length);
+const toolGridItems = computed<ToolGridItem[]>(() => {
+  const summaries: Record<string, string> = {
+    weather: `默认地区：${tools.config.weather?.default_location || "漳州"}`,
+    search: "网页搜索和地点搜索共用这张卡",
+    news: "新闻 RSS 或搜索兜底",
+    finance: "股票、汇率、价格类问题",
+    map: "地址、路线、附近地点",
+    url_fetch: "读取用户给出的网页链接",
+    reminder: "Web 和微信提醒通道",
+    system_time: "本机时间、日期和星期",
+    direct_answer: "工具解析后的直接回复",
+  };
+  const badges: Record<string, string> = {
+    weather: "外部 API",
+    search: "外部 API",
+    news: "外部 API",
+    finance: "搜索兜底",
+    map: "外部 API",
+    url_fetch: "本地",
+    reminder: "本地",
+    system_time: "本地",
+    direct_answer: "本地",
+  };
+  const ordered = ["weather", "search", "news", "finance", "map", "url_fetch", "reminder", "system_time", "direct_answer"];
+  return ordered.map((key) => ({
+    key,
+    label: PROVIDER_LABELS[key] || key,
+    summary: summaries[key] || "按当前配置执行最小调用",
+    badge: badges[key] || "工具",
+    fields: PROVIDER_FIELDS[key] || [],
+  }));
 });
+const selectedToolItem = computed(() => toolGridItems.value.find((item) => item.key === selectedToolKey.value) || toolGridItems.value[0]);
 const settingsSections = computed(() => [
   {
     id: "appearance" as SettingsSectionId,
     icon: Palette,
-    eyebrow: "Appearance",
+    eyebrow: "显示",
     title: "外观与身份",
-    summary: "主题、头像、字号和对话页身份",
+    summary: "主题、头像、字号",
     status: theme.value === "light" ? "浅色主题" : "深色主题",
   },
   {
     id: "engine" as SettingsSectionId,
     icon: Cpu,
-    eyebrow: "Model Engine",
+    eyebrow: "模型",
     title: "对话模型",
-    summary: "本地/API 模型、ASR 与模型文件",
+    summary: "LLM、本地/API、模型文件",
     status: form.dialog_mode === "api" ? "API 模式" : "本地模式",
+  },
+  {
+    id: "asr" as SettingsSectionId,
+    icon: MicVocal,
+    eyebrow: "识别",
+    title: "语音识别",
+    summary: "ASR、本地/API、识别回路测试",
+    status: form.asr_provider_mode === "api" ? "API 模式" : "本地模式",
   },
   {
     id: "tools" as SettingsSectionId,
     icon: Globe2,
-    eyebrow: "Network Tools",
+    eyebrow: "工具",
     title: "联网工具",
-    summary: "搜索、天气、新闻、微信等 Provider",
+    summary: "搜索、天气、新闻、地图",
     status: form.tools_enabled ? "工具启用" : "工具关闭",
-  },
-  {
-    id: "dialogFeatures" as SettingsSectionId,
-    icon: Library,
-    eyebrow: "Conversation",
-    title: "素材与对话能力",
-    summary: "图片理解、素材库、上下文压缩",
-    status: form.vision_enabled ? "视觉启用" : "视觉关闭",
   },
   {
     id: "proactive" as SettingsSectionId,
     icon: Sparkles,
-    eyebrow: "Proactive",
+    eyebrow: "主动",
     title: "主动性",
     summary: "问候、提醒、追问和触发器",
     status: engagement.config.enabled ? "主动消息启用" : "主动消息关闭",
@@ -253,15 +353,15 @@ const settingsSections = computed(() => [
   {
     id: "botProfiles" as SettingsSectionId,
     icon: Bot,
-    eyebrow: "Profiles",
+    eyebrow: "人格",
     title: "Bot 人格",
     summary: "多人格、头像、工具权限和风格",
-    status: `${profiles.profiles.length || 0} 个 Profile`,
+    status: `${profiles.profiles.length || 0} 个配置`,
   },
   {
     id: "prompt" as SettingsSectionId,
     icon: MessageSquareText,
-    eyebrow: "Persona",
+    eyebrow: "提示词",
     title: "Prompt 配置",
     summary: "系统提示词与角色边界",
     status: form.system ? "已配置" : "未配置",
@@ -269,15 +369,15 @@ const settingsSections = computed(() => [
   {
     id: "tts" as SettingsSectionId,
     icon: Volume2,
-    eyebrow: "Speech",
+    eyebrow: "语音",
     title: "语音合成",
-    summary: "TTS 地址、速度、音量和采样率",
+    summary: "TTS、本地/接口、默认音色",
     status: form.tts_enabled ? "TTS 启用" : "TTS 关闭",
   },
   {
     id: "vad" as SettingsSectionId,
     icon: MicVocal,
-    eyebrow: "Voice Activity",
+    eyebrow: "检测",
     title: "语音检测",
     summary: "VAD 阈值、静默和语音时长",
     status: `阈值 ${form.vad_threshold ?? "--"}`,
@@ -285,14 +385,42 @@ const settingsSections = computed(() => [
   {
     id: "commands" as SettingsSectionId,
     icon: Terminal,
-    eyebrow: "Services",
+    eyebrow: "服务",
     title: "服务命令",
     summary: "工作目录、启动命令、健康检查地址",
     status: `${services.services.length || 0} 个服务`,
   },
 ]);
-const settingsLaunchSections = computed(() => settingsSections.value.filter((item) => item.id !== "appearance"));
-const activeSettingsCard = computed(() => settingsSections.value.find((item) => item.id === activeSettingsSection.value));
+const activeSection = computed(() => settingsSections.value.find((section) => section.id === activeSettingsSection.value) || settingsSections.value[0]);
+const runtimeChainItems = computed(() => [
+  {
+    id: "llm",
+    icon: form.dialog_mode === "api" ? Cloud : HardDrive,
+    title: "对话",
+    mode: form.dialog_mode === "api" ? "API" : "本地",
+    model: form.dialog_mode === "api" ? String(form.api_llm_model || "--") : String(form.llm_model || "--"),
+    endpoint: form.dialog_mode === "api" ? String(form.api_llm_url || "--") : String(form.llm_url || "--"),
+    section: "engine" as SettingsSectionId,
+  },
+  {
+    id: "asr",
+    icon: form.asr_provider_mode === "api" ? Cloud : HardDrive,
+    title: "识别",
+    mode: form.asr_provider_mode === "api" ? "API" : "本地",
+    model: form.asr_provider_mode === "api" ? String(form.api_asr_model || "--") : String(form.asr_model || "--"),
+    endpoint: form.asr_provider_mode === "api" ? String(form.api_asr_url || "--") : String(form.asr_url || "--"),
+    section: "asr" as SettingsSectionId,
+  },
+  {
+    id: "tts",
+    icon: form.tts_provider_mode === "api" ? Cloud : HardDrive,
+    title: "合成",
+    mode: form.tts_provider_mode === "api" ? "API" : "本地",
+    model: form.tts_provider_mode === "api" ? String(form.api_tts_model || "--") : String(form.tts_model || "--"),
+    endpoint: form.tts_provider_mode === "api" ? activeTtsVoiceLabel() : String(form.tts_url || "--"),
+    section: "tts" as SettingsSectionId,
+  },
+]);
 const serviceDraftList = computed(() =>
   services.services
     .map((service) => ({ service, draft: serviceDrafts[service.id] }))
@@ -307,6 +435,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.body.classList.remove("settings-modal-open");
+  revokeTtsPreviewUrl();
 });
 
 watch(
@@ -324,14 +453,6 @@ watch(
     syncServiceDrafts();
   },
   { immediate: true, deep: true },
-);
-
-watch(
-  activeSettingsSection,
-  (section) => {
-    document.body.classList.toggle("settings-modal-open", Boolean(section));
-  },
-  { immediate: true },
 );
 
 function announceSettings(message: string, type: ToastKind = "info", timeoutMs?: number) {
@@ -406,14 +527,9 @@ function absorbSavedConfigKeys(config: PublicConfig, keys: Set<string>) {
   formBaseline.value = baseline;
 }
 
-function isDashScopeCompatibleUrl(value: unknown) {
-  const text = String(value || "").trim();
-  return !text || text === DASHSCOPE_BASE_URL || text === DASHSCOPE_CHAT_COMPLETIONS_URL;
-}
-
 function applyApiModelPreset(preset: ApiModelPreset, force = true) {
   if (apiDisabled.value) return;
-  if (force || isDashScopeCompatibleUrl(form.api_llm_url)) {
+  if (force) {
     form.api_llm_url = preset.url;
   }
   if (force || !String(form.api_llm_model || "").trim() || form.api_llm_model === "qwen3") {
@@ -422,14 +538,132 @@ function applyApiModelPreset(preset: ApiModelPreset, force = true) {
   announceSettings(`已填入 ${preset.label} 对话模型预设`, "success", 1800);
 }
 
-function applyDashScopeDefaults(force = false) {
-  const preset = API_MODEL_PRESETS.find((item) => item.id === "dashscope") || API_MODEL_PRESETS[0];
-  applyApiModelPreset(preset, force);
-  if (force || isDashScopeCompatibleUrl(form.sticker_vision_url)) {
-    form.sticker_vision_url = DASHSCOPE_CHAT_COMPLETIONS_URL;
+function selectedApiPresetId() {
+  const preset = API_MODEL_PRESETS.find((item) => form.api_llm_url === item.url && form.api_llm_model === item.model);
+  return preset?.id || "custom";
+}
+
+function selectedAsrPresetId() {
+  const preset = ASR_API_PRESETS.find((item) => form.api_asr_provider === item.provider && form.api_asr_model === item.model);
+  return preset?.id || "custom";
+}
+
+function selectedTtsPresetId() {
+  const preset = TTS_API_PRESETS.find((item) => form.api_tts_provider === item.provider && form.api_tts_model === item.model);
+  return preset?.id || "custom";
+}
+
+function onApiPresetChange(event: Event) {
+  const id = (event.target as HTMLSelectElement).value;
+  const preset = API_MODEL_PRESETS.find((item) => item.id === id);
+  if (preset) applyApiModelPreset(preset, true);
+}
+
+function onAsrPresetChange(event: Event) {
+  const id = (event.target as HTMLSelectElement).value;
+  const preset = ASR_API_PRESETS.find((item) => item.id === id);
+  if (preset) applyAsrPreset(preset);
+}
+
+function onTtsPresetChange(event: Event) {
+  const id = (event.target as HTMLSelectElement).value;
+  const preset = TTS_API_PRESETS.find((item) => item.id === id);
+  if (preset) applyTtsPreset(preset);
+}
+
+function setAsrMode(mode: "local" | "api") {
+  form.asr_provider_mode = mode;
+  if (mode === "api" && !String(form.api_asr_model || "").trim()) applyAsrPreset(ASR_API_PRESETS[1]);
+}
+
+function setTtsMode(mode: "local" | "api") {
+  form.tts_provider_mode = mode;
+  if (mode === "api" && !String(form.api_tts_model || "").trim()) applyTtsPreset(TTS_API_PRESETS[0]);
+}
+
+function applyAsrPreset(preset: AudioPreset) {
+  form.asr_provider_mode = "api";
+  form.api_asr_provider = preset.provider;
+  form.api_asr_url = preset.url;
+  form.api_asr_model = preset.model;
+  if (preset.language) form.api_asr_language = preset.language;
+  announceSettings(`已填入 ${preset.label} ASR 预设`, "success", 1600);
+}
+
+function applyTtsPreset(preset: AudioPreset) {
+  form.tts_provider_mode = "api";
+  form.api_tts_provider = preset.provider;
+  form.api_tts_url = preset.url;
+  form.api_tts_model = preset.model;
+  if (preset.voice) form.api_tts_voice = preset.voice;
+  if (preset.voiceMode) form.api_tts_voice_mode = preset.voiceMode;
+  if (preset.format) form.api_tts_format = preset.format;
+  if (preset.latency) form.api_tts_latency_mode = preset.latency;
+  announceSettings(`已填入 ${preset.label} TTS 预设`, "success", 1600);
+}
+
+function activeTtsVoiceLabel() {
+  if (form.tts_provider_mode !== "api") return String(form.tts_url || "--");
+  const mode = String(form.api_tts_voice_mode || "builtin");
+  const voice = String(form.api_tts_voice || "").trim();
+  const voiceId = String(form.api_tts_voice_id || "").trim();
+  if ((mode === "manual" || mode === "cloned") && voiceId) return "远程 Voice ID 已填写";
+  if (mode === "cloned") return `参考音频已保存 · 当前用 ${voice || "内置音色"}`;
+  if (mode === "manual") return "等待 Voice ID";
+  return voice ? `内置音色 ${voice}` : "内置音色";
+}
+
+function ttsVoiceStateText() {
+  if (form.tts_provider_mode !== "api") return "本地音色";
+  const mode = String(form.api_tts_voice_mode || "builtin");
+  const voiceId = String(form.api_tts_voice_id || "").trim();
+  if (mode === "cloned" && voiceId) return "复刻音色已绑定";
+  if (mode === "cloned") return "参考音频待绑定";
+  if (mode === "manual") return voiceId ? "远程音色已绑定" : "等待 Voice ID";
+  return "内置音色";
+}
+
+function ttsVoiceHintText() {
+  const mode = String(form.api_tts_voice_mode || "builtin");
+  if (mode === "cloned" && !String(form.api_tts_voice_id || "").trim()) {
+    return "参考音频已保存在本地，但当前服务商还没有返回远程 Voice ID；生成语音时会先使用内置 Voice。";
   }
-  if (force || !String(form.sticker_vision_model || "").trim() || form.sticker_vision_model === "qwen-vl") {
-    form.sticker_vision_model = DEFAULT_VISION_MODEL;
+  if (mode === "manual" && !String(form.api_tts_voice_id || "").trim()) {
+    return "手动音色需要填写服务商的远程 Voice ID。";
+  }
+  if (mode === "cloned") return "后续生成会使用已绑定的远程复刻音色。";
+  return "当前使用服务商内置音色。";
+}
+
+function revokeTtsPreviewUrl() {
+  if (!ttsPreviewUrl.value) return;
+  URL.revokeObjectURL(ttsPreviewUrl.value);
+  ttsPreviewUrl.value = "";
+}
+
+async function saveTtsConfigOnly() {
+  const patch = buildConfigPatch(TTS_CONFIG_KEYS);
+  if (!Object.keys(patch).length) return;
+  await app.saveConfig(patch);
+  if (app.config) absorbSavedConfigKeys(app.config, TTS_CONFIG_KEYS);
+}
+
+async function runTtsPreview() {
+  if (ttsPreviewLoading.value) return;
+  ttsPreviewLoading.value = true;
+  ttsPreviewStatus.value = "正在生成试听...";
+  try {
+    await saveTtsConfigOnly();
+    const blob = await runTtsVoicePreview(ttsPreviewText.value || "你好，今天过得怎么样。");
+    revokeTtsPreviewUrl();
+    ttsPreviewUrl.value = URL.createObjectURL(blob);
+    ttsPreviewStatus.value = `试听已生成 · ${Math.round(blob.size / 1024)} KB`;
+    announceSettings("试听音频已生成，可以直接播放", "success", 1600);
+  } catch (error) {
+    ttsPreviewStatus.value = error instanceof Error ? error.message : String(error);
+    announceSettings(`试听生成失败：${ttsPreviewStatus.value}`, "error");
+  } finally {
+    ttsPreviewLoading.value = false;
   }
 }
 
@@ -461,15 +695,14 @@ async function saveAll() {
     syncModelFilePath();
     announceSettings("配置已保存并应用", "success");
   } catch (error) {
-    announceSettings(`保存失败：${error instanceof Error ? error.message : String(error)}`, "error");
+    const rawMessage = error instanceof Error ? error.message : String(error);
+    const hint = rawMessage.includes("502")
+      ? "。如果是 127.0.0.1 返回 502，多半是系统代理拦截了本地 API，请把 localhost/127.0.0.1 加入代理直连。"
+      : "";
+    announceSettings(`保存失败：${rawMessage}${hint}`, "error");
   } finally {
     settingsSaving.value = false;
   }
-}
-
-async function openAssets() {
-  closeSettingsSection();
-  await router.push({ name: "assets" });
 }
 
 async function openServices() {
@@ -511,11 +744,21 @@ async function runSettingsProbe(kind: keyof typeof probeState) {
       };
       return;
     }
-    if (kind === "visionApi") {
-      const result = await runVisionApiDiagnostic();
+    if (kind === "asrApi") {
+      const result = await runAsrApiDiagnostic();
       probeState[kind] = {
         status: result.ok ? "ok" : "failed",
-        text: result.ok ? `识图正常 · ${result.latency_ms ?? "--"}ms` : result.error || result.message || "调用失败",
+        text: result.ok ? `ASR 正常 · ${result.latency_ms ?? "--"}ms` : result.error || result.message || "调用失败",
+        detail: formatProbeDetail(result),
+      };
+      return;
+    }
+    if (kind === "ttsApi") {
+      const result = await runTtsApiDiagnostic();
+      const bytes = (result.response as { audio_bytes?: number } | undefined)?.audio_bytes;
+      probeState[kind] = {
+        status: result.ok ? "ok" : "failed",
+        text: result.ok ? `TTS 正常 · ${bytes ?? "--"} bytes` : result.error || result.message || "调用失败",
         detail: formatProbeDetail(result),
       };
       return;
@@ -559,7 +802,17 @@ function toolProbeText(providerKey: string) {
 }
 
 async function runToolProbe(providerKey: string) {
-  await tools.runProviderTest(providerKey);
+  if (providerKey === "direct_answer") {
+    tools.testResults[providerKey] = "测试中...";
+    try {
+      await tools.runResolve();
+      tools.testResults[providerKey] = formatProbeDetail(tools.resolveResult || {});
+    } catch (error) {
+      tools.testResults[providerKey] = `测试失败：${error instanceof Error ? error.message : String(error)}`;
+    }
+  } else {
+    await tools.runProviderTest(providerKey);
+  }
   if (toolProbeStatus(providerKey) === "ok") {
     announceSettings(`${PROVIDER_LABELS[providerKey] || providerKey} 调用正常`, "success", 1400);
   } else if (toolProbeStatus(providerKey) === "failed") {
@@ -644,9 +897,42 @@ async function dismissEvent(eventId: string) {
   }
 }
 
+async function deleteEvent(eventId: string, title?: string) {
+  const confirmed = await ui.confirmAction({
+    title: "删除最近事件",
+    message: `确定删除「${title || eventId}」？这会从最近事件记录里移除。`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
+  try {
+    await engagement.deleteEvent(eventId);
+    announceSettings("最近事件已删除", "success");
+  } catch (error) {
+    announceSettings(`删除事件失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
+async function clearVisibleEvents() {
+  if (!visibleRecentEvents.value.length) return;
+  const confirmed = await ui.confirmAction({
+    title: "清理最近事件",
+    message: `确定删除当前显示的 ${visibleRecentEvents.value.length} 条最近事件？`,
+    confirmText: "删除",
+    tone: "error",
+  });
+  if (!confirmed) return;
+  try {
+    await Promise.all(visibleRecentEvents.value.map((event) => engagement.deleteEvent(event.id)));
+    await engagement.reload();
+    announceSettings("已清理当前显示的最近事件", "success");
+  } catch (error) {
+    announceSettings(`清理事件失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
+}
+
 function setMode(mode: "local" | "api") {
   form.dialog_mode = mode;
-  if (mode === "api") applyDashScopeDefaults();
 }
 
 function applyTheme(nextTheme: "dark" | "light") {
@@ -676,7 +962,7 @@ function openSettingsSection(id: SettingsSectionId) {
 }
 
 function closeSettingsSection() {
-  activeSettingsSection.value = "";
+  activeSettingsSection.value = "engine";
 }
 
 async function handleAvatarSelected(event: Event, target: "user" | "assistant") {
@@ -701,6 +987,32 @@ async function clearAvatar(target: "user" | "assistant") {
   if (target === "user") form.web_user_avatar_url = "";
   else form.web_assistant_avatar_url = "";
   await saveAll();
+}
+
+async function handleVoiceSampleSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = Array.from(input.files || []).find((item) => item.type.startsWith("audio/"));
+  input.value = "";
+  if (!file) {
+    announceSettings("请选择音频文件", "warning", 1200);
+    return;
+  }
+  try {
+    announceSettings("正在上传参考音频...", "info", 1600);
+    const dataUrl = await fileToDataUrl(file);
+    const result = await uploadVoiceSample({
+      data_url: dataUrl,
+      name: file.name,
+      provider: String(form.api_tts_provider || "openai"),
+    });
+    form.api_tts_voice_mode = "cloned";
+    form.api_tts_voice_profile_id = result.profile.id;
+    form.api_tts_voice_name = file.name;
+    if (result.profile.remote_voice_id) form.api_tts_voice_id = result.profile.remote_voice_id;
+    announceSettings(result.profile.remote_voice_id ? "音色复刻已生成" : "参考音频已保存，当前服务商需要后续创建远程音色", "success");
+  } catch (error) {
+    announceSettings(`参考音频上传失败：${error instanceof Error ? error.message : String(error)}`, "error");
+  }
 }
 
 function eventValue(event: Event) {
@@ -783,6 +1095,18 @@ function providerInputType(field: string) {
   if (field === "api_key" || field === "webhook_url") return "password";
   if (field === "limit" || field === "max_chars") return "number";
   return "text";
+}
+
+function providerCardDisabled(providerKey: string) {
+  return Boolean(PROVIDER_FIELDS[providerKey]?.length && tools.config[providerKey]?.enabled === false);
+}
+
+function selectTool(providerKey: string) {
+  selectedToolKey.value = providerKey;
+}
+
+function toggleCommandExpanded(serviceId: string) {
+  commandsExpanded.value = { ...commandsExpanded.value, [serviceId]: !commandsExpanded.value[serviceId] };
 }
 
 function llmService() {
@@ -991,7 +1315,7 @@ function formatTime(value?: string) {
         <p class="eyebrow">BranchWhisper</p>
         <h1>配置中心</h1>
         <button
-          v-for="section in settingsLaunchSections"
+          v-for="section in settingsSections"
           :key="section.id"
           class="settings-nav-item"
           :class="{ active: activeSettingsSection === section.id }"
@@ -1009,13 +1333,12 @@ function formatTime(value?: string) {
       <section class="settings-content settings-workspace">
         <section class="settings-command-bar">
           <div class="settings-title-block">
-            <p class="eyebrow">Control Room</p>
-            <h2>配置中心</h2>
-            <p>高频项直接改，复杂参数进面板；检测、素材、服务入口保持在同一工作台。</p>
+            <p class="eyebrow">{{ activeSection.eyebrow }}</p>
+            <h2>{{ activeSection.title }}</h2>
+            <p>{{ activeSection.summary }} · {{ activeSection.status }}</p>
           </div>
           <div class="settings-command-actions">
             <span v-if="settingsMessage" class="soft-badge">{{ settingsMessage }}</span>
-            <button class="secondary-action" type="button" @click="openAssets"><Library :size="16" />素材库</button>
             <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll">
               <Save :size="16" />{{ settingsSaving ? "保存中..." : "保存配置" }}
             </button>
@@ -1023,106 +1346,85 @@ function formatTime(value?: string) {
         </section>
 
         <section class="settings-ops-board" aria-label="常用配置">
-          <div class="settings-board-column settings-board-column--runtime">
+          <div class="settings-board-column settings-board-column--chain">
             <header>
-              <p class="eyebrow">Runtime</p>
-              <h2>运行模式</h2>
+              <p class="eyebrow">链路</p>
+              <h2>当前模型链路</h2>
             </header>
-            <div class="settings-control-line">
-              <span>主题</span>
-              <div class="theme-toggle-group">
-                <button :class="{ active: theme === 'dark' }" type="button" @click="applyTheme('dark')"><Moon :size="15" />深色</button>
-                <button :class="{ active: theme === 'light' }" type="button" @click="applyTheme('light')"><Sun :size="15" />浅色</button>
-              </div>
-            </div>
-            <div class="settings-control-line">
-              <span>对话模式</span>
-              <div class="theme-toggle-group">
-                <button type="button" :class="{ active: form.dialog_mode !== 'api' }" @click="setMode('local')"><HardDrive :size="15" />本地</button>
-                <button type="button" :class="{ active: form.dialog_mode === 'api' }" @click="setMode('api')"><Cloud :size="15" />API</button>
-              </div>
-            </div>
-            <div class="settings-control-pair">
-              <label><span>文字大小</span><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
-              <label class="settings-inline-check"><input v-model="form.thinking_enabled" type="checkbox" />思考模式</label>
-            </div>
-          </div>
-
-          <div class="settings-board-column settings-board-column--identity">
-            <header>
-              <p class="eyebrow">Identity</p>
-              <h2>外观与身份</h2>
-            </header>
-            <div class="settings-identity-row">
-              <div class="identity-preview">
-                <img v-if="form.web_user_avatar_url" :src="form.web_user_avatar_url" alt="我的头像" />
-                <span v-else>我</span>
-              </div>
-              <label><span>我的名称</span><input v-model="form.web_user_name" maxlength="40" /></label>
-              <input ref="userAvatarInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarSelected($event, 'user')" />
-              <button class="icon-button" type="button" title="选择我的头像" @click="userAvatarInput?.click()"><ImagePlus :size="15" /></button>
-              <button class="small-button" type="button" @click="clearAvatar('user')">清除</button>
-            </div>
-            <div class="settings-identity-row">
-              <div class="identity-preview assistant">
-                <img v-if="form.web_assistant_avatar_url" :src="form.web_assistant_avatar_url" alt="AI 头像" />
-                <span v-else>枝</span>
-              </div>
-              <label><span>AI 名称</span><input v-model="form.web_assistant_name" maxlength="40" /></label>
-              <input ref="assistantAvatarInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarSelected($event, 'assistant')" />
-              <button class="icon-button" type="button" title="选择 AI 头像" @click="assistantAvatarInput?.click()"><ImagePlus :size="15" /></button>
-              <button class="small-button" type="button" @click="clearAvatar('assistant')">清除</button>
-            </div>
+            <button
+              v-for="item in runtimeChainItems"
+              :key="item.id"
+              class="settings-chain-row"
+              type="button"
+              @click="openSettingsSection(item.section)"
+            >
+              <component :is="item.icon" :size="15" />
+              <span>
+                <strong>{{ item.title }} · {{ item.mode }}</strong>
+                <small>{{ item.model }}</small>
+              </span>
+              <em>{{ item.endpoint }}</em>
+            </button>
           </div>
 
           <div class="settings-board-column settings-board-column--capabilities">
             <header>
-              <p class="eyebrow">Capabilities</p>
+              <p class="eyebrow">能力</p>
               <h2>能力开关</h2>
             </header>
             <div class="settings-toggle-matrix">
               <label><span>TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               <label><span>联网工具</span><select v-model="form.tools_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              <label><span>图片理解</span><select v-model="form.vision_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               <label><span>上下文压缩</span><select v-model="form.context_compaction_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
               <label><span>主动消息</span><select v-model="engagement.config.enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              <label><span>表情发送</span><select v-model="form.stickers_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
             </div>
           </div>
         </section>
 
-        <section class="settings-panel-index">
-          <header class="settings-index-head">
-            <div>
-              <p class="eyebrow">Advanced Panels</p>
-              <h2>高级配置</h2>
-            </div>
-            <small>按链路进入大块参数，打开后底部统一保存。</small>
-          </header>
-          <div class="settings-index-list">
-            <button
-              v-for="section in settingsLaunchSections"
-              :key="section.id"
-              class="settings-index-row"
-              :class="{ active: activeSettingsSection === section.id }"
-              type="button"
-              @click="openSettingsSection(section.id)"
-            >
-              <span class="settings-index-icon"><component :is="section.icon" :size="17" /></span>
-              <span class="settings-index-copy">
-                <strong>{{ section.title }}</strong>
-                <small>{{ section.summary }}</small>
-              </span>
-              <em>{{ section.status }}</em>
-              <b>打开</b>
-            </button>
+        <article v-show="activeSettingsSection === 'appearance'" class="settings-panel settings-section-detached is-active is-current" id="appearance">
+          <div class="panel-head">
+            <div><p class="eyebrow">显示</p><h2>外观与身份</h2></div>
           </div>
-        </section>
+          <div class="appearance-balance-grid">
+            <section class="appearance-balance-card">
+              <div class="appearance-card-head"><strong>显示偏好</strong><small>主题和整体字号</small></div>
+              <div class="form-grid compact">
+                <label><span>主题</span><select :value="theme" @change="applyTheme(($event.target as HTMLSelectElement).value === 'light' ? 'light' : 'dark')"><option value="dark">深色</option><option value="light">浅色</option></select></label>
+                <label><span>文字大小</span><input v-model.number="form.ui_font_scale" type="number" min="0.9" max="1.25" step="0.05" /></label>
+              </div>
+              <div class="theme-preview-strip">
+                <span :class="{ active: theme === 'dark' }"><Moon :size="15" />深色</span>
+                <span :class="{ active: theme === 'light' }"><Sun :size="15" />浅色</span>
+              </div>
+            </section>
+            <section class="appearance-balance-card">
+              <div class="appearance-card-head"><strong>身份头像</strong><small>Web 对话展示名称</small></div>
+              <div class="settings-identity-row">
+                <div class="identity-preview">
+                  <img v-if="form.web_user_avatar_url" :src="form.web_user_avatar_url" alt="我的头像" />
+                  <span v-else>我</span>
+                </div>
+                <label><span>我的名称</span><input v-model="form.web_user_name" maxlength="40" /></label>
+                <button class="icon-button" type="button" title="选择我的头像" @click="userAvatarInput?.click()"><ImagePlus :size="15" /></button>
+                <button class="small-button" type="button" @click="clearAvatar('user')">清除</button>
+              </div>
+              <div class="settings-identity-row">
+                <div class="identity-preview assistant">
+                  <img v-if="form.web_assistant_avatar_url" :src="form.web_assistant_avatar_url" alt="AI 头像" />
+                  <span v-else>枝</span>
+                </div>
+                <label><span>AI 名称</span><input v-model="form.web_assistant_name" maxlength="40" /></label>
+                <button class="icon-button" type="button" title="选择 AI 头像" @click="assistantAvatarInput?.click()"><ImagePlus :size="15" /></button>
+                <button class="small-button" type="button" @click="clearAvatar('assistant')">清除</button>
+              </div>
+            </section>
+          </div>
+        </article>
 
-        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'engine' }" id="engine">
+        <article v-show="activeSettingsSection === 'engine'" class="settings-panel settings-section-detached is-active is-current" id="engine">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Model Engine</p>
+              <p class="eyebrow">模型</p>
               <h2>对话模型</h2>
             </div>
             <span class="soft-badge">当前模式：{{ form.dialog_mode || "local" }}</span>
@@ -1144,7 +1446,7 @@ function formatTime(value?: string) {
             <InlineProbe
               variant="strip"
               title="API 对话模型"
-              summary="使用已保存的 OpenAI-compatible 配置发送 ping。"
+              summary="用当前 API 配置发送一次最小请求。"
               :status="probeState.llmApi.status"
               :status-text="probeState.llmApi.text"
               :detail="probeState.llmApi.detail"
@@ -1156,7 +1458,7 @@ function formatTime(value?: string) {
             <InlineProbe
               variant="strip"
               title="本地模型与主后端"
-              summary="检查 ASR、LLM、TTS 与 BranchWhisper API 的 health。"
+              summary="检查本地服务和主后端状态。"
               :status="probeState.localModels.status"
               :status-text="probeState.localModels.text"
               :detail="probeState.localModels.detail"
@@ -1166,24 +1468,14 @@ function formatTime(value?: string) {
             />
           </div>
 
-          <div class="dialog-feature-card compact-feature-card">
-            <div class="appearance-card-head"><strong>ASR 语音识别</strong><small>本地转写或 Chat ASR 兼容接口</small></div>
-            <div class="form-grid compact">
-              <label><span>ASR Mode</span><select v-model="form.asr_mode"><option value="transcription">transcription</option><option value="chat">chat</option></select></label>
-              <label><span>ASR Model</span><input v-model="form.asr_model" /></label>
-              <label><span>ASR Timeout</span><input v-model.number="form.asr_timeout" type="number" min="5" max="300" step="1" /></label>
-              <label class="wide"><span>ASR URL</span><input v-model="form.asr_url" /></label>
-            </div>
-          </div>
-
           <section class="local-engine-card" :class="{ 'model-panel-locked': localDisabled }" data-locked-label="当前使用 API 模型，本地模型参数已锁定">
-            <div class="appearance-card-head"><strong>Local Chat Completions</strong><small>仅在本地模型模式下生效</small></div>
+            <div class="appearance-card-head"><strong>本地对话模型</strong><small>仅在本地模式下生效</small></div>
             <div class="form-grid compact">
               <label><span>本地模型别名</span><input v-model="form.llm_model" :disabled="localDisabled" /></label>
-              <label><span>Temperature</span><input v-model.number="form.temperature" :disabled="localDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
-              <label><span>Max Tokens</span><input v-model.number="form.max_tokens" :disabled="localDisabled" type="number" min="32" max="4096" step="1" /></label>
-              <label><span>History Turns</span><input v-model.number="form.history_turns" :disabled="localDisabled" type="number" min="1" max="40" step="1" /></label>
-              <label class="wide"><span>本地 Chat Completions URL</span><input v-model="form.llm_url" :disabled="localDisabled" /></label>
+              <label><span>温度</span><input v-model.number="form.temperature" :disabled="localDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
+              <label><span>最大 Tokens</span><input v-model.number="form.max_tokens" :disabled="localDisabled" type="number" min="32" max="4096" step="1" /></label>
+              <label><span>历史轮数</span><input v-model.number="form.history_turns" :disabled="localDisabled" type="number" min="1" max="40" step="1" /></label>
+              <label class="wide"><span>本地对话 URL</span><input v-model="form.llm_url" :disabled="localDisabled" /></label>
               <label class="wide model-file-field">
                 <span>LLM 模型文件</span>
                 <div class="model-file-row">
@@ -1196,42 +1488,106 @@ function formatTime(value?: string) {
 
           <section class="api-engine-card" :class="{ 'model-panel-locked': apiDisabled }" data-locked-label="当前使用本地模型，API 参数已锁定">
             <div class="appearance-card-head">
-              <div><strong>OpenAI-compatible API</strong><small>DeepSeek、通义兼容接口、自建网关都可填这里</small></div>
-              <span class="soft-badge">API Key 不会被模板覆盖</span>
-            </div>
-            <div class="api-preset-grid">
-              <button
-                v-for="preset in API_MODEL_PRESETS"
-                :key="preset.id"
-                class="api-preset-button"
-                type="button"
-                :disabled="apiDisabled"
-                :class="{ active: form.api_llm_url === preset.url }"
-                @click="applyApiModelPreset(preset, true)"
-              >
-                <Cloud :size="15" />
-                <span><strong>{{ preset.label }}</strong><small>{{ preset.model }}</small></span>
-              </button>
+              <div><strong>API 对话模型</strong><small>兼容 OpenAI 格式的服务都填在这里</small></div>
+              <span class="soft-badge">预设不覆盖 Key</span>
             </div>
             <div class="form-grid compact">
-              <label class="wide"><span>API Chat Completions URL</span><input v-model="form.api_llm_url" :disabled="apiDisabled" placeholder="https://api.example.com/v1/chat/completions" /></label>
-              <label><span>API Model</span><input v-model="form.api_llm_model" :disabled="apiDisabled" placeholder="model-name" /></label>
+              <label><span>API 预设</span><select :value="selectedApiPresetId()" :disabled="apiDisabled" @change="onApiPresetChange"><option value="custom">自定义</option><option v-for="preset in API_MODEL_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }} · {{ preset.model }}</option></select></label>
+              <label class="wide"><span>API 对话 URL</span><input v-model="form.api_llm_url" :disabled="apiDisabled" placeholder="https://api.example.com/v1/chat/completions" /></label>
+              <label><span>API 模型</span><input v-model="form.api_llm_model" :disabled="apiDisabled" placeholder="model-name" /></label>
               <label><span>API Key</span><input v-model="form.api_llm_api_key" :disabled="apiDisabled" type="password" :placeholder="form.api_llm_api_key_masked || '留空则保留已保存 Key'" /></label>
-              <label><span>API Temperature</span><input v-model.number="form.api_temperature" :disabled="apiDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
-              <label><span>API Max Tokens</span><input v-model.number="form.api_max_tokens" :disabled="apiDisabled" type="number" min="32" max="8192" step="1" /></label>
-              <label><span>API History Turns</span><input v-model.number="form.api_history_turns" :disabled="apiDisabled" type="number" min="1" max="40" step="1" /></label>
+              <label><span>温度</span><input v-model.number="form.api_temperature" :disabled="apiDisabled" type="number" min="0" max="1.5" step="0.01" /></label>
+              <label><span>最大 Tokens</span><input v-model.number="form.api_max_tokens" :disabled="apiDisabled" type="number" min="32" max="8192" step="1" /></label>
+              <label><span>历史轮数</span><input v-model.number="form.api_history_turns" :disabled="apiDisabled" type="number" min="1" max="40" step="1" /></label>
+            </div>
+          </section>
+
+          <section class="api-engine-card context-compaction-card">
+            <div class="appearance-card-head"><strong>上下文压缩</strong><small>聊久后保留摘要和最近对话，减少遗忘与延迟</small></div>
+            <div class="form-grid compact">
+              <label><span>启用</span><select v-model="form.context_compaction_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
+              <label><span>窗口 Tokens</span><input v-model.number="form.context_window_tokens" type="number" min="2048" max="262144" step="512" /></label>
+              <label><span>触发比例</span><input v-model.number="form.context_compaction_ratio" type="number" min="0.4" max="0.95" step="0.05" /></label>
+              <label><span>保留最近轮数</span><input v-model.number="form.context_keep_recent_turns" type="number" min="1" max="40" step="1" /></label>
+              <label><span>摘要长度</span><input v-model.number="form.context_summary_max_chars" type="number" min="400" max="12000" step="100" /></label>
+              <label><span>摘要层数</span><input v-model.number="form.context_summary_max_layers" type="number" min="1" max="8" step="1" /></label>
             </div>
           </section>
         </article>
 
-        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'tools' }" id="tools">
+        <article v-show="activeSettingsSection === 'asr'" class="settings-panel settings-section-detached is-active is-current" id="asr">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Network Tools</p>
+              <p class="eyebrow">识别</p>
+              <h2>语音识别</h2>
+            </div>
+            <div class="theme-toggle-group dialog-mode-toggle">
+              <button type="button" :class="{ active: form.asr_provider_mode !== 'api' }" @click="setAsrMode('local')"><HardDrive :size="15" />本地</button>
+              <button type="button" :class="{ active: form.asr_provider_mode === 'api' }" @click="setAsrMode('api')"><Cloud :size="15" />API</button>
+            </div>
+          </div>
+
+          <div class="settings-probe-grid">
+            <InlineProbe
+              variant="strip"
+              title="ASR API 回路"
+              summary="用短音频测试当前识别接口。"
+              :status="probeState.asrApi.status"
+              :status-text="probeState.asrApi.text"
+              :detail="probeState.asrApi.detail"
+              action-text="测试 ASR"
+              :disabled="asrApiDisabled"
+              @run="runSettingsProbe('asrApi')"
+              @copy="copyProbeDetail('asrApi')"
+            />
+            <InlineProbe
+              variant="strip"
+              title="本地识别服务"
+              summary="检查 ASR 服务和主后端状态。"
+              :status="probeState.localModels.status"
+              :status-text="probeState.localModels.text"
+              :detail="probeState.localModels.detail"
+              action-text="测试本地"
+              @run="runSettingsProbe('localModels')"
+              @copy="copyProbeDetail('localModels')"
+            />
+          </div>
+
+          <section class="audio-engine-card">
+            <div class="appearance-card-head"><strong>本地语音识别</strong><small>本地 Qwen3-ASR 服务，仅在本地模式下生效</small></div>
+            <div class="form-grid compact" :class="{ 'model-panel-locked': form.asr_provider_mode === 'api' }" data-locked-label="当前使用 API ASR">
+              <label><span>ASR Mode</span><select v-model="form.asr_mode" :disabled="form.asr_provider_mode === 'api'"><option value="transcription">transcription</option><option value="chat">chat</option></select></label>
+              <label><span>本地模型</span><input v-model="form.asr_model" :disabled="form.asr_provider_mode === 'api'" /></label>
+              <label><span>本地超时</span><input v-model.number="form.asr_timeout" :disabled="form.asr_provider_mode === 'api'" type="number" min="5" max="300" step="1" /></label>
+              <label class="wide"><span>本地 ASR URL</span><input v-model="form.asr_url" :disabled="form.asr_provider_mode === 'api'" /></label>
+            </div>
+          </section>
+
+          <section class="audio-engine-card" :class="{ 'model-panel-locked': asrApiDisabled }" data-locked-label="当前使用本地 ASR">
+            <div class="appearance-card-head">
+              <div><strong>API 语音识别</strong><small>在线 ASR 服务配置，预设不覆盖 API Key</small></div>
+              <span class="soft-badge">{{ form.api_asr_provider || "未选择" }}</span>
+            </div>
+            <div class="form-grid compact">
+              <label><span>ASR 预设</span><select :value="selectedAsrPresetId()" :disabled="asrApiDisabled" @change="onAsrPresetChange"><option value="custom">自定义</option><option v-for="preset in ASR_API_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }} · {{ preset.model }}</option></select></label>
+              <label><span>服务商</span><select v-model="form.api_asr_provider" :disabled="asrApiDisabled"><option value="openai">OpenAI</option><option value="groq">Groq</option><option value="deepgram">Deepgram</option><option value="dashscope">百炼 DashScope</option><option value="custom_openai">自定义 OpenAI</option></select></label>
+              <label><span>模型</span><input v-model="form.api_asr_model" :disabled="asrApiDisabled" /></label>
+              <label><span>语言</span><input v-model="form.api_asr_language" :disabled="asrApiDisabled" placeholder="zh" /></label>
+              <label><span>API 超时</span><input v-model.number="form.api_asr_timeout" :disabled="asrApiDisabled" type="number" min="5" max="180" step="1" /></label>
+              <label><span>ASR API Key</span><input v-model="form.api_asr_api_key" :disabled="asrApiDisabled" type="password" :placeholder="form.api_asr_api_key_masked || '留空则保留已保存 Key'" /></label>
+              <label class="wide"><span>API ASR URL</span><input v-model="form.api_asr_url" :disabled="asrApiDisabled" /></label>
+            </div>
+          </section>
+        </article>
+
+        <article v-show="activeSettingsSection === 'tools'" class="settings-panel settings-section-detached is-active is-current" id="tools">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">工具</p>
               <h2>联网工具</h2>
             </div>
             <div class="inline-actions">
-              <span class="soft-badge">{{ tools.loading ? "加载中" : toolsAnyDirty ? "有未保存修改" : "Provider Config" }}</span>
+              <span class="soft-badge">{{ tools.loading ? "加载中" : toolsAnyDirty ? "有未保存修改" : "配置已同步" }}</span>
               <button class="secondary-action" type="button" :disabled="tools.saving || !toolsAnyDirty" @click="saveToolsOnly">
                 <Save :size="15" />{{ tools.saving ? "保存中..." : "保存联网工具" }}
               </button>
@@ -1244,68 +1600,79 @@ function formatTime(value?: string) {
             <label><span>结果最大字符</span><input v-model.number="form.tools_max_result_chars" type="number" min="500" max="16000" step="100" /></label>
           </section>
 
-          <div class="tool-provider-groups">
-            <section v-for="group in providerGroups" :key="group.id" class="tool-provider-group">
-              <header class="tool-provider-group-head">
+          <div class="tool-provider-list tool-provider-grid">
+            <button
+              v-for="item in toolGridItems"
+              :key="item.key"
+              class="tool-provider-card overview-card"
+              :class="{ active: selectedToolKey === item.key, disabled: providerCardDisabled(item.key), 'readonly-tool-card': !item.fields.length }"
+              type="button"
+              @click="selectTool(item.key)"
+            >
+              <div class="tool-provider-head">
                 <div>
-                  <strong>{{ group.title }}</strong>
-                  <small>{{ group.summary }}</small>
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.summary }}</small>
                 </div>
-                <span class="soft-badge">{{ group.keys.length }} 项</span>
-              </header>
-
-              <div class="tool-provider-list">
-                <section v-for="providerKey in group.keys" :key="providerKey" class="tool-provider-card overview-card" :class="{ disabled: tools.config[providerKey]?.enabled === false }">
-                  <div class="tool-provider-head">
-                    <div>
-                      <strong>{{ PROVIDER_LABELS[providerKey] || providerKey }}</strong>
-                      <small>{{ providerKey }}</small>
-                    </div>
-                    <span class="tool-provider-state" :class="{ off: tools.config[providerKey]?.enabled === false }">
-                      {{ tools.config[providerKey]?.enabled === false ? "关闭" : "启用" }}
-                    </span>
-                  </div>
-                  <div class="tool-provider-status">
-                    <span v-if="tools.config[providerKey]?.provider">{{ tools.config[providerKey]?.provider }}</span>
-                    <span v-if="PROVIDER_FIELDS[providerKey]?.includes('api_key') || PROVIDER_FIELDS[providerKey]?.includes('webhook_url')">{{ providerSecretState(providerKey) }}</span>
-                    <span v-if="tools.config[providerKey]?.limit">limit {{ tools.config[providerKey]?.limit }}</span>
-                  </div>
-                  <div class="form-grid compact">
-                    <label v-for="field in PROVIDER_FIELDS[providerKey]" :key="field" :class="{ wide: field === 'base_url' || field === 'api_key' || field === 'webhook_url' || field === 'user_agent' }">
-                      <span>{{ providerFieldLabel(field) }}</span>
-                      <select v-if="field === 'enabled' || field.endsWith('_enabled')" :value="providerFieldValue(providerKey, field)" @change="setProviderField(providerKey, field, eventValue($event))">
-                        <option value="true">启用</option>
-                        <option value="false">关闭</option>
-                      </select>
-                      <select v-else-if="field === 'provider'" :value="providerFieldValue(providerKey, field)" @change="setProviderField(providerKey, field, eventValue($event))">
-                        <option v-for="[value, label] in PROVIDER_OPTIONS[providerKey] || []" :key="value" :value="value">{{ label }}</option>
-                      </select>
-                      <input
-                        v-else
-                        :type="providerInputType(field)"
-                        :value="providerFieldValue(providerKey, field)"
-                        :placeholder="field === 'api_key' || field === 'webhook_url' ? providerSecretState(providerKey) : ''"
-                        @input="setProviderField(providerKey, field, eventValue($event))"
-                      />
-                    </label>
-                  </div>
-                  <InlineProbe
-                    class="provider-inline-probe"
-                    variant="compact"
-                    :title="`${PROVIDER_LABELS[providerKey] || providerKey} API`"
-                    :summary="providerKey === 'weather' ? `默认地区：${tools.config.weather?.default_location || '漳州'}` : '按当前 Provider 配置执行一次最小调用。'"
-                    :status="toolProbeStatus(providerKey)"
-                    :status-text="toolProbeText(providerKey)"
-                    :detail="tools.testResults[providerKey]"
-                    action-text="调用测试"
-                    :disabled="tools.config[providerKey]?.enabled === false"
-                    @run="runToolProbe(providerKey)"
-                    @copy="copyToolProbeDetail(providerKey)"
-                  />
-                </section>
+                <span class="tool-provider-state" :class="{ off: providerCardDisabled(item.key) }">
+                  {{ providerCardDisabled(item.key) ? "关闭" : item.badge }}
+                </span>
               </div>
-            </section>
+              <div class="tool-provider-status">
+                <span v-if="tools.config[item.key]?.provider">{{ tools.config[item.key]?.provider }}</span>
+                <span v-if="item.fields.includes('api_key') || item.fields.includes('webhook_url')">{{ providerSecretState(item.key) }}</span>
+                <span v-if="tools.config[item.key]?.limit">limit {{ tools.config[item.key]?.limit }}</span>
+                <span v-if="!item.fields.length">无需配置</span>
+              </div>
+              <span class="tool-card-action">配置 / 测试</span>
+            </button>
           </div>
+
+          <section v-if="selectedToolItem" class="tool-detail-panel">
+            <div class="tool-detail-head">
+              <div>
+                <p class="eyebrow">当前工具</p>
+                <h3>{{ selectedToolItem.label }}</h3>
+                <small>{{ selectedToolItem.summary }}</small>
+              </div>
+              <span class="tool-provider-state" :class="{ off: providerCardDisabled(selectedToolItem.key) }">
+                {{ providerCardDisabled(selectedToolItem.key) ? "关闭" : selectedToolItem.badge }}
+              </span>
+            </div>
+            <div v-if="selectedToolItem.fields.length" class="form-grid compact tool-detail-form">
+              <label v-for="field in selectedToolItem.fields" :key="field" :class="{ wide: field === 'base_url' || field === 'api_key' || field === 'webhook_url' || field === 'user_agent' }">
+                <span>{{ providerFieldLabel(field) }}</span>
+                <select v-if="field === 'enabled' || field.endsWith('_enabled')" :value="providerFieldValue(selectedToolItem.key, field)" @change="setProviderField(selectedToolItem.key, field, eventValue($event))">
+                  <option value="true">启用</option>
+                  <option value="false">关闭</option>
+                </select>
+                <select v-else-if="field === 'provider'" :value="providerFieldValue(selectedToolItem.key, field)" @change="setProviderField(selectedToolItem.key, field, eventValue($event))">
+                  <option v-for="[value, label] in PROVIDER_OPTIONS[selectedToolItem.key] || []" :key="value" :value="value">{{ label }}</option>
+                </select>
+                <input
+                  v-else
+                  :type="providerInputType(field)"
+                  :value="providerFieldValue(selectedToolItem.key, field)"
+                  :placeholder="field === 'api_key' || field === 'webhook_url' ? providerSecretState(selectedToolItem.key) : ''"
+                  @input="setProviderField(selectedToolItem.key, field, eventValue($event))"
+                />
+              </label>
+            </div>
+            <p v-else class="tool-readonly-note">由本地运行时提供，不需要填写服务商或密钥。</p>
+            <InlineProbe
+              class="provider-inline-probe"
+              variant="strip"
+              :title="`${selectedToolItem.label} API`"
+              :summary="selectedToolItem.summary"
+              :status="toolProbeStatus(selectedToolItem.key)"
+              :status-text="toolProbeText(selectedToolItem.key)"
+              :detail="tools.testResults[selectedToolItem.key]"
+              action-text="调用测试"
+              :disabled="providerCardDisabled(selectedToolItem.key)"
+              @run="runToolProbe(selectedToolItem.key)"
+              @copy="copyToolProbeDetail(selectedToolItem.key)"
+            />
+          </section>
 
           <div class="settings-diagnostics-callout">
             <div>
@@ -1318,62 +1685,10 @@ function formatTime(value?: string) {
           <p v-if="tools.error" class="muted-copy">工具配置读取失败：{{ tools.error }}</p>
         </article>
 
-        <article class="settings-panel dialog-features-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'dialogFeatures' }" id="dialogFeatures">
+        <article v-show="activeSettingsSection === 'proactive'" class="settings-panel proactive-panel settings-section-detached is-active is-current" id="proactive">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Conversation Features</p>
-              <h2>对话能力</h2>
-            </div>
-            <span class="soft-badge">Web + 微信</span>
-          </div>
-          <div class="dialog-feature-grid">
-            <section class="dialog-feature-card compact-feature-card">
-              <div class="appearance-card-head"><strong>图片理解</strong><small>发送图片后生成摘要并进入本轮上下文</small></div>
-              <div class="form-grid compact">
-                <label><span>启用</span><select v-model="form.vision_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-                <label><span>模型</span><input v-model="form.vision_model" placeholder="qwen-vl" /></label>
-                <label class="wide"><span>Vision URL</span><input v-model="form.vision_url" placeholder="http://127.0.0.1:8081/v1/chat/completions" /></label>
-                <label><span>超时秒</span><input v-model.number="form.vision_timeout" type="number" min="5" max="180" step="1" /></label>
-                <label><span>图片上限 MB</span><input v-model.number="form.vision_max_image_mb" type="number" min="1" max="64" step="1" /></label>
-                <label><span>提取记忆</span><select v-model="form.vision_memory_extract_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              </div>
-              <InlineProbe
-                variant="compact"
-                title="图片理解 API"
-                summary="用极小图片请求当前 Vision 配置，验证接口、模型和 Key。"
-                :status="probeState.visionApi.status"
-                :status-text="probeState.visionApi.text"
-                :detail="probeState.visionApi.detail"
-                action-text="测试识图"
-                @run="runSettingsProbe('visionApi')"
-                @copy="copyProbeDetail('visionApi')"
-              />
-            </section>
-            <section class="dialog-feature-card compact-feature-card asset-jump-card">
-              <div class="appearance-card-head"><strong>素材库</strong><small>表情包识别、审核、策略和微信发送链路已迁移到独立页面</small></div>
-              <p class="muted-copy">批量上传、批量识别、一键通过和删除都在素材库统一处理。</p>
-              <div class="inline-actions">
-                <button class="primary-action" type="button" @click="openAssets"><Library :size="16" />打开素材库</button>
-              </div>
-            </section>
-            <section class="dialog-feature-card wide">
-              <div class="appearance-card-head"><strong>上下文压缩</strong><small>聊久后保留摘要和最近对话，减少遗忘与延迟</small></div>
-              <div class="form-grid compact">
-                <label><span>启用</span><select v-model="form.context_compaction_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-                <label><span>窗口 Tokens</span><input v-model.number="form.context_window_tokens" type="number" min="2048" max="262144" step="512" /></label>
-                <label><span>触发比例</span><input v-model.number="form.context_compaction_ratio" type="number" min="0.4" max="0.95" step="0.05" /></label>
-                <label><span>保留最近轮数</span><input v-model.number="form.context_keep_recent_turns" type="number" min="1" max="40" step="1" /></label>
-                <label><span>摘要长度</span><input v-model.number="form.context_summary_max_chars" type="number" min="400" max="12000" step="100" /></label>
-                <label><span>摘要层数</span><input v-model.number="form.context_summary_max_layers" type="number" min="1" max="8" step="1" /></label>
-              </div>
-            </section>
-          </div>
-        </article>
-
-        <article class="settings-panel proactive-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'proactive' }" id="proactive">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Proactive Intelligence</p>
+              <p class="eyebrow">主动</p>
               <h2>主动性</h2>
             </div>
             <span class="soft-badge">{{ engagement.config.enabled ? "主动消息已启用" : "主动消息关闭" }}</span>
@@ -1475,25 +1790,40 @@ function formatTime(value?: string) {
             </section>
 
             <section class="proactive-card">
-              <div class="appearance-card-head"><strong>最近事件</strong><small>主动消息发送记录</small></div>
+              <div class="appearance-card-head">
+                <div><strong>最近事件</strong><small>主动消息和微信通道发送记录</small></div>
+                <div class="inline-actions">
+                  <button class="secondary-action" type="button" :disabled="!recentEvents.length" @click="proactiveEventsExpanded = !proactiveEventsExpanded">
+                    <component :is="proactiveEventsExpanded ? ChevronUp : ChevronDown" :size="15" />
+                    {{ proactiveEventsExpanded ? "收起" : `展开 ${hiddenRecentEventCount || ""}` }}
+                  </button>
+                  <button class="secondary-action danger" type="button" :disabled="!visibleRecentEvents.length" @click="clearVisibleEvents">
+                    <Trash2 :size="15" />清理显示项
+                  </button>
+                </div>
+              </div>
               <div class="proactive-events">
-                <article v-for="event in recentEvents" :key="event.id" class="proactive-event" :class="event.status">
+                <article v-for="event in visibleRecentEvents" :key="event.id" class="proactive-event" :class="event.status">
                   <div>
                     <strong>{{ event.title || event.kind || "主动事件" }}</strong>
                     <span>{{ event.content || event.last_error || "--" }}</span>
                     <small>{{ formatTime(event.created_at) }} · {{ event.channel || "web" }} · {{ event.status || "pending" }}</small>
                   </div>
-                  <button class="icon-button" type="button" title="忽略事件" @click="dismissEvent(event.id)"><X :size="15" /></button>
+                  <div class="event-actions">
+                    <button class="icon-button" type="button" title="忽略事件" @click="dismissEvent(event.id)"><X :size="15" /></button>
+                    <button class="icon-button danger" type="button" title="删除事件" @click="deleteEvent(event.id, event.title || event.kind)"><Trash2 :size="15" /></button>
+                  </div>
                 </article>
+                <div v-if="hiddenRecentEventCount" class="model-file-empty">还有 {{ hiddenRecentEventCount }} 条，点击展开查看。</div>
                 <div v-if="!recentEvents.length" class="model-file-empty">暂无主动事件</div>
               </div>
             </section>
           </div>
         </article>
 
-        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'botProfiles' }" id="botProfiles">
+        <article v-show="activeSettingsSection === 'botProfiles'" class="settings-panel settings-section-detached is-active is-current" id="botProfiles">
           <div class="panel-head">
-            <div><p class="eyebrow">Bot Profiles</p><h2>Bot 人格</h2></div>
+            <div><p class="eyebrow">人格</p><h2>Bot 人格</h2></div>
             <button class="secondary-action" type="button" @click="addProfile"><Plus :size="15" />新增人格</button>
           </div>
           <div class="bot-profile-list">
@@ -1517,39 +1847,117 @@ function formatTime(value?: string) {
           <p v-if="profiles.error" class="muted-copy">人格配置读取失败：{{ profiles.error }}</p>
         </article>
 
-        <article class="settings-panel settings-panel--prominent settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'prompt' }" id="prompt">
-          <div class="panel-head"><div><p class="eyebrow">Persona</p><h2>Prompt 配置</h2></div></div>
-          <label class="wide"><span>System Prompt</span><textarea v-model="form.system" class="prompt-textarea"></textarea></label>
+        <article v-show="activeSettingsSection === 'prompt'" class="settings-panel settings-panel--prominent settings-section-detached is-active is-current" id="prompt">
+          <div class="panel-head"><div><p class="eyebrow">提示词</p><h2>Prompt 配置</h2></div></div>
+          <label class="wide"><span>系统提示词</span><textarea v-model="form.system" class="prompt-textarea"></textarea></label>
         </article>
 
-        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'tts' }" id="tts">
-          <div class="panel-head"><div><p class="eyebrow">Speech Synthesis</p><h2>语音合成</h2></div></div>
-          <div class="form-grid compact">
-            <label><span>Web TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-            <label class="wide"><span>TTS URL</span><input v-model="form.tts_url" /></label>
-            <label><span>TTS Speed</span><input v-model.number="form.tts_speed" type="number" min="0.7" max="1.5" step="0.01" /></label>
-            <label><span>TTS Volume</span><input v-model.number="form.tts_volume" type="number" min="0.05" max="1.5" step="0.01" /></label>
-            <label><span>Sample Rate</span><input v-model.number="form.tts_sample_rate" type="number" min="8000" max="48000" step="1000" /></label>
-            <label><span>Seed</span><input v-model.number="form.tts_seed" type="number" min="-1" max="999999" step="1" /></label>
-            <label><span>Fade ms</span><input v-model.number="form.tts_fade_ms" type="number" min="0" max="2000" step="10" /></label>
-          </div>
-        </article>
-
-        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'vad' }" id="vad">
-          <div class="panel-head"><div><p class="eyebrow">Voice Activity Detection</p><h2>语音检测</h2></div></div>
-          <div class="form-grid compact">
-            <label><span>Threshold</span><input v-model.number="form.vad_threshold" type="number" min="0.1" max="0.9" step="0.01" /></label>
-            <label><span>Silence ms</span><input v-model.number="form.vad_min_silence_ms" type="number" min="120" max="1500" step="10" /></label>
-            <label><span>Speech Pad ms</span><input v-model.number="form.vad_speech_pad_ms" type="number" min="0" max="500" step="10" /></label>
-            <label><span>Pre Speech ms</span><input v-model.number="form.pre_speech_ms" type="number" min="0" max="2000" step="10" /></label>
-            <label><span>Min Utterance ms</span><input v-model.number="form.min_utterance_ms" type="number" min="80" max="5000" step="10" /></label>
-            <label><span>Max Utterance sec</span><input v-model.number="form.max_utterance_sec" type="number" min="2" max="180" step="1" /></label>
-          </div>
-        </article>
-
-        <article class="settings-panel settings-section-detached" :class="{ 'is-active': activeSettingsSection === 'commands' }" id="commands">
+        <article v-show="activeSettingsSection === 'tts'" class="settings-panel settings-section-detached is-active is-current" id="tts">
           <div class="panel-head">
-            <div><p class="eyebrow">Service Commands</p><h2>服务命令</h2></div>
+            <div><p class="eyebrow">语音</p><h2>语音合成</h2></div>
+            <div class="theme-toggle-group dialog-mode-toggle">
+              <button type="button" :class="{ active: form.tts_provider_mode !== 'api' }" @click="setTtsMode('local')"><HardDrive :size="15" />本地</button>
+              <button type="button" :class="{ active: form.tts_provider_mode === 'api' }" @click="setTtsMode('api')"><Cloud :size="15" />API</button>
+            </div>
+          </div>
+
+          <div class="settings-probe-grid">
+            <InlineProbe
+              variant="strip"
+              title="TTS API 回路"
+              summary="用当前默认声音生成一段短音频。"
+              :status="probeState.ttsApi.status"
+              :status-text="probeState.ttsApi.text"
+              :detail="probeState.ttsApi.detail"
+              action-text="测试 TTS"
+              :disabled="ttsApiDisabled"
+              @run="runSettingsProbe('ttsApi')"
+              @copy="copyProbeDetail('ttsApi')"
+            />
+          </div>
+
+          <section class="audio-engine-card">
+            <div class="appearance-card-head"><strong>本地语音合成</strong><small>使用本地 TTS 服务</small></div>
+            <div class="form-grid compact" :class="{ 'model-panel-locked': form.tts_provider_mode === 'api' }" data-locked-label="当前使用 API TTS">
+              <label><span>Web TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
+              <label><span>本地模型</span><input v-model="form.tts_model" :disabled="form.tts_provider_mode === 'api'" /></label>
+              <label class="wide"><span>TTS URL</span><input v-model="form.tts_url" :disabled="form.tts_provider_mode === 'api'" /></label>
+              <label><span>语速</span><input v-model.number="form.tts_speed" :disabled="form.tts_provider_mode === 'api'" type="number" min="0.7" max="1.5" step="0.01" /></label>
+              <label><span>音量</span><input v-model.number="form.tts_volume" type="number" min="0.05" max="1.5" step="0.01" /></label>
+              <label><span>采样率</span><input v-model.number="form.tts_sample_rate" :disabled="form.tts_provider_mode === 'api'" type="number" min="8000" max="48000" step="1000" /></label>
+              <label><span>随机种子</span><input v-model.number="form.tts_seed" :disabled="form.tts_provider_mode === 'api'" type="number" min="-1" max="999999" step="1" /></label>
+              <label><span>淡入淡出 ms</span><input v-model.number="form.tts_fade_ms" type="number" min="0" max="2000" step="10" /></label>
+            </div>
+          </section>
+
+          <section class="audio-engine-card" :class="{ 'model-panel-locked': ttsApiDisabled }" data-locked-label="当前使用本地 TTS">
+            <div class="appearance-card-head">
+              <div><strong>API 语音合成</strong><small>预设只填模型和协议，不覆盖 API Key</small></div>
+              <span class="soft-badge">{{ ttsVoiceStateText() }}</span>
+            </div>
+            <div class="voice-state-strip" :class="{ warning: form.api_tts_voice_mode === 'cloned' && !form.api_tts_voice_id }">
+              <Volume2 :size="15" />
+              <span>{{ activeTtsVoiceLabel() }}</span>
+              <small>{{ ttsVoiceHintText() }}</small>
+            </div>
+            <div class="form-grid compact">
+              <label><span>TTS 预设</span><select :value="selectedTtsPresetId()" :disabled="ttsApiDisabled" @change="onTtsPresetChange"><option value="custom">自定义</option><option v-for="preset in TTS_API_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }} · {{ preset.model }}</option></select></label>
+              <label><span>服务商</span><select v-model="form.api_tts_provider" :disabled="ttsApiDisabled"><option value="openai">OpenAI</option><option value="elevenlabs">ElevenLabs</option><option value="dashscope">百炼 DashScope</option><option value="custom_openai">自定义 OpenAI</option></select></label>
+              <label><span>模型</span><input v-model="form.api_tts_model" :disabled="ttsApiDisabled" /></label>
+              <label><span>API Key</span><input v-model="form.api_tts_api_key" :disabled="ttsApiDisabled" type="password" :placeholder="form.api_tts_api_key_masked || '留空则保留已保存 Key'" /></label>
+              <label class="wide"><span>API TTS URL</span><input v-model="form.api_tts_url" :disabled="ttsApiDisabled" /></label>
+              <label><span>音色来源</span><select v-model="form.api_tts_voice_mode" :disabled="ttsApiDisabled"><option value="builtin">内置音色</option><option value="manual">远程 Voice ID</option><option value="cloned">本地参考音频</option></select></label>
+              <label><span>内置音色</span><input v-model="form.api_tts_voice" :disabled="ttsApiDisabled || form.api_tts_voice_mode !== 'builtin'" placeholder="coral" /></label>
+              <label><span>Voice ID</span><input v-model="form.api_tts_voice_id" :disabled="ttsApiDisabled || form.api_tts_voice_mode === 'builtin'" placeholder="远程 voice_id" /></label>
+              <label><span>声音名称</span><input v-model="form.api_tts_voice_name" :disabled="ttsApiDisabled" placeholder="满穗默认声音" /></label>
+              <label class="wide"><span>语气指令</span><input v-model="form.api_tts_instructions" :disabled="ttsApiDisabled" /></label>
+              <label><span>输出格式</span><select v-model="form.api_tts_format" :disabled="ttsApiDisabled"><option value="pcm">PCM · 当前链路</option></select></label>
+              <label><span>API 采样率</span><input v-model.number="form.api_tts_sample_rate" :disabled="ttsApiDisabled" type="number" min="8000" max="48000" step="1000" /></label>
+              <label><span>API 语速</span><input v-model.number="form.api_tts_speed" :disabled="ttsApiDisabled" type="number" min="0.7" max="1.5" step="0.01" /></label>
+              <label><span>生成模式</span><select v-model="form.api_tts_latency_mode" :disabled="ttsApiDisabled"><option value="quality">质量优先</option><option value="balanced">均衡</option><option value="fast">极速生成</option></select></label>
+            </div>
+          </section>
+
+          <section class="audio-engine-card voice-preview-card">
+            <div class="appearance-card-head">
+              <div><strong>音色与试听</strong><small>上传参考音频后，用当前默认音色生成一段可播放测试</small></div>
+              <span class="soft-badge">{{ form.api_tts_voice_profile_id || "未上传" }}</span>
+            </div>
+            <div class="voice-preview-layout">
+              <div class="voice-clone-strip">
+                <input ref="voiceSampleInput" class="visually-hidden" type="file" accept="audio/wav,audio/mpeg,audio/mp3,audio/ogg,audio/webm" @change="handleVoiceSampleSelected" />
+                <button class="secondary-action" type="button" :disabled="ttsApiDisabled" @click="voiceSampleInput?.click()"><Volume2 :size="15" />上传参考音频</button>
+                <span>{{ form.api_tts_voice_name || "建议 10-20 秒、无背景噪声、只包含目标音色。" }}</span>
+              </div>
+              <div class="tts-preview-box">
+                <label class="wide"><span>试听文本</span><input v-model="ttsPreviewText" :disabled="ttsPreviewLoading" placeholder="你好，今天过得怎么样。" /></label>
+                <div class="tts-preview-actions">
+                  <button class="primary-action" type="button" :disabled="ttsPreviewLoading" @click="runTtsPreview">
+                    <Volume2 :size="15" />{{ ttsPreviewLoading ? "生成中..." : "生成试听" }}
+                  </button>
+                  <span>{{ ttsPreviewStatus || "会先保存当前语音配置，再用当前音色生成 WAV。" }}</span>
+                </div>
+                <audio v-if="ttsPreviewUrl" class="tts-preview-player" :src="ttsPreviewUrl" controls></audio>
+              </div>
+            </div>
+          </section>
+        </article>
+
+        <article v-show="activeSettingsSection === 'vad'" class="settings-panel settings-section-detached is-active is-current" id="vad">
+          <div class="panel-head"><div><p class="eyebrow">检测</p><h2>语音检测</h2></div></div>
+          <div class="form-grid compact">
+            <label><span>触发阈值</span><input v-model.number="form.vad_threshold" type="number" min="0.1" max="0.9" step="0.01" /></label>
+            <label><span>静默 ms</span><input v-model.number="form.vad_min_silence_ms" type="number" min="120" max="1500" step="10" /></label>
+            <label><span>语音补边 ms</span><input v-model.number="form.vad_speech_pad_ms" type="number" min="0" max="500" step="10" /></label>
+            <label><span>前置缓存 ms</span><input v-model.number="form.pre_speech_ms" type="number" min="0" max="2000" step="10" /></label>
+            <label><span>最短语音 ms</span><input v-model.number="form.min_utterance_ms" type="number" min="80" max="5000" step="10" /></label>
+            <label><span>最长语音 sec</span><input v-model.number="form.max_utterance_sec" type="number" min="2" max="180" step="1" /></label>
+          </div>
+        </article>
+
+        <article v-show="activeSettingsSection === 'commands'" class="settings-panel settings-section-detached is-active is-current" id="commands">
+          <div class="panel-head">
+            <div><p class="eyebrow">服务</p><h2>服务命令</h2></div>
             <div class="inline-actions">
               <span class="soft-badge">只编辑启动参数</span>
               <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
@@ -1564,13 +1972,22 @@ function formatTime(value?: string) {
                 </div>
                 <span class="soft-badge">{{ serviceDraftDirty[service.id] ? "未保存" : service.id }}</span>
               </div>
-              <div class="form-grid compact">
+              <div class="service-command-summary">
+                <span>工作目录：{{ draft.cwd || "--" }}</span>
+                <span>健康检查：{{ draft.health_url || "--" }}</span>
+                <span>等待：{{ draft.startup_wait_sec || 0 }}s</span>
+              </div>
+              <div v-if="commandsExpanded[service.id]" class="form-grid compact service-command-body">
                 <label class="wide"><span>工作目录</span><input v-model="draft.cwd" @input="markServiceDraftDirty(service.id)" /></label>
                 <label class="wide"><span>Health URL</span><input v-model="draft.health_url" @input="markServiceDraftDirty(service.id)" /></label>
                 <label><span>启动等待秒</span><input v-model.number="draft.startup_wait_sec" type="number" min="0" max="180" step="1" @input="markServiceDraftDirty(service.id)" /></label>
                 <label class="wide"><span>启动命令</span><textarea v-model="draft.command" class="profile-command" @input="markServiceDraftDirty(service.id)"></textarea></label>
               </div>
               <div class="inline-actions">
+                <button class="secondary-action" type="button" @click="toggleCommandExpanded(service.id)">
+                  <component :is="commandsExpanded[service.id] ? ChevronUp : ChevronDown" :size="15" />
+                  {{ commandsExpanded[service.id] ? "收起" : "展开" }}
+                </button>
                 <button class="secondary-action" type="button" :disabled="serviceSaving[service.id] || settingsSaving" @click="saveServiceDraft(service.id)"><Save :size="15" />{{ serviceSaving[service.id] ? "保存中..." : "保存服务" }}</button>
                 <button class="secondary-action" type="button" @click="copyServiceCommand(draft.command || '')"><Copy :size="15" />复制命令</button>
                 <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
@@ -1582,18 +1999,6 @@ function formatTime(value?: string) {
           </div>
         </article>
       </section>
-    </div>
-
-    <div v-if="activeSettingsSection" class="modal-overlay settings-section-backdrop" @click.self="closeSettingsSection">
-      <div class="settings-section-modal-toolbar" role="presentation">
-        <div>
-          <p class="eyebrow">{{ activeSettingsCard?.eyebrow }}</p>
-          <strong>{{ activeSettingsCard?.title }}</strong>
-        </div>
-        <span class="soft-badge">{{ activeSettingsCard?.status }}</span>
-        <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll"><Save :size="15" />{{ settingsSaving ? "保存中..." : "保存配置" }}</button>
-        <button class="icon-button modal-close" type="button" title="关闭配置面板" @click="closeSettingsSection"><X :size="16" /></button>
-      </div>
     </div>
 
     <div v-if="modelFileModalOpen" class="modal-overlay" @click.self="modelFileModalOpen = false">
@@ -1633,3 +2038,4 @@ function formatTime(value?: string) {
     </div>
   </main>
 </template>
+

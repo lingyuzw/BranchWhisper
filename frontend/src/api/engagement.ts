@@ -76,3 +76,9 @@ export async function dismissProactiveEvent(id: string) {
     method: "POST",
   });
 }
+
+export async function deleteProactiveEvent(id: string) {
+  return fetchJson<{ ok: boolean; events: ProactiveEvent[] }>(`/api/proactive/events/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}

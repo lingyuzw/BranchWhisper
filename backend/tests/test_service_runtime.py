@@ -345,6 +345,45 @@ class MemoryRuntimeTests(unittest.TestCase):
 
 
 class ExternalDialogHistoryTests(unittest.TestCase):
+    def test_api_llm_default_timeout_is_not_tool_timeout(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        settings.tools_timeout = 12
+
+        engine = ExternalDialogEngine(
+            integration_manager=None,
+            conversation_store=None,
+            memory_store=None,
+            tool_manager=None,
+            bot_profiles=None,
+            media_dir=Path(tempfile.gettempdir()),
+        )
+
+        self.assertGreaterEqual(engine.llm_request_timeout(settings, None), 45)
+
+    def test_describe_llm_http_error_includes_body(self) -> None:
+        class Response:
+            status_code = 400
+            text = '{"message":"input token limit exceeded"}'
+
+            def json(self):
+                return {"message": "input token limit exceeded"}
+
+        error = type("HttpError", (), {"response": Response()})()
+        engine = ExternalDialogEngine(
+            integration_manager=None,
+            conversation_store=None,
+            memory_store=None,
+            tool_manager=None,
+            bot_profiles=None,
+            media_dir=Path(tempfile.gettempdir()),
+        )
+
+        message = engine.describe_llm_error(error)
+
+        self.assertIn("HTTP 400", message)
+        self.assertIn("input token limit exceeded", message)
+
     def test_sticker_attachments_are_visible_to_next_llm_turn(self) -> None:
         class MemoryStub:
             def format_context(self, *_args, **_kwargs) -> str:

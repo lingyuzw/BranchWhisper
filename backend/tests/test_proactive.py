@@ -101,6 +101,19 @@ class ProactiveStoreTests(unittest.TestCase):
 
         self.assertIsNone(event)
 
+    def test_delete_event_removes_recent_history_item(self) -> None:
+        tmp, store = self.make_store()
+        self.addCleanup(tmp.cleanup)
+        first = store.create_event({"title": "微信事件 A", "content": "a", "channel": "weixin"})
+        second = store.create_event({"title": "微信事件 B", "content": "b", "channel": "weixin"})
+
+        self.assertTrue(store.delete_event(first["id"]))
+        self.assertFalse(store.delete_event("missing"))
+
+        ids = [item["id"] for item in store.list_events()]
+        self.assertNotIn(first["id"], ids)
+        self.assertIn(second["id"], ids)
+
 
 if __name__ == "__main__":
     unittest.main()

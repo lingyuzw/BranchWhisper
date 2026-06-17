@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { Copy, Power, RefreshCcw, RefreshCw, Square, Trash2, X } from "@lucide/vue";
+import { ChevronDown, ChevronUp, Copy, Power, RefreshCcw, RefreshCw, Square, Trash2, X } from "@lucide/vue";
 import ResourceSection from "@/components/services/ResourceSection.vue";
 import ServiceCard from "@/components/services/ServiceCard.vue";
 import ServiceLogsPanel from "@/components/services/ServiceLogsPanel.vue";
@@ -14,6 +14,7 @@ const services = useServicesStore();
 const ui = useUiStore();
 const bulkBusy = computed(() => Boolean(services.bulkPending));
 const detailServiceId = ref("");
+const serviceDetailExpanded = ref(false);
 const detailService = computed(() => services.services.find((item) => item.id === detailServiceId.value) || null);
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
 const serviceProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
@@ -108,11 +109,13 @@ async function handleClearAllLogs() {
 
 function openServiceDetail(id: string) {
   detailServiceId.value = id;
+  serviceDetailExpanded.value = false;
   services.select(id).catch((error) => ui.error(`服务日志读取失败：${errorMessage(error)}`));
 }
 
 function closeServiceDetail() {
   detailServiceId.value = "";
+  serviceDetailExpanded.value = false;
 }
 
 function formatValue(value: unknown) {
@@ -268,42 +271,48 @@ async function copyText(label: string, text: string) {
                 <strong>{{ row.value }}</strong>
               </div>
             </div>
-            <section class="service-detail-code">
-              <div class="service-detail-code-head">
-                <span>配置命令</span>
-                <button class="small-button" type="button" @click="copyText('配置命令', detailService.configured_command || detailService.command || '')">
-                  <Copy :size="14" /> 复制
-                </button>
-              </div>
-              <pre>{{ detailService.configured_command || detailService.command || "--" }}</pre>
-            </section>
-            <section class="service-detail-code">
-              <div class="service-detail-code-head">
-                <span>最终启动命令</span>
-                <button class="small-button" type="button" @click="copyText('最终启动命令', detailService.final_command || detailService.effective_command || '')">
-                  <Copy :size="14" /> 复制
-                </button>
-              </div>
-              <pre>{{ detailService.final_command || detailService.effective_command || "--" }}</pre>
-            </section>
-            <section class="service-detail-code">
-              <div class="service-detail-code-head">
-                <span>最近实际启动命令</span>
-                <button class="small-button" type="button" @click="copyText('实际启动命令', detailService.actual_command || '')">
-                  <Copy :size="14" /> 复制
-                </button>
-              </div>
-              <pre>{{ detailService.actual_command || "尚未由当前配置启动" }}</pre>
-            </section>
-            <section class="service-detail-code">
-              <div class="service-detail-code-head">
-                <span>健康返回</span>
-                <button class="small-button" type="button" @click="copyText('健康返回', formatJson(detailService.health))">
-                  <Copy :size="14" /> 复制
-                </button>
-              </div>
-              <pre>{{ formatJson(detailService.health) }}</pre>
-            </section>
+            <button class="secondary-action service-detail-toggle" type="button" @click="serviceDetailExpanded = !serviceDetailExpanded">
+              <component :is="serviceDetailExpanded ? ChevronUp : ChevronDown" :size="15" />
+              {{ serviceDetailExpanded ? "收起命令详情" : "展开命令详情" }}
+            </button>
+            <div v-if="serviceDetailExpanded" class="service-detail-code-list">
+              <section class="service-detail-code">
+                <div class="service-detail-code-head">
+                  <span>配置命令</span>
+                  <button class="small-button" type="button" @click="copyText('配置命令', detailService.configured_command || detailService.command || '')">
+                    <Copy :size="14" /> 复制
+                  </button>
+                </div>
+                <pre>{{ detailService.configured_command || detailService.command || "--" }}</pre>
+              </section>
+              <section class="service-detail-code">
+                <div class="service-detail-code-head">
+                  <span>最终启动命令</span>
+                  <button class="small-button" type="button" @click="copyText('最终启动命令', detailService.final_command || detailService.effective_command || '')">
+                    <Copy :size="14" /> 复制
+                  </button>
+                </div>
+                <pre>{{ detailService.final_command || detailService.effective_command || "--" }}</pre>
+              </section>
+              <section class="service-detail-code">
+                <div class="service-detail-code-head">
+                  <span>最近实际启动命令</span>
+                  <button class="small-button" type="button" @click="copyText('实际启动命令', detailService.actual_command || '')">
+                    <Copy :size="14" /> 复制
+                  </button>
+                </div>
+                <pre>{{ detailService.actual_command || "尚未由当前配置启动" }}</pre>
+              </section>
+              <section class="service-detail-code">
+                <div class="service-detail-code-head">
+                  <span>健康返回</span>
+                  <button class="small-button" type="button" @click="copyText('健康返回', formatJson(detailService.health))">
+                    <Copy :size="14" /> 复制
+                  </button>
+                </div>
+                <pre>{{ formatJson(detailService.health) }}</pre>
+              </section>
+            </div>
           </div>
         </section>
       </div>

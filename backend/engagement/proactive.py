@@ -366,6 +366,11 @@ class ProactiveStore:
     def dismiss_event(self, event_id: str) -> bool:
         return bool(self.update_event(event_id, {"status": "dismissed"}))
 
+    def delete_event(self, event_id: str) -> bool:
+        with self.session() as conn:
+            cursor = conn.execute("DELETE FROM proactive_events WHERE id=?", [event_id])
+            return bool(cursor.rowcount)
+
     def get_event(self, event_id: str) -> dict | None:
         with self.session() as conn:
             row = conn.execute("SELECT * FROM proactive_events WHERE id=?", [event_id]).fetchone()

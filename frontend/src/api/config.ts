@@ -1,11 +1,20 @@
 import { fetchJson } from "./client";
 
 export interface PublicConfig {
+  asr_provider_mode?: "local" | "api";
   asr_mode?: string;
   asr_url?: string;
   asr_model?: string;
   asr_timeout?: number;
   asr_max_tokens?: number;
+  api_asr_provider?: string;
+  api_asr_url?: string;
+  api_asr_model?: string;
+  api_asr_api_key?: string;
+  api_asr_api_key_set?: boolean;
+  api_asr_api_key_masked?: string;
+  api_asr_language?: string;
+  api_asr_timeout?: number;
   dialog_mode: "local" | "api";
   llm_url: string;
   llm_model: string;
@@ -23,12 +32,30 @@ export interface PublicConfig {
   thinking_enabled?: boolean;
   system?: string;
   tts_enabled?: boolean;
+  tts_provider_mode?: "local" | "api";
+  tts_model?: string;
   tts_url?: string;
   tts_speed?: number;
   tts_seed?: number;
   tts_volume?: number;
   tts_fade_ms?: number;
   tts_sample_rate?: number;
+  api_tts_provider?: string;
+  api_tts_url?: string;
+  api_tts_model?: string;
+  api_tts_api_key?: string;
+  api_tts_api_key_set?: boolean;
+  api_tts_api_key_masked?: string;
+  api_tts_voice_mode?: "builtin" | "cloned" | "manual";
+  api_tts_voice?: string;
+  api_tts_voice_id?: string;
+  api_tts_voice_name?: string;
+  api_tts_voice_profile_id?: string;
+  api_tts_instructions?: string;
+  api_tts_format?: "pcm" | "wav" | "mp3";
+  api_tts_sample_rate?: number;
+  api_tts_speed?: number;
+  api_tts_latency_mode?: "quality" | "balanced" | "fast";
   vision_enabled?: boolean;
   vision_url?: string;
   vision_model?: string;
@@ -96,6 +123,26 @@ export async function saveConfig(patch: Partial<PublicConfig>): Promise<PublicCo
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
+  });
+}
+
+export interface VoiceSampleProfile {
+  id: string;
+  provider: string;
+  voice_mode: string;
+  status: string;
+  sample_path: string;
+  mime: string;
+  bytes: number;
+  remote_voice_id: string;
+  capabilities?: Record<string, unknown>;
+}
+
+export async function uploadVoiceSample(payload: { data_url: string; name?: string; provider?: string }) {
+  return fetchJson<{ ok: boolean; profile: VoiceSampleProfile }>("/api/config/voice-samples", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 

@@ -39,7 +39,7 @@ export const useMemoryStore = defineStore("memory", {
     loading: false,
     error: "",
     addText: "",
-    admissionText: "我喜欢晚上写代码，猫叫布丁。",
+    admissionText: "我平时更喜欢晚上写代码，也希望你以后优先用简洁一点的回复。",
     admissionResults: [],
   }),
   getters: {

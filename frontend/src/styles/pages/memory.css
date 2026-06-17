@@ -140,8 +140,20 @@
   background: color-mix(in srgb, var(--surface) 92%, var(--primary) 5%);
 }
 
+.memory-admission-probe > label,
+.memory-admission-probe .inline-probe {
+  min-height: 132px;
+  height: 100%;
+}
+
+.memory-admission-probe > label {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+}
+
 .memory-admission-probe textarea {
-  min-height: 104px;
+  min-height: 0;
   height: 100%;
   max-height: 180px;
   resize: vertical;
