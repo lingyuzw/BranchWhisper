@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
@@ -86,8 +86,6 @@ interface ToolProviderGroup {
   summary: string;
   keys: string[];
 }
-const localDisabled = computed(() => form.dialog_mode === "api");
-const apiDisabled = computed(() => form.dialog_mode === "local");
 const pendingReminders = computed(() => engagement.pendingReminders.slice(0, 8));
 const recentEvents = computed(() => engagement.recentEvents);
 const recommendedBooleanDefaults: Partial<PublicConfig> = {
@@ -101,8 +99,51 @@ const recommendedBooleanDefaults: Partial<PublicConfig> = {
 };
 const DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 const DASHSCOPE_CHAT_COMPLETIONS_URL = `${DASHSCOPE_BASE_URL}/chat/completions`;
+const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
+const DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions";
+const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_API_MODEL = "qwen-plus";
 const DEFAULT_VISION_MODEL = "qwen3-vl-plus";
+interface ApiModelPreset {
+  id: string;
+  label: string;
+  summary: string;
+  url: string;
+  model: string;
+}
+const API_MODEL_PRESETS: ApiModelPreset[] = [
+  {
+    id: "dashscope",
+    label: "百炼 Qwen",
+    summary: "阿里云百炼 OpenAI 兼容接口",
+    url: DASHSCOPE_CHAT_COMPLETIONS_URL,
+    model: DEFAULT_API_MODEL,
+  },
+  {
+    id: "openai",
+    label: "OpenAI",
+    summary: "官方 Chat Completions",
+    url: OPENAI_CHAT_COMPLETIONS_URL,
+    model: "gpt-4o-mini",
+  },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    summary: "DeepSeek 官方兼容接口",
+    url: DEEPSEEK_CHAT_COMPLETIONS_URL,
+    model: "deepseek-chat",
+  },
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    summary: "多模型聚合兼容接口",
+    url: OPENROUTER_CHAT_COMPLETIONS_URL,
+    model: "openai/gpt-4o-mini",
+  },
+];
+const API_MODEL_PRESET_URLS = API_MODEL_PRESETS.map((preset) => preset.url);
+const localDisabled = computed(() => form.dialog_mode === "api");
+const apiDisabled = computed(() => form.dialog_mode === "local");
 const recommendedStringDefaults: Partial<PublicConfig> = {
   api_llm_url: DASHSCOPE_CHAT_COMPLETIONS_URL,
   api_llm_model: DEFAULT_API_MODEL,
@@ -370,20 +411,26 @@ function isDashScopeCompatibleUrl(value: unknown) {
   return !text || text === DASHSCOPE_BASE_URL || text === DASHSCOPE_CHAT_COMPLETIONS_URL;
 }
 
-function applyDashScopeDefaults(force = false) {
+function applyApiModelPreset(preset: ApiModelPreset, force = true) {
+  if (apiDisabled.value) return;
   if (force || isDashScopeCompatibleUrl(form.api_llm_url)) {
-    form.api_llm_url = DASHSCOPE_CHAT_COMPLETIONS_URL;
+    form.api_llm_url = preset.url;
   }
   if (force || !String(form.api_llm_model || "").trim() || form.api_llm_model === "qwen3") {
-    form.api_llm_model = DEFAULT_API_MODEL;
+    form.api_llm_model = preset.model;
   }
+  announceSettings(`已填入 ${preset.label} 对话模型预设`, "success", 1800);
+}
+
+function applyDashScopeDefaults(force = false) {
+  const preset = API_MODEL_PRESETS.find((item) => item.id === "dashscope") || API_MODEL_PRESETS[0];
+  applyApiModelPreset(preset, force);
   if (force || isDashScopeCompatibleUrl(form.sticker_vision_url)) {
     form.sticker_vision_url = DASHSCOPE_CHAT_COMPLETIONS_URL;
   }
   if (force || !String(form.sticker_vision_model || "").trim() || form.sticker_vision_model === "qwen-vl") {
     form.sticker_vision_model = DEFAULT_VISION_MODEL;
   }
-  announceSettings("已填入百炼 OpenAI 兼容预设", "success", 1800);
 }
 
 async function saveAll() {
@@ -1150,7 +1197,21 @@ function formatTime(value?: string) {
           <section class="api-engine-card" :class="{ 'model-panel-locked': apiDisabled }" data-locked-label="当前使用本地模型，API 参数已锁定">
             <div class="appearance-card-head">
               <div><strong>OpenAI-compatible API</strong><small>DeepSeek、通义兼容接口、自建网关都可填这里</small></div>
-              <button class="secondary-action" type="button" :disabled="apiDisabled" @click="applyDashScopeDefaults(true)"><Cloud :size="15" />百炼预设</button>
+              <span class="soft-badge">API Key 不会被模板覆盖</span>
+            </div>
+            <div class="api-preset-grid">
+              <button
+                v-for="preset in API_MODEL_PRESETS"
+                :key="preset.id"
+                class="api-preset-button"
+                type="button"
+                :disabled="apiDisabled"
+                :class="{ active: form.api_llm_url === preset.url }"
+                @click="applyApiModelPreset(preset, true)"
+              >
+                <Cloud :size="15" />
+                <span><strong>{{ preset.label }}</strong><small>{{ preset.model }}</small></span>
+              </button>
             </div>
             <div class="form-grid compact">
               <label class="wide"><span>API Chat Completions URL</span><input v-model="form.api_llm_url" :disabled="apiDisabled" placeholder="https://api.example.com/v1/chat/completions" /></label>

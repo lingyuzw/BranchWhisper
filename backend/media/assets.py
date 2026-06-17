@@ -19,10 +19,28 @@ IMAGE_MIME_EXT = {
 TAG_ALIASES = {
     "挑衅": ["挑衅", "打一架", "打架", "想打", "单挑", "欠揍", "不服"],
     "互怼": ["互怼", "怼", "骂", "阴阳怪气", "欠欠", "sb", "傻", "笨"],
-    "开心": ["开心", "哈哈", "笑死", "好笑", "绷不住", "乐"],
-    "无语": ["无语", "离谱", "服了", "尴尬", "沉默"],
-    "安慰": ["安慰", "抱抱", "委屈", "难受", "心疼"],
-    "疑惑": ["疑惑", "什么", "为啥", "为什么", "真的假的"],
+    "开心": ["开心", "哈哈", "笑死", "好笑", "绷不住", "乐", "搞笑", "可爱", "萌", "微笑", "cute", "smug"],
+    "无语": ["无语", "离谱", "服了", "尴尬", "沉默", "无奈", "silent", "reject"],
+    "安慰": ["安慰", "抱抱", "委屈", "难受", "心疼", "治愈", "泪眼", "sad", "撒娇"],
+    "疑惑": ["疑惑", "什么", "为啥", "为什么", "真的假的", "懵", "看不见", "confused"],
+    "鼓励": ["鼓励", "加油", "打气", "稳住", "冲呀"],
+    "撒娇": ["撒娇", "贴贴", "求关注", "抱抱", "想你", "cute", "萌"],
+    "早安": ["早安", "早上好", "起床", "可爱", "cute"],
+    "晚安": ["晚安", "睡觉", "困", "可爱", "sad", "cute"],
+    "吃饭": ["吃饭", "干饭", "美食", "香喝辣", "奶茶", "馋"],
+}
+TAG_FALLBACK_EMOTIONS = {
+    "开心": {"cute", "smug"},
+    "安慰": {"sad", "cute"},
+    "疑惑": {"confused", "shock"},
+    "无语": {"silent", "reject", "confused"},
+    "挑衅": {"angry", "smug"},
+    "互怼": {"angry", "smug"},
+    "鼓励": {"cute"},
+    "撒娇": {"cute", "sad"},
+    "早安": {"cute"},
+    "晚安": {"cute", "sad"},
+    "吃饭": {"smug", "cute"},
 }
 
 
@@ -195,23 +213,42 @@ class StickerStore:
             self.save(items)
         return changed
 
-    def choose(self, tag: str = "", avoid_id: str = "", channel: str = "web") -> dict | None:
+    def choose(self, tag: str = "", avoid_id: str = "", channel: str = "web", *, allow_fallback: bool = False) -> dict | None:
         if self.library is not None:
-            return self.library.choose(tag, avoid_id=avoid_id, channel=channel)
+            return self.library.choose(tag, avoid_id=avoid_id, channel=channel, allow_fallback=allow_fallback)
         channel = normalize_channel(channel)
         items = [
             item
             for item in self.list()
-            if item.get("enabled", True) and channel in item.get("channels", ["all", "web", "weixin"])
+            if item.get("enabled", True) and self.channel_matches(item, channel)
         ]
         if tag:
-            items = [item for item in items if item.get("id") != avoid_id and self.match_score(item, tag) > 0]
+            matched_items = [item for item in items if item.get("id") != avoid_id and self.match_score(item, tag) > 0]
+            if matched_items:
+                items = matched_items
+            elif allow_fallback:
+                items = [item for item in items if item.get("id") != avoid_id]
+            else:
+                items = []
         else:
             items = [item for item in items if item.get("id") != avoid_id]
         if not items:
             return None
-        items.sort(key=lambda item: (-self.match_score(item, tag), int(item.get("use_count") or 0), item.get("last_used_at") or ""))
+        items.sort(key=lambda item: (-self.selection_score(item, tag, allow_fallback=allow_fallback), int(item.get("use_count") or 0), item.get("last_used_at") or "", item.get("id") or ""))
         return items[0]
+
+    def channel_matches(self, item: dict, channel: str) -> bool:
+        channels = item.get("channels") or ["all", "web", "weixin"]
+        return "all" in channels or channel in channels
+
+    def selection_score(self, item: dict, tag: str, *, allow_fallback: bool = False) -> int:
+        score = self.match_score(item, tag)
+        if score or not allow_fallback or not tag:
+            return score or 1
+        emotion = str(item.get("emotion") or "").lower()
+        if emotion in TAG_FALLBACK_EMOTIONS.get(str(tag or "").strip(), set()):
+            score += 2
+        return score or 1
 
     def match_score(self, item: dict, tag: str) -> int:
         tag = str(tag or "").strip()
@@ -222,6 +259,7 @@ class StickerStore:
             str(part or "")
             for part in [
                 item.get("tag"),
+                item.get("emotion"),
                 item.get("name"),
                 item.get("caption"),
                 item.get("ocr_text"),
@@ -229,12 +267,57 @@ class StickerStore:
                 " ".join(str(x) for x in item.get("scene", []) if x) if isinstance(item.get("scene"), list) else "",
             ]
         ).lower()
-        score = 6 if str(item.get("tag") or "") == tag else 0
+        score = 6 if str(item.get("tag") or "") == tag or str(item.get("emotion") or "") == tag else 0
         for alias in aliases:
             alias = str(alias or "").strip().lower()
             if alias and alias in haystack:
                 score += 3
         return score
+
+    def selection_diagnostics(self, tag: str = "", channel: str = "web") -> dict:
+        if self.library is not None:
+            return self.library.selection_diagnostics(tag, channel=channel)
+        channel = normalize_channel(channel)
+        loaded = self.list()
+        enabled = [item for item in loaded if item.get("enabled", True)]
+        channel_items = [item for item in enabled if self.channel_matches(item, channel)]
+        tag = str(tag or "").strip()
+        matched = [item for item in channel_items if not tag or self.match_score(item, tag) > 0]
+        examples = sorted(
+            channel_items,
+            key=lambda item: (-self.selection_score(item, tag, allow_fallback=True), int(item.get("use_count") or 0), item.get("last_used_at") or ""),
+        )[:5]
+        if not loaded:
+            reason = "empty_library"
+        elif not enabled:
+            reason = "no_enabled"
+        elif not channel_items:
+            reason = "channel_mismatch"
+        elif tag and not matched:
+            reason = "tag_mismatch"
+        else:
+            reason = "ok"
+        return {
+            "reason": reason,
+            "tag": tag,
+            "channel": channel,
+            "total": len(loaded),
+            "approved": len(loaded),
+            "enabled": len(enabled),
+            "channel_candidates": len(channel_items),
+            "tag_matches": len(matched),
+            "examples": [
+                {
+                    "id": item.get("id"),
+                    "name": item.get("name"),
+                    "tag": item.get("tag"),
+                    "emotion": item.get("emotion"),
+                    "score": self.match_score(item, tag),
+                }
+                for item in examples
+            ],
+        }
+
 
     def normalize(self, item: dict[str, Any]) -> dict:
         return {

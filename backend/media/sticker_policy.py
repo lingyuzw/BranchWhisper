@@ -56,7 +56,7 @@ class StickerPolicy:
     def choose_intent(self, settings: Any, *, session_id: str, user_text: str, reply_text: str, source: str = "web") -> dict:
         return self._choose_intent(settings, session_id=session_id, user_text=user_text, reply_text=reply_text, source=source)
 
-    def simulate(self, settings: Any, *, session_id: str, user_text: str, reply_text: str = "", source: str = "web") -> dict:
+    def simulate(self, settings: Any, *, session_id: str, user_text: str, reply_text: str = "", source: str = "web", ignore_limits: bool = False) -> dict:
         intent = self._choose_intent(
             settings,
             session_id=session_id,
@@ -64,6 +64,7 @@ class StickerPolicy:
             reply_text=reply_text,
             source=source,
             mutate=False,
+            ignore_limits=ignore_limits,
         )
         intent["session_id"] = session_id or "default"
         intent["source"] = source or "web"
@@ -78,6 +79,7 @@ class StickerPolicy:
         reply_text: str,
         source: str = "web",
         mutate: bool = True,
+        ignore_limits: bool = False,
     ) -> dict:
         if not getattr(settings, "stickers_enabled", True):
             return {"send": False, "reason": "disabled"}
@@ -115,12 +117,13 @@ class StickerPolicy:
                 state.streak = 0
             else:
                 state = StickerRuntimeState(day=day)
-        if state.sent_today >= config["daily_limit"]:
-            return {"send": False, "reason": "daily_limit", "config": config, "state": self.state_snapshot(state)}
-        if now - state.last_sent_at < config["cooldown"]:
-            return {"send": False, "reason": "cooldown", "config": config, "state": self.state_snapshot(state)}
-        if state.streak >= config["max_streak"]:
-            return {"send": False, "reason": "streak", "config": config, "state": self.state_snapshot(state)}
+        if not ignore_limits:
+            if state.sent_today >= config["daily_limit"]:
+                return {"send": False, "reason": "daily_limit", "config": config, "state": self.state_snapshot(state)}
+            if now - state.last_sent_at < config["cooldown"]:
+                return {"send": False, "reason": "cooldown", "config": config, "state": self.state_snapshot(state)}
+            if state.streak >= config["max_streak"]:
+                return {"send": False, "reason": "streak", "config": config, "state": self.state_snapshot(state)}
 
         tag = self.infer_tag(user_text, reply_text)
         if not tag:

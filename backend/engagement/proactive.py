@@ -91,6 +91,58 @@ FOLLOWUP_RULES = [
     },
 ]
 
+GREETING_MESSAGE_POOLS: dict[str, list[str]] = {
+    "good_morning": [
+        "醒啦？",
+        "早。",
+        "起了没？",
+        "早啊，还困吗？",
+        "醒了就吱一声。",
+        "早，别赖太久。",
+        "起床了吗？",
+        "早饭别省。",
+        "今天开机了吗？",
+        "早。先缓一下。",
+    ],
+
+    "noon": [
+        "吃饭没？",
+        "中午了。",
+        "该吃饭了。",
+        "上午还行吗？",
+        "先去吃点东西。",
+        "吃饭吃饭。",
+        "中午歇会儿。",
+        "现在能喘口气了吗？",
+        "饭点到了。",
+    ],
+
+    "good_night": [
+        "该睡了。",
+        "别刷了，睡觉。",
+        "晚安。",
+        "手机放下。",
+        "今天先这样吧。",
+        "困了就别硬撑。",
+        "睡吧，明天再说。",
+        "别熬太晚。",
+        "去睡觉。",
+        "晚安，别想太多。",
+    ],
+
+    "long_absence": [
+        "人呢？",
+        "忙完没？",
+        "还在吗？",
+        "今天怎么样？",
+        "怎么没声了。",
+        "你那边还好吗？",
+        "冒个泡。",
+        "刚想起来看看你。",
+        "在忙还是在发呆？",
+        "有空说句话。",
+    ],
+}
 
 def deep_merge(base: dict, patch: dict) -> dict:
     result = dict(base)
@@ -125,6 +177,26 @@ def parse_clock(value: str) -> tuple[int, int]:
     return hour, minute
 
 
+def date_text(value: datetime | None = None) -> str:
+    return (value or datetime.now()).strftime("%Y-%m-%d")
+
+
+def datetime_text(value: datetime | None = None) -> str:
+    return (value or datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def parse_datetime_text(value: str) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
 def in_time_window(now: datetime, start: str, end: str) -> bool:
     sh, sm = parse_clock(start)
     eh, em = parse_clock(end)
@@ -134,6 +206,14 @@ def in_time_window(now: datetime, start: str, end: str) -> bool:
     if begin <= finish:
         return begin <= current <= finish
     return current >= begin or current <= finish
+
+
+def daily_choice(values: list[str], key: str, now: datetime | None = None) -> str:
+    if not values:
+        return ""
+    day = date_text(now)
+    seed = sum(ord(ch) for ch in f"{key}:{day}")
+    return values[seed % len(values)]
 
 
 class ProactiveStore:
@@ -292,11 +372,14 @@ class ProactiveStore:
         return dict(row) if row else None
 
     def has_event_today(self, kind: str) -> bool:
-        prefix = today_text()
+        return self.has_event_on_date(kind, today_text())
+
+    def has_event_on_date(self, kind: str, date_prefix: str) -> bool:
+        prefix = str(date_prefix or today_text())[:10]
         with self.session() as conn:
             row = conn.execute(
-                "SELECT id FROM proactive_events WHERE kind=? AND created_at LIKE ? LIMIT 1",
-                [kind, f"{prefix}%"],
+                "SELECT id FROM proactive_events WHERE kind=? AND (created_at LIKE ? OR due_at LIKE ?) LIMIT 1",
+                [kind, f"{prefix}%", f"{prefix}%"],
             ).fetchone()
         return bool(row)
 
@@ -309,36 +392,41 @@ class ProactiveStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def maybe_create_greetings(self) -> list[dict]:
+    def default_greeting_message(self, key: str, now: datetime | None = None) -> str:
+        return daily_choice(GREETING_MESSAGE_POOLS.get(key) or [], key, now) or "我来找你说句话。"
+
+    def greeting_note_message(self, spec: dict) -> str:
+        notes = []
+        if spec.get("with_weather"):
+            notes.append("天气我会按已配置的默认地区一起参考。")
+        if spec.get("with_reminders"):
+            notes.append("有提醒的话，我也会一起看着。")
+        return "\n".join(notes)
+
+    def maybe_create_greetings(self, now: datetime | None = None) -> list[dict]:
         config = self.load_config()
         if not config.get("enabled") or not (config.get("greetings") or {}).get("enabled"):
             return []
-        if self.in_quiet_hours(config):
-            return []
-        now = datetime.now()
+        now = now or datetime.now()
         created = []
         greetings = config.get("greetings") or {}
         specs = [
-            ("good_morning", "早安", "早安。今天也慢慢来，先照顾好自己。"),
-            ("noon", "午间问候", "中午了，记得吃点热乎的，也让脑子休息一下。"),
-            ("good_night", "晚安", "晚安。今天辛苦了，剩下的事情可以明天再慢慢处理。"),
+            ("good_morning", "早安"),
+            ("noon", "午间问候"),
+            ("good_night", "晚安"),
         ]
-        for key, title, default_message in specs:
+        for key, title in specs:
             spec = greetings.get(key) or {}
             if not spec.get("enabled"):
                 continue
-            if self.has_event_today(f"greeting:{key}"):
+            if self.has_event_on_date(f"greeting:{key}", date_text(now)):
                 continue
             if not in_time_window(now, str(spec.get("window_start") or "00:00"), str(spec.get("window_end") or "23:59")):
                 continue
-            message = str(spec.get("message") or default_message)
-            notes = []
-            if spec.get("with_weather"):
-                notes.append("可在配置页接入天气后，把今日天气带进问候。")
-            if spec.get("with_reminders"):
-                notes.append("如果今天有提醒，我会一起放在问候里。")
+            message = str(spec.get("message") or self.default_greeting_message(key, now))
+            notes = self.greeting_note_message(spec)
             if notes:
-                message = f"{message}\n" + "\n".join(notes)
+                message = f"{message}\n{notes}"
             created.append(
                 self.create_event(
                     {
@@ -347,10 +435,43 @@ class ProactiveStore:
                         "content": message,
                         "channel": self.default_channel(config),
                         "status": "pending",
+                        "due_at": datetime_text(now),
                     }
                 )
             )
         return created
+
+    def maybe_create_long_absence(self, last_activity_at: str, now: datetime | None = None) -> dict | None:
+        config = self.load_config()
+        greetings = config.get("greetings") or {}
+        spec = greetings.get("long_absence") or {}
+        if not config.get("enabled") or not greetings.get("enabled") or not spec.get("enabled"):
+            return None
+        now = now or datetime.now()
+        if self.in_quiet_hours(config, now):
+            return None
+        last_at = parse_datetime_text(last_activity_at)
+        if not last_at:
+            return None
+        try:
+            after_hours = max(1.0, float(spec.get("after_hours") or 48))
+        except (TypeError, ValueError):
+            after_hours = 48.0
+        if now - last_at < timedelta(hours=after_hours):
+            return None
+        if self.has_event_on_date("greeting:long_absence", date_text(now)):
+            return None
+        message = str(spec.get("message") or self.default_greeting_message("long_absence", now))
+        return self.create_event(
+            {
+                "kind": "greeting:long_absence",
+                "title": "主动搭话",
+                "content": message,
+                "channel": self.default_channel(config),
+                "status": "pending",
+                "due_at": datetime_text(now),
+            }
+        )
 
     def default_channel(self, config: dict | None = None) -> str:
         config = config or self.load_config()
@@ -361,11 +482,11 @@ class ProactiveStore:
             return "weixin"
         return "web"
 
-    def in_quiet_hours(self, config: dict | None = None) -> bool:
+    def in_quiet_hours(self, config: dict | None = None, now: datetime | None = None) -> bool:
         config = config or self.load_config()
         if not config.get("quiet_hours_enabled", True):
             return False
-        return in_time_window(datetime.now(), str(config.get("quiet_start") or "23:00"), str(config.get("quiet_end") or "08:00"))
+        return in_time_window(now or datetime.now(), str(config.get("quiet_start") or "23:00"), str(config.get("quiet_end") or "08:00"))
 
 
 class FollowupPolicy:

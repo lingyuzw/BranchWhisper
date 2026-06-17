@@ -1,0 +1,64 @@
+
+
+===== start 2026-06-16 16:55:53 =====
+configured command: ./build/bin/llama-server \
+  -m ./BranchWhisper-Qwen3.5-9B-v12-reality-Q8_0.gguf \
+  --alias qwen3.5-9b \
+  --host 127.0.0.1 \
+  --port 8080 \
+  -ngl 50 \
+  -c 2048 \
+  --parallel 1 \
+  --jinja \
+  --reasoning off
+final command: ./build/bin/llama-server \
+  -m ./BranchWhisper-Qwen3.5-9B-v12-reality-Q8_0.gguf \
+  --alias qwen3.5-9b \
+  --host 127.0.0.1 \
+  --port 8080 \
+  -ngl 50 \
+  -c 2048 \
+  --parallel 1 \
+  --jinja \
+  --reasoning off
+0.00.185.750 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.185.766 I device_info:
+0.00.289.507 I   - CUDA0   : NVIDIA GeForce RTX 5060 Ti (16310 MiB, 15160 MiB free)
+0.00.289.525 I   - CPU     : Intel(R) Core(TM) i5-14600K (11961 MiB, 11961 MiB free)
+0.00.289.875 I system_info: n_threads = 5 (n_threads_batch = 5) / 10 | CUDA : ARCHS = 1200 | USE_GRAPHS = 1 | PEER_MAX_BATCH_SIZE = 128 | BLACKWELL_NATIVE_FP4 = 1 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.00.290.973 I srv          init: using 9 threads for HTTP server
+0.00.291.055 I srv         start: binding port with default address family
+0.00.298.007 I srv  llama_server: loading model
+0.00.298.029 I srv    load_model: loading model './BranchWhisper-Qwen3.5-9B-v12-reality-Q8_0.gguf'
+0.00.298.109 I common_init_result: fitting params to device memory ...
+0.00.298.118 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+0.27.941.192 W llama_context: n_ctx_seq (2048) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+0.28.028.158 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+0.28.159.805 I srv    load_model: initializing slots, n_slots = 1
+0.28.207.602 W srv    load_model: speculative decoding will use checkpoints
+0.28.264.615 W common_speculative_init: no implementations specified for speculative decoding
+0.28.264.679 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 2048
+0.28.264.761 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+0.28.264.770 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+0.28.264.770 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+0.28.264.771 I srv    load_model: context checkpoints enabled, max = 32, min spacing = 256
+0.28.265.293 W srv          init: --cache-idle-slots requires --kv-unified, disabling
+0.28.287.134 I init: chat template, example_format: '<|im_start|>system
+You are a helpful assistant<|im_end|>
+<|im_start|>user
+Hello<|im_end|>
+<|im_start|>assistant
+Hi there<|im_end|>
+<|im_start|>user
+How are you?<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+'
+0.28.295.371 I srv          init: init: chat template, thinking = 0
+0.28.295.467 I srv  llama_server: model loaded
+0.28.295.480 I srv  llama_server: server is listening on http://127.0.0.1:8080
+0.28.295.553 I srv  update_slots: all slots are idle
+171.30.573.019 I srv    operator(): operator(): cleaning up before exit...

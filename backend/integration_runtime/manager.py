@@ -83,6 +83,7 @@ VOICE_FALSE_POSITIVE_RE = re.compile(
     r"(推荐|歌|歌曲|音乐|听歌|听听歌|歌名|听听看|听听看看|好不好听|听起来|听上去|听着|试听|听听这首)"
 )
 VOICE_EXACT_TEXTS = {"语音", "说话", "你说话", "说两句", "说一句", "说呀", "说嘛", "说吗", "快说", "那你快说呀", "听听"}
+EXPLICIT_STICKER_REQUEST_RE = re.compile(r"(发|来|给我|整|甩|丢|试)(一|1)?(个|张|下)?(表情包|表情|贴图|sticker)|斗图|表情包测试|素材发送")
 KNOWLEDGE_REFERENCE_RE = re.compile(r"(这|这个|那|那个|这句|这话|这句话).{0,8}(谁说的|谁写的|出自|出处|典故|什么梗|哪来的|来源|什么意思)")
 MEMORY_LOOKUP_SLOTS = [
     ("最喜欢的歌手", ("最喜欢的歌手", "喜欢的歌手", "歌手")),
@@ -1501,9 +1502,26 @@ class ExternalDialogEngine:
                 tag,
                 avoid_id=str(intent.get("avoid_id") or ""),
                 channel="weixin",
+                allow_fallback=False,
             )
             if sticker:
                 break
+        if not sticker and not requested_tags:
+            sticker = self.sticker_store.choose(
+                str(intent.get("tag") or ""),
+                avoid_id=str(intent.get("avoid_id") or ""),
+                channel="weixin",
+                allow_fallback=True,
+            )
+        if not sticker and requested_tags:
+            inferred_tag = self.sticker_policy.infer_tag(user_text, reply_text)
+            if inferred_tag and inferred_tag not in candidate_tags:
+                sticker = self.sticker_store.choose(
+                    inferred_tag,
+                    avoid_id=str(intent.get("avoid_id") or ""),
+                    channel="weixin",
+                    allow_fallback=True,
+                )
         if not sticker:
             self.sticker_policy.mark_text_only(session_id or "weixin")
             return []
@@ -1690,16 +1708,36 @@ class ExternalDialogEngine:
             user_text=text,
             reply_text="",
             source="weixin",
+            ignore_limits=True,
         )
         sticker = None
+        tag = str(intent.get("tag") or "")
+        allow_test_fallback = True
+        if not intent.get("send") and allow_test_fallback:
+            inferred_tag = self.sticker_policy.infer_tag(text, "")
+            intent = {
+                **intent,
+                "send": True,
+                "tag": inferred_tag or tag,
+                "reason": f"test_fallback:{intent.get('reason') or 'policy_skip'}",
+            }
+            tag = str(intent.get("tag") or "")
         if intent.get("send"):
             sticker = self.sticker_store.choose(
-                str(intent.get("tag") or ""),
+                tag,
                 avoid_id=str(intent.get("avoid_id") or ""),
                 channel="weixin",
+                allow_fallback=True,
             )
         if not sticker:
-            return {"ok": False, "stage": "sticker", "intent": intent, "error": "没有匹配当前语境的微信表情素材。请检查素材 OCR、标签和适用场景。"}
+            diagnostics = self.sticker_store.selection_diagnostics(tag, channel="weixin")
+            return {
+                "ok": False,
+                "stage": "sticker",
+                "intent": intent,
+                "selection_diagnostic": diagnostics,
+                "error": "没有可发送到微信的表情素材。请检查素材是否已通过审核、已启用，并允许微信通道。",
+            }
 
         result: dict[str, Any] = {
             "ok": False,
@@ -1711,6 +1749,7 @@ class ExternalDialogEngine:
                 "age_hours": target.get("age_hours"),
             },
             "intent": intent,
+            "selection_diagnostic": self.sticker_store.selection_diagnostics(tag, channel="weixin"),
             "sticker": {
                 "id": sticker.get("id"),
                 "name": sticker.get("name"),

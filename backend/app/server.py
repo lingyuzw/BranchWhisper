@@ -297,6 +297,12 @@ async def proactive_loop(app: FastAPI) -> None:
     while True:
         try:
             app.state.proactive_store.maybe_create_greetings()
+            session = app.state.integration_manager.my_weixin_session(preferred_integration_id(app))
+            last_activity_at = str(session.get("updated_at") or "")
+            if not last_activity_at:
+                conversations = app.state.conversation_store.list(archived="active")
+                last_activity_at = str((conversations[0] if conversations else {}).get("updated_at") or "")
+            app.state.proactive_store.maybe_create_long_absence(last_activity_at)
             for event in app.state.proactive_store.due_pending_events():
                 try:
                     result = await deliver_proactive_text(

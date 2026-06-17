@@ -93,6 +93,7 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
     if (result.send_done) lines.push(`发送：完成 · ${result.send_ms || 0}ms`);
     if (result.image_message_id) lines.push(`消息：${result.image_message_id}`);
     if (result.image_diagnostic) lines.push(`诊断：${JSON.stringify(result.image_diagnostic, null, 2)}`);
+    if (result.selection_diagnostic) lines.push(`选择诊断：${JSON.stringify(result.selection_diagnostic, null, 2)}`);
   }
   if (result.client_delivery) lines.push(`客户端：${result.client_delivery}`);
   if (result.error) lines.push(`错误：${result.error}`);

@@ -294,6 +294,7 @@ def create_assets_router() -> APIRouter:
             user_text=user_text,
             reply_text=reply_text,
             source=channel,
+            ignore_limits=True,
         )
         sticker = None
         if intent.get("send"):
@@ -301,15 +302,18 @@ def create_assets_router() -> APIRouter:
                 str(intent.get("tag") or ""),
                 avoid_id=str(intent.get("avoid_id") or ""),
                 channel=channel,
+                allow_fallback=True,
             )
             if not sticker:
                 intent = {**intent, "send": False, "reason": "no_channel_sticker"}
+        selection = request.app.state.sticker_store.selection_diagnostics(str(intent.get("tag") or ""), channel=channel)
         diagnostics = {
             "tag": intent.get("tag") or "",
             "reason": intent.get("reason") or "",
             "score": intent.get("score"),
             "threshold": (intent.get("config") or {}).get("probability") if isinstance(intent.get("config"), dict) else None,
             "matched_fields": matched_sticker_fields(sticker, str(intent.get("tag") or "")) if sticker else [],
+            "selection": selection,
         }
         return {
             "ok": True,
