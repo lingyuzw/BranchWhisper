@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
@@ -14,6 +15,7 @@ import httpx
 
 from core.config import active_asr_api_key, active_asr_model, active_asr_provider, active_asr_provider_mode, active_asr_url, active_tts_api_key, active_tts_model, active_tts_provider, active_tts_provider_mode, active_tts_url
 from core.http_client import httpx_client_for_url
+from diagnostics.runtime import runtime_diagnostics_payload
 from service_runtime.audio_pipeline import transcribe_audio, wav_bytes_from_float32
 from service_runtime.services import check_openai_compatible_endpoint, check_service, health_url_from
 from service_runtime.tts_clients import TtsServiceNotReady, synthesize_tts_bytes, synthesize_tts_wav_bytes, tts_provider_capabilities
@@ -125,6 +127,39 @@ def create_diagnostics_router() -> APIRouter:
             },
             "issues": issues,
         }
+
+    @router.get("/api/diagnostics/runtime")
+    async def runtime_diagnostics(request: Request):
+        service_manager = request.app.state.service_manager
+        health_targets = {
+            str(service.get("health_url") or ""): service_id
+            for service_id, service in service_manager.services.items()
+            if str(service.get("health_url") or "")
+        }
+        health_results = await asyncio.gather(
+            *(check_service(service_id, url) for url, service_id in health_targets.items()),
+            return_exceptions=True,
+        )
+        health_cache: dict[str, dict] = {}
+        for (url, _service_id), result in zip(health_targets.items(), health_results):
+            if isinstance(result, Exception):
+                health_cache[url] = {"ok": False, "error": str(result)}
+            else:
+                health_cache[url] = result
+
+        def health_probe(url: str) -> tuple[bool, str]:
+            cached = health_cache.get(url)
+            if cached is None:
+                return False, "Health endpoint was not checked."
+            if cached.get("ok"):
+                return True, "Health endpoint responded."
+            return False, str(cached.get("error") or cached.get("status") or "Health endpoint is not responding.")
+
+        return runtime_diagnostics_payload(
+            {"services": service_manager.services},
+            workspace_root=PROJECT_ROOT.parent,
+            health_checker=health_probe,
+        )
 
     @router.post("/api/diagnostics/llm-api-test")
     async def llm_api_test(request: Request):

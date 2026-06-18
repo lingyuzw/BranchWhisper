@@ -5,14 +5,19 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from api.diagnostics import create_diagnostics_router
 from diagnostics.runtime import (
     RuntimeDiagnosticProfile,
     evaluate_profile,
     evaluate_profiles,
+    runtime_diagnostics_payload,
     profiles_from_service_config,
 )
 
@@ -171,6 +176,58 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(len(profiles), 1)
         self.assertEqual(profiles[0].role, "asr")
         self.assertEqual(profiles[0].port, 7010)
+
+    def test_runtime_diagnostics_payload_uses_service_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            model_dir = workspace_root / "models" / "asr"
+            model_dir.mkdir(parents=True)
+            payload = runtime_diagnostics_payload(
+                {
+                    "services": {
+                        "asr": {
+                            "label": "ASR",
+                            "command": "python server.py --model_dir ${WORKSPACE_ROOT}/models/asr --port 7010",
+                            "health_url": "http://127.0.0.1:7010/health",
+                        }
+                    }
+                },
+                workspace_root=workspace_root,
+                command_resolver=lambda command: "/usr/bin/python" if command == "python" else None,
+                port_checker=lambda port: True,
+                health_checker=lambda url: (True, "ok"),
+            )
+
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["summary"]["total"], 1)
+        self.assertEqual(payload["summary"]["ok"], 1)
+        self.assertEqual(payload["summary"]["warning"], 0)
+        self.assertEqual(payload["summary"]["error"], 0)
+        self.assertEqual(payload["items"][0]["role"], "asr")
+        self.assertEqual(payload["items"][0]["checks"][0]["kind"], "model_path")
+
+    def test_runtime_diagnostics_route_returns_profile_payload(self) -> None:
+        class ServiceManagerStub:
+            services = {
+                "asr": {
+                    "label": "ASR",
+                    "command": "python server.py --port 7099",
+                    "health_url": "http://127.0.0.1:7099/health",
+                }
+            }
+
+        app = FastAPI()
+        app.state.service_manager = ServiceManagerStub()
+        app.include_router(create_diagnostics_router())
+
+        response = TestClient(app).get("/api/diagnostics/runtime")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["summary"]["total"], 1)
+        self.assertEqual(payload["items"][0]["role"], "asr")
+        self.assertEqual(payload["items"][0]["name"], "ASR")
 
 
 if __name__ == "__main__":

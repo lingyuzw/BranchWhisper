@@ -140,6 +140,31 @@ def evaluate_profiles(
     }
 
 
+def runtime_diagnostics_payload(
+    service_config: dict,
+    *,
+    workspace_root: Path,
+    command_resolver: CommandResolver | None = None,
+    port_checker: PortChecker | None = None,
+    health_checker: HealthChecker | None = None,
+) -> dict:
+    payload = evaluate_profiles(
+        profiles_from_service_config(service_config),
+        workspace_root=workspace_root,
+        command_resolver=command_resolver,
+        port_checker=port_checker,
+        health_checker=health_checker,
+    )
+    items = payload["items"]
+    payload["summary"] = {
+        "total": len(items),
+        "ok": sum(1 for item in items if item.get("status") == "ok"),
+        "warning": sum(1 for item in items if item.get("status") == "warning"),
+        "error": sum(1 for item in items if item.get("status") == "error"),
+    }
+    return payload
+
+
 def profiles_from_service_config(config: dict) -> list[RuntimeDiagnosticProfile]:
     services = config.get("services") if isinstance(config.get("services"), dict) else config
     if not isinstance(services, dict):
