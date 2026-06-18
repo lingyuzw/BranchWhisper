@@ -37,6 +37,7 @@ configs/*.local.json
 
 # Local agent/tooling state
 .codex-run/
+.superpowers/
 .shiplight-agent-skills-last-update
 
 # OS/editor files
