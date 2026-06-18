@@ -161,6 +161,13 @@ def create_diagnostics_router() -> APIRouter:
             health_checker=health_probe,
         )
 
+    @router.get("/api/diagnostics/dialog-traces")
+    async def dialog_traces(request: Request, limit: int = 30):
+        trace_store = getattr(request.app.state, "dialog_trace_store", None)
+        if not trace_store:
+            return {"total": 0, "traces": []}
+        return trace_store.payload(limit=limit)
+
     @router.post("/api/diagnostics/llm-api-test")
     async def llm_api_test(request: Request):
         settings = request.app.state.settings

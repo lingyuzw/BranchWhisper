@@ -4,10 +4,14 @@ import sys
 import unittest
 from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from api.diagnostics import create_diagnostics_router
 from dialog.trace import DialogTraceStore
 
 
@@ -56,6 +60,22 @@ class DialogTraceStoreTests(unittest.TestCase):
         store.record("missing", "llm", "done")
 
         self.assertEqual(store.payload(limit=5), {"total": 0, "traces": []})
+
+    def test_dialog_trace_route_returns_recent_traces(self) -> None:
+        store = DialogTraceStore(max_traces=5, clock=lambda: 100.0)
+        trace_id = store.start(source="text", conversation_id="conv")
+        store.record(trace_id, "llm", "done")
+
+        app = FastAPI()
+        app.state.dialog_trace_store = store
+        app.include_router(create_diagnostics_router())
+
+        response = TestClient(app).get("/api/diagnostics/dialog-traces")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["traces"][0]["id"], trace_id)
 
 
 if __name__ == "__main__":

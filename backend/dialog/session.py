@@ -28,6 +28,7 @@ from core.config import (
 )
 from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
+from dialog.trace import DialogTraceStore
 from engagement.proactive import FollowupPolicy
 from media.assets import ChatImageStore, StickerStore
 from media.sticker_policy import StickerPolicy
@@ -109,6 +110,7 @@ class DialogSession:
         chat_image_store: ChatImageStore,
         sticker_store: StickerStore,
         sticker_policy: StickerPolicy,
+        trace_store: DialogTraceStore | None,
         conversation_id: str | None,
     ):
         self.websocket = websocket
@@ -122,6 +124,7 @@ class DialogSession:
         self.chat_image_store = chat_image_store
         self.sticker_store = sticker_store
         self.sticker_policy = sticker_policy
+        self.trace_store = trace_store
         self.conversation = conversation_store.load(conversation_id) if conversation_id else None
         if not self.conversation:
             self.conversation = self.draft_conversation()
@@ -167,7 +170,10 @@ class DialogSession:
             task.result()
 
     def begin_trace(self, source: str) -> str:
-        trace_id = f"{int(time.time() * 1000):x}-{uuid.uuid4().hex[:6]}"
+        if self.trace_store:
+            trace_id = self.trace_store.start(source=source, conversation_id=str(self.conversation.get("id") or ""))
+        else:
+            trace_id = f"{int(time.time() * 1000):x}-{uuid.uuid4().hex[:6]}"
         self.current_trace_id = trace_id
         self.trace_log(trace_id, f"start source={source} conversation={self.conversation.get('id')}")
         return trace_id
@@ -176,12 +182,17 @@ class DialogSession:
         if not trace_id:
             return
         safe_message = " ".join(str(message).split())
+        if self.trace_store:
+            stage = safe_message.split(":", 1)[0] if ":" in safe_message else "dialog"
+            self.trace_store.record(trace_id, stage, safe_message)
         print(f"[dialog:{trace_id}] {safe_message}", flush=True)
 
     def finish_trace(self, trace_id: str, status: str = "done") -> None:
         if not trace_id:
             return
         self.trace_log(trace_id, f"finish status={status}")
+        if self.trace_store:
+            self.trace_store.finish(trace_id, status)
         if self.current_trace_id == trace_id:
             self.current_trace_id = ""
 

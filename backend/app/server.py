@@ -76,6 +76,7 @@ from core.config import (
 )
 from data.conversations import ConversationStore
 from dialog.session import DialogSession
+from dialog.trace import DialogTraceStore
 from integration_runtime.manager import ExternalDialogEngine, IntegrationManager
 from media.assets import ChatImageStore, StickerStore
 from media.sticker_library import StickerLibrary
@@ -433,6 +434,7 @@ def create_app(args) -> FastAPI:
     app.state.server_port = args.port
     app.state.settings = load_persisted_settings(SessionSettings.from_args(args), SETTINGS_CONFIG)
     enable_default_capabilities(app.state.settings)
+    app.state.dialog_trace_store = DialogTraceStore()
     app.state.vad_store = VadModelStore(args.vad_device)
     service_config_path = Path(args.service_config) if args.service_config else SERVICE_PROFILES_CONFIG
     app.state.service_manager = ServiceManager(service_config_path, LOG_DIR)
@@ -571,6 +573,7 @@ def create_app(args) -> FastAPI:
             app.state.chat_image_store,
             app.state.sticker_store,
             app.state.sticker_policy,
+            app.state.dialog_trace_store,
             websocket.query_params.get("conversation_id"),
         )
         await session.run()
