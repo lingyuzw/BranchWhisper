@@ -6,6 +6,13 @@ from typing import Any
 BUSINESS_RESPONSE_KEYS = ("ret", "errcode", "error_code", "errmsg", "err_msg", "message", "msg")
 
 
+def select_recent_weixin_target(targets: list[dict[str, Any]], sender_id: str = "", account_id: str = "") -> dict[str, Any] | None:
+    for item in targets:
+        if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
+            return item
+    return targets[0] if targets else None
+
+
 def weixin_business_error(data: object, stage: str) -> dict[str, Any] | None:
     if not isinstance(data, dict):
         return None

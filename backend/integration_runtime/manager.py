@@ -43,7 +43,7 @@ from integration_runtime.weixin_media import (
     send_weixin_image,
     send_weixin_voice,
 )
-from integration_runtime.weixin_protocol import weixin_business_error
+from integration_runtime.weixin_protocol import select_recent_weixin_target, weixin_business_error
 from media.assets import StickerStore
 from media.sticker_directives import extract_sticker_directives
 from media.sticker_vision import ChatImageAnalyzer
@@ -544,14 +544,10 @@ class IntegrationManager:
         sender_id = sender_id or str(my_session.get("sender_id") or "")
         account_id = account_id or str(my_session.get("account_id") or "")
         targets = self.recent_weixin_targets(integration_id)
-        for item in targets:
-            if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
-                self._sync_my_weixin_session_from_target(integration_id, item)
-                return item
-        if targets:
-            self._sync_my_weixin_session_from_target(integration_id, targets[0])
-            return targets[0]
-        return None
+        target = select_recent_weixin_target(targets, sender_id=sender_id, account_id=account_id)
+        if target:
+            self._sync_my_weixin_session_from_target(integration_id, target)
+        return target
 
     async def send_weixin_text(self, integration_id: str, text: str, sender_id: str = "", account_id: str = "") -> dict:
         integration = self.require_integration(integration_id)

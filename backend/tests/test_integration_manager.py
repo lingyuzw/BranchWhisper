@@ -16,7 +16,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import integration_runtime.manager as manager_module
 from integration_runtime.manager import IntegrationManager
-from integration_runtime.weixin_protocol import weixin_business_error
+from integration_runtime.weixin_protocol import select_recent_weixin_target, weixin_business_error
 
 
 class IntegrationManagerProcessEnvTests(unittest.TestCase):
@@ -44,6 +44,20 @@ class IntegrationManagerProcessEnvTests(unittest.TestCase):
 
 
 class IntegrationManagerWeixinSessionTests(unittest.TestCase):
+    def test_select_recent_weixin_target_prefers_requested_sender_and_account(self) -> None:
+        targets = [
+            {"account_id": "account-a", "sender_id": "sender-1", "context_token": "token-1"},
+            {"account_id": "account-b", "sender_id": "sender-2", "context_token": "token-2"},
+        ]
+
+        selected = select_recent_weixin_target(targets, sender_id="sender-2", account_id="account-b")
+        fallback = select_recent_weixin_target(targets, sender_id="missing", account_id="account-b")
+        empty = select_recent_weixin_target([], sender_id="sender-2", account_id="account-b")
+
+        self.assertEqual(targets[1], selected)
+        self.assertEqual(targets[0], fallback)
+        self.assertIsNone(empty)
+
     def test_weixin_business_error_reports_ret_failure_without_manager_state(self) -> None:
         result = weixin_business_error({"ret": -2, "errmsg": "bad context"}, "sendmessage")
 
