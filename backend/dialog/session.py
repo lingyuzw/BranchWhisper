@@ -16,12 +16,16 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from core.config import (
     SessionSettings,
+    active_asr_model,
+    active_asr_provider,
     active_dialog_mode,
     active_history_turns,
     active_llm_model,
     active_llm_url,
     active_max_tokens,
     active_temperature,
+    active_tts_model,
+    active_tts_provider,
     llm_headers,
     memory_mode,
     public_settings,
@@ -178,6 +182,25 @@ class DialogSession:
         if self.current_trace_id == trace_id:
             self.current_trace_id = ""
 
+    def trace_profile_context(self, role: str) -> dict[str, str]:
+        role = str(role or "").strip().lower()
+        if role == "asr":
+            return {
+                "profile_role": "asr",
+                "profile_name": f"{active_asr_provider(self.settings)}:{active_asr_model(self.settings)}",
+            }
+        if role == "llm":
+            return {
+                "profile_role": "llm",
+                "profile_name": f"{active_dialog_mode(self.settings)}:{active_llm_model(self.settings)}",
+            }
+        if role == "tts":
+            return {
+                "profile_role": "tts",
+                "profile_name": f"{active_tts_provider(self.settings)}:{active_tts_model(self.settings)}",
+            }
+        return {"profile_role": "", "profile_name": ""}
+
     async def handle_text_message(self, raw: str) -> None:
         try:
             data = json.loads(raw)
@@ -307,6 +330,7 @@ class DialogSession:
         # because Qwen3-ASR service endpoints expect file-like audio input.
         self.processing = True
         dialog_started = False
+        failure_reason = ""
         trace_id = self.begin_trace("voice")
         await self.send_event("trace", trace_id=trace_id, source="voice")
         try:
@@ -323,13 +347,24 @@ class DialogSession:
                 dialog_started = True
                 await self.process_user_text(user_text, source="voice", trace_id=trace_id)
         except Exception as exc:
-            self.trace_log(trace_id, f"asr:error {exc}")
+            failure_reason = str(exc)
+            self.trace_log(
+                trace_id,
+                f"asr:error {exc}",
+                status="error",
+                failure_reason=failure_reason,
+                **self.trace_profile_context("asr"),
+            )
             await self.send_event("error", message=f"ASR failed: {exc}")
         finally:
             self.processing = False
             if not dialog_started:
                 await self.send_event("turn_done")
-                self.finish_trace(trace_id, "asr_empty_or_failed")
+                self.finish_trace(
+                    trace_id,
+                    "failed" if failure_reason else "asr_empty_or_failed",
+                    failure_reason=failure_reason,
+                )
 
     async def process_user_text(
         self,
@@ -349,6 +384,8 @@ class DialogSession:
 
         old_processing = self.processing
         self.processing = True
+        failed_status = ""
+        failure_reason = ""
         user_attachments = await self.prepare_user_attachments(attachments or [])
         request_user_text = self.compose_user_request_text(user_text, user_attachments)
         await self.send_event("user", text=user_text, source=source, attachments=user_attachments)
@@ -427,6 +464,17 @@ class DialogSession:
                 self.trace_log(trace_id, "llm:start")
                 full_answer = await self.stream_llm(request_messages, text_queue)
                 self.trace_log(trace_id, f"llm:done answer_len={len(full_answer)}")
+            except Exception as exc:
+                failed_status = "failed"
+                failure_reason = str(exc)
+                self.trace_log(
+                    trace_id,
+                    f"llm:error {exc}",
+                    status="error",
+                    failure_reason=failure_reason,
+                    **self.trace_profile_context("llm"),
+                )
+                raise
             finally:
                 await text_queue.put(END)
                 try:
@@ -455,13 +503,16 @@ class DialogSession:
                 self.run_background(self.maybe_compact_conversation(self.conversation.get("id") or ""), "context_compaction")
             self.trim_history()
         except Exception as exc:
-            self.trace_log(trace_id, f"dialog:error {exc}")
+            if not failure_reason:
+                failed_status = "failed"
+                failure_reason = str(exc)
+            self.trace_log(trace_id, f"dialog:error {exc}", status="error", failure_reason=failure_reason)
             await self.send_event("error", message=f"Dialog failed: {exc}")
         finally:
             self.pending_sticker_tags = []
             self.processing = old_processing
             await self.send_event("turn_done")
-            self.finish_trace(trace_id)
+            self.finish_trace(trace_id, failed_status or "done", failure_reason=failure_reason)
 
     async def prepare_user_attachments(self, attachments: list[dict]) -> list[dict]:
         prepared: list[dict] = []
@@ -1039,11 +1090,23 @@ class DialogSession:
                     await self.send_audio(tail)
 
             except TtsServiceNotReady as exc:
-                self.trace_log(self.current_trace_id, f"tts:not_ready status={exc.status or '-'} error={exc}")
+                self.trace_log(
+                    self.current_trace_id,
+                    f"tts:not_ready status={exc.status or '-'} error={exc}",
+                    status="error",
+                    failure_reason=str(exc),
+                    **self.trace_profile_context("tts"),
+                )
                 await self.send_event("status", stage="tts", label="loading")
                 await self.send_event("error", message=str(exc))
             except httpx.ConnectError as exc:
-                self.trace_log(self.current_trace_id, f"tts:connect_error {exc}")
+                self.trace_log(
+                    self.current_trace_id,
+                    f"tts:connect_error {exc}",
+                    status="error",
+                    failure_reason=str(exc),
+                    **self.trace_profile_context("tts"),
+                )
                 await self.send_event(
                     "error",
                     message=(
@@ -1053,7 +1116,13 @@ class DialogSession:
                     ),
                 )
             except httpx.HTTPStatusError as exc:
-                self.trace_log(self.current_trace_id, f"tts:http_error status={exc.response.status_code}")
+                self.trace_log(
+                    self.current_trace_id,
+                    f"tts:http_error status={exc.response.status_code}",
+                    status="error",
+                    failure_reason=str(exc),
+                    **self.trace_profile_context("tts"),
+                )
                 detail = ""
                 with contextlib.suppress(Exception):
                     detail_data = exc.response.json()
@@ -1066,7 +1135,13 @@ class DialogSession:
                     message=f"TTS 返回 HTTP {exc.response.status_code}：请查看服务日志或 API 配置。",
                 )
             except httpx.HTTPError as exc:
-                self.trace_log(self.current_trace_id, f"tts:http_error {exc}")
+                self.trace_log(
+                    self.current_trace_id,
+                    f"tts:http_error {exc}",
+                    status="error",
+                    failure_reason=str(exc),
+                    **self.trace_profile_context("tts"),
+                )
                 await self.send_event("error", message=f"TTS 请求失败：{exc}")
             finally:
                 self.trace_log(self.current_trace_id, "tts:finish")
