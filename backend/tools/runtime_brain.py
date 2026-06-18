@@ -18,13 +18,12 @@ import httpx
 
 from core.http_client import httpx_client_for_url
 from core.tool_config import DEFAULT_TOOL_PROVIDER_CONFIG, deep_merge
+from memory.utils import SECONDS_PER_DAY, MEMORY_MODES, clamp, days_since, normalize_memory_mode, safe_float
 
 
-SECONDS_PER_DAY = 86400
 MEMORY_LAYERS = {"short", "mid", "long"}
 TOOL_DEFAULTS_VERSION = 2
 MEMORY_ADMISSION_DEFAULT_MIN_IMPORTANCE = 0.55
-MEMORY_MODES = {"local", "api"}
 
 MEMORY_STABLE_HINTS = (
     "我叫", "我的名字", "叫我", "我是", "我的身份", "我住", "现居", "来自",
@@ -74,23 +73,6 @@ def ts_to_text(value: float | int | None) -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(value)))
 
 
-def days_since(timestamp: float | int | None, now: float | None = None) -> float:
-    if not timestamp:
-        return 999999.0
-    return max(0.0, ((now or now_ts()) - float(timestamp)) / SECONDS_PER_DAY)
-
-
-def clamp(value: float, low: float, high: float) -> float:
-    return max(low, min(high, value))
-
-
-def safe_float(value: Any, default: float = 0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
 def compact_text(text: str, limit: int = 280) -> str:
     text = re.sub(r"\s+", " ", str(text or "")).strip()
     if len(text) <= limit:
@@ -101,11 +83,6 @@ def compact_text(text: str, limit: int = 280) -> str:
 def normalize_key(text: str) -> str:
     text = re.sub(r"\s+", "", str(text or "").lower())
     return text[:160]
-
-
-def normalize_memory_mode(mode: str | None = None, settings: Any | None = None) -> str:
-    value = str(mode or getattr(settings, "dialog_mode", "local") or "local").strip().lower()
-    return value if value in MEMORY_MODES else "local"
 
 
 def scoped_key_norm(mode: str, key_norm: str) -> str:
