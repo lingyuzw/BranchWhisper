@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from shutil import which
@@ -139,6 +140,37 @@ def evaluate_profiles(
     }
 
 
+def profiles_from_service_config(config: dict) -> list[RuntimeDiagnosticProfile]:
+    services = config.get("services") if isinstance(config.get("services"), dict) else config
+    if not isinstance(services, dict):
+        return []
+
+    profiles: list[RuntimeDiagnosticProfile] = []
+    for role, service in services.items():
+        if not isinstance(service, dict):
+            continue
+        command = str(service.get("command") or "")
+        health_url = str(service.get("health_url") or "")
+        profiles.append(
+            RuntimeDiagnosticProfile(
+                role=str(role),
+                name=str(service.get("label") or role),
+                provider=str(service.get("provider") or role),
+                model_path=str(service.get("model_path") or _model_path_from_command(command) or ""),
+                command=command,
+                cwd=str(service.get("cwd") or ""),
+                port=_port_from_service(service, command, health_url),
+                health_url=health_url,
+                required_bins=_required_bins_from_command(command),
+                required_files=tuple(str(item) for item in service.get("required_files") or ()),
+                optional_bins=tuple(str(item) for item in service.get("optional_bins") or ()),
+                capabilities=tuple(str(item) for item in service.get("capabilities") or ()),
+                env={str(key): str(value) for key, value in (service.get("env") or {}).items()} if isinstance(service.get("env"), dict) else {},
+            )
+        )
+    return profiles
+
+
 def is_port_available(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.25)
@@ -150,6 +182,75 @@ def default_health_checker(url: str) -> tuple[bool, str]:
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return False, "invalid health URL"
     return False, "health probe is not configured in this checker"
+
+
+def _required_bins_from_command(command: str) -> tuple[str, ...]:
+    tokens = _split_command(command)
+    if not tokens:
+        return ()
+    first = tokens[0]
+    if first == "env":
+        for token in tokens[1:]:
+            if "=" in token and not token.startswith("-"):
+                continue
+            return (Path(token).name,)
+        return ()
+    return (Path(first).name,)
+
+
+def _port_from_service(service: dict, command: str, health_url: str) -> int | None:
+    explicit = service.get("port")
+    if explicit not in (None, ""):
+        try:
+            return int(explicit)
+        except (TypeError, ValueError):
+            pass
+    parsed = urlsplit(health_url)
+    if parsed.port:
+        return parsed.port
+    tokens = _split_command(command)
+    for index, token in enumerate(tokens):
+        if token in {"--port", "-p"} and index + 1 < len(tokens):
+            try:
+                return int(tokens[index + 1])
+            except ValueError:
+                return None
+        if token.startswith("--port="):
+            try:
+                return int(token.split("=", 1)[1])
+            except ValueError:
+                return None
+    return None
+
+
+def _model_path_from_command(command: str) -> str:
+    tokens = _split_command(command)
+    for index, token in enumerate(tokens):
+        if token in {"--model", "--model-path", "--model_path", "--model-dir", "--model_dir", "-m"} and index + 1 < len(tokens):
+            return tokens[index + 1]
+    for token in tokens:
+        if _looks_like_model_path(token):
+            return token
+    return ""
+
+
+def _looks_like_model_path(token: str) -> bool:
+    if token.startswith("-") or "=" in token:
+        return False
+    lowered = token.lower()
+    return (
+        "${workspace_root}" in lowered
+        or lowered.endswith((".gguf", ".safetensors", ".bin", ".pt", ".pth"))
+        or "/model" in lowered
+        or lowered.endswith("-model")
+    )
+
+
+def _split_command(command: str) -> list[str]:
+    try:
+        return shlex.split(command)
+    except ValueError:
+        return command.split()
 
 
 def _check_model_path(raw_path: str, workspace_root: Path) -> RuntimeDiagnosticCheck:

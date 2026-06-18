@@ -13,6 +13,7 @@ from diagnostics.runtime import (
     RuntimeDiagnosticProfile,
     evaluate_profile,
     evaluate_profiles,
+    profiles_from_service_config,
 )
 
 
@@ -118,6 +119,58 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual([item["role"] for item in payload["items"]], ["asr", "tts"])
         self.assertEqual(payload["items"][0]["status"], "ok")
         self.assertEqual(payload["items"][1]["status"], "error")
+
+    def test_profiles_from_service_config_adapts_existing_service_shape(self) -> None:
+        config = {
+            "services": {
+                "asr": {
+                    "label": "Local ASR",
+                    "cwd": "${WORKSPACE_ROOT}",
+                    "command": "conda run -n qwen3-asr qwen-asr-serve ${WORKSPACE_ROOT}/models/asr --port 8001",
+                    "health_url": "http://127.0.0.1:8001/health",
+                },
+                "llm": {
+                    "label": "Local LLM",
+                    "provider": "custom-llm",
+                    "cwd": "${WORKSPACE_ROOT}/llama.cpp",
+                    "command": "./llama-server -m ./model.gguf --port 8080",
+                    "health_url": "http://127.0.0.1:8080/health",
+                },
+                "tts": {
+                    "label": "Local TTS",
+                    "command": "python server.py --model_dir ${WORKSPACE_ROOT}/tts-model --port 50000",
+                    "health_url": "http://127.0.0.1:50000/health",
+                },
+            }
+        }
+
+        profiles = profiles_from_service_config(config)
+
+        self.assertEqual([profile.role for profile in profiles], ["asr", "llm", "tts"])
+        self.assertEqual(profiles[0].name, "Local ASR")
+        self.assertEqual(profiles[0].provider, "asr")
+        self.assertEqual(profiles[0].cwd, "${WORKSPACE_ROOT}")
+        self.assertEqual(profiles[0].port, 8001)
+        self.assertEqual(profiles[0].health_url, "http://127.0.0.1:8001/health")
+        self.assertEqual(profiles[0].model_path, "${WORKSPACE_ROOT}/models/asr")
+        self.assertEqual(profiles[0].required_bins, ("conda",))
+        self.assertEqual(profiles[1].provider, "custom-llm")
+        self.assertEqual(profiles[1].model_path, "./model.gguf")
+        self.assertEqual(profiles[2].required_bins, ("python",))
+
+    def test_profiles_from_service_config_accepts_plain_services_mapping(self) -> None:
+        profiles = profiles_from_service_config(
+            {
+                "asr": {
+                    "label": "ASR",
+                    "command": "python -m server --host 0.0.0.0 --port 7010",
+                }
+            }
+        )
+
+        self.assertEqual(len(profiles), 1)
+        self.assertEqual(profiles[0].role, "asr")
+        self.assertEqual(profiles[0].port, 7010)
 
 
 if __name__ == "__main__":
