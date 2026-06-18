@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, Bot, Brain, Library, MessagesSquare, Settings2 } from "@lucide/vue";
+import { Activity, Bot, Brain, Library, MessagesSquare, Settings2, Stethoscope } from "@lucide/vue";
 import { onBeforeUnmount, onMounted, watch, watchEffect } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
 import FeedbackLayer from "@/components/layout/FeedbackLayer.vue";
@@ -13,6 +13,7 @@ const route = useRoute();
 const navItems = [
   { to: "/", label: "对话", icon: MessagesSquare },
   { to: "/services", label: "服务", icon: Activity },
+  { to: "/diagnostics", label: "诊断", icon: Stethoscope },
   { to: "/integrations", label: "接入", icon: Bot },
   { to: "/memory", label: "记忆", icon: Brain },
   { to: "/assets", label: "素材库", icon: Library },
