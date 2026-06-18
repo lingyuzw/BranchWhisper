@@ -16,6 +16,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import integration_runtime.manager as manager_module
 from integration_runtime.manager import IntegrationManager
+from integration_runtime.weixin_protocol import weixin_business_error
 
 
 class IntegrationManagerProcessEnvTests(unittest.TestCase):
@@ -43,6 +44,17 @@ class IntegrationManagerProcessEnvTests(unittest.TestCase):
 
 
 class IntegrationManagerWeixinSessionTests(unittest.TestCase):
+    def test_weixin_business_error_reports_ret_failure_without_manager_state(self) -> None:
+        result = weixin_business_error({"ret": -2, "errmsg": "bad context"}, "sendmessage")
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertFalse(result["ok"])
+        self.assertEqual("sendmessage", result["stage"])
+        self.assertEqual({"ret": -2, "errmsg": "bad context"}, result["business_response"])
+        self.assertIn("ret=-2", result["error"])
+        self.assertIn("刷新会话 context_token", result["error"])
+
     def test_bound_session_uses_fresh_openclaw_context_file_for_reachability(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, patch.dict(
             os.environ,
