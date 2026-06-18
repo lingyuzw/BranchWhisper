@@ -344,11 +344,11 @@ async def run_asr_api_probe(settings) -> dict:
     model = active_asr_model(settings)
     api_key = active_asr_api_key(settings)
     if provider_mode == "api" and not api_key:
-        return audio_probe_result(False, "asr", provider, url, model, False, "ASR API Key 未配置")
+        return audio_probe_result(False, "asr", settings, provider, url, model, False, "ASR API Key 未配置")
     if not url:
-        return audio_probe_result(False, "asr", provider, url, model, bool(api_key), "ASR API URL 未配置")
+        return audio_probe_result(False, "asr", settings, provider, url, model, bool(api_key), "ASR API URL 未配置")
     if not model:
-        return audio_probe_result(False, "asr", provider, url, model, bool(api_key), "ASR API 模型未配置")
+        return audio_probe_result(False, "asr", settings, provider, url, model, bool(api_key), "ASR API 模型未配置")
 
     started = time.perf_counter()
     try:
@@ -357,6 +357,7 @@ async def run_asr_api_probe(settings) -> dict:
         return audio_probe_result(
             True,
             "asr",
+            settings,
             provider,
             url,
             model,
@@ -369,6 +370,7 @@ async def run_asr_api_probe(settings) -> dict:
         return audio_probe_result(
             False,
             "asr",
+            settings,
             provider,
             url,
             model,
@@ -385,11 +387,11 @@ async def run_tts_api_probe(settings) -> dict:
     model = active_tts_model(settings)
     api_key = active_tts_api_key(settings)
     if provider_mode == "api" and not api_key:
-        return audio_probe_result(False, "tts", provider, url, model, False, "TTS API Key 未配置", capabilities=tts_provider_capabilities(provider))
+        return audio_probe_result(False, "tts", settings, provider, url, model, False, "TTS API Key 未配置", capabilities=tts_provider_capabilities(provider))
     if not url:
-        return audio_probe_result(False, "tts", provider, url, model, bool(api_key), "TTS API URL 未配置", capabilities=tts_provider_capabilities(provider))
+        return audio_probe_result(False, "tts", settings, provider, url, model, bool(api_key), "TTS API URL 未配置", capabilities=tts_provider_capabilities(provider))
     if not model:
-        return audio_probe_result(False, "tts", provider, url, model, bool(api_key), "TTS API 模型未配置", capabilities=tts_provider_capabilities(provider))
+        return audio_probe_result(False, "tts", settings, provider, url, model, bool(api_key), "TTS API 模型未配置", capabilities=tts_provider_capabilities(provider))
 
     started = time.perf_counter()
     try:
@@ -398,6 +400,7 @@ async def run_tts_api_probe(settings) -> dict:
         return audio_probe_result(
             ok,
             "tts",
+            settings,
             provider,
             url,
             model,
@@ -411,6 +414,7 @@ async def run_tts_api_probe(settings) -> dict:
         return audio_probe_result(
             False,
             "tts",
+            settings,
             provider,
             url,
             model,
@@ -424,6 +428,7 @@ async def run_tts_api_probe(settings) -> dict:
         return audio_probe_result(
             False,
             "tts",
+            settings,
             provider,
             url,
             model,
@@ -437,6 +442,7 @@ async def run_tts_api_probe(settings) -> dict:
 def audio_probe_result(
     ok: bool,
     kind: str,
+    settings,
     provider: str,
     url: str,
     model: str,
@@ -448,9 +454,14 @@ def audio_probe_result(
     capabilities=None,
 ) -> dict:
     label = "ASR" if kind == "asr" else "TTS"
+    provider_mode = active_asr_provider_mode(settings) if kind == "asr" else active_tts_provider_mode(settings)
+    configured = audio_config_snapshot(settings, kind)
+    effective = configured["api"] if provider_mode == "api" else configured["local"]
+    hint = audio_probe_hint(kind, provider_mode, error, configured)
     return {
         "ok": ok,
         "kind": kind,
+        "provider_mode": provider_mode,
         "provider": provider,
         "url": url,
         "model": model,
@@ -458,9 +469,68 @@ def audio_probe_result(
         "latency_ms": latency_ms,
         "error": "" if ok else error,
         "message": f"{label} 调用正常" if ok else f"{label} 调用失败：{error or '未知错误'}",
+        "hint": "" if ok else hint,
+        "effective": effective,
+        "configured": configured,
         "response": response or {},
         "capabilities": capabilities or {},
     }
+
+
+def audio_config_snapshot(settings, kind: str) -> dict:
+    if kind == "asr":
+        return {
+            "local": {
+                "provider": "local",
+                "url": str(getattr(settings, "asr_url", "") or ""),
+                "model": str(getattr(settings, "asr_model", "") or ""),
+                "api_key_set": False,
+            },
+            "api": {
+                "provider": str(getattr(settings, "api_asr_provider", "") or "openai"),
+                "url": str(getattr(settings, "api_asr_url", "") or ""),
+                "model": str(getattr(settings, "api_asr_model", "") or ""),
+                "api_key_set": bool(str(getattr(settings, "api_asr_api_key", "") or "").strip()),
+            },
+        }
+    return {
+        "local": {
+            "provider": "local",
+            "url": str(getattr(settings, "tts_url", "") or ""),
+            "model": str(getattr(settings, "tts_model", "") or ""),
+            "api_key_set": False,
+        },
+        "api": {
+            "provider": str(getattr(settings, "api_tts_provider", "") or "openai"),
+            "url": str(getattr(settings, "api_tts_url", "") or ""),
+            "model": str(getattr(settings, "api_tts_model", "") or ""),
+            "api_key_set": bool(str(getattr(settings, "api_tts_api_key", "") or "").strip()),
+        },
+    }
+
+
+def audio_probe_hint(kind: str, provider_mode: str, error: str, configured: dict) -> str:
+    label = "ASR" if kind == "asr" else "TTS"
+    local = configured.get("local") or {}
+    api = configured.get("api") or {}
+    error_text = str(error or "")
+    lower = error_text.lower()
+    if provider_mode == "local":
+        if api.get("url") or api.get("model") or api.get("api_key_set"):
+            return (
+                f"当前实际使用本地 {label}：{local.get('url') or '未配置'}。"
+                f"如果你想调用已填写的 {api.get('provider') or 'API'} 配置，请先切换到 API 模式并保存。"
+            )
+        return f"当前实际使用本地 {label}，请确认本地服务已启动且健康检查通过。"
+    if "api key" in lower or "key 未配置" in error_text:
+        return f"当前实际使用 API {label}：{api.get('provider') or '未选择'} / {api.get('model') or '未配置模型'}，请填写并保存 API Key。"
+    if "all connection attempts failed" in lower or "connecterror" in lower:
+        return f"当前实际使用 API {label}：{api.get('url') or '未配置 URL'}，连接失败。请检查 URL、网络代理和服务商可用性。"
+    if "url 未配置" in error_text:
+        return f"当前实际使用 API {label}，但 URL 未配置。请选择预设或填写接口地址。"
+    if "模型未配置" in error_text:
+        return f"当前实际使用 API {label}，但模型未配置。请选择预设或填写模型名。"
+    return f"当前实际使用 API {label}：{api.get('provider') or '--'} / {api.get('model') or '--'}，请根据错误详情检查服务商配置。"
 
 
 def local_model_result(name: str, health_url: str, health: dict) -> dict:

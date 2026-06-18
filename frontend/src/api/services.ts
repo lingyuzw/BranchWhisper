@@ -28,6 +28,12 @@ export interface ServiceSummary {
   log_file?: string;
   health?: Record<string, any> | string | null;
   warmup?: Record<string, any> | null;
+  status_layers?: {
+    process_state?: string;
+    port_state?: string;
+    health_state?: string;
+    runtime_state?: string;
+  };
 }
 
 export interface ServicesResponse {

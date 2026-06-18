@@ -17,6 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const runtimeState = computed(() => props.pending || props.service.state || props.service.status || (props.service.running ? "running" : "stopped"));
+const statusLayers = computed(() => props.service.status_layers || {});
 const healthPayload = computed(() => {
   const health = props.service.health;
   if (!health || typeof health !== "object") return {};
@@ -66,12 +67,37 @@ const warmupLabel = computed(() => {
 
 const healthLabel = computed(() => {
   const health = props.service.health;
+  if (statusLayers.value.health_state === "loading") return "加载中";
+  if (statusLayers.value.health_state === "healthy") return "健康";
+  if (statusLayers.value.health_state === "unsupported") return "降级";
+  if (statusLayers.value.health_state === "unreachable") return "不可达";
+  if (statusLayers.value.health_state === "unhealthy") return "异常";
   if (isDegraded.value) return "降级";
   if (!health) return props.service.port_open ? "端口可达" : "--";
   if (typeof health === "string") return health;
   if (health.ok) return healthPayload.value?.ready === false ? "未就绪" : "健康";
   if (health.status) return `HTTP ${health.status}`;
   return "不可用";
+});
+
+const processLabel = computed(() => {
+  const value = String(statusLayers.value.process_state || "");
+  return {
+    tracked: "托管",
+    external: "外部",
+    running: "运行",
+    exited: "退出",
+    stopped: "停止",
+  }[value] || value || (props.service.running ? "运行" : "停止");
+});
+
+const portLabel = computed(() => {
+  const value = String(statusLayers.value.port_state || "");
+  return {
+    open: "已开",
+    waiting: "等待",
+    closed: "关闭",
+  }[value] || value || (props.service.port_open ? "已开" : "关闭");
 });
 
 const servicePort = computed(() => {
@@ -120,11 +146,11 @@ const advice = computed(() => {
     </div>
     <div class="service-meta">
       <span class="meta-cell" :class="{ good: isReady && !isDegraded, loading: isLoading, degraded: isDegraded, failed: isFailed }"><span>状态</span><strong>{{ stateLabel }}</strong></span>
-      <span class="meta-cell"><span>PID</span><strong>{{ service.external ? "external" : service.pid || "--" }}</strong></span>
-      <span class="meta-cell"><span>端口</span><strong>{{ servicePort }}</strong></span>
+      <span class="meta-cell"><span>进程</span><strong>{{ processLabel }}</strong></span>
+      <span class="meta-cell"><span>端口</span><strong>{{ servicePort }} · {{ portLabel }}</strong></span>
       <span class="meta-cell" :class="{ good: healthLabel === '健康', degraded: isDegraded, failed: isFailed }"><span>健康</span><strong>{{ healthLabel }}</strong></span>
       <span class="meta-cell" :class="{ good: warmupLabel === '完成', loading: ['预热中', '排队', '加载中'].includes(warmupLabel), failed: warmupLabel === '失败' }"><span>预热</span><strong>{{ warmupLabel }}</strong></span>
-      <span class="meta-cell muted"><span>等待</span><strong>{{ service.startup_wait_sec ?? 0 }}s</strong></span>
+      <span class="meta-cell muted"><span>PID</span><strong>{{ service.external ? "external" : service.pid || "--" }}</strong></span>
     </div>
     <div class="service-advice" :class="{ failed: isFailed, loading: isLoading }">{{ advice }}</div>
     <div class="service-actions">

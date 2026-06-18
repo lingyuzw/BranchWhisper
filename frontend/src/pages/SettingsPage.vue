@@ -33,6 +33,8 @@ import { runAsrApiDiagnostic, runLlmApiDiagnostic, runLocalModelsDiagnostic, run
 import { useAppStore } from "@/stores/app";
 import { listModelFiles, uploadVoiceSample, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
+import AsrProviderPanel from "@/components/settings/AsrProviderPanel.vue";
+import TtsProviderPanel from "@/components/settings/TtsProviderPanel.vue";
 import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
 import { useEngagementStore } from "@/stores/engagement";
@@ -51,7 +53,6 @@ const ui = useUiStore();
 const form = reactive<Partial<PublicConfig>>({});
 const userAvatarInput = ref<HTMLInputElement | null>(null);
 const assistantAvatarInput = ref<HTMLInputElement | null>(null);
-const voiceSampleInput = ref<HTMLInputElement | null>(null);
 const theme = ref<"dark" | "light">("dark");
 const modelFileModalOpen = ref(false);
 const modelFileRoot = ref("");
@@ -559,14 +560,12 @@ function onApiPresetChange(event: Event) {
   if (preset) applyApiModelPreset(preset, true);
 }
 
-function onAsrPresetChange(event: Event) {
-  const id = (event.target as HTMLSelectElement).value;
+function onAsrPresetChange(id: string) {
   const preset = ASR_API_PRESETS.find((item) => item.id === id);
   if (preset) applyAsrPreset(preset);
 }
 
-function onTtsPresetChange(event: Event) {
-  const id = (event.target as HTMLSelectElement).value;
+function onTtsPresetChange(id: string) {
   const preset = TTS_API_PRESETS.find((item) => item.id === id);
   if (preset) applyTtsPreset(preset);
 }
@@ -718,6 +717,15 @@ function formatProbeDetail(value: unknown) {
   }
 }
 
+function describeAudioDiagnostic(result: { provider_mode?: string; provider?: string; model?: string; url?: string; latency_ms?: number | null; hint?: string; error?: string; message?: string }, label: string) {
+  const mode = result.provider_mode === "api" ? "API" : "本地";
+  const provider = result.provider || (mode === "API" ? "未选择服务商" : "local");
+  const model = result.model || "未配置模型";
+  const latency = result.latency_ms === null || result.latency_ms === undefined ? "" : ` · ${result.latency_ms}ms`;
+  if (!result.error && !result.hint) return `${label} 正常 · 实际生效：${mode} / ${provider} / ${model}${latency}`;
+  return result.hint || result.error || result.message || `${label} 调用失败`;
+}
+
 async function copyProbeDetail(key: keyof typeof probeState) {
   const detail = probeState[key]?.detail || "";
   if (!detail.trim()) {
@@ -748,7 +756,7 @@ async function runSettingsProbe(kind: keyof typeof probeState) {
       const result = await runAsrApiDiagnostic();
       probeState[kind] = {
         status: result.ok ? "ok" : "failed",
-        text: result.ok ? `ASR 正常 · ${result.latency_ms ?? "--"}ms` : result.error || result.message || "调用失败",
+        text: describeAudioDiagnostic(result, "ASR"),
         detail: formatProbeDetail(result),
       };
       return;
@@ -758,7 +766,7 @@ async function runSettingsProbe(kind: keyof typeof probeState) {
       const bytes = (result.response as { audio_bytes?: number } | undefined)?.audio_bytes;
       probeState[kind] = {
         status: result.ok ? "ok" : "failed",
-        text: result.ok ? `TTS 正常 · ${bytes ?? "--"} bytes` : result.error || result.message || "调用失败",
+        text: result.ok ? `${describeAudioDiagnostic(result, "TTS")} · ${bytes ?? "--"} bytes` : describeAudioDiagnostic(result, "TTS"),
         detail: formatProbeDetail(result),
       };
       return;
@@ -1515,70 +1523,21 @@ function formatTime(value?: string) {
           </section>
         </article>
 
-        <article v-show="activeSettingsSection === 'asr'" class="settings-panel settings-section-detached is-active is-current" id="asr">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">识别</p>
-              <h2>语音识别</h2>
-            </div>
-            <div class="theme-toggle-group dialog-mode-toggle">
-              <button type="button" :class="{ active: form.asr_provider_mode !== 'api' }" @click="setAsrMode('local')"><HardDrive :size="15" />本地</button>
-              <button type="button" :class="{ active: form.asr_provider_mode === 'api' }" @click="setAsrMode('api')"><Cloud :size="15" />API</button>
-            </div>
-          </div>
-
-          <div class="settings-probe-grid">
-            <InlineProbe
-              variant="strip"
-              title="ASR API 回路"
-              summary="用短音频测试当前识别接口。"
-              :status="probeState.asrApi.status"
-              :status-text="probeState.asrApi.text"
-              :detail="probeState.asrApi.detail"
-              action-text="测试 ASR"
-              :disabled="asrApiDisabled"
-              @run="runSettingsProbe('asrApi')"
-              @copy="copyProbeDetail('asrApi')"
-            />
-            <InlineProbe
-              variant="strip"
-              title="本地识别服务"
-              summary="检查 ASR 服务和主后端状态。"
-              :status="probeState.localModels.status"
-              :status-text="probeState.localModels.text"
-              :detail="probeState.localModels.detail"
-              action-text="测试本地"
-              @run="runSettingsProbe('localModels')"
-              @copy="copyProbeDetail('localModels')"
-            />
-          </div>
-
-          <section class="audio-engine-card">
-            <div class="appearance-card-head"><strong>本地语音识别</strong><small>本地 Qwen3-ASR 服务，仅在本地模式下生效</small></div>
-            <div class="form-grid compact" :class="{ 'model-panel-locked': form.asr_provider_mode === 'api' }" data-locked-label="当前使用 API ASR">
-              <label><span>ASR Mode</span><select v-model="form.asr_mode" :disabled="form.asr_provider_mode === 'api'"><option value="transcription">transcription</option><option value="chat">chat</option></select></label>
-              <label><span>本地模型</span><input v-model="form.asr_model" :disabled="form.asr_provider_mode === 'api'" /></label>
-              <label><span>本地超时</span><input v-model.number="form.asr_timeout" :disabled="form.asr_provider_mode === 'api'" type="number" min="5" max="300" step="1" /></label>
-              <label class="wide"><span>本地 ASR URL</span><input v-model="form.asr_url" :disabled="form.asr_provider_mode === 'api'" /></label>
-            </div>
-          </section>
-
-          <section class="audio-engine-card" :class="{ 'model-panel-locked': asrApiDisabled }" data-locked-label="当前使用本地 ASR">
-            <div class="appearance-card-head">
-              <div><strong>API 语音识别</strong><small>在线 ASR 服务配置，预设不覆盖 API Key</small></div>
-              <span class="soft-badge">{{ form.api_asr_provider || "未选择" }}</span>
-            </div>
-            <div class="form-grid compact">
-              <label><span>ASR 预设</span><select :value="selectedAsrPresetId()" :disabled="asrApiDisabled" @change="onAsrPresetChange"><option value="custom">自定义</option><option v-for="preset in ASR_API_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }} · {{ preset.model }}</option></select></label>
-              <label><span>服务商</span><select v-model="form.api_asr_provider" :disabled="asrApiDisabled"><option value="openai">OpenAI</option><option value="groq">Groq</option><option value="deepgram">Deepgram</option><option value="dashscope">百炼 DashScope</option><option value="custom_openai">自定义 OpenAI</option></select></label>
-              <label><span>模型</span><input v-model="form.api_asr_model" :disabled="asrApiDisabled" /></label>
-              <label><span>语言</span><input v-model="form.api_asr_language" :disabled="asrApiDisabled" placeholder="zh" /></label>
-              <label><span>API 超时</span><input v-model.number="form.api_asr_timeout" :disabled="asrApiDisabled" type="number" min="5" max="180" step="1" /></label>
-              <label><span>ASR API Key</span><input v-model="form.api_asr_api_key" :disabled="asrApiDisabled" type="password" :placeholder="form.api_asr_api_key_masked || '留空则保留已保存 Key'" /></label>
-              <label class="wide"><span>API ASR URL</span><input v-model="form.api_asr_url" :disabled="asrApiDisabled" /></label>
-            </div>
-          </section>
-        </article>
+        <AsrProviderPanel
+          v-show="activeSettingsSection === 'asr'"
+          :form="form"
+          :asr-api-disabled="asrApiDisabled"
+          :asr-probe="probeState.asrApi"
+          :local-probe="probeState.localModels"
+          :presets="ASR_API_PRESETS"
+          :selected-preset-id="selectedAsrPresetId()"
+          @set-mode="setAsrMode"
+          @preset-change="onAsrPresetChange"
+          @run-asr-probe="runSettingsProbe('asrApi')"
+          @copy-asr-probe="copyProbeDetail('asrApi')"
+          @run-local-probe="runSettingsProbe('localModels')"
+          @copy-local-probe="copyProbeDetail('localModels')"
+        />
 
         <article v-show="activeSettingsSection === 'tools'" class="settings-panel settings-section-detached is-active is-current" id="tools">
           <div class="panel-head">
@@ -1852,96 +1811,28 @@ function formatTime(value?: string) {
           <label class="wide"><span>系统提示词</span><textarea v-model="form.system" class="prompt-textarea"></textarea></label>
         </article>
 
-        <article v-show="activeSettingsSection === 'tts'" class="settings-panel settings-section-detached is-active is-current" id="tts">
-          <div class="panel-head">
-            <div><p class="eyebrow">语音</p><h2>语音合成</h2></div>
-            <div class="theme-toggle-group dialog-mode-toggle">
-              <button type="button" :class="{ active: form.tts_provider_mode !== 'api' }" @click="setTtsMode('local')"><HardDrive :size="15" />本地</button>
-              <button type="button" :class="{ active: form.tts_provider_mode === 'api' }" @click="setTtsMode('api')"><Cloud :size="15" />API</button>
-            </div>
-          </div>
-
-          <div class="settings-probe-grid">
-            <InlineProbe
-              variant="strip"
-              title="TTS API 回路"
-              summary="用当前默认声音生成一段短音频。"
-              :status="probeState.ttsApi.status"
-              :status-text="probeState.ttsApi.text"
-              :detail="probeState.ttsApi.detail"
-              action-text="测试 TTS"
-              :disabled="ttsApiDisabled"
-              @run="runSettingsProbe('ttsApi')"
-              @copy="copyProbeDetail('ttsApi')"
-            />
-          </div>
-
-          <section class="audio-engine-card">
-            <div class="appearance-card-head"><strong>本地语音合成</strong><small>使用本地 TTS 服务</small></div>
-            <div class="form-grid compact" :class="{ 'model-panel-locked': form.tts_provider_mode === 'api' }" data-locked-label="当前使用 API TTS">
-              <label><span>Web TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              <label><span>本地模型</span><input v-model="form.tts_model" :disabled="form.tts_provider_mode === 'api'" /></label>
-              <label class="wide"><span>TTS URL</span><input v-model="form.tts_url" :disabled="form.tts_provider_mode === 'api'" /></label>
-              <label><span>语速</span><input v-model.number="form.tts_speed" :disabled="form.tts_provider_mode === 'api'" type="number" min="0.7" max="1.5" step="0.01" /></label>
-              <label><span>音量</span><input v-model.number="form.tts_volume" type="number" min="0.05" max="1.5" step="0.01" /></label>
-              <label><span>采样率</span><input v-model.number="form.tts_sample_rate" :disabled="form.tts_provider_mode === 'api'" type="number" min="8000" max="48000" step="1000" /></label>
-              <label><span>随机种子</span><input v-model.number="form.tts_seed" :disabled="form.tts_provider_mode === 'api'" type="number" min="-1" max="999999" step="1" /></label>
-              <label><span>淡入淡出 ms</span><input v-model.number="form.tts_fade_ms" type="number" min="0" max="2000" step="10" /></label>
-            </div>
-          </section>
-
-          <section class="audio-engine-card" :class="{ 'model-panel-locked': ttsApiDisabled }" data-locked-label="当前使用本地 TTS">
-            <div class="appearance-card-head">
-              <div><strong>API 语音合成</strong><small>预设只填模型和协议，不覆盖 API Key</small></div>
-              <span class="soft-badge">{{ ttsVoiceStateText() }}</span>
-            </div>
-            <div class="voice-state-strip" :class="{ warning: form.api_tts_voice_mode === 'cloned' && !form.api_tts_voice_id }">
-              <Volume2 :size="15" />
-              <span>{{ activeTtsVoiceLabel() }}</span>
-              <small>{{ ttsVoiceHintText() }}</small>
-            </div>
-            <div class="form-grid compact">
-              <label><span>TTS 预设</span><select :value="selectedTtsPresetId()" :disabled="ttsApiDisabled" @change="onTtsPresetChange"><option value="custom">自定义</option><option v-for="preset in TTS_API_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }} · {{ preset.model }}</option></select></label>
-              <label><span>服务商</span><select v-model="form.api_tts_provider" :disabled="ttsApiDisabled"><option value="openai">OpenAI</option><option value="elevenlabs">ElevenLabs</option><option value="dashscope">百炼 DashScope</option><option value="custom_openai">自定义 OpenAI</option></select></label>
-              <label><span>模型</span><input v-model="form.api_tts_model" :disabled="ttsApiDisabled" /></label>
-              <label><span>API Key</span><input v-model="form.api_tts_api_key" :disabled="ttsApiDisabled" type="password" :placeholder="form.api_tts_api_key_masked || '留空则保留已保存 Key'" /></label>
-              <label class="wide"><span>API TTS URL</span><input v-model="form.api_tts_url" :disabled="ttsApiDisabled" /></label>
-              <label><span>音色来源</span><select v-model="form.api_tts_voice_mode" :disabled="ttsApiDisabled"><option value="builtin">内置音色</option><option value="manual">远程 Voice ID</option><option value="cloned">本地参考音频</option></select></label>
-              <label><span>内置音色</span><input v-model="form.api_tts_voice" :disabled="ttsApiDisabled || form.api_tts_voice_mode !== 'builtin'" placeholder="coral" /></label>
-              <label><span>Voice ID</span><input v-model="form.api_tts_voice_id" :disabled="ttsApiDisabled || form.api_tts_voice_mode === 'builtin'" placeholder="远程 voice_id" /></label>
-              <label><span>声音名称</span><input v-model="form.api_tts_voice_name" :disabled="ttsApiDisabled" placeholder="满穗默认声音" /></label>
-              <label class="wide"><span>语气指令</span><input v-model="form.api_tts_instructions" :disabled="ttsApiDisabled" /></label>
-              <label><span>输出格式</span><select v-model="form.api_tts_format" :disabled="ttsApiDisabled"><option value="pcm">PCM · 当前链路</option></select></label>
-              <label><span>API 采样率</span><input v-model.number="form.api_tts_sample_rate" :disabled="ttsApiDisabled" type="number" min="8000" max="48000" step="1000" /></label>
-              <label><span>API 语速</span><input v-model.number="form.api_tts_speed" :disabled="ttsApiDisabled" type="number" min="0.7" max="1.5" step="0.01" /></label>
-              <label><span>生成模式</span><select v-model="form.api_tts_latency_mode" :disabled="ttsApiDisabled"><option value="quality">质量优先</option><option value="balanced">均衡</option><option value="fast">极速生成</option></select></label>
-            </div>
-          </section>
-
-          <section class="audio-engine-card voice-preview-card">
-            <div class="appearance-card-head">
-              <div><strong>音色与试听</strong><small>上传参考音频后，用当前默认音色生成一段可播放测试</small></div>
-              <span class="soft-badge">{{ form.api_tts_voice_profile_id || "未上传" }}</span>
-            </div>
-            <div class="voice-preview-layout">
-              <div class="voice-clone-strip">
-                <input ref="voiceSampleInput" class="visually-hidden" type="file" accept="audio/wav,audio/mpeg,audio/mp3,audio/ogg,audio/webm" @change="handleVoiceSampleSelected" />
-                <button class="secondary-action" type="button" :disabled="ttsApiDisabled" @click="voiceSampleInput?.click()"><Volume2 :size="15" />上传参考音频</button>
-                <span>{{ form.api_tts_voice_name || "建议 10-20 秒、无背景噪声、只包含目标音色。" }}</span>
-              </div>
-              <div class="tts-preview-box">
-                <label class="wide"><span>试听文本</span><input v-model="ttsPreviewText" :disabled="ttsPreviewLoading" placeholder="你好，今天过得怎么样。" /></label>
-                <div class="tts-preview-actions">
-                  <button class="primary-action" type="button" :disabled="ttsPreviewLoading" @click="runTtsPreview">
-                    <Volume2 :size="15" />{{ ttsPreviewLoading ? "生成中..." : "生成试听" }}
-                  </button>
-                  <span>{{ ttsPreviewStatus || "会先保存当前语音配置，再用当前音色生成 WAV。" }}</span>
-                </div>
-                <audio v-if="ttsPreviewUrl" class="tts-preview-player" :src="ttsPreviewUrl" controls></audio>
-              </div>
-            </div>
-          </section>
-        </article>
+        <TtsProviderPanel
+          v-show="activeSettingsSection === 'tts'"
+          :form="form"
+          :tts-api-disabled="ttsApiDisabled"
+          :tts-probe="probeState.ttsApi"
+          :presets="TTS_API_PRESETS"
+          :selected-preset-id="selectedTtsPresetId()"
+          :active-voice-label="activeTtsVoiceLabel()"
+          :voice-state-text="ttsVoiceStateText()"
+          :voice-hint-text="ttsVoiceHintText()"
+          :preview-text="ttsPreviewText"
+          :preview-url="ttsPreviewUrl"
+          :preview-loading="ttsPreviewLoading"
+          :preview-status="ttsPreviewStatus"
+          @set-mode="setTtsMode"
+          @preset-change="onTtsPresetChange"
+          @run-tts-probe="runSettingsProbe('ttsApi')"
+          @copy-tts-probe="copyProbeDetail('ttsApi')"
+          @voice-sample-selected="handleVoiceSampleSelected"
+          @update-preview-text="ttsPreviewText = $event"
+          @run-preview="runTtsPreview"
+        />
 
         <article v-show="activeSettingsSection === 'vad'" class="settings-panel settings-section-detached is-active is-current" id="vad">
           <div class="panel-head"><div><p class="eyebrow">检测</p><h2>语音检测</h2></div></div>

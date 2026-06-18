@@ -15,7 +15,7 @@ function applyUiPreferences(config: PublicConfig | null) {
   document.documentElement.classList.toggle("theme-light", window.localStorage.getItem("branchwhisper:theme") === "light");
 }
 
-const SECRET_KEYS = new Set(["llm_api_key", "api_llm_api_key", "sticker_vision_api_key"]);
+const SECRET_KEYS = new Set(["llm_api_key", "api_llm_api_key", "api_asr_api_key", "api_tts_api_key", "sticker_vision_api_key"]);
 
 function normalizedConfigValue(value: unknown) {
   if (value === undefined || value === null) return "";

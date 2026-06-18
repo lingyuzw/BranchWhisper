@@ -466,6 +466,53 @@ class TtsClientRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(tts_result["ok"])
         self.assertIn("API Key", tts_result["error"])
 
+    async def test_asr_diagnostics_explain_effective_local_mode_when_api_is_configured(self) -> None:
+        import api.diagnostics as diagnostics
+
+        settings = default_settings()
+        settings.asr_provider_mode = "local"
+        settings.asr_url = "http://127.0.0.1:8001/v1/audio/transcriptions"
+        settings.api_asr_provider = "dashscope"
+        settings.api_asr_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        settings.api_asr_model = "qwen3-asr-flash"
+        settings.api_asr_api_key = "sk-test"
+
+        async def fake_transcribe(*_args, **_kwargs) -> str:
+            raise RuntimeError("All connection attempts failed")
+
+        original = diagnostics.transcribe_audio
+        diagnostics.transcribe_audio = fake_transcribe
+        try:
+            result = await diagnostics.run_asr_api_probe(settings)
+        finally:
+            diagnostics.transcribe_audio = original
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["provider_mode"], "local")
+        self.assertEqual(result["effective"]["provider"], "local")
+        self.assertEqual(result["effective"]["url"], "http://127.0.0.1:8001/v1/audio/transcriptions")
+        self.assertEqual(result["configured"]["api"]["provider"], "dashscope")
+        self.assertIn("当前实际使用本地 ASR", result["hint"])
+        self.assertIn("切换到 API 模式", result["hint"])
+
+    async def test_tts_diagnostics_explain_effective_api_mode_when_key_is_missing(self) -> None:
+        from api.diagnostics import run_tts_api_probe
+
+        settings = default_settings()
+        settings.tts_provider_mode = "api"
+        settings.api_tts_provider = "elevenlabs"
+        settings.api_tts_url = "https://api.elevenlabs.io/v1/text-to-speech"
+        settings.api_tts_model = "eleven_flash_v2_5"
+        settings.api_tts_api_key = ""
+
+        result = await run_tts_api_probe(settings)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["provider_mode"], "api")
+        self.assertEqual(result["effective"]["provider"], "elevenlabs")
+        self.assertEqual(result["effective"]["url"], "https://api.elevenlabs.io/v1/text-to-speech")
+        self.assertIn("API Key", result["hint"])
+
 
 if __name__ == "__main__":
     unittest.main()

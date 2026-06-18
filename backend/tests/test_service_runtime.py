@@ -24,6 +24,7 @@ from service_runtime.services import (
     ServiceManager,
     check_service,
     friendly_service_error,
+    service_status_layers,
     extract_latest_started_command,
     extract_service_log_error,
     linux_process_started_at,
@@ -154,6 +155,36 @@ class ServiceRuntimeStateTests(unittest.TestCase):
         )
 
         self.assertEqual(state, "starting")
+
+    def test_service_status_layers_separate_process_port_and_health(self) -> None:
+        layers = service_status_layers(
+            running=True,
+            tracked_running=False,
+            external_running=True,
+            port_open=True,
+            health={"ok": True, "status": 200, "latency_ms": 12, "payload": {"ready": True}},
+            returncode=None,
+        )
+
+        self.assertEqual(layers["process_state"], "external")
+        self.assertEqual(layers["port_state"], "open")
+        self.assertEqual(layers["health_state"], "healthy")
+        self.assertEqual(layers["runtime_state"], "ready")
+
+    def test_service_status_layers_show_loading_health_as_warming(self) -> None:
+        layers = service_status_layers(
+            running=True,
+            tracked_running=True,
+            external_running=False,
+            port_open=True,
+            health={"ok": False, "status": 503, "payload": {"status": "loading", "ready": False}},
+            returncode=None,
+        )
+
+        self.assertEqual(layers["process_state"], "tracked")
+        self.assertEqual(layers["port_state"], "open")
+        self.assertEqual(layers["health_state"], "loading")
+        self.assertEqual(layers["runtime_state"], "starting")
 
     def test_asr_tuning_does_not_override_saved_gpu_or_context(self) -> None:
         command = (

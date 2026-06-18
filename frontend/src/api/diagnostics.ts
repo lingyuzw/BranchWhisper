@@ -39,6 +39,7 @@ export async function runLlmApiDiagnostic() {
 export interface AudioApiDiagnostic {
   ok: boolean;
   kind: "asr" | "tts";
+  provider_mode: "local" | "api";
   provider: string;
   url: string;
   model: string;
@@ -46,6 +47,27 @@ export interface AudioApiDiagnostic {
   latency_ms?: number | null;
   error?: string;
   message: string;
+  hint?: string;
+  effective?: {
+    provider: string;
+    url: string;
+    model: string;
+    api_key_set: boolean;
+  };
+  configured?: {
+    local: {
+      provider: string;
+      url: string;
+      model: string;
+      api_key_set: boolean;
+    };
+    api: {
+      provider: string;
+      url: string;
+      model: string;
+      api_key_set: boolean;
+    };
+  };
   response?: unknown;
   capabilities?: Record<string, unknown>;
 }

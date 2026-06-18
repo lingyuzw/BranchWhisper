@@ -204,6 +204,14 @@ class ServiceManager:
             port_open=port_open,
             returncode=returncode,
         )
+        status_layers = service_status_layers(
+            running=running,
+            tracked_running=tracked_running,
+            external_running=external_running,
+            health=health,
+            port_open=port_open,
+            returncode=returncode,
+        )
         log_error = self.latest_log_error(service_id)
         if service_log_error_is_fatal(log_error) and runtime_state in {"starting", "warming"}:
             runtime_state = "failed"
@@ -241,6 +249,7 @@ class ServiceManager:
             **self.service_config_view(service_id),
             "running": running,
             "state": runtime_state,
+            "status_layers": {**status_layers, "runtime_state": runtime_state},
             "error": runtime_error,
             "external": external_running and not tracked_running,
             "port_open": port_open,
@@ -618,6 +627,63 @@ def service_runtime_error(health: dict | None, returncode: int | None, log_error
     if returncode is not None:
         return f"exit {returncode}"
     return ""
+
+
+def service_status_layers(
+    *,
+    running: bool,
+    tracked_running: bool,
+    external_running: bool,
+    health: dict | None,
+    port_open: bool,
+    returncode: int | None,
+) -> dict:
+    runtime_state = service_runtime_state(
+        running=running,
+        tracked_running=tracked_running,
+        health=health,
+        port_open=port_open,
+        returncode=returncode,
+    )
+    health_payload = normalized_health_payload(health)
+    health_status = str(health_payload.get("status") or health_payload.get("detail") or "").lower()
+    if returncode is not None:
+        process_state = "exited"
+    elif tracked_running:
+        process_state = "tracked"
+    elif external_running:
+        process_state = "external"
+    elif running:
+        process_state = "running"
+    else:
+        process_state = "stopped"
+
+    if port_open:
+        port_state = "open"
+    elif running or tracked_running:
+        port_state = "waiting"
+    else:
+        port_state = "closed"
+
+    if not health:
+        health_state = "unknown"
+    elif health.get("ok"):
+        health_state = "healthy"
+    elif health.get("status") in {404, 405} and port_open:
+        health_state = "unsupported"
+    elif any(marker in health_status for marker in ("loading", "warming", "starting", "not_started", "not started")):
+        health_state = "loading"
+    elif health.get("status"):
+        health_state = "unhealthy"
+    else:
+        health_state = "unreachable"
+
+    return {
+        "process_state": process_state,
+        "port_state": port_state,
+        "health_state": health_state,
+        "runtime_state": runtime_state,
+    }
 
 
 def service_startup_timed_out(
