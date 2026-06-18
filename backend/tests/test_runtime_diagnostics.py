@@ -141,6 +141,65 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(checks["binary"]["target"], "./build/bin/llama-server")
         self.assertEqual(checks["binary"]["status"], "ok")
 
+    def test_path_checks_include_resolution_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            llama_dir = workspace_root / "llama.cpp"
+            bin_dir = llama_dir / "build" / "bin"
+            model_dir = llama_dir / "models"
+            bin_dir.mkdir(parents=True)
+            model_dir.mkdir()
+            (bin_dir / "llama-server").write_text("#!/bin/sh\n", encoding="utf-8")
+            (model_dir / "tokenizer.model").write_text("tokenizer", encoding="utf-8")
+            profile = RuntimeDiagnosticProfile(
+                role="llm",
+                name="local-llm",
+                provider="llama.cpp",
+                cwd="${WORKSPACE_ROOT}/llama.cpp",
+                model_path="./models/missing.gguf",
+                required_bins=("./build/bin/llama-server",),
+                required_files=("tokenizer.model",),
+            )
+
+            item = evaluate_profile(
+                profile,
+                workspace_root=workspace_root,
+                command_resolver=lambda command: None,
+            )
+
+        checks = {check.kind: check for check in item.checks}
+        cwd_metadata = checks["cwd"].metadata
+        self.assertEqual(cwd_metadata["raw_target"], "${WORKSPACE_ROOT}/llama.cpp")
+        self.assertEqual(cwd_metadata["resolved_target"], str(llama_dir))
+        self.assertEqual(cwd_metadata["resolution_base"], str(workspace_root))
+        self.assertEqual(cwd_metadata["exists"], True)
+        self.assertEqual(cwd_metadata["profile_cwd"], str(llama_dir))
+        self.assertEqual(cwd_metadata["workspace_root"], str(workspace_root))
+
+        model_metadata = checks["model_path"].metadata
+        self.assertEqual(model_metadata["raw_target"], "./models/missing.gguf")
+        self.assertEqual(model_metadata["resolved_target"], str(model_dir / "missing.gguf"))
+        self.assertEqual(model_metadata["resolution_base"], str(llama_dir))
+        self.assertEqual(model_metadata["exists"], False)
+        self.assertEqual(model_metadata["profile_cwd"], str(llama_dir))
+        self.assertEqual(model_metadata["workspace_root"], str(workspace_root))
+
+        binary_metadata = checks["binary"].metadata
+        self.assertEqual(binary_metadata["raw_target"], "./build/bin/llama-server")
+        self.assertEqual(binary_metadata["resolved_target"], str(bin_dir / "llama-server"))
+        self.assertEqual(binary_metadata["resolution_base"], str(llama_dir))
+        self.assertEqual(binary_metadata["exists"], True)
+        self.assertEqual(binary_metadata["profile_cwd"], str(llama_dir))
+        self.assertEqual(binary_metadata["workspace_root"], str(workspace_root))
+
+        required_file_metadata = checks["required_file"].metadata
+        self.assertEqual(required_file_metadata["raw_target"], "tokenizer.model")
+        self.assertEqual(required_file_metadata["resolved_target"], str(model_dir / "tokenizer.model"))
+        self.assertEqual(required_file_metadata["resolution_base"], str(model_dir))
+        self.assertEqual(required_file_metadata["exists"], True)
+        self.assertEqual(required_file_metadata["profile_cwd"], str(llama_dir))
+        self.assertEqual(required_file_metadata["workspace_root"], str(workspace_root))
+
     def test_evaluate_profile_reports_port_conflict(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)

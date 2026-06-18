@@ -91,13 +91,13 @@ def evaluate_profile(
     if profile.model_path:
         checks.append(_check_model_path(profile.model_path, workspace_root, cwd_path))
     if profile.cwd:
-        checks.append(_check_cwd(profile.cwd, workspace_root))
+        checks.append(_check_cwd(profile.cwd, workspace_root, cwd_path))
     for binary in profile.required_bins:
         checks.append(_check_binary(binary, command_resolver, required=True, workspace_root=workspace_root, cwd_path=cwd_path))
     for binary in profile.optional_bins:
         checks.append(_check_binary(binary, command_resolver, required=False, workspace_root=workspace_root, cwd_path=cwd_path))
     for required_file in profile.required_files:
-        checks.append(_check_required_file(required_file, profile, workspace_root))
+        checks.append(_check_required_file(required_file, profile, workspace_root, cwd_path))
     if profile.port is not None:
         checks.append(_check_port(profile.port, port_checker))
     if profile.health_url:
@@ -285,29 +285,45 @@ def _split_command(command: str) -> list[str]:
 
 def _check_model_path(raw_path: str, workspace_root: Path, cwd_path: Path | None = None) -> RuntimeDiagnosticCheck:
     path = _resolve_runtime_path(raw_path, workspace_root, base_path=cwd_path)
+    metadata = _path_metadata(
+        raw_path,
+        path,
+        workspace_root,
+        resolution_base=cwd_path or workspace_root,
+        profile_cwd=cwd_path,
+        exists=path.exists(),
+    )
     if path.exists():
-        return RuntimeDiagnosticCheck("model_path", raw_path, "ok", f"Found {path}")
+        return RuntimeDiagnosticCheck("model_path", raw_path, "ok", f"Found {path}", metadata=metadata)
     return RuntimeDiagnosticCheck(
         "model_path",
         raw_path,
         "error",
         "Model path does not exist.",
         "Update the profile model_path to an existing file or directory.",
-        {"resolved_path": str(path)},
+        metadata,
     )
 
 
-def _check_cwd(raw_path: str, workspace_root: Path) -> RuntimeDiagnosticCheck:
+def _check_cwd(raw_path: str, workspace_root: Path, cwd_path: Path | None = None) -> RuntimeDiagnosticCheck:
     path = _resolve_runtime_path(raw_path, workspace_root)
+    metadata = _path_metadata(
+        raw_path,
+        path,
+        workspace_root,
+        resolution_base=workspace_root,
+        profile_cwd=cwd_path or path,
+        exists=path.is_dir(),
+    )
     if path.is_dir():
-        return RuntimeDiagnosticCheck("cwd", raw_path, "ok", f"Found {path}")
+        return RuntimeDiagnosticCheck("cwd", raw_path, "ok", f"Found {path}", metadata=metadata)
     return RuntimeDiagnosticCheck(
         "cwd",
         raw_path,
         "error",
         "Working directory does not exist.",
         "Update the profile cwd to an existing directory.",
-        {"resolved_path": str(path)},
+        metadata,
     )
 
 
@@ -321,33 +337,94 @@ def _check_binary(
 ) -> RuntimeDiagnosticCheck:
     binary_path = _resolve_command_path(binary, workspace_root, cwd_path)
     if binary_path is not None and binary_path.exists():
-        return RuntimeDiagnosticCheck("binary", binary, "ok", f"Found {binary_path}", metadata={"path": str(binary_path)})
+        return RuntimeDiagnosticCheck(
+            "binary",
+            binary,
+            "ok",
+            f"Found {binary_path}",
+            metadata=_path_metadata(
+                binary,
+                binary_path,
+                workspace_root,
+                resolution_base=cwd_path or workspace_root,
+                profile_cwd=cwd_path,
+                exists=True,
+                legacy_key="path",
+            ),
+        )
     resolved = command_resolver(binary)
     if resolved:
-        return RuntimeDiagnosticCheck("binary", binary, "ok", f"Found {resolved}", metadata={"path": resolved})
+        return RuntimeDiagnosticCheck(
+            "binary",
+            binary,
+            "ok",
+            f"Found {resolved}",
+            metadata=_path_metadata(
+                binary,
+                Path(resolved),
+                workspace_root,
+                resolution_base="PATH",
+                profile_cwd=cwd_path,
+                exists=True,
+                legacy_key="path",
+            ),
+        )
     status: DiagnosticStatus = "error" if required else "warning"
+    metadata: dict[str, object] = {}
+    if binary_path is not None:
+        metadata = _path_metadata(
+            binary,
+            binary_path,
+            workspace_root,
+            resolution_base=cwd_path or workspace_root,
+            profile_cwd=cwd_path,
+            exists=False,
+        )
+    else:
+        metadata = {
+            "raw_target": binary,
+            "resolved_target": "",
+            "resolution_base": "PATH",
+            "exists": False,
+            "profile_cwd": str(cwd_path) if cwd_path else "",
+            "workspace_root": str(workspace_root),
+        }
     return RuntimeDiagnosticCheck(
         "binary",
         binary,
         status,
         f"{binary} is not available on PATH.",
         f"Install {binary} or make it available on PATH.",
+        metadata,
     )
 
 
-def _check_required_file(raw_path: str, profile: RuntimeDiagnosticProfile, workspace_root: Path) -> RuntimeDiagnosticCheck:
-    base = _resolve_runtime_path(profile.model_path or profile.cwd or "${WORKSPACE_ROOT}", workspace_root)
+def _check_required_file(
+    raw_path: str,
+    profile: RuntimeDiagnosticProfile,
+    workspace_root: Path,
+    cwd_path: Path | None = None,
+) -> RuntimeDiagnosticCheck:
+    base = _required_file_base(profile, workspace_root, cwd_path)
     path = Path(raw_path)
     resolved = path if path.is_absolute() else base / path
+    metadata = _path_metadata(
+        raw_path,
+        resolved,
+        workspace_root,
+        resolution_base=base,
+        profile_cwd=cwd_path,
+        exists=resolved.exists(),
+    )
     if resolved.exists():
-        return RuntimeDiagnosticCheck("required_file", raw_path, "ok", f"Found {resolved}")
+        return RuntimeDiagnosticCheck("required_file", raw_path, "ok", f"Found {resolved}", metadata=metadata)
     return RuntimeDiagnosticCheck(
         "required_file",
         raw_path,
         "error",
         "Required file does not exist.",
         "Check the profile required_files entry or choose a compatible model directory.",
-        {"resolved_path": str(resolved)},
+        metadata,
     )
 
 
@@ -396,6 +473,43 @@ def _resolve_command_path(binary: str, workspace_root: Path, cwd_path: Path | No
     if path.is_absolute() or _has_path_separator(binary):
         return path
     return None
+
+
+def _required_file_base(profile: RuntimeDiagnosticProfile, workspace_root: Path, cwd_path: Path | None = None) -> Path:
+    if profile.model_path:
+        model_path = _resolve_runtime_path(profile.model_path, workspace_root, base_path=cwd_path)
+        if _looks_like_model_file(model_path):
+            return model_path.parent
+        return model_path
+    if profile.cwd:
+        return _resolve_runtime_path(profile.cwd, workspace_root)
+    return workspace_root
+
+
+def _looks_like_model_file(path: Path) -> bool:
+    return bool(path.suffix)
+
+
+def _path_metadata(
+    raw_target: str,
+    resolved_target: Path,
+    workspace_root: Path,
+    *,
+    resolution_base: Path | str,
+    profile_cwd: Path | None,
+    exists: bool,
+    legacy_key: str = "resolved_path",
+) -> dict[str, object]:
+    resolved = str(resolved_target)
+    return {
+        "raw_target": raw_target,
+        "resolved_target": resolved,
+        "resolution_base": str(resolution_base),
+        "exists": exists,
+        "profile_cwd": str(profile_cwd) if profile_cwd else "",
+        "workspace_root": str(workspace_root),
+        legacy_key: resolved,
+    }
 
 
 def _has_path_separator(value: str) -> bool:
