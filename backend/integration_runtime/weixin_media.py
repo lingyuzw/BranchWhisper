@@ -88,6 +88,11 @@ def send_weixin_voice(
         payload.setdefault("target_url", base_url)
         payload.setdefault("receiver", to_user_id)
         raise WeixinVoiceSendError(f"{stage}: {detail[:220]}", payload=payload)
+    payload.setdefault("client_delivery", "unsupported_or_unconfirmed")
+    payload.setdefault(
+        "client_delivery_reason",
+        "OpenClaw/iLink sendmessage documents text/image/video/file outbound messages; voice_item may be accepted by API without rendering in the WeChat client.",
+    )
     return payload
 
 

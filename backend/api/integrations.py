@@ -192,7 +192,14 @@ def create_integrations_router(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Integration voice test failed: {exc}") from exc
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "ok": False,
+                    "stage": "api",
+                    "error": f"Integration voice test failed: {exc}",
+                },
+            )
 
     @router.post("/api/integrations/{integration_id}/sticker-test")
     async def integration_sticker_test(integration_id: str, request: Request, payload: dict | None = Body(default=None)):

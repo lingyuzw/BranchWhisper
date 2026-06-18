@@ -24,9 +24,21 @@ from core.text_utils import split_reply_messages
 from service_runtime.audio_pipeline import strip_internal_attachment_markers
 
 try:
-    from integration_runtime.weixin_media import WeixinImageSendError, WeixinVoiceSendError, download_weixin_media, send_weixin_image, send_weixin_voice
+    from integration_runtime.weixin_media import (
+        WeixinImageSendError,
+        WeixinVoiceSendError,
+        download_weixin_media,
+        send_weixin_image,
+        send_weixin_voice,
+    )
 except ModuleNotFoundError:
-    from weixin_media import WeixinImageSendError, WeixinVoiceSendError, download_weixin_media, send_weixin_image, send_weixin_voice
+    from weixin_media import (
+        WeixinImageSendError,
+        WeixinVoiceSendError,
+        download_weixin_media,
+        send_weixin_image,
+        send_weixin_voice,
+    )
 
 
 DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com"
@@ -468,7 +480,11 @@ def voice_fallback_text(result: dict, voice_error: str = "") -> str:
         return ""
     error = str(voice_error or result.get("voice_error") or "").strip()
     if error:
-        return f"语音暂时发不出来：{error[:120]}。我先把文字版发给你。"
+        return f"语音暂时发不出来：{error[:120]}。先以文字为准。"
+    if result.get("voice_client_delivery") == "unsupported_or_unconfirmed":
+        return ""
+    if result.get("send_voice") and result.get("voice_file"):
+        return "语音接口已接收，但当前微信端未确认显示；先以文字为准。"
     return ""
 
 
@@ -496,24 +512,31 @@ def send_voice_reply(
             cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
         )
         voice_send_ms = int((time.perf_counter() - started) * 1000)
+        client_delivery = str(sent.get("client_delivery") or "unsupported_or_unconfirmed")
+        result["voice_client_delivery"] = client_delivery
         report_branchwhisper_timing(
             branchwhisper_url,
             integration_id,
             trace_id,
             {
                 "voice_send_ms": voice_send_ms,
-                "voice_send_status": "accepted",
+                "voice_send_status": "delivered" if client_delivery == "supported" else "accepted_api_only",
                 "voice_message_id": str(sent.get("message_id") or ""),
                 "voice_stage": str(sent.get("stage") or "accepted"),
                 "voice_format": str(sent.get("transcode_format") or ""),
                 "voice_diagnostic": json.dumps(
                     {
                         "encode_type": sent.get("encode_type"),
+                        "bits_per_sample": sent.get("bits_per_sample"),
                         "sample_rate": sent.get("sample_rate"),
                         "gain_db": sent.get("gain_db"),
                         "playtime_ms": sent.get("playtime_ms"),
+                        "voice_size": sent.get("raw_size"),
                         "source_audio": sent.get("source_audio"),
                         "transcode_audio": sent.get("transcode_audio"),
+                        "cdn_verify": sent.get("cdn_verify"),
+                        "voice_item_shape": sent.get("voice_item_shape"),
+                        "sendmessage_response": sent.get("sendmessage_response"),
                         "upload_ms": sent.get("upload_ms"),
                         "upload_method": sent.get("upload_method"),
                         "upload_url_kind": sent.get("upload_url_kind"),
@@ -527,9 +550,9 @@ def send_voice_reply(
             f"voice api accepted account={account['account_id']} to={to_user_id} "
             f"message_id={sent.get('message_id') or ''} voice_send_ms={voice_send_ms} "
             f"playtime_ms={sent.get('playtime_ms') or 0} format={sent.get('transcode_format') or ''} "
-            f"encode_type={sent.get('encode_type') or ''} client_delivery=unconfirmed"
+            f"encode_type={sent.get('encode_type') or ''} client_delivery={client_delivery}"
         )
-        return True
+        return client_delivery == "supported"
     except (WeixinVoiceSendError, Exception) as exc:
         voice_send_ms = int((time.perf_counter() - started) * 1000)
         error = str(exc)
@@ -765,7 +788,7 @@ def handle_branchwhisper_result(
         context_token=context_token,
         result=result,
     )
-    voice_notice = "" if voice_sent else voice_fallback_text(result)
+    voice_notice = "" if voice_sent or result.get("voice_client_delivery") == "unsupported_or_unconfirmed" else voice_fallback_text(result)
     if voice_notice:
         try:
             notice_id = send_text(client, account, from_user_id, voice_notice, context_token=context_token)
@@ -773,10 +796,16 @@ def handle_branchwhisper_result(
         except Exception as exc:
             log(f"voice fallback notice failed account={account['account_id']} to={from_user_id} err={exc}")
     if result.get("send_voice") and result.get("voice_file") and not voice_sent:
-        log(
-            "voice reply generated but media send failed: "
-            f"{result.get('voice_file')} error={result.get('voice_error') or '-'}"
-        )
+        if result.get("voice_error"):
+            log(
+                "voice reply generated but media send failed: "
+                f"{result.get('voice_file')} error={result.get('voice_error') or '-'}"
+            )
+        else:
+            log(
+                "voice reply generated and API accepted it, but WeChat client delivery is unconfirmed: "
+                f"{result.get('voice_file')} client_delivery={result.get('voice_client_delivery') or '-'}"
+            )
     send_sticker_replies(
         branchwhisper_url=branchwhisper_url,
         integration_id=integration_id,

@@ -21,6 +21,7 @@ const ITEM_VOICE = 3;
 const UPLOAD_MEDIA_TYPE_IMAGE = 1;
 const UPLOAD_MEDIA_TYPE_VOICE = 4;
 const VOICE_ENCODE_SILK = 6;
+const VOICE_ENCODE_MP3 = 7;
 const VOICE_ENCODE_OGG_OPUS = 8;
 const WEIXIN_VOICE_SAMPLE_RATE = 24_000;
 const WEIXIN_VOICE_OPUS_SAMPLE_RATE = 48_000;
@@ -29,6 +30,8 @@ const WEIXIN_VOICE_GAIN_DB = 8;
 const MAX_VOICE_SECONDS = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_THUMB_BYTES = 256 * 1024;
+const VOICE_CLIENT_DELIVERY = "unsupported_or_unconfirmed";
+const VOICE_CLIENT_DELIVERY_REASON = "OpenClaw/iLink sendmessage documents text/image/video/file outbound messages; voice_item may be accepted by API without rendering in the WeChat client.";
 
 let silkModulePromise = null;
 
@@ -54,7 +57,7 @@ function parseArgs(argv) {
     const item = argv[i];
     if (!item.startsWith("--")) continue;
     const key = item.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    if (key === "help" || key === "selfTest" || key === "downloadMedia") {
+    if (key === "help" || key === "selfTest" || key === "downloadMedia" || key === "voicePayloadTest" || key === "filePayloadTest") {
       args[key] = true;
     } else {
       args[key] = argv[i + 1] || "";
@@ -153,13 +156,16 @@ function mediaAesKeyValue(aeskey) {
   return Buffer.from(aeskey.toString("hex"), "utf8").toString("base64");
 }
 
-function buildMediaPayload({ downloadParam, aeskey }) {
-  const encodedAesKey = mediaAesKeyValue(aeskey);
+function voiceAesKeyValue(aeskey, encoding = "raw_base64") {
+  const mode = String(encoding || "").trim().toLowerCase();
+  if (mode === "raw_base64" || mode === "raw") return aeskey.toString("base64");
+  return mediaAesKeyValue(aeskey);
+}
+
+function buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding = "raw_base64" }) {
   return {
     encrypt_query_param: downloadParam,
-    encrypted_query_param: downloadParam,
-    aes_key: encodedAesKey,
-    aeskey: encodedAesKey,
+    aes_key: voiceAesKeyValue(aeskey, aesKeyEncoding),
     encrypt_type: 1,
   };
 }
@@ -170,6 +176,76 @@ function buildOfficialMediaPayload({ downloadParam, aeskey }) {
     aes_key: mediaAesKeyValue(aeskey),
     encrypt_type: 1,
   };
+}
+
+function normalizeVoiceFormat(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "mp3" || raw === "mpeg") return "mp3";
+  if (raw === "ogg" || raw === "opus" || raw === "ogg_opus") return "ogg_opus";
+  return "silk";
+}
+
+function voiceEncodeType(voiceFormat) {
+  if (voiceFormat === "mp3") return VOICE_ENCODE_MP3;
+  if (voiceFormat === "ogg_opus") return VOICE_ENCODE_OGG_OPUS;
+  return VOICE_ENCODE_SILK;
+}
+
+function voiceSampleRate(voiceFormat, fallback = 0) {
+  if (voiceFormat === "ogg_opus") return WEIXIN_VOICE_OPUS_SAMPLE_RATE;
+  if (voiceFormat === "silk") return WEIXIN_VOICE_SAMPLE_RATE;
+  return Number(fallback || 0) || undefined;
+}
+
+function buildVoiceItem({
+  downloadParam,
+  aeskey,
+  encodeType,
+  sampleRate,
+  playtimeMs,
+  voiceSize = 0,
+  includeBitsPerSample = false,
+  includeVoiceSize = false,
+  includeText = "",
+  aesKeyEncoding = "raw_base64",
+}) {
+  const item = {
+    media: buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding }),
+    encode_type: encodeType,
+    playtime: Math.max(1, Math.round(Number(playtimeMs) || 1)),
+  };
+  if (sampleRate) item.sample_rate = sampleRate;
+  if (includeBitsPerSample) item.bits_per_sample = 16;
+  if (includeVoiceSize && voiceSize > 0) item.voice_size = voiceSize;
+  if (includeText) item.text = String(includeText);
+  return item;
+}
+
+async function voicePayloadTest(args = {}) {
+  const aeskey = Buffer.from("00112233445566778899aabbccddeeff", "hex");
+  const voiceFormat = normalizeVoiceFormat(args.voiceFormat || "silk");
+  const voiceItem = buildVoiceItem({
+    downloadParam: "download-param",
+    aeskey,
+    encodeType: voiceEncodeType(voiceFormat),
+    sampleRate: voiceSampleRate(voiceFormat, voiceFormat === "mp3" ? 24000 : 0),
+    playtimeMs: 1234,
+    voiceSize: 4321,
+    includeBitsPerSample: false,
+    includeVoiceSize: false,
+    includeText: String(args.includeText || ""),
+    aesKeyEncoding: args.voiceAesKey || args.aesKeyEncoding || "raw_base64",
+  });
+  return {
+    ok: true,
+    voice_format: voiceFormat,
+    voice_item: voiceItem,
+    voice_item_shape: compactResponseShape(voiceItem),
+  };
+}
+
+async function filePayloadTest() {
+  throw new Error("native Weixin voice cannot be validated through an audio file attachment");
 }
 
 function buildCdnUploadUrl({ cdnBaseUrl, uploadParam, filekey }) {
@@ -207,6 +283,17 @@ function compactResponseShape(value, depth = 0) {
     }
   }
   return result;
+}
+
+function compactSendMessageResponse(value) {
+  if (!value || typeof value !== "object") return {};
+  const allowed = {};
+  for (const key of ["ret", "errcode", "error_code", "errmsg", "err_msg", "message", "msg"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      allowed[key] = value[key];
+    }
+  }
+  return allowed;
 }
 
 async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, cdnBaseUrl, aeskey, label = "media", methods = ["POST"] }) {
@@ -417,6 +504,37 @@ async function transcodeToOggOpus(inputPath) {
   return outputPath;
 }
 
+async function transcodeToMp3(inputPath) {
+  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.mp3`);
+  await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    inputPath,
+    "-vn",
+    "-sn",
+    "-dn",
+    "-t",
+    String(MAX_VOICE_SECONDS),
+    "-af",
+    `aresample=${WEIXIN_VOICE_SAMPLE_RATE}:async=1:first_pts=0,volume=${WEIXIN_VOICE_GAIN_DB}dB`,
+    "-ar",
+    String(WEIXIN_VOICE_SAMPLE_RATE),
+    "-ac",
+    "1",
+    "-c:a",
+    "libmp3lame",
+    "-b:a",
+    "64k",
+    "-f",
+    "mp3",
+    outputPath,
+  ]);
+  return outputPath;
+}
+
 async function probeAudioStats(filePath) {
   const [probe, volume] = await Promise.all([
     execFileAsync("ffprobe", [
@@ -591,9 +709,9 @@ async function selfTest() {
     opus_error: opusError,
     silk_wasm: silkWasm,
     silk_error: silkError,
-    voice_format: "ogg_opus",
-    encode_type: VOICE_ENCODE_OGG_OPUS,
-    sample_rate: WEIXIN_VOICE_OPUS_SAMPLE_RATE,
+    voice_format: "silk",
+    encode_type: VOICE_ENCODE_SILK,
+    sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
   };
 }
 
@@ -605,6 +723,11 @@ async function sendVoice(args) {
   const voiceFile = String(args.voiceFile || "");
   const contextToken = String(args.contextToken || "");
   const text = String(args.text || "");
+  const voiceFormat = "silk";
+  const voiceAesKey = String(args.voiceAesKey || args.aesKeyEncoding || "raw_base64");
+  const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "false").toLowerCase() === "true";
+  const includeVoiceSize = String(args.voiceSize || args.includeVoiceSize || "false").toLowerCase() === "true";
+  const includeText = String(args.voiceTextField || args.includeText || text || "").trim();
   if (!token) throw new Error("missing --token");
   if (!to) throw new Error("missing --to");
   if (!voiceFile) throw new Error("missing --voice-file");
@@ -612,15 +735,43 @@ async function sendVoice(args) {
 
   const started = Date.now();
   let normalizedPath = "";
+  let pcmPath = "";
   try {
     const sourceStats = await probeAudioStats(voiceFile);
-    normalizedPath = await transcodeToOggOpus(voiceFile).catch((error) => {
-      error.stage = "voice_transcode";
-      throw error;
-    });
-    const transcodeStats = await probeAudioStats(normalizedPath);
-    const playtimeMs = Math.max(1, transcodeStats.duration_ms || sourceStats.duration_ms || 1);
-    const plaintext = await fs.readFile(normalizedPath);
+    let transcodeStats;
+    let playtimeMs;
+    let plaintext;
+    if (voiceFormat === "mp3") {
+      normalizedPath = await transcodeToMp3(voiceFile).catch((error) => {
+        error.stage = "voice_transcode";
+        throw error;
+      });
+      transcodeStats = await probeAudioStats(normalizedPath);
+      playtimeMs = Math.max(1, transcodeStats.duration_ms || sourceStats.duration_ms || 1);
+      plaintext = await fs.readFile(normalizedPath);
+    } else if (voiceFormat === "ogg_opus") {
+      normalizedPath = await transcodeToOggOpus(voiceFile).catch((error) => {
+        error.stage = "voice_transcode";
+        throw error;
+      });
+      transcodeStats = await probeAudioStats(normalizedPath);
+      playtimeMs = Math.max(1, transcodeStats.duration_ms || sourceStats.duration_ms || 1);
+      plaintext = await fs.readFile(normalizedPath);
+    } else {
+      pcmPath = await transcodeToPcm(voiceFile).catch((error) => {
+        error.stage = "voice_transcode";
+        throw error;
+      });
+      const pcmStats = await probePcmStats(pcmPath, WEIXIN_VOICE_SAMPLE_RATE);
+      const silk = await encodePcmToSilk(pcmPath);
+      playtimeMs = Math.max(1, silk.durationMs || pcmStats.duration_ms || sourceStats.duration_ms || 1);
+      plaintext = silk.data;
+      transcodeStats = {
+        ...pcmStats,
+        codec: "silk",
+        duration_ms: playtimeMs,
+      };
+    }
     if (!plaintext.length) throw new Error("transcoded voice is empty");
     const rawsize = plaintext.length;
     const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
@@ -641,7 +792,6 @@ async function sendVoice(args) {
         filesize,
         no_need_thumb: true,
         aeskey: aeskey.toString("hex"),
-        base_info: buildBaseInfo(),
       },
     }).catch((error) => {
       error.stage = "getuploadurl";
@@ -682,12 +832,18 @@ async function sendVoice(args) {
     cdnVerify.verify_ms = Date.now() - cdnVerifyStart;
     const sendStart = Date.now();
     const clientId = `branchwhisper-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-    const voiceItem = {
-      media: buildOfficialMediaPayload({ downloadParam: upload.downloadParam, aeskey }),
-      encode_type: VOICE_ENCODE_OGG_OPUS,
-      sample_rate: WEIXIN_VOICE_OPUS_SAMPLE_RATE,
-      playtime: playtimeMs,
-    };
+    const voiceItem = buildVoiceItem({
+      downloadParam: upload.downloadParam,
+      aeskey,
+      encodeType: voiceEncodeType(voiceFormat),
+      sampleRate: voiceSampleRate(voiceFormat, transcodeStats.sample_rate),
+      playtimeMs,
+      voiceSize: rawsize,
+      includeBitsPerSample,
+      includeVoiceSize,
+      includeText,
+      aesKeyEncoding: voiceAesKey,
+    });
     const sendResp = await postJson({
       baseUrl,
       apiPath: "ilink/bot/sendmessage",
@@ -718,9 +874,10 @@ async function sendVoice(args) {
       ok: true,
       message_id: clientId,
       stage: "sent",
-      transcode_format: "ogg_opus",
-      encode_type: VOICE_ENCODE_OGG_OPUS,
-      sample_rate: WEIXIN_VOICE_OPUS_SAMPLE_RATE,
+      transcode_format: voiceFormat,
+      encode_type: voiceEncodeType(voiceFormat),
+      bits_per_sample: voiceItem.bits_per_sample,
+      sample_rate: voiceSampleRate(voiceFormat, transcodeStats.sample_rate) || 0,
       gain_db: WEIXIN_VOICE_GAIN_DB,
       playtime_ms: playtimeMs,
       source_audio: sourceStats,
@@ -731,14 +888,25 @@ async function sendVoice(args) {
       upload_url_kind: upload.uploadUrlKind,
       cdn_verify: cdnVerify,
       voice_item_shape: compactResponseShape(voiceItem),
+      voice_payload_options: {
+        aes_key_encoding: voiceAesKey,
+        include_bits_per_sample: includeBitsPerSample,
+        include_voice_size: includeVoiceSize,
+        include_text: Boolean(includeText),
+      },
       getuploadurl_shape: compactResponseShape(uploadUrlResp),
       sendmessage_shape: compactResponseShape(sendResp),
+      sendmessage_response: compactSendMessageResponse(sendResp),
+      voice_format: voiceFormat,
+      client_delivery: VOICE_CLIENT_DELIVERY,
+      client_delivery_reason: VOICE_CLIENT_DELIVERY_REASON,
       upload_ms: uploadMs,
       send_ms: Date.now() - sendStart,
       total_ms: Date.now() - started,
     };
   } finally {
     if (normalizedPath) await fs.unlink(normalizedPath).catch(() => {});
+    if (pcmPath) await fs.unlink(pcmPath).catch(() => {});
   }
 }
 
@@ -964,7 +1132,7 @@ async function main() {
   try {
     const result = args.selfTest
       ? await selfTest()
-      : (args.downloadMedia ? await downloadMedia(args) : (args.imageFile ? await sendImage(args) : await sendVoice(args)));
+      : (args.filePayloadTest ? await filePayloadTest() : (args.voicePayloadTest ? await voicePayloadTest(args) : (args.downloadMedia ? await downloadMedia(args) : (args.imageFile ? await sendImage(args) : await sendVoice(args)))));
     process.stdout.write(JSON.stringify(result));
   } catch (error) {
     fail(error?.message || String(error), {

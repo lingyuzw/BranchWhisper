@@ -10,6 +10,25 @@ export class ApiError extends Error {
   }
 }
 
+function compactJson(value: unknown, limit = 1200) {
+  try {
+    const text = JSON.stringify(value, null, 2);
+    return text.length > limit ? `${text.slice(0, limit)}...` : text;
+  } catch {
+    return "";
+  }
+}
+
+export function formatApiError(error: unknown) {
+  if (error instanceof ApiError) {
+    const payload = error.payload as { detail?: unknown; error?: unknown; message?: unknown } | undefined;
+    const message = payload?.message || payload?.detail || payload?.error || error.message || `HTTP ${error.status}`;
+    if (typeof message === "string") return message;
+    return compactJson(message) || `HTTP ${error.status}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, options);
   const text = await response.text();

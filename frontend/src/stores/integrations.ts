@@ -77,14 +77,21 @@ function compact(value: unknown, limit = 52) {
 }
 
 export function probeStatusText(result: Record<string, any>) {
-  if (result.ok) return "接口已接收，请到微信端验证";
+  if (result.client_delivery === "unsupported_or_unconfirmed") return "未送达：微信端未渲染原生语音";
+  if (result.client_delivery === "unconfirmed") return "未确认：微信端未确认原生语音";
+  if (result.ok) return "原生语音已送达";
   if (result.stage === "tts_loading") return "等待 TTS 加载/预热";
   return "失败";
 }
 
 function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker") {
   const target = result.target || {};
-  const clientDelivery = result.client_delivery === "unconfirmed" ? "接口已接收，微信客户端需人工确认" : result.client_delivery || "--";
+  const clientDelivery =
+    result.client_delivery === "unsupported_or_unconfirmed"
+      ? "接口已接收，但微信端没有显示原生语音气泡"
+      : result.client_delivery === "unconfirmed"
+        ? "接口已接收，但微信客户端未确认原生语音"
+        : result.client_delivery || "--";
   const lines = [
     `状态：${probeStatusText(result)}`,
     `阶段：${result.stage || "--"}`,
@@ -95,16 +102,26 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
     const diagnostic = result.voice_diagnostic || {};
     const cdnVerify = diagnostic.cdn_verify || {};
     if (result.tts_done) lines.push(`TTS：完成 · ${result.tts_ms || 0}ms`);
-    if (result.voice_file) lines.push(`文件：${result.voice_file}`);
-    if (result.send_done) lines.push(`发送：完成 · ${result.send_ms || 0}ms · ${result.voice_format || "--"}`);
+    if (result.voice_file) lines.push(`本地音频产物：${result.voice_file}`);
+    if (result.send_done) {
+      const apiLabel = result.client_delivery === "unsupported_or_unconfirmed" ? "已接收但未渲染" : "已接收";
+      lines.push(`接口：${apiLabel} · ${result.send_ms || 0}ms · ${result.voice_format || "--"}`);
+    }
     if (result.voice_message_id) lines.push(`消息：${result.voice_message_id}`);
     if (diagnostic.encode_type || diagnostic.sample_rate || diagnostic.playtime_ms) {
-      lines.push(`编码：type=${diagnostic.encode_type || "--"} · ${diagnostic.sample_rate || "--"}Hz · ${diagnostic.playtime_ms || 0}ms`);
+      const voiceSize = diagnostic.voice_size || diagnostic.raw_size || 0;
+      lines.push(`编码：type=${diagnostic.encode_type || "--"} · ${diagnostic.bits_per_sample || "--"}bit · ${diagnostic.sample_rate || "--"}Hz · ${diagnostic.playtime_ms || 0}ms${voiceSize ? ` · ${voiceSize} bytes` : ""}`);
     }
     if (cdnVerify.ok === false) {
       lines.push(`CDN 回读：未通过自检（微信 CDN 对下载校验返回 400），发送请求已继续提交`);
     } else if (cdnVerify.ok === true) {
       lines.push(`CDN 回读：通过 · ${cdnVerify.verify_ms || 0}ms`);
+    }
+    if (result.client_delivery_reason) lines.push(`说明：${result.client_delivery_reason}`);
+    if (result.client_delivery === "unsupported_or_unconfirmed") {
+      lines.push("结论：当前 OpenClaw/iLink 通道会接受 voice_item，但微信客户端没有渲染原生语音气泡；这不是 TTS 或音频文件生成失败。文件附件不能算微信语音。");
+    } else if (result.voice_file) {
+      lines.push("说明：本地音频产物只代表 TTS 已生成，不等于微信端收到原生语音。");
     }
   } else {
     const sticker = result.sticker || {};

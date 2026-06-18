@@ -499,3 +499,521 @@ INFO 06-17 22:27:46 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 toke
 2026-06-17 22:27:47,552 INFO yield speech len 3.28, rtf 0.1396484491301746
 100%|██████████| 1/1 [00:01<00:00,  1.53s/it]100%|██████████| 1/1 [00:01<00:00,  1.53s/it]
 INFO:     127.0.0.1:41859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43059 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43133 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43149 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 22:49:41,436 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-17 22:49:41 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 22:49:41 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 22:49:42,375 INFO yield speech len 3.84, rtf 0.24457251032193503
+2026-06-17 22:49:42,682 INFO yield speech len 0.6, rtf 0.5093363920847576
+100%|██████████| 1/1 [00:01<00:00,  1.26s/it]100%|██████████| 1/1 [00:01<00:00,  1.26s/it]
+INFO:     127.0.0.1:41979 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:41985 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 22:56:07,478 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-17 22:56:07 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 22:56:07 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 22:56:08,496 INFO yield speech len 3.84, rtf 0.26501845568418503
+2026-06-17 22:56:08,809 INFO yield speech len 1.16, rtf 0.26914723988237055
+100%|██████████| 1/1 [00:01<00:00,  1.34s/it]100%|██████████| 1/1 [00:01<00:00,  1.34s/it]
+INFO:     127.0.0.1:42683 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>晚安 明天见
+INFO:     127.0.0.1:42687 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 23:00:35,171 INFO synthesis text <|endofprompt|>晚安 明天见
+WARNING 06-17 23:00:35 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 23:00:35 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 23:00:36,510 INFO yield speech len 2.44, rtf 0.548488585675349
+100%|██████████| 1/1 [00:01<00:00,  1.36s/it]100%|██████████| 1/1 [00:01<00:00,  1.36s/it]
+INFO:     127.0.0.1:43241 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43257 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41529 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41543 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42255 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42269 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41439 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41451 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44051 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44055 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44069 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44065 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44095 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41099 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41119 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41145 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40903 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40909 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42639 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42649 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43001 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43011 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43041 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43465 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43469 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 23:02:45,322 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-17 23:02:45 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 23:02:45 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 23:02:46,157 INFO yield speech len 3.52, rtf 0.23729848590764133
+100%|██████████| 1/1 [00:00<00:00,  1.19it/s]100%|██████████| 1/1 [00:00<00:00,  1.18it/s]
+INFO:     127.0.0.1:43683 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43703 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43743 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42273 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42297 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43359 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43377 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43955 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43985 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43999 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44295 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44317 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44107 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44117 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41053 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41085 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41271 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41281 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43207 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43925 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43969 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43991 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41365 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41375 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41953 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41969 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41425 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41439 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44511 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43681 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40867 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40919 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43451 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40561 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40667 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40633 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43877 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43875 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43335 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40891 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42291 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42297 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 23:16:19,231 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-17 23:16:19 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 23:16:19 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 23:16:20,185 INFO yield speech len 3.88, rtf 0.24587690215749838
+100%|██████████| 1/1 [00:00<00:00,  1.04it/s]100%|██████████| 1/1 [00:00<00:00,  1.04it/s]
+INFO:     127.0.0.1:41719 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44425 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44447 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44457 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44473 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42231 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42247 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42499 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42515 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 23:28:19,940 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-17 23:28:19 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 23:28:19 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 23:28:20,810 INFO yield speech len 3.56, rtf 0.2444266603234109
+100%|██████████| 1/1 [00:00<00:00,  1.14it/s]100%|██████████| 1/1 [00:00<00:00,  1.14it/s]
+INFO:     127.0.0.1:44089 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:44101 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-17 23:28:41,022 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-17 23:28:41 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-17 23:28:41 [loggers.py:127] Engine 000: Avg prompt throughput: 0.9 tokens/s, Avg generation throughput: 4.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-17 23:28:42,005 INFO yield speech len 3.28, rtf 0.29943251028293516
+100%|██████████| 1/1 [00:00<00:00,  1.01it/s]100%|██████████| 1/1 [00:00<00:00,  1.01it/s]
+INFO:     127.0.0.1:42583 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42609 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42617 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44591 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40537 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41445 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41483 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41611 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41639 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41651 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40905 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40913 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42863 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42875 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42729 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41271 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40813 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43457 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42527 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42539 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42541 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42709 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42731 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42165 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42167 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43659 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43685 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43705 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41091 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41099 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40943 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40977 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43891 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43923 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43933 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44521 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44523 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43233 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43247 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43495 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43503 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43521 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41203 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41225 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44443 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44469 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43487 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43513 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43519 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40919 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40933 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41553 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43521 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43865 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42149 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42161 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>??,???????????
+INFO:     127.0.0.1:42167 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 00:41:15,031 INFO synthesis text <|endofprompt|>??,???????????
+WARNING 06-18 00:41:15 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 00:41:15 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 00:41:16,345 INFO yield speech len 1.6, rtf 0.8207033574581146
+100%|██████████| 1/1 [00:01<00:00,  1.38s/it]100%|██████████| 1/1 [00:01<00:00,  1.38s/it]
+INFO:     127.0.0.1:44473 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:44483 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 00:43:08,644 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 00:43:08 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 00:43:08 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 00:43:09,834 INFO yield speech len 3.84, rtf 0.30987163384755456
+2026-06-18 00:43:10,201 INFO yield speech len 0.36, rtf 1.011054383383857
+100%|██████████| 1/1 [00:01<00:00,  1.57s/it]100%|██████████| 1/1 [00:01<00:00,  1.57s/it]
+INFO:     127.0.0.1:42801 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42811 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 00:45:30,557 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 00:45:30 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 00:45:30 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.8 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 00:45:31,650 INFO yield speech len 3.84, rtf 0.28462906678517663
+2026-06-18 00:45:32,000 INFO yield speech len 0.64, rtf 0.5449365824460983
+100%|██████████| 1/1 [00:01<00:00,  1.45s/it]100%|██████████| 1/1 [00:01<00:00,  1.45s/it]
+INFO:     127.0.0.1:40779 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:40785 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 00:49:49,506 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 00:49:49 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 00:49:49 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 00:49:50,557 INFO yield speech len 3.84, rtf 0.273742713034153
+2026-06-18 00:49:50,946 INFO yield speech len 1.2, rtf 0.323519508043925
+100%|██████████| 1/1 [00:01<00:00,  1.45s/it]100%|██████████| 1/1 [00:01<00:00,  1.45s/it]
+INFO:     127.0.0.1:42555 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42743 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42759 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:04:41,245 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:04:41 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:04:41 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:04:42,239 INFO yield speech len 3.84, rtf 0.2588909740249316
+2026-06-18 01:04:42,562 INFO yield speech len 0.44, rtf 0.7311696355993097
+100%|██████████| 1/1 [00:01<00:00,  1.33s/it]100%|██████████| 1/1 [00:01<00:00,  1.33s/it]
+INFO:     127.0.0.1:41371 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:41377 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:06:02,019 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:06:02 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:06:02 [loggers.py:127] Engine 000: Avg prompt throughput: 0.2 tokens/s, Avg generation throughput: 1.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:06:03,004 INFO yield speech len 4.0, rtf 0.2463276982307434
+100%|██████████| 1/1 [00:00<00:00,  1.01it/s]100%|██████████| 1/1 [00:00<00:00,  1.01it/s]
+INFO:     127.0.0.1:42905 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42935 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42945 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42965 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42981 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41041 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:41051 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:07:46,221 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:07:46 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:07:46 [loggers.py:127] Engine 000: Avg prompt throughput: 0.2 tokens/s, Avg generation throughput: 1.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:07:47,120 INFO yield speech len 3.84, rtf 0.23400448262691498
+2026-06-18 01:07:47,472 INFO yield speech len 0.32, rtf 1.0976612567901611
+100%|██████████| 1/1 [00:01<00:00,  1.26s/it]100%|██████████| 1/1 [00:01<00:00,  1.26s/it]
+INFO:     127.0.0.1:44373 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:44381 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:08:19,529 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:08:19 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:08:19 [loggers.py:127] Engine 000: Avg prompt throughput: 0.5 tokens/s, Avg generation throughput: 3.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:08:20,889 INFO yield speech len 3.84, rtf 0.35407599061727524
+2026-06-18 01:08:21,317 INFO yield speech len 1.36, rtf 0.313914698712966
+100%|██████████| 1/1 [00:01<00:00,  1.80s/it]100%|██████████| 1/1 [00:01<00:00,  1.80s/it]
+INFO:     127.0.0.1:42457 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42467 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:12:53,135 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:12:53 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:12:53 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:12:54,107 INFO yield speech len 3.52, rtf 0.27610605413263495
+100%|██████████| 1/1 [00:00<00:00,  1.02it/s]100%|██████████| 1/1 [00:00<00:00,  1.02it/s]
+INFO:     127.0.0.1:40867 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40869 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:40875 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:16:15,694 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:16:15 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:16:15 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:16:16,635 INFO yield speech len 3.84, rtf 0.24519010136524838
+100%|██████████| 1/1 [00:00<00:00,  1.05it/s]100%|██████████| 1/1 [00:00<00:00,  1.05it/s]
+INFO:     127.0.0.1:43275 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43279 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:21:44,713 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:21:44 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:21:44 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:21:45,860 INFO yield speech len 3.64, rtf 0.3151115480360094
+100%|██████████| 1/1 [00:01<00:00,  1.16s/it]100%|██████████| 1/1 [00:01<00:00,  1.16s/it]
+INFO:     127.0.0.1:43567 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43577 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43591 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:36:11,648 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:36:11 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:36:11 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:36:12,648 INFO yield speech len 2.64, rtf 0.37887882102619513
+100%|██████████| 1/1 [00:01<00:00,  1.01s/it]100%|██████████| 1/1 [00:01<00:00,  1.01s/it]
+INFO:     127.0.0.1:43719 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42015 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42017 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 01:41:37,979 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 01:41:38 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 01:41:38 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 01:41:39,065 INFO yield speech len 3.84, rtf 0.2826704954107603
+2026-06-18 01:41:39,453 INFO yield speech len 0.6, rtf 0.6456085046132406
+100%|██████████| 1/1 [00:01<00:00,  1.48s/it]100%|██████████| 1/1 [00:01<00:00,  1.48s/it]
+INFO:     127.0.0.1:44117 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42109 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41047 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44049 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41579 - "GET /health HTTP/1.1" 200 OK
+
+
+===== start 2026-06-18 02:39:21 =====
+configured command: conda run --no-capture-output -n cosyvoice_vllm python -u "${PROJECT_ROOT}/services/tts/trained_tts_server.py" --repo_dir "${WORKSPACE_ROOT}/CosyVoice" --model_dir "${WORKSPACE_ROOT}/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B" --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000
+final command: conda run --no-capture-output -n cosyvoice_vllm python -u "/home/me/workspace/BranchWhisper/services/tts/trained_tts_server.py" --repo_dir "/home/me/workspace/CosyVoice" --model_dir "/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B" --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000
+INFO:     Started server process [28722]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:50000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:41135 - "GET /health HTTP/1.1" 200 OK
+/home/me/miniconda3/envs/cosyvoice_vllm/lib/python3.10/site-packages/lightning/fabric/__init__.py:41: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+2026-06-18 02:39:42,686 INFO input frame rate=25
+/home/me/miniconda3/envs/cosyvoice_vllm/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+[1;31m2026-06-18 02:39:55.825435901 [E:onnxruntime:Default, provider_bridge_ort.cc:1744 TryGetProviderInfo_CUDA] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1426 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library libonnxruntime_providers_cuda.so with error: libcudnn.so.8: cannot open shared object file: No such file or directory
+[m
+[0;93m2026-06-18 02:39:55.825950365 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:870 CreateExecutionProviderInstance] Failed to create CUDAExecutionProvider. Please reference https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirementsto ensure all dependencies are met.[m
+Downloading Model to directory: /home/me/.cache/modelscope/hub/pengzhendong/wetext
+2026-06-18 02:39:56,890 DEBUG Starting new HTTPS connection (1): www.modelscope.cn:443
+2026-06-18 02:39:57,363 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/revisions HTTP/1.1" 200 222
+2026-06-18 02:39:57,473 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/repo/files?Revision=master&Recursive=True HTTP/1.1" 200 None
+Downloading Model to directory: /home/me/.cache/modelscope/hub/pengzhendong/wetext
+2026-06-18 02:39:57,616 DEBUG Starting new HTTPS connection (1): www.modelscope.cn:443
+2026-06-18 02:39:57,917 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/revisions HTTP/1.1" 200 222
+2026-06-18 02:39:58,037 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/repo/files?Revision=master&Recursive=True HTTP/1.1" 200 None
+2026-06-18 02:39:58,152 INFO use wetext frontend
+INFO 06-18 02:40:31 [__init__.py:216] Automatically detected platform cuda.
+INFO 06-18 02:40:33 [model.py:547] Resolved architecture: Qwen2ForCausalLM
+`torch_dtype` is deprecated! Use `dtype` instead!
+INFO 06-18 02:40:33 [model.py:1510] Using max model len 32768
+WARNING 06-18 02:40:33 [arg_utils.py:1554] --enable-prompt-embeds and --enable-prefix-caching are not supported together in V1. Prefix caching has been disabled.
+INFO 06-18 02:40:33 [scheduler.py:205] Chunked prefill is enabled with max_num_batched_tokens=2048.
+WARNING 06-18 02:40:33 [__init__.py:3036] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+INFO 06-18 02:40:40 [__init__.py:216] Automatically detected platform cuda.
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:40:41 [core.py:644] Waiting for init message from front-end.
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:40:41 [core.py:77] Initializing a V1 LLM engine (v0.11.0) with config: model='/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm', speculative_config=None, tokenizer='/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm', skip_tokenizer_init=True, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser=''), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None), seed=0, served_model_name=/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm, enable_prefix_caching=False, chunked_prefill_enabled=True, pooler_config=None, compilation_config={"level":3,"debug_dump_path":"","cache_dir":"","backend":"","custom_ops":[],"splitting_ops":["vllm.unified_attention","vllm.unified_attention_with_output","vllm.mamba_mixer2","vllm.mamba_mixer","vllm.short_conv","vllm.linear_attention","vllm.plamo2_mamba_mixer","vllm.gdn_attention","vllm.sparse_attn_indexer"],"use_inductor":true,"compile_sizes":[],"inductor_compile_config":{"enable_auto_functionalized_v2":false},"inductor_passes":{},"cudagraph_mode":[2,1],"use_cudagraph":true,"cudagraph_num_of_warmups":1,"cudagraph_capture_sizes":[256,248,240,232,224,216,208,200,192,184,176,168,160,152,144,136,128,120,112,104,96,88,80,72,64,56,48,40,32,24,16,8,4,2,1],"cudagraph_copy_inputs":false,"full_cuda_graph":false,"use_inductor_graph_partition":false,"pass_config":{},"max_capture_size":256,"local_cache_dir":null}
+[1;36m(EngineCore_DP0 pid=29044)[0;0m WARNING 06-18 02:40:43 [interface.py:381] Using 'pin_memory=False' as WSL is detected. This may slow down the performance.
+[W618 02:40:54.801020261 socket.cpp:200] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[W618 02:41:06.810127457 socket.cpp:200] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:07 [parallel_state.py:1208] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, TP rank 0, EP rank 0
+[1;36m(EngineCore_DP0 pid=29044)[0;0m WARNING 06-18 02:41:07 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:07 [gpu_model_runner.py:2602] Starting to load model /home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm...
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:07 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:08 [cuda.py:366] Using Flash Attention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=29044)[0;0m Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+[1;36m(EngineCore_DP0 pid=29044)[0;0m Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:01<00:00,  1.70s/it]
+[1;36m(EngineCore_DP0 pid=29044)[0;0m Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:01<00:00,  1.70s/it]
+[1;36m(EngineCore_DP0 pid=29044)[0;0m 
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:10 [default_loader.py:267] Loading weights took 1.71 seconds
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:10 [gpu_model_runner.py:2653] Model loading took 0.6953 GiB and 2.888299 seconds
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:15 [backends.py:548] Using cache directory: /home/me/.cache/vllm/torch_compile_cache/d222e73441/rank_0_0/backbone for vLLM's torch.compile
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:15 [backends.py:559] Dynamo bytecode transform time: 4.20 s
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:16 [backends.py:164] Directly load the compiled graph(s) for dynamic shape from the cache, took 0.888 s
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:17 [monitor.py:34] torch.compile takes 4.20 s in total
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:18 [gpu_worker.py:298] Available KV cache memory: 1.52 GiB
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:18 [kv_cache_utils.py:1087] GPU KV cache size: 132,480 tokens
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:18 [kv_cache_utils.py:1091] Maximum concurrency for 32,768 tokens per request: 4.04x
+[1;36m(EngineCore_DP0 pid=29044)[0;0m Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   0%|          | 0/35 [00:00<?, ?it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   3%|▎         | 1/35 [00:00<00:25,  1.31it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  20%|██        | 7/35 [00:00<00:02, 10.30it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  34%|███▍      | 12/35 [00:01<00:01, 16.50it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  46%|████▌     | 16/35 [00:01<00:00, 20.27it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  57%|█████▋    | 20/35 [00:01<00:00, 24.03it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  69%|██████▊   | 24/35 [00:01<00:00, 26.99it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  80%|████████  | 28/35 [00:01<00:00, 28.83it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  91%|█████████▏| 32/35 [00:01<00:00, 28.81it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 35/35 [00:01<00:00, 18.52it/s]
+[1;36m(EngineCore_DP0 pid=29044)[0;0m Capturing CUDA graphs (decode, FULL):   0%|          | 0/19 [00:00<?, ?it/s]Capturing CUDA graphs (decode, FULL):   5%|▌         | 1/19 [00:00<00:05,  3.43it/s]Capturing CUDA graphs (decode, FULL):  37%|███▋      | 7/19 [00:00<00:00, 21.60it/s]Capturing CUDA graphs (decode, FULL):  63%|██████▎   | 12/19 [00:00<00:00, 29.56it/s]Capturing CUDA graphs (decode, FULL):  84%|████████▍ | 16/19 [00:00<00:00, 32.63it/s]Capturing CUDA graphs (decode, FULL): 100%|██████████| 19/19 [00:00<00:00, 27.88it/s]
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:21 [gpu_model_runner.py:3480] Graph capturing finished in 3 secs, took -9.79 GiB
+[1;36m(EngineCore_DP0 pid=29044)[0;0m INFO 06-18 02:41:21 [core.py:210] init engine (profile, create kv cache, warmup model) took 10.64 seconds
+INFO 06-18 02:41:21 [loggers.py:147] Engine 000: vllm cache_config_info with initialization after num_gpu_blocks is: 8280
+Loaded model: /home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B
+Speaker: hanser
+Sample rate: 24000
+Available speakers: ['hanser']
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 02:41:21,738 INFO synthesis text <|endofprompt|>你好。
+/home/me/workspace/CosyVoice/cosyvoice/cli/model.py:103: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with self.llm_context, torch.cuda.amp.autocast(self.fp16 is True and hasattr(self.llm, 'vllm') is False):
+WARNING 06-18 02:41:22 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+/home/me/workspace/CosyVoice/cosyvoice/cli/model.py:426: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(self.fp16):
+2026-06-18 02:41:29,325 INFO yield speech len 0.8, rtf 9.483582377433777
+100%|██████████| 1/1 [00:07<00:00,  7.67s/it]100%|██████████| 1/1 [00:07<00:00,  7.67s/it]
+INFO:     127.0.0.1:65082 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43695 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43697 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 02:45:18,672 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 02:45:18 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 02:45:18 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 02:45:19,550 INFO yield speech len 0.84, rtf 1.044862327121553
+2026-06-18 02:45:19,949 INFO yield speech len 2.0, rtf 0.19804656505584717
+2026-06-18 02:45:20,248 INFO yield speech len 1.48, rtf 0.20079499966389425
+100%|██████████| 1/1 [00:01<00:00,  1.60s/it]100%|██████████| 1/1 [00:01<00:00,  1.60s/it]
+INFO:     127.0.0.1:41959 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>??,???????????
+INFO:     127.0.0.1:41963 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 03:20:15,631 INFO synthesis text <|endofprompt|>??,???????????
+WARNING 06-18 03:20:15 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 03:20:15 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 03:20:16,353 INFO yield speech len 1.52, rtf 0.4749083205273277
+100%|██████████| 1/1 [00:00<00:00,  1.35it/s]100%|██████████| 1/1 [00:00<00:00,  1.35it/s]
+/tmp/tmpatl6umur: line 3: 28722 Killed                  python -u /home/me/workspace/BranchWhisper/services/tts/trained_tts_server.py --repo_dir /home/me/workspace/CosyVoice --model_dir /home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000
+
+
+===== start 2026-06-18 10:02:35 =====
+configured command: conda run --no-capture-output -n cosyvoice_vllm python -u "${PROJECT_ROOT}/services/tts/trained_tts_server.py" --repo_dir "${WORKSPACE_ROOT}/CosyVoice" --model_dir "${WORKSPACE_ROOT}/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B" --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000
+final command: conda run --no-capture-output -n cosyvoice_vllm python -u "/home/me/workspace/BranchWhisper/services/tts/trained_tts_server.py" --repo_dir "/home/me/workspace/CosyVoice" --model_dir "/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B" --speaker hanser --load_vllm --fp16 --defer_load --host 0.0.0.0 --port 50000
+INFO:     Started server process [4924]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:50000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:41155 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42975 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42987 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43005 - "GET /health HTTP/1.1" 200 OK
+/home/me/miniconda3/envs/cosyvoice_vllm/lib/python3.10/site-packages/lightning/fabric/__init__.py:41: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+2026-06-18 10:02:50,162 INFO input frame rate=25
+/home/me/miniconda3/envs/cosyvoice_vllm/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+[1;31m2026-06-18 10:02:53.797827709 [E:onnxruntime:Default, provider_bridge_ort.cc:1744 TryGetProviderInfo_CUDA] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1426 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library libonnxruntime_providers_cuda.so with error: libcudnn.so.8: cannot open shared object file: No such file or directory
+[m
+[0;93m2026-06-18 10:02:53.798514680 [W:onnxruntime:Default, onnxruntime_pybind_state.cc:870 CreateExecutionProviderInstance] Failed to create CUDAExecutionProvider. Please reference https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirementsto ensure all dependencies are met.[m
+Downloading Model to directory: /home/me/.cache/modelscope/hub/pengzhendong/wetext
+2026-06-18 10:02:59,562 DEBUG Starting new HTTPS connection (1): www.modelscope.cn:443
+2026-06-18 10:02:59,942 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/revisions HTTP/1.1" 200 222
+2026-06-18 10:03:00,052 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/repo/files?Revision=master&Recursive=True HTTP/1.1" 200 None
+Downloading Model to directory: /home/me/.cache/modelscope/hub/pengzhendong/wetext
+2026-06-18 10:03:00,327 DEBUG Starting new HTTPS connection (1): www.modelscope.cn:443
+2026-06-18 10:03:00,632 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/revisions HTTP/1.1" 200 222
+2026-06-18 10:03:00,749 DEBUG https://www.modelscope.cn:443 "GET /api/v1/models/pengzhendong/wetext/repo/files?Revision=master&Recursive=True HTTP/1.1" 200 None
+2026-06-18 10:03:00,896 INFO use wetext frontend
+INFO:     127.0.0.1:41747 - "GET /health HTTP/1.1" 200 OK
+INFO 06-18 10:03:22 [__init__.py:216] Automatically detected platform cuda.
+INFO 06-18 10:03:24 [model.py:547] Resolved architecture: Qwen2ForCausalLM
+`torch_dtype` is deprecated! Use `dtype` instead!
+INFO 06-18 10:03:24 [model.py:1510] Using max model len 32768
+WARNING 06-18 10:03:24 [arg_utils.py:1554] --enable-prompt-embeds and --enable-prefix-caching are not supported together in V1. Prefix caching has been disabled.
+INFO 06-18 10:03:24 [scheduler.py:205] Chunked prefill is enabled with max_num_batched_tokens=2048.
+WARNING 06-18 10:03:24 [__init__.py:3036] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+INFO:     127.0.0.1:41845 - "GET /health HTTP/1.1" 200 OK
+INFO 06-18 10:03:30 [__init__.py:216] Automatically detected platform cuda.
+INFO:     127.0.0.1:41857 - "GET /health HTTP/1.1" 200 OK
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:31 [core.py:644] Waiting for init message from front-end.
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:31 [core.py:77] Initializing a V1 LLM engine (v0.11.0) with config: model='/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm', speculative_config=None, tokenizer='/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm', skip_tokenizer_init=True, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser=''), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None), seed=0, served_model_name=/home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm, enable_prefix_caching=False, chunked_prefill_enabled=True, pooler_config=None, compilation_config={"level":3,"debug_dump_path":"","cache_dir":"","backend":"","custom_ops":[],"splitting_ops":["vllm.unified_attention","vllm.unified_attention_with_output","vllm.mamba_mixer2","vllm.mamba_mixer","vllm.short_conv","vllm.linear_attention","vllm.plamo2_mamba_mixer","vllm.gdn_attention","vllm.sparse_attn_indexer"],"use_inductor":true,"compile_sizes":[],"inductor_compile_config":{"enable_auto_functionalized_v2":false},"inductor_passes":{},"cudagraph_mode":[2,1],"use_cudagraph":true,"cudagraph_num_of_warmups":1,"cudagraph_capture_sizes":[256,248,240,232,224,216,208,200,192,184,176,168,160,152,144,136,128,120,112,104,96,88,80,72,64,56,48,40,32,24,16,8,4,2,1],"cudagraph_copy_inputs":false,"full_cuda_graph":false,"use_inductor_graph_partition":false,"pass_config":{},"max_capture_size":256,"local_cache_dir":null}
+[1;36m(EngineCore_DP0 pid=5416)[0;0m WARNING 06-18 10:03:32 [interface.py:381] Using 'pin_memory=False' as WSL is detected. This may slow down the performance.
+INFO:     127.0.0.1:40629 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40661 - "GET /health HTTP/1.1" 200 OK
+[W618 10:03:43.457936665 socket.cpp:200] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+INFO:     127.0.0.1:42185 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42211 - "GET /health HTTP/1.1" 200 OK
+[W618 10:03:53.467336813 socket.cpp:200] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:53 [parallel_state.py:1208] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, TP rank 0, EP rank 0
+[1;36m(EngineCore_DP0 pid=5416)[0;0m WARNING 06-18 10:03:53 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+INFO:     127.0.0.1:43727 - "GET /health HTTP/1.1" 200 OK
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:53 [gpu_model_runner.py:2602] Starting to load model /home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B/vllm...
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:53 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:54 [cuda.py:366] Using Flash Attention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=5416)[0;0m Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+[1;36m(EngineCore_DP0 pid=5416)[0;0m Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:01<00:00,  1.56s/it]
+[1;36m(EngineCore_DP0 pid=5416)[0;0m Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:01<00:00,  1.56s/it]
+[1;36m(EngineCore_DP0 pid=5416)[0;0m 
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:55 [default_loader.py:267] Loading weights took 1.57 seconds
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:56 [gpu_model_runner.py:2653] Model loading took 0.6953 GiB and 2.024135 seconds
+INFO:     127.0.0.1:43757 - "GET /health HTTP/1.1" 200 OK
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:59 [backends.py:548] Using cache directory: /home/me/.cache/vllm/torch_compile_cache/d222e73441/rank_0_0/backbone for vLLM's torch.compile
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:03:59 [backends.py:559] Dynamo bytecode transform time: 3.20 s
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:00 [backends.py:164] Directly load the compiled graph(s) for dynamic shape from the cache, took 0.811 s
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:00 [monitor.py:34] torch.compile takes 3.20 s in total
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:01 [gpu_worker.py:298] Available KV cache memory: 2.39 GiB
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:01 [kv_cache_utils.py:1087] GPU KV cache size: 208,608 tokens
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:01 [kv_cache_utils.py:1091] Maximum concurrency for 32,768 tokens per request: 6.37x
+[1;36m(EngineCore_DP0 pid=5416)[0;0m Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   0%|          | 0/35 [00:00<?, ?it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  11%|█▏        | 4/35 [00:00<00:00, 31.13it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  26%|██▌       | 9/35 [00:00<00:00, 37.87it/s]INFO:     127.0.0.1:43769 - "GET /health HTTP/1.1" 200 OK
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  40%|████      | 14/35 [00:00<00:00, 41.67it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  57%|█████▋    | 20/35 [00:00<00:00, 45.86it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  74%|███████▍  | 26/35 [00:00<00:00, 48.02it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  89%|████████▊ | 31/35 [00:00<00:00, 45.23it/s]Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 35/35 [00:00<00:00, 41.15it/s]
+[1;36m(EngineCore_DP0 pid=5416)[0;0m Capturing CUDA graphs (decode, FULL):   0%|          | 0/19 [00:00<?, ?it/s]Capturing CUDA graphs (decode, FULL):   5%|▌         | 1/19 [00:00<00:01,  9.80it/s]Capturing CUDA graphs (decode, FULL):  32%|███▏      | 6/19 [00:00<00:00, 32.15it/s]Capturing CUDA graphs (decode, FULL):  58%|█████▊    | 11/19 [00:00<00:00, 38.21it/s]Capturing CUDA graphs (decode, FULL):  84%|████████▍ | 16/19 [00:00<00:00, 40.45it/s]Capturing CUDA graphs (decode, FULL): 100%|██████████| 19/19 [00:00<00:00, 37.82it/s]
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:03 [gpu_model_runner.py:3480] Graph capturing finished in 2 secs, took 0.17 GiB
+[1;36m(EngineCore_DP0 pid=5416)[0;0m INFO 06-18 10:04:03 [core.py:210] init engine (profile, create kv cache, warmup model) took 7.22 seconds
+INFO 06-18 10:04:03 [loggers.py:147] Engine 000: vllm cache_config_info with initialization after num_gpu_blocks is: 13038
+Loaded model: /home/me/workspace/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B
+Speaker: hanser
+Sample rate: 24000
+Available speakers: ['hanser']
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 10:04:03,690 INFO synthesis text <|endofprompt|>你好。
+/home/me/workspace/CosyVoice/cosyvoice/cli/model.py:103: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with self.llm_context, torch.cuda.amp.autocast(self.fp16 is True and hasattr(self.llm, 'vllm') is False):
+WARNING 06-18 10:04:04 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+/home/me/workspace/CosyVoice/cosyvoice/cli/model.py:426: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(self.fp16):
+2026-06-18 10:04:06,252 INFO yield speech len 0.8, rtf 3.2025140523910522
+100%|██████████| 1/1 [00:02<00:00,  2.63s/it]100%|██████████| 1/1 [00:02<00:00,  2.63s/it]
+INFO:     127.0.0.1:43937 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43939 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40609 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40625 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:40641 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 10:04:18,583 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 10:04:18 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 10:04:18 [loggers.py:127] Engine 000: Avg prompt throughput: 0.4 tokens/s, Avg generation throughput: 1.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 10:04:19,497 INFO yield speech len 0.84, rtf 1.0875278995150612
+2026-06-18 10:04:19,955 INFO yield speech len 2.0, rtf 0.22814428806304932
+2026-06-18 10:04:20,351 INFO yield speech len 1.48, rtf 0.2669766142561629
+100%|██████████| 1/1 [00:01<00:00,  1.79s/it]100%|██████████| 1/1 [00:01<00:00,  1.79s/it]

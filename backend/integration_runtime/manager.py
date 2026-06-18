@@ -37,7 +37,12 @@ from data.conversations import ConversationStore
 from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
-from integration_runtime.weixin_media import WeixinImageSendError, WeixinVoiceSendError, send_weixin_image, send_weixin_voice
+from integration_runtime.weixin_media import (
+    WeixinImageSendError,
+    WeixinVoiceSendError,
+    send_weixin_image,
+    send_weixin_voice,
+)
 from media.assets import StickerStore
 from media.sticker_directives import extract_sticker_directives
 from media.sticker_vision import ChatImageAnalyzer
@@ -1642,10 +1647,12 @@ class ExternalDialogEngine:
                 context_token=target["context_token"],
                 cdn_base_url=str(target.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL),
             )
+            client_delivery = str(sent.get("client_delivery") or "unsupported_or_unconfirmed")
+            native_voice_delivered = client_delivery == "supported"
             result.update(
                 {
-                    "ok": True,
-                    "stage": "accepted",
+                    "ok": native_voice_delivered,
+                    "stage": "accepted_api_only" if client_delivery != "supported" else "sent",
                     "send_done": True,
                     "send_ms": int((time.perf_counter() - send_started) * 1000),
                     "total_ms": int((time.perf_counter() - started_at) * 1000),
@@ -1654,18 +1661,26 @@ class ExternalDialogEngine:
                     "voice_format": sent.get("transcode_format") or "",
                     "voice_diagnostic": {
                         "encode_type": sent.get("encode_type"),
+                        "bits_per_sample": sent.get("bits_per_sample"),
                         "sample_rate": sent.get("sample_rate"),
                         "gain_db": sent.get("gain_db"),
                         "playtime_ms": sent.get("playtime_ms"),
+                        "voice_size": sent.get("raw_size"),
                         "source_audio": sent.get("source_audio"),
                         "transcode_audio": sent.get("transcode_audio"),
                         "cdn_verify": sent.get("cdn_verify"),
+                        "voice_item_shape": sent.get("voice_item_shape"),
                         "upload_ms": sent.get("upload_ms"),
                         "upload_method": sent.get("upload_method"),
                         "upload_url_kind": sent.get("upload_url_kind"),
                         "sendmessage_shape": sent.get("sendmessage_shape"),
+                        "sendmessage_response": sent.get("sendmessage_response"),
                     },
-                    "client_delivery": "unconfirmed",
+                    "client_delivery": client_delivery,
+                    "client_delivery_reason": str(
+                        sent.get("client_delivery_reason")
+                        or "OpenClaw/iLink sendmessage documents text/image/video/file outbound messages; voice_item may be accepted by API without rendering in the WeChat client."
+                    ),
                 }
             )
             self.integration_manager.append_log(
@@ -1800,6 +1815,7 @@ class ExternalDialogEngine:
                 {
                     "ok": True,
                     "stage": "accepted",
+                    "client_delivery": "supported",
                     "send_done": True,
                     "send_ms": int((time.perf_counter() - send_started) * 1000),
                     "total_ms": int((time.perf_counter() - started_at) * 1000),

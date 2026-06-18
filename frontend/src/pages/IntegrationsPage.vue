@@ -18,6 +18,7 @@ import {
   X,
 } from "@lucide/vue";
 import type { IntegrationItem } from "@/api/integrations";
+import { formatApiError } from "@/api/client";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
@@ -37,6 +38,7 @@ const bridgeRunning = computed(() => ["running", "starting"].includes(String(sel
 const loginReady = computed(() => selectedAccounts.value.length > 0);
 const textProbeReady = computed(() => integrations.testOk === true);
 const voiceProbeReady = computed(() => integrations.voiceOk === true);
+const voiceProbeUnconfirmed = computed(() => integrations.voiceResult.includes("微信端未渲染") || integrations.voiceResult.includes("未确认显示语音气泡"));
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
 const dialogProbeRunning = ref(false);
 const voiceProbeRunning = ref(false);
@@ -51,8 +53,8 @@ const dialogProbeStatus = computed<ProbeStatus>(() => {
 const voiceProbeStatus = computed<ProbeStatus>(() => {
   if (voiceProbeRunning.value) return "running";
   if (!integrations.voiceResult) return "idle";
+  if (voiceProbeUnconfirmed.value || integrations.voiceResult.includes("等待 TTS")) return "warning";
   if (integrations.voiceOk === true) return "ok";
-  if (integrations.voiceResult.includes("等待 TTS")) return "warning";
   if (integrations.voiceOk === false || integrations.voiceResult.includes("失败")) return "failed";
   return "idle";
 });
@@ -80,8 +82,8 @@ const integrationSteps = computed(() => [
     state: textProbeReady.value ? "ok" : integrations.testResult ? "failed" : "idle",
   },
   {
-    label: "发送",
-    status: voiceProbeReady.value ? "发送正常" : voiceProbeStatus.value === "warning" ? "等待 TTS" : integrations.voiceResult ? "失败" : "未测试",
+    label: "语音",
+    status: voiceProbeReady.value ? "发送正常" : voiceProbeUnconfirmed.value ? "待客户端确认" : voiceProbeStatus.value === "warning" ? "等待 TTS" : integrations.voiceResult ? "失败" : "未测试",
     state: voiceProbeReady.value ? "ok" : voiceProbeStatus.value === "warning" ? "pending" : integrations.voiceResult ? "failed" : "idle",
   },
 ]);
@@ -164,7 +166,7 @@ async function saveConfig() {
 }
 
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+  return formatApiError(error);
 }
 
 function showActionMessage(message: string, type: "info" | "success" | "warning" | "error" = "info") {
@@ -254,9 +256,10 @@ async function runVoiceProbe() {
   try {
     await integrations.runVoiceTest();
     const waitingTts = integrations.voiceResult.includes("等待 TTS");
+    const unsupportedVoice = integrations.voiceResult.includes("微信端未渲染") || integrations.voiceResult.includes("未送达：微信端");
     showActionMessage(
-      integrations.voiceOk ? "语音测试已发送，请到微信端确认" : waitingTts ? "TTS 还在加载，稍后再测语音" : "语音测试失败，已生成诊断",
-      integrations.voiceOk ? "success" : "warning",
+      unsupportedVoice ? "微信端没有收到原生语音气泡" : integrations.voiceOk ? "原生语音已送达" : waitingTts ? "TTS 还在加载，稍后再测语音" : "语音测试失败，已生成诊断",
+      unsupportedVoice ? "warning" : integrations.voiceOk ? "success" : "warning",
     );
   } catch (error) {
     integrations.voiceOk = false;
@@ -412,9 +415,9 @@ function downloadLogs() {
                 <InlineProbe
                   variant="compact"
                   title="语音发送链路"
-                  summary="生成一段短语音并调用微信发送，验证 TTS、转码和发送器。"
+                  summary="生成短音频并尝试发送微信原生语音；本地文件不算送达。"
                   :status="voiceProbeStatus"
-                  :status-text="voiceProbeStatus === 'ok' ? '接口已接收' : voiceProbeStatus === 'warning' ? '等待 TTS' : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
+                  :status-text="voiceProbeStatus === 'ok' ? '发送正常' : voiceProbeStatus === 'warning' ? (voiceProbeUnconfirmed ? '原生语音未送达' : '等待 TTS') : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
                   :detail="integrations.voiceResult"
                   action-text="运行"
                   :disabled="!selected || integrations.actioning"
