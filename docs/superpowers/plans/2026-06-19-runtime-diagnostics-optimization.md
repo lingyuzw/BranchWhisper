@@ -6,7 +6,7 @@
 
 **Architecture:** Start with a backend diagnostics model that evaluates generic service profiles instead of hard-coded model names. Expose the results through a stable API, then add UI, trace, service profile, and refactor stages only after each previous stage is verified and committed.
 
-**Tech Stack:** Python 3/FastAPI backend, Vue 3/Vite frontend, existing runtime JSON files, pytest, node test runner, npm build checks, Git commits after each verified optimization point.
+**Tech Stack:** Python 3/FastAPI backend run from the `qwen3-asr` conda environment, Vue 3/Vite frontend, existing runtime JSON files, `unittest`, node test runner, npm build checks, Git commits after each verified optimization point.
 
 ---
 
@@ -70,7 +70,7 @@ If `git push` fails because authentication is unavailable, keep the local commit
 - [ ] Run:
 
 ```bash
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 ```
 
 Expected: fails because `backend.diagnostics.runtime` does not exist.
@@ -88,7 +88,7 @@ evaluate_profiles(profiles, ...)
 - [ ] Run:
 
 ```bash
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 ```
 
 Expected: all new diagnostics tests pass.
@@ -112,7 +112,7 @@ git push
 - [ ] Run:
 
 ```bash
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 ```
 
 Expected: fails because adapter function is missing.
@@ -128,7 +128,7 @@ It should preserve unknown provider names as labels, not dispatch on them.
 - [ ] Run:
 
 ```bash
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 ```
 
 Expected: pass.
@@ -152,7 +152,7 @@ git push
 - [ ] Run:
 
 ```bash
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 ```
 
 Expected: fails until payload builder exists.
@@ -166,8 +166,8 @@ GET /api/diagnostics/runtime
 - [ ] Run:
 
 ```bash
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
-python -m compileall backend services
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
+conda run -n qwen3-asr python -m compileall backend services
 ```
 
 Expected: pass.
@@ -205,8 +205,8 @@ Commit after the route, API client, and page each pass type/build checks.
 **Validation:**
 
 ```bash
-python -m pytest backend/tests -q
-python -m compileall backend services
+conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
+conda run -n qwen3-asr python -m compileall backend services
 ```
 
 Commit after the backend trace model, trace API, and frontend trace view each pass their checks.
@@ -220,9 +220,9 @@ Commit after the backend trace model, trace API, and frontend trace view each pa
 **Validation:**
 
 ```bash
-python -m pytest backend/tests/test_service_runtime.py -q
-python -m pytest backend/tests/test_runtime_diagnostics.py -q
-python -m compileall backend services
+conda run -n qwen3-asr python -m unittest backend.tests.test_service_runtime -v
+conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
+conda run -n qwen3-asr python -m compileall backend services
 ```
 
 Commit after schema migration, service manager integration, and UI edits each pass.
@@ -236,8 +236,8 @@ Commit after schema migration, service manager integration, and UI edits each pa
 **Validation:**
 
 ```bash
-python -m pytest backend/tests -q
-python -m compileall backend services
+conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
+conda run -n qwen3-asr python -m compileall backend services
 ```
 
 Commit after each extracted module.
@@ -251,8 +251,8 @@ Commit after each extracted module.
 **Validation:**
 
 ```bash
-python -m pytest backend/tests/test_memory_decay.py -q
-python -m pytest backend/tests -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_memory_decay -v
+conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
 Commit after each extracted memory or tool component.
@@ -283,7 +283,7 @@ Commit after each panel extraction.
 **Validation:**
 
 ```bash
-python -m pytest backend/tests/test_integration_manager.py -q
+conda run -n qwen3-asr python -m unittest backend.tests.test_integration_manager -v
 node --test backend/tests/test_weixin_voice_sender.mjs
 ```
 
@@ -294,9 +294,9 @@ Commit after each adapter boundary cleanup.
 Run:
 
 ```bash
-python -m compileall backend services
+conda run -n qwen3-asr python -m compileall backend services
 python scripts/check_static_imports.py
-python -m pytest backend/tests -q
+conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
 node --test backend/tests/test_weixin_voice_sender.mjs
 cd frontend && npm run check && npm run build && npm run check:ui
 ```
