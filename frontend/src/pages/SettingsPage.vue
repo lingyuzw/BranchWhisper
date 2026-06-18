@@ -34,6 +34,7 @@ import { useAppStore } from "@/stores/app";
 import { listModelFiles, uploadVoiceSample, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
 import AsrProviderPanel from "@/components/settings/AsrProviderPanel.vue";
+import SettingsOverviewBoard from "@/components/settings/SettingsOverviewBoard.vue";
 import TtsProviderPanel from "@/components/settings/TtsProviderPanel.vue";
 import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
@@ -969,6 +970,10 @@ function openSettingsSection(id: SettingsSectionId) {
   activeSettingsSection.value = id;
 }
 
+function openOverviewSection(id: string) {
+  openSettingsSection(id as SettingsSectionId);
+}
+
 function closeSettingsSection() {
   activeSettingsSection.value = "engine";
 }
@@ -1339,56 +1344,16 @@ function formatTime(value?: string) {
       </aside>
 
       <section class="settings-content settings-workspace">
-        <section class="settings-command-bar">
-          <div class="settings-title-block">
-            <p class="eyebrow">{{ activeSection.eyebrow }}</p>
-            <h2>{{ activeSection.title }}</h2>
-            <p>{{ activeSection.summary }} · {{ activeSection.status }}</p>
-          </div>
-          <div class="settings-command-actions">
-            <span v-if="settingsMessage" class="soft-badge">{{ settingsMessage }}</span>
-            <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll">
-              <Save :size="16" />{{ settingsSaving ? "保存中..." : "保存配置" }}
-            </button>
-          </div>
-        </section>
-
-        <section class="settings-ops-board" aria-label="常用配置">
-          <div class="settings-board-column settings-board-column--chain">
-            <header>
-              <p class="eyebrow">链路</p>
-              <h2>当前模型链路</h2>
-            </header>
-            <button
-              v-for="item in runtimeChainItems"
-              :key="item.id"
-              class="settings-chain-row"
-              type="button"
-              @click="openSettingsSection(item.section)"
-            >
-              <component :is="item.icon" :size="15" />
-              <span>
-                <strong>{{ item.title }} · {{ item.mode }}</strong>
-                <small>{{ item.model }}</small>
-              </span>
-              <em>{{ item.endpoint }}</em>
-            </button>
-          </div>
-
-          <div class="settings-board-column settings-board-column--capabilities">
-            <header>
-              <p class="eyebrow">能力</p>
-              <h2>能力开关</h2>
-            </header>
-            <div class="settings-toggle-matrix">
-              <label><span>TTS</span><select v-model="form.tts_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              <label><span>联网工具</span><select v-model="form.tools_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              <label><span>上下文压缩</span><select v-model="form.context_compaction_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-              <label><span>主动消息</span><select v-model="engagement.config.enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-            </div>
-          </div>
-        </section>
-
+        <SettingsOverviewBoard
+          :active-section="activeSection"
+          :runtime-chain-items="runtimeChainItems"
+          :form="form"
+          :engagement-config="engagement.config"
+          :settings-message="settingsMessage"
+          :settings-saving="settingsSaving"
+          @open-section="openOverviewSection"
+          @save-all="saveAll"
+        />
         <article v-show="activeSettingsSection === 'appearance'" class="settings-panel settings-section-detached is-active is-current" id="appearance">
           <div class="panel-head">
             <div><p class="eyebrow">显示</p><h2>外观与身份</h2></div>
