@@ -112,6 +112,33 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(checks["./build/bin/llama-server"].status, "ok")
         self.assertEqual(item.status, "ok")
 
+    def test_evaluate_profile_resolves_legacy_autodl_paths_like_service_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            legacy_model_dir = workspace_root / "Qwen3-ASR"
+            legacy_project_dir = workspace_root / "BranchWhisper" / "services"
+            legacy_model_dir.mkdir()
+            legacy_project_dir.mkdir(parents=True)
+            profile = RuntimeDiagnosticProfile(
+                role="asr",
+                name="legacy-asr",
+                provider="qwen-asr",
+                cwd="/root/autodl-tmp/project/Qwen3-ASR",
+                model_path="/root/autodl-tmp/project/Qwen3-ASR",
+                required_files=("/root/autodl-tmp/project/BranchWhisper/services",),
+            )
+
+            item = evaluate_profile(profile, workspace_root=workspace_root)
+
+        checks = {check.kind: check for check in item.checks}
+        self.assertEqual(checks["cwd"].status, "ok")
+        self.assertEqual(checks["cwd"].metadata["resolved_target"], str(legacy_model_dir))
+        self.assertEqual(checks["model_path"].status, "ok")
+        self.assertEqual(checks["model_path"].metadata["resolved_target"], str(legacy_model_dir))
+        self.assertEqual(checks["required_file"].status, "ok")
+        self.assertEqual(checks["required_file"].metadata["resolved_target"], str(legacy_project_dir))
+        self.assertEqual(item.status, "ok")
+
     def test_runtime_payload_preserves_relative_command_path_from_service_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)

@@ -8,6 +8,8 @@ from shutil import which
 from typing import Callable, Literal
 from urllib.parse import urlsplit
 
+from service_runtime.profiles import expand_profile_paths
+
 DiagnosticStatus = Literal["ok", "warning", "error"]
 
 CommandResolver = Callable[[str], str | None]
@@ -457,7 +459,7 @@ def _check_required_file(
 ) -> RuntimeDiagnosticCheck:
     base = _required_file_base(profile, workspace_root, cwd_path)
     path = Path(raw_path)
-    resolved = path if path.is_absolute() else base / path
+    resolved = _resolve_runtime_path(raw_path, workspace_root, base_path=cwd_path) if path.is_absolute() else base / path
     metadata = _path_metadata(
         raw_path,
         resolved,
@@ -510,8 +512,7 @@ def _resolve_profile_cwd(profile: RuntimeDiagnosticProfile, workspace_root: Path
 
 
 def _resolve_runtime_path(raw_path: str, workspace_root: Path, *, base_path: Path | None = None) -> Path:
-    expanded = raw_path.replace("${WORKSPACE_ROOT}", str(workspace_root))
-    expanded = expanded.replace("${PROJECT_ROOT}", str(workspace_root / "BranchWhisper"))
+    expanded = expand_profile_paths(raw_path, project_root=workspace_root / "BranchWhisper", workspace_root=workspace_root)
     path = Path(expanded).expanduser()
     if not path.is_absolute() and base_path is not None:
         return base_path / path
