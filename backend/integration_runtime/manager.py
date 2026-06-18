@@ -1647,12 +1647,11 @@ class ExternalDialogEngine:
                 context_token=target["context_token"],
                 cdn_base_url=str(target.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL),
             )
-            client_delivery = str(sent.get("client_delivery") or "unsupported_or_unconfirmed")
-            native_voice_delivered = client_delivery == "supported"
+            client_delivery = str(sent.get("client_delivery") or "unconfirmed")
             result.update(
                 {
-                    "ok": native_voice_delivered,
-                    "stage": "accepted_api_only" if client_delivery != "supported" else "sent",
+                    "ok": True,
+                    "stage": "accepted",
                     "send_done": True,
                     "send_ms": int((time.perf_counter() - send_started) * 1000),
                     "total_ms": int((time.perf_counter() - started_at) * 1000),
@@ -1679,7 +1678,7 @@ class ExternalDialogEngine:
                     "client_delivery": client_delivery,
                     "client_delivery_reason": str(
                         sent.get("client_delivery_reason")
-                        or "OpenClaw/iLink sendmessage documents text/image/video/file outbound messages; voice_item may be accepted by API without rendering in the WeChat client."
+                        or "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client."
                     ),
                 }
             )

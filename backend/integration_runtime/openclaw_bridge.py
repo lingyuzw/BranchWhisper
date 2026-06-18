@@ -481,8 +481,6 @@ def voice_fallback_text(result: dict, voice_error: str = "") -> str:
     error = str(voice_error or result.get("voice_error") or "").strip()
     if error:
         return f"语音暂时发不出来：{error[:120]}。先以文字为准。"
-    if result.get("voice_client_delivery") == "unsupported_or_unconfirmed":
-        return ""
     if result.get("send_voice") and result.get("voice_file"):
         return "语音接口已接收，但当前微信端未确认显示；先以文字为准。"
     return ""
@@ -512,7 +510,7 @@ def send_voice_reply(
             cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
         )
         voice_send_ms = int((time.perf_counter() - started) * 1000)
-        client_delivery = str(sent.get("client_delivery") or "unsupported_or_unconfirmed")
+        client_delivery = str(sent.get("client_delivery") or "unconfirmed")
         result["voice_client_delivery"] = client_delivery
         report_branchwhisper_timing(
             branchwhisper_url,
@@ -520,7 +518,7 @@ def send_voice_reply(
             trace_id,
             {
                 "voice_send_ms": voice_send_ms,
-                "voice_send_status": "delivered" if client_delivery == "supported" else "accepted_api_only",
+                "voice_send_status": "accepted",
                 "voice_message_id": str(sent.get("message_id") or ""),
                 "voice_stage": str(sent.get("stage") or "accepted"),
                 "voice_format": str(sent.get("transcode_format") or ""),
@@ -552,7 +550,7 @@ def send_voice_reply(
             f"playtime_ms={sent.get('playtime_ms') or 0} format={sent.get('transcode_format') or ''} "
             f"encode_type={sent.get('encode_type') or ''} client_delivery={client_delivery}"
         )
-        return client_delivery == "supported"
+        return True
     except (WeixinVoiceSendError, Exception) as exc:
         voice_send_ms = int((time.perf_counter() - started) * 1000)
         error = str(exc)
@@ -788,7 +786,7 @@ def handle_branchwhisper_result(
         context_token=context_token,
         result=result,
     )
-    voice_notice = "" if voice_sent or result.get("voice_client_delivery") == "unsupported_or_unconfirmed" else voice_fallback_text(result)
+    voice_notice = "" if voice_sent else voice_fallback_text(result)
     if voice_notice:
         try:
             notice_id = send_text(client, account, from_user_id, voice_notice, context_token=context_token)

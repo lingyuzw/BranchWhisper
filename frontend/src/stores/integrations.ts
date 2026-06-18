@@ -78,7 +78,7 @@ function compact(value: unknown, limit = 52) {
 
 export function probeStatusText(result: Record<string, any>) {
   if (result.client_delivery === "unsupported_or_unconfirmed") return "未送达：微信端未渲染原生语音";
-  if (result.client_delivery === "unconfirmed") return "未确认：微信端未确认原生语音";
+  if (result.client_delivery === "unconfirmed") return "已提交：请在微信端确认语音";
   if (result.ok) return "原生语音已送达";
   if (result.stage === "tts_loading") return "等待 TTS 加载/预热";
   return "失败";
@@ -90,7 +90,7 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
     result.client_delivery === "unsupported_or_unconfirmed"
       ? "接口已接收，但微信端没有显示原生语音气泡"
       : result.client_delivery === "unconfirmed"
-        ? "接口已接收，但微信客户端未确认原生语音"
+        ? "接口已接收，请在微信客户端确认原生语音"
         : result.client_delivery || "--";
   const lines = [
     `状态：${probeStatusText(result)}`,
@@ -120,6 +120,8 @@ function formatProbeResult(result: Record<string, any>, kind: "voice" | "sticker
     if (result.client_delivery_reason) lines.push(`说明：${result.client_delivery_reason}`);
     if (result.client_delivery === "unsupported_or_unconfirmed") {
       lines.push("结论：当前 OpenClaw/iLink 通道会接受 voice_item，但微信客户端没有渲染原生语音气泡；这不是 TTS 或音频文件生成失败。文件附件不能算微信语音。");
+    } else if (result.client_delivery === "unconfirmed") {
+      lines.push("说明：接口已经提交原生语音请求；请以手机微信端是否出现语音气泡为准。");
     } else if (result.voice_file) {
       lines.push("说明：本地音频产物只代表 TTS 已生成，不等于微信端收到原生语音。");
     }

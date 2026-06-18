@@ -1017,3 +1017,195 @@ INFO 06-18 10:04:18 [loggers.py:127] Engine 000: Avg prompt throughput: 0.4 toke
 2026-06-18 10:04:19,955 INFO yield speech len 2.0, rtf 0.22814428806304932
 2026-06-18 10:04:20,351 INFO yield speech len 1.48, rtf 0.2669766142561629
 100%|██████████| 1/1 [00:01<00:00,  1.79s/it]100%|██████████| 1/1 [00:01<00:00,  1.79s/it]
+INFO:     127.0.0.1:42537 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42541 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42545 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 10:31:38,844 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 10:31:38 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 10:31:38 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 10:31:41,179 INFO yield speech len 3.6, rtf 0.6487170192930434
+100%|██████████| 1/1 [00:02<00:00,  2.41s/it]100%|██████████| 1/1 [00:02<00:00,  2.41s/it]
+INFO:     127.0.0.1:44351 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40765 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:40781 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 10:32:57,634 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 10:32:57 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 10:32:57 [loggers.py:127] Engine 000: Avg prompt throughput: 0.2 tokens/s, Avg generation throughput: 1.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 10:32:58,734 INFO yield speech len 3.84, rtf 0.28652666757504147
+2026-06-18 10:32:59,126 INFO yield speech len 1.12, rtf 0.34872250897543766
+100%|██████████| 1/1 [00:01<00:00,  1.51s/it]100%|██████████| 1/1 [00:01<00:00,  1.51s/it]
+INFO:     127.0.0.1:40969 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40975 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:40983 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 10:36:43,682 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 10:36:43 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 10:36:43 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 10:36:44,819 INFO yield speech len 3.84, rtf 0.296189325551192
+2026-06-18 10:36:45,191 INFO yield speech len 2.16, rtf 0.1717021067937215
+100%|██████████| 1/1 [00:01<00:00,  1.52s/it]100%|██████████| 1/1 [00:01<00:00,  1.52s/it]
+INFO:     127.0.0.1:40991 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42647 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42653 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42661 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41199 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41237 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42767 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42805 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43183 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43227 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42047 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42067 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42073 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42277 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42285 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42459 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42463 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43197 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43207 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42805 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42815 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42845 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44141 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44183 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42893 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42917 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40577 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40599 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42793 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42815 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42825 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44151 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44171 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42159 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42165 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44379 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44387 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44401 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44471 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43701 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41449 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42909 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41373 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44311 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41979 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40715 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41299 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41889 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42789 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40675 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42393 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42449 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41897 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41387 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41139 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41049 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42381 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40937 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40651 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40895 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40651 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44279 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44239 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44079 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41255 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43421 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42229 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42239 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42255 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42267 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:21:02,648 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:21:02 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:21:02 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:21:03,698 INFO yield speech len 3.48, rtf 0.3018975257873535
+100%|██████████| 1/1 [00:01<00:00,  1.06s/it]100%|██████████| 1/1 [00:01<00:00,  1.06s/it]
+INFO:     127.0.0.1:43781 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43795 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43807 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43811 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:22:04,663 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:22:04 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:22:04 [loggers.py:127] Engine 000: Avg prompt throughput: 0.3 tokens/s, Avg generation throughput: 1.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:22:05,606 INFO yield speech len 3.52, rtf 0.2679280936717987
+100%|██████████| 1/1 [00:00<00:00,  1.05it/s]100%|██████████| 1/1 [00:00<00:00,  1.05it/s]
+INFO:     127.0.0.1:42587 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:42597 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:22:33,218 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:22:33 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:22:33 [loggers.py:127] Engine 000: Avg prompt throughput: 0.6 tokens/s, Avg generation throughput: 3.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:22:34,272 INFO yield speech len 3.84, rtf 0.2744675303498904
+2026-06-18 11:22:34,710 INFO yield speech len 0.44, rtf 0.9928226470947266
+100%|██████████| 1/1 [00:01<00:00,  1.50s/it]100%|██████████| 1/1 [00:01<00:00,  1.50s/it]
+INFO:     127.0.0.1:43343 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43363 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41803 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43199 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43165 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44557 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:44559 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:29:08,776 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:29:08 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:29:08 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:29:09,818 INFO yield speech len 3.84, rtf 0.27134958654642105
+2026-06-18 11:29:10,225 INFO yield speech len 2.0, rtf 0.20280945301055908
+100%|██████████| 1/1 [00:01<00:00,  1.46s/it]100%|██████████| 1/1 [00:01<00:00,  1.46s/it]
+INFO:     127.0.0.1:41529 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:41535 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:37:23,949 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:37:23 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:37:23 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:37:24,892 INFO yield speech len 3.84, rtf 0.24567283689975739
+2026-06-18 11:37:25,255 INFO yield speech len 0.48, rtf 0.7541721065839132
+100%|██████████| 1/1 [00:01<00:00,  1.32s/it]100%|██████████| 1/1 [00:01<00:00,  1.32s/it]
+INFO:     127.0.0.1:43479 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43485 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:38:28,630 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:38:28 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:38:28 [loggers.py:127] Engine 000: Avg prompt throughput: 0.3 tokens/s, Avg generation throughput: 1.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:38:29,680 INFO yield speech len 3.68, rtf 0.28546005487442017
+100%|██████████| 1/1 [00:01<00:00,  1.06s/it]100%|██████████| 1/1 [00:01<00:00,  1.06s/it]
+INFO:     127.0.0.1:43315 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:43325 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:38:45,008 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:38:45 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:38:45 [loggers.py:127] Engine 000: Avg prompt throughput: 1.0 tokens/s, Avg generation throughput: 6.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:38:46,056 INFO yield speech len 3.24, rtf 0.3236252584575135
+100%|██████████| 1/1 [00:01<00:00,  1.06s/it]100%|██████████| 1/1 [00:01<00:00,  1.06s/it]
+INFO:     127.0.0.1:40837 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43047 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40981 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41777 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43571 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44115 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41243 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44103 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:44113 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 11:41:40,882 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 11:41:40 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 11:41:40 [loggers.py:127] Engine 000: Avg prompt throughput: 0.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 11:41:41,837 INFO yield speech len 3.84, rtf 0.24855472147464752
+2026-06-18 11:41:42,196 INFO yield speech len 0.6, rtf 0.5971622467041016
+100%|██████████| 1/1 [00:01<00:00,  1.32s/it]100%|██████████| 1/1 [00:01<00:00,  1.32s/it]
+INFO:     127.0.0.1:41381 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41393 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40755 - "GET /health HTTP/1.1" 200 OK
+TTS input: <|endofprompt|>我在，听得到的话我们继续聊。
+INFO:     127.0.0.1:40771 - "POST /tts HTTP/1.1" 200 OK
+  0%|          | 0/1 [00:00<?, ?it/s]2026-06-18 12:28:48,212 INFO synthesis text <|endofprompt|>我在，听得到的话我们继续聊。
+WARNING 06-18 12:28:48 [preprocess.py:60] Using None for EOS token id because tokenizer is not initialized
+INFO 06-18 12:28:48 [loggers.py:127] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-06-18 12:28:49,232 INFO yield speech len 3.84, rtf 0.2657055233915647
+2026-06-18 12:28:49,624 INFO yield speech len 1.2, rtf 0.32579799493153894
+100%|██████████| 1/1 [00:01<00:00,  1.42s/it]100%|██████████| 1/1 [00:01<00:00,  1.42s/it]

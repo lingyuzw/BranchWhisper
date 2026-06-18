@@ -14,7 +14,7 @@
   "llm_url": "http://127.0.0.1:8080/v1/chat/completions",
   "llm_model": "qwen3.5-9b",
   "llm_api_key": "",
-  "dialog_mode": "local",
+  "dialog_mode": "api",
   "api_llm_url": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
   "api_llm_model": "qwen-plus",
   "api_llm_api_key": "sk-ff35d828fba54cc788d99e6ef2858446",

@@ -23,6 +23,7 @@ const UPLOAD_MEDIA_TYPE_VOICE = 4;
 const VOICE_ENCODE_SILK = 6;
 const VOICE_ENCODE_MP3 = 7;
 const VOICE_ENCODE_OGG_OPUS = 8;
+const DEFAULT_VOICE_FORMAT = "ogg_opus";
 const WEIXIN_VOICE_SAMPLE_RATE = 24_000;
 const WEIXIN_VOICE_OPUS_SAMPLE_RATE = 48_000;
 const WEIXIN_VOICE_OPUS_BITRATE = "64k";
@@ -30,8 +31,8 @@ const WEIXIN_VOICE_GAIN_DB = 8;
 const MAX_VOICE_SECONDS = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_THUMB_BYTES = 256 * 1024;
-const VOICE_CLIENT_DELIVERY = "unsupported_or_unconfirmed";
-const VOICE_CLIENT_DELIVERY_REASON = "OpenClaw/iLink sendmessage documents text/image/video/file outbound messages; voice_item may be accepted by API without rendering in the WeChat client.";
+const VOICE_CLIENT_DELIVERY = "unconfirmed";
+const VOICE_CLIENT_DELIVERY_REASON = "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client.";
 
 let silkModulePromise = null;
 
@@ -42,7 +43,7 @@ function npmExecutable() {
 function usage() {
   return [
     "Usage:",
-    "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --voice-file FILE [--context-token TOKEN] [--text TEXT]",
+    "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --voice-file FILE [--context-token TOKEN] [--text TEXT] [--voice-format ogg_opus|silk]",
     "  node weixin_voice_sender.mjs --base-url URL --token TOKEN --to USER_ID --image-file FILE [--context-token TOKEN]",
     "  node weixin_voice_sender.mjs --download-media --cdn-base-url URL --encrypt-query-param PARAM --aes-key KEY --output-file FILE",
     "",
@@ -156,16 +157,19 @@ function mediaAesKeyValue(aeskey) {
   return Buffer.from(aeskey.toString("hex"), "utf8").toString("base64");
 }
 
-function voiceAesKeyValue(aeskey, encoding = "raw_base64") {
+function voiceAesKeyValue(aeskey, encoding = "base64_hex_text") {
   const mode = String(encoding || "").trim().toLowerCase();
   if (mode === "raw_base64" || mode === "raw") return aeskey.toString("base64");
   return mediaAesKeyValue(aeskey);
 }
 
-function buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding = "raw_base64" }) {
+function buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding = "base64_hex_text" }) {
+  const encodedAesKey = voiceAesKeyValue(aeskey, aesKeyEncoding);
   return {
     encrypt_query_param: downloadParam,
-    aes_key: voiceAesKeyValue(aeskey, aesKeyEncoding),
+    encrypted_query_param: downloadParam,
+    aes_key: encodedAesKey,
+    aeskey: encodedAesKey,
     encrypt_type: 1,
   };
 }
@@ -207,7 +211,7 @@ function buildVoiceItem({
   includeBitsPerSample = false,
   includeVoiceSize = false,
   includeText = "",
-  aesKeyEncoding = "raw_base64",
+  aesKeyEncoding = "base64_hex_text",
 }) {
   const item = {
     media: buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding }),
@@ -223,7 +227,7 @@ function buildVoiceItem({
 
 async function voicePayloadTest(args = {}) {
   const aeskey = Buffer.from("00112233445566778899aabbccddeeff", "hex");
-  const voiceFormat = normalizeVoiceFormat(args.voiceFormat || "silk");
+  const voiceFormat = normalizeVoiceFormat(args.voiceFormat || DEFAULT_VOICE_FORMAT);
   const voiceItem = buildVoiceItem({
     downloadParam: "download-param",
     aeskey,
@@ -233,8 +237,8 @@ async function voicePayloadTest(args = {}) {
     voiceSize: 4321,
     includeBitsPerSample: false,
     includeVoiceSize: false,
-    includeText: String(args.includeText || ""),
-    aesKeyEncoding: args.voiceAesKey || args.aesKeyEncoding || "raw_base64",
+    includeText: String(args.voiceTextField || args.includeText || ""),
+    aesKeyEncoding: args.voiceAesKey || args.aesKeyEncoding || "base64_hex_text",
   });
   return {
     ok: true,
@@ -709,9 +713,9 @@ async function selfTest() {
     opus_error: opusError,
     silk_wasm: silkWasm,
     silk_error: silkError,
-    voice_format: "silk",
-    encode_type: VOICE_ENCODE_SILK,
-    sample_rate: WEIXIN_VOICE_SAMPLE_RATE,
+    voice_format: DEFAULT_VOICE_FORMAT,
+    encode_type: voiceEncodeType(DEFAULT_VOICE_FORMAT),
+    sample_rate: voiceSampleRate(DEFAULT_VOICE_FORMAT),
   };
 }
 
@@ -723,11 +727,11 @@ async function sendVoice(args) {
   const voiceFile = String(args.voiceFile || "");
   const contextToken = String(args.contextToken || "");
   const text = String(args.text || "");
-  const voiceFormat = "silk";
-  const voiceAesKey = String(args.voiceAesKey || args.aesKeyEncoding || "raw_base64");
+  const voiceFormat = normalizeVoiceFormat(args.voiceFormat || DEFAULT_VOICE_FORMAT);
+  const voiceAesKey = String(args.voiceAesKey || args.aesKeyEncoding || "base64_hex_text");
   const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "false").toLowerCase() === "true";
   const includeVoiceSize = String(args.voiceSize || args.includeVoiceSize || "false").toLowerCase() === "true";
-  const includeText = String(args.voiceTextField || args.includeText || text || "").trim();
+  const includeText = String(args.voiceTextField || args.includeText || "").trim();
   if (!token) throw new Error("missing --token");
   if (!to) throw new Error("missing --to");
   if (!voiceFile) throw new Error("missing --voice-file");

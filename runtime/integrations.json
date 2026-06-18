@@ -21,9 +21,9 @@
         "语音回复",
         "我想听你说话"
       ],
-      "status": "running",
+      "status": "logged_in",
       "last_error": "",
-      "last_login_at": "2026-06-13 10:13:08"
+      "last_login_at": "2026-06-18 11:40:53"
     }
   ],
   "sessions": {
@@ -37,7 +37,7 @@
     "sender_id": "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat",
     "conversation_id": "20260617_160208_9e2f06",
     "context_token_set": true,
-    "updated_at": "2026-06-18 01:08:08",
-    "updated_at_ts": 1781716088.6262474
+    "updated_at": "2026-06-18 12:13:11",
+    "updated_at_ts": 1781755991.6431067
   }
 }
