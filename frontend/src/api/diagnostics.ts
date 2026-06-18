@@ -24,13 +24,25 @@ export async function loadDiagnosticsSummary() {
 
 export type RuntimeDiagnosticStatus = "ok" | "warning" | "error";
 
+export interface RuntimeDiagnosticMetadata {
+  raw_target?: string;
+  resolved_target?: string;
+  resolution_base?: string;
+  exists?: boolean;
+  profile_cwd?: string;
+  workspace_root?: string;
+  resolved_path?: string;
+  path?: string;
+  [key: string]: unknown;
+}
+
 export interface RuntimeDiagnosticCheck {
   kind: string;
   target: string;
   status: RuntimeDiagnosticStatus;
   message: string;
   fix: string;
-  metadata: Record<string, unknown>;
+  metadata: RuntimeDiagnosticMetadata;
 }
 
 export interface RuntimeDiagnosticItem {

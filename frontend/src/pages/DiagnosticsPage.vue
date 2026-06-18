@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { AlertTriangle, CheckCircle2, Copy, RefreshCw, Stethoscope, XCircle } from "@lucide/vue";
 import { loadDialogTraces, loadRuntimeDiagnostics } from "@/api/diagnostics";
-import type { DialogTrace, RuntimeDiagnosticItem, RuntimeDiagnostics, RuntimeDiagnosticStatus } from "@/api/diagnostics";
+import type { DialogTrace, RuntimeDiagnosticCheck, RuntimeDiagnosticItem, RuntimeDiagnostics, RuntimeDiagnosticStatus } from "@/api/diagnostics";
 import { useUiStore } from "@/stores/ui";
 
 const ui = useUiStore();
@@ -70,6 +70,40 @@ function roleLabel(role: string) {
     tool: "工具",
   };
   return labels[role] || role.toUpperCase();
+}
+
+function checkKindLabel(kind: string) {
+  const labels: Record<string, string> = {
+    model_path: "路径",
+    cwd: "目录",
+    binary: "命令",
+    required_file: "依赖文件",
+    port: "端口",
+    health_url: "健康检查",
+    profile: "Profile",
+  };
+  return labels[kind] || kind;
+}
+
+function metadataText(value: unknown) {
+  if (typeof value === "boolean") return value ? "存在" : "不存在";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string" && value.trim()) return value;
+  return "";
+}
+
+function checkMetadataRows(check: RuntimeDiagnosticCheck) {
+  const metadata = check.metadata || {};
+  const rows = [
+    { key: "raw_target", label: "原始值", value: metadata.raw_target },
+    { key: "resolved_target", label: "解析到", value: metadata.resolved_target || metadata.resolved_path || metadata.path },
+    { key: "resolution_base", label: "解析基准", value: metadata.resolution_base },
+    { key: "exists", label: "存在状态", value: metadata.exists },
+    { key: "profile_cwd", label: "Profile cwd", value: metadata.profile_cwd },
+  ];
+  return rows
+    .map((row) => ({ ...row, value: metadataText(row.value) }))
+    .filter((row) => row.value);
 }
 
 function loadedAtText() {
@@ -150,15 +184,21 @@ function traceDuration(trace: DialogTrace) {
 
           <div class="diagnostic-checks">
             <div v-for="check in item.checks" :key="`${check.kind}:${check.target}`" class="diagnostic-check" :class="check.status">
-              <span>{{ check.kind }}</span>
+              <span>{{ checkKindLabel(check.kind) }}</span>
               <strong>{{ check.target || "--" }}</strong>
               <small>{{ check.message || statusLabel(check.status) }}</small>
+              <div v-if="checkMetadataRows(check).length" class="diagnostic-check-meta">
+                <div v-for="row in checkMetadataRows(check)" :key="`${check.kind}:${check.target}:${row.key}`">
+                  <span>{{ row.label }}</span>
+                  <strong>{{ row.value }}</strong>
+                </div>
+              </div>
             </div>
           </div>
 
           <div v-if="actionableChecks(item).length" class="diagnostic-fixes">
             <div v-for="check in actionableChecks(item)" :key="`fix:${check.kind}:${check.target}`">
-              <span>{{ check.kind }}</span>
+              <span>{{ checkKindLabel(check.kind) }}</span>
               <strong>{{ check.fix || "检查对应 profile 配置。" }}</strong>
             </div>
           </div>

@@ -259,6 +259,38 @@
   overflow-wrap: anywhere;
 }
 
+.diagnostic-check-meta {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.diagnostic-check-meta div {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.32fr) minmax(0, 1fr);
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 86%, var(--surface-muted) 14%);
+}
+
+.diagnostic-check-meta span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
+
+.diagnostic-check-meta strong {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: var(--font-xs);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
 .diagnostic-fixes {
   display: grid;
   gap: 6px;
