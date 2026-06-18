@@ -75,6 +75,11 @@ export interface DialogTraceEvent {
   at: number;
   stage: string;
   message: string;
+  status: string;
+  duration_ms: number | null;
+  profile_role: string;
+  profile_name: string;
+  failure_reason: string;
   metadata: Record<string, unknown>;
 }
 

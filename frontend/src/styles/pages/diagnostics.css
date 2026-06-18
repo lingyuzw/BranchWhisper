@@ -436,6 +436,16 @@
   background: var(--surface);
 }
 
+.trace-events div.error {
+  border-color: rgba(231, 104, 104, 0.32);
+  background: color-mix(in srgb, var(--surface) 90%, var(--danger) 10%);
+}
+
+.trace-events div.warning {
+  border-color: rgba(217, 155, 79, 0.3);
+  background: color-mix(in srgb, var(--surface) 90%, var(--warning) 10%);
+}
+
 .trace-events span {
   color: var(--text-muted);
   font-size: var(--font-xs);
@@ -448,6 +458,35 @@
   font-size: var(--font-xs);
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.trace-events small {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(42px, 0.18fr) minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.35;
+}
+
+.trace-events small span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
+
+.trace-events small strong {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: var(--font-xs);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.trace-events div.error small strong {
+  color: var(--danger);
 }
 
 .trace-empty {
