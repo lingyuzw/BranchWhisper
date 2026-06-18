@@ -22,6 +22,43 @@ export async function loadDiagnosticsSummary() {
   return fetchJson<DiagnosticsSummary>("/api/diagnostics/summary");
 }
 
+export type RuntimeDiagnosticStatus = "ok" | "warning" | "error";
+
+export interface RuntimeDiagnosticCheck {
+  kind: string;
+  target: string;
+  status: RuntimeDiagnosticStatus;
+  message: string;
+  fix: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RuntimeDiagnosticItem {
+  role: string;
+  name: string;
+  provider: string;
+  status: RuntimeDiagnosticStatus;
+  summary: string;
+  capabilities: string[];
+  checks: RuntimeDiagnosticCheck[];
+}
+
+export interface RuntimeDiagnostics {
+  ok: boolean;
+  status: RuntimeDiagnosticStatus;
+  summary: {
+    total: number;
+    ok: number;
+    warning: number;
+    error: number;
+  };
+  items: RuntimeDiagnosticItem[];
+}
+
+export async function loadRuntimeDiagnostics() {
+  return fetchJson<RuntimeDiagnostics>("/api/diagnostics/runtime");
+}
+
 export interface LlmApiDiagnostic {
   ok: boolean;
   url: string;
