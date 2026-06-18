@@ -30,7 +30,7 @@ def send_weixin_voice(
     transcript: str = "",
     context_token: str = "",
     cdn_base_url: str = "",
-    native_voice: bool = True,
+    native_voice: bool = False,
     timeout: float = 90.0,
 ) -> dict:
     command = [
@@ -52,7 +52,7 @@ def send_weixin_voice(
     if cdn_base_url:
         command.extend(["--cdn-base-url", cdn_base_url])
     if transcript:
-        command.extend(["--voice-text-field", transcript])
+        command.extend(["--text", transcript])
     try:
         proc = subprocess.run(
             command,

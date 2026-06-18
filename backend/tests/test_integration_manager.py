@@ -53,8 +53,8 @@ class IntegrationManagerWeixinSessionTests(unittest.TestCase):
             state_dir = Path(os.environ["OPENCLAW_STATE_DIR"])
             accounts_dir = state_dir / "openclaw-weixin" / "accounts"
             accounts_dir.mkdir(parents=True)
-            account_id = "8397c5c17324-im-bot"
-            sender_id = "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat"
+            account_id = "test-account-im-bot"
+            sender_id = "test-sender@im.wechat"
             (state_dir / "openclaw-weixin" / "accounts.json").write_text(json.dumps([account_id]), encoding="utf-8")
             (accounts_dir / f"{account_id}.json").write_text(
                 json.dumps(
@@ -143,8 +143,8 @@ class IntegrationManagerWeixinSessionTests(unittest.TestCase):
             state_dir = Path(os.environ["OPENCLAW_STATE_DIR"])
             accounts_dir = state_dir / "openclaw-weixin" / "accounts"
             accounts_dir.mkdir(parents=True)
-            account_id = "8397c5c17324-im-bot"
-            sender_id = "o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat"
+            account_id = "test-account-im-bot"
+            sender_id = "test-sender@im.wechat"
             (state_dir / "openclaw-weixin" / "accounts.json").write_text(json.dumps([account_id]), encoding="utf-8")
             (accounts_dir / f"{account_id}.json").write_text(
                 json.dumps(

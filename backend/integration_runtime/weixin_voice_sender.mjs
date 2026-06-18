@@ -247,15 +247,19 @@ function voiceAesKeyValue(aeskey, encoding = "base64_hex_text") {
   return mediaAesKeyValue(aeskey);
 }
 
-function buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding = "base64_hex_text" }) {
+function buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding = "base64_hex_text", includeAliases = false, cdnBaseUrl = "" }) {
   const encodedAesKey = voiceAesKeyValue(aeskey, aesKeyEncoding);
-  return {
+  const media = {
     encrypt_query_param: downloadParam,
-    encrypted_query_param: downloadParam,
+    full_url: buildCdnDownloadUrl({ cdnBaseUrl: cdnBaseUrl || DEFAULT_CDN_BASE_URL, downloadParam }),
     aes_key: encodedAesKey,
-    aeskey: encodedAesKey,
     encrypt_type: 1,
   };
+  if (includeAliases) {
+    media.encrypted_query_param = downloadParam;
+    media.aeskey = encodedAesKey;
+  }
+  return media;
 }
 
 function buildOfficialMediaPayload({ downloadParam, aeskey }) {
@@ -309,12 +313,15 @@ function buildVoiceItem({
   usePlaytimeField = true,
   includeFileSize = false,
   midSize = 0,
+  voiceSize = 0,
   includeBitsPerSample = false,
   includeText = "",
-  aesKeyEncoding = "base64_hex_text",
+  aesKeyEncoding = "raw_base64",
+  includeMediaAliases = false,
+  cdnBaseUrl = "",
 }) {
   const item = {
-    media: buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding }),
+    media: buildVoiceMediaPayload({ downloadParam, aeskey, aesKeyEncoding, includeAliases: includeMediaAliases, cdnBaseUrl }),
     encode_type: encodeType,
     playtime: Math.max(1, Math.round(Number(playtimeMs) || 1)),
   };
@@ -324,6 +331,7 @@ function buildVoiceItem({
     delete item.playtime;
   }
   if (includeFileSize && fileSize > 0) item.file_size = fileSize;
+  if (voiceSize > 0) item.voice_size = voiceSize;
   if (includeBitsPerSample) item.bits_per_sample = 16;
   if (sampleRate) item.sample_rate = sampleRate;
   if (midSize > 0) item.mid_size = midSize;
@@ -335,8 +343,9 @@ async function voicePayloadTest(args = {}) {
   const aeskey = Buffer.from("00112233445566778899aabbccddeeff", "hex");
   const voiceFormat = normalizeVoiceFormat(args.voiceFormat || DEFAULT_VOICE_FORMAT);
   const includeMidSize = String(args.voiceMidSize || "false").toLowerCase() === "true";
-  const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "false").toLowerCase() === "true";
+  const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "true").toLowerCase() === "true";
   const includeFileSize = String(args.voiceFileSize || args.includeFileSize || "false").toLowerCase() === "true";
+  const includeVoiceSize = String(args.voiceSize || args.includeVoiceSize || "false").toLowerCase() === "true";
   const usePlaytimeField = String(args.voicePlaytime || args.includePlaytime || "false").toLowerCase() === "true";
   const encodeType = args.voiceEncodeType ? resolveVoiceEncodeType(voiceFormat, args.voiceEncodeType) : voiceEncodeType(voiceFormat);
   const voiceItem = buildVoiceItem({
@@ -349,9 +358,12 @@ async function voicePayloadTest(args = {}) {
     includeFileSize,
     usePlaytimeField: args.voiceDuration ? false : true,
     midSize: includeMidSize ? 4321 : 0,
+    voiceSize: includeVoiceSize ? 4321 : 0,
     includeBitsPerSample,
-    includeText: String(args.voiceTextField || args.includeText || ""),
+    includeText: String(args.voiceTextField || args.includeText || args.text || ""),
     aesKeyEncoding: args.voiceAesKey || args.aesKeyEncoding || "base64_hex_text",
+    includeMediaAliases: String(args.voiceMediaAliases || args.mediaAliases || "false").toLowerCase() === "true",
+    cdnBaseUrl: DEFAULT_CDN_BASE_URL,
   });
   return {
     ok: true,
@@ -362,7 +374,21 @@ async function voicePayloadTest(args = {}) {
 }
 
 async function filePayloadTest() {
-  throw new Error("native Weixin voice cannot be validated through an audio file attachment");
+  const aeskey = Buffer.from("00112233445566778899aabbccddeeff", "hex");
+  const fileItem = buildFileItem({
+    downloadParam: "download-param",
+    aeskey,
+    fileName: DEFAULT_VOICE_FILE_NAME,
+    fileSize: 1234,
+  });
+  return {
+    ok: true,
+    media_type: "file",
+    file_name: DEFAULT_VOICE_FILE_NAME,
+    file_item: fileItem,
+    file_item_shape: compactResponseShape(fileItem),
+    client_delivery: "file_attachment",
+  };
 }
 
 function buildCdnUploadUrl({ cdnBaseUrl, uploadParam, filekey }) {
@@ -401,6 +427,20 @@ function compactResponseShape(value, depth = 0) {
       result[key] = compactResponseShape(item, depth + 1);
     } else {
       result[key] = typeof item;
+    }
+  }
+  return result;
+}
+
+function redactedPayload(value) {
+  if (Array.isArray(value)) return value.map((item) => redactedPayload(item));
+  if (!value || typeof value !== "object") return value;
+  const result = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (/token|key|param|aes|authorization/i.test(key)) {
+      result[key] = item ? "[redacted]" : item;
+    } else {
+      result[key] = redactedPayload(item);
     }
   }
   return result;
@@ -448,7 +488,7 @@ async function uploadBufferToCdn({
   aeskey,
   label = "media",
   methods = ["PUT", "POST"],
-  downloadTokenSource = "cdn_short",
+  downloadTokenSource = "legacy_short",
 }) {
   const ciphertext = encryptAesEcb(buffer, aeskey);
   const urls = [];
@@ -472,18 +512,21 @@ async function uploadBufferToCdn({
             error.urlKind = url.includes("/upload?") ? "param" : "full";
             throw error;
           }
-          const queryParam = response.headers.get("x-encrypted-query-param") || "";
           const shortParam = response.headers.get("x-encrypted-param") || "";
-          let downloadParam = shortParam || queryParam;
-          let resolvedTokenSource = shortParam ? "cdn_short" : queryParam ? "cdn_query" : "";
-          if (downloadTokenSource === "cdn_query") {
+          const queryParam = response.headers.get("x-encrypted-query-param") || "";
+          let downloadParam = shortParam;
+          let resolvedTokenSource = shortParam ? "legacy_short" : "";
+          if (downloadTokenSource === "cdn_short") {
+            downloadParam = shortParam || queryParam;
+            resolvedTokenSource = shortParam ? "cdn_short" : queryParam ? "cdn_query" : "";
+          } else if (downloadTokenSource === "cdn_query") {
             downloadParam = queryParam || shortParam;
             resolvedTokenSource = queryParam ? "cdn_query" : shortParam ? "cdn_short" : "";
           } else if (downloadTokenSource === "upload_param") {
             downloadParam = uploadParam || queryParam || shortParam;
             resolvedTokenSource = uploadParam ? "upload_param" : queryParam ? "cdn_query" : shortParam ? "cdn_short" : "";
           }
-          if (!downloadParam) throw new Error(`CDN ${method} response missing download token`);
+          if (!downloadParam) throw new Error(`CDN ${method} response missing ${downloadTokenSource === "legacy_short" ? "x-encrypted-param" : "download token"}`);
           return {
             downloadParam,
             uploadParam,
@@ -774,9 +817,6 @@ function parseVolumeDetect(text) {
 }
 
 async function encodePcmToSilk(pcmPath) {
-  const sdkResult = await encodePcmToSilkWithSdkChild(pcmPath);
-  if (sdkResult.ok) return sdkResult;
-
   const { encode, getDuration } = await loadSilkWasm();
   if (typeof encode !== "function") {
     const error = new Error("silk-wasm does not export encode()");
@@ -801,7 +841,7 @@ async function encodePcmToSilk(pcmPath) {
   if (!Number.isFinite(durationMs) || durationMs <= 0) {
     durationMs = Math.max(1, Math.round((pcm.length / 2 / WEIXIN_VOICE_SAMPLE_RATE) * 1000));
   }
-  return { data, durationMs: Math.round(durationMs), encoder: `silk-wasm${sdkResult.error ? ` (silk-sdk unavailable: ${sdkResult.error})` : ""}` };
+  return { data, durationMs: Math.round(durationMs), encoder: "silk-wasm" };
 }
 
 async function encodePcmToSilkWithSdkChild(pcmPath) {
@@ -923,9 +963,10 @@ async function selfTest() {
   try {
     const pcmPath = path.join(os.tmpdir(), `branchwhisper-weixin-silk-selftest-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.pcm`);
     await fs.writeFile(pcmPath, makeSelfTestPcm());
-    const encoded = await encodePcmToSilk(pcmPath);
-    silkSdk = encoded.encoder === "silk-sdk";
-    voiceEncoder = encoded.encoder || "";
+    const encoded = await encodePcmToSilkWithSdkChild(pcmPath);
+    silkSdk = encoded.ok;
+    voiceEncoder = encoded.ok ? encoded.encoder || "" : "";
+    if (!encoded.ok) silkSdkError = encoded.error || "";
     await fs.unlink(pcmPath).catch(() => {});
   } catch (error) {
     silkSdkError = error?.message || String(error);
@@ -939,9 +980,10 @@ async function selfTest() {
     opus_error: opusError,
     silk_wasm: silkWasm,
     silk_error: silkError,
-    silk_sdk: silkSdk,
+    silk_sdk_available: silkSdk,
     silk_sdk_error: silkSdkError,
-    voice_encoder: voiceEncoder,
+    silk_sdk_encoder: voiceEncoder,
+    default_voice_encoder: "silk-wasm",
     voice_format: DEFAULT_VOICE_FORMAT,
     default_payload_encode_type: null,
     default_payload_sample_rate: null,
@@ -960,15 +1002,19 @@ async function sendVoice(args) {
   const text = String(args.text || "");
   const voiceFormat = normalizeVoiceFormat(args.voiceFormat || DEFAULT_VOICE_FORMAT);
   const voiceAesKey = String(args.voiceAesKey || args.aesKeyEncoding || "base64_hex_text");
-  const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "false").toLowerCase() === "true";
+  const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "true").toLowerCase() === "true";
   const includeFileSize = String(args.voiceFileSize || args.includeFileSize || "false").toLowerCase() === "true";
+  const includeVoiceSize = String(args.voiceSize || args.includeVoiceSize || "false").toLowerCase() === "true";
   const usePlaytimeField = String(args.voicePlaytime || args.includePlaytime || "false").toLowerCase() === "true";
   const includeText = String(args.voiceTextField || args.includeText || text || "").trim();
   const encodeType = args.voiceEncodeType ? resolveVoiceEncodeType(voiceFormat, args.voiceEncodeType) : voiceEncodeType(voiceFormat);
   const includeMidSize = String(args.voiceMidSize || "false").toLowerCase() === "true";
-  const downloadTokenSource = String(args.voiceDownloadTokenSource || "").trim().toLowerCase() || "cdn_short";
+  const downloadTokenSource = String(args.voiceDownloadTokenSource || "").trim().toLowerCase() || "legacy_short";
   const sendMode = String(args.sendMode || "fetch").trim().toLowerCase() === "raw" ? "raw" : "fetch";
   const baseInfo = String(args.baseInfoMinimal || "false").toLowerCase() === "true" ? buildMinimalBaseInfo() : buildBaseInfo();
+  const includeUploadBaseInfo = String(args.voiceUploadBaseInfo || args.uploadBaseInfo || "false").toLowerCase() === "true";
+  const verifyVoiceCdn = String(args.voiceVerifyCdn || args.verifyCdn || "false").toLowerCase() === "true";
+  const dumpPayload = String(args.voiceDumpPayload || args.dumpPayload || "false").toLowerCase() === "true";
   if (!token) throw new Error("missing --token");
   if (!to) throw new Error("missing --to");
   if (!voiceFile) throw new Error("missing --voice-file");
@@ -1034,7 +1080,7 @@ async function sendVoice(args) {
         filesize,
         no_need_thumb: true,
         aeskey: aeskey.toString("hex"),
-        base_info: baseInfo,
+        ...(includeUploadBaseInfo ? { base_info: baseInfo } : {}),
       },
     }).catch((error) => {
       error.stage = "getuploadurl";
@@ -1052,32 +1098,35 @@ async function sendVoice(args) {
       cdnBaseUrl,
       aeskey,
       label: "voice",
+      methods: ["POST"],
       downloadTokenSource,
     }).catch((error) => {
       error.stage = "cdn_upload";
       throw error;
     });
     const uploadMs = Date.now() - uploadStart;
-    const cdnVerifyStart = Date.now();
-    let cdnVerify = { ok: false, error: "not checked" };
-    try {
-      cdnVerify = await verifyCdnRoundTrip({
-        cdnBaseUrl,
-        downloadParam: upload.downloadParam,
-        aeskey,
-        expectedMd5: rawfilemd5,
-        expectedSize: rawsize,
-        label: "voice",
-      });
-    } catch (error) {
-      cdnVerify = {
-        ok: false,
-        error: error?.message || String(error),
-      };
-    }
-    cdnVerify.verify_ms = Date.now() - cdnVerifyStart;
+    let cdnVerify = { ok: false, skipped: true, reason: "voice CDN verify is disabled for native sends" };
     let uploadParamVerify = null;
-    if (upload.uploadParam && upload.uploadParam !== upload.downloadParam) {
+    if (verifyVoiceCdn) {
+      const cdnVerifyStart = Date.now();
+      try {
+        cdnVerify = await verifyCdnRoundTrip({
+          cdnBaseUrl,
+          downloadParam: upload.downloadParam,
+          aeskey,
+          expectedMd5: rawfilemd5,
+          expectedSize: rawsize,
+          label: "voice",
+        });
+      } catch (error) {
+        cdnVerify = {
+          ok: false,
+          error: error?.message || String(error),
+        };
+      }
+      cdnVerify.verify_ms = Date.now() - cdnVerifyStart;
+    }
+    if (verifyVoiceCdn && upload.uploadParam && upload.uploadParam !== upload.downloadParam) {
       const uploadParamVerifyStart = Date.now();
       try {
         uploadParamVerify = await verifyCdnRoundTrip({
@@ -1108,9 +1157,12 @@ async function sendVoice(args) {
       includeFileSize,
       usePlaytimeField: args.voiceDuration ? false : true,
       midSize: includeMidSize ? upload.ciphertextSize : 0,
+      voiceSize: includeVoiceSize ? rawsize : 0,
       includeBitsPerSample,
       includeText,
       aesKeyEncoding: voiceAesKey,
+      includeMediaAliases: String(args.voiceMediaAliases || args.mediaAliases || "false").toLowerCase() === "true",
+      cdnBaseUrl,
     });
     const sendPayload = {
       msg: {
@@ -1172,6 +1224,7 @@ async function sendVoice(args) {
         include_encode_type: Boolean(voiceItem.encode_type),
         include_bits_per_sample: includeBitsPerSample,
         include_file_size: includeFileSize,
+        include_voice_size: includeVoiceSize,
         include_playtime: usePlaytimeField,
         include_mid_size: includeMidSize,
         include_text: Boolean(includeText),
@@ -1182,6 +1235,7 @@ async function sendVoice(args) {
       sendmessage_http: sendResp?.__http || {},
       sendmessage_mode: sendMode,
       sendmessage_payload_shape: compactResponseShape(sendPayload),
+      ...(dumpPayload ? { sendmessage_payload: redactedPayload(sendPayload) } : {}),
       base_info: baseInfo,
       voice_format: voiceFormat,
       client_delivery: VOICE_CLIENT_DELIVERY_UNCONFIRMED,

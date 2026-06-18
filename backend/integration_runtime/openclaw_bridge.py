@@ -264,6 +264,69 @@ def body_from_items(items: list[dict] | None) -> str:
     return ""
 
 
+def compact_media_item_shape(value: Any, depth: int = 0) -> Any:
+    if isinstance(value, list):
+        return [compact_media_item_shape(item, depth + 1) for item in value[:8]]
+    if isinstance(value, dict):
+        result: dict[str, Any] = {}
+        for key, item in list(value.items())[:24]:
+            if any(part in key.lower() for part in ("token", "key", "param", "aes", "url")):
+                result[key] = f"[{type(item).__name__}]" if item else item
+            elif depth >= 2:
+                result[key] = type(item).__name__
+            else:
+                result[key] = compact_media_item_shape(item, depth + 1)
+        return result
+    return type(value).__name__
+
+
+def media_items_diagnostic(items: list[dict] | None) -> list[dict]:
+    diagnostics = []
+    for index, item in enumerate(items or []):
+        item_type = item.get("type")
+        if item_type not in {ITEM_IMAGE, ITEM_VOICE}:
+            continue
+        if item_type == ITEM_VOICE:
+            payload = item.get("voice_item") if isinstance(item.get("voice_item"), dict) else {}
+            kind = "voice"
+        else:
+            payload = item.get("image_item") if isinstance(item.get("image_item"), dict) else {}
+            kind = "image"
+        diagnostics.append(
+            {
+                "index": index,
+                "type": item_type,
+                "kind": kind,
+                "shape": compact_media_item_shape(payload),
+            }
+        )
+    return diagnostics
+
+
+def save_inbound_media_debug_sample(state_dir: Path, account: dict, msg: dict) -> None:
+    samples = []
+    for index, item in enumerate(msg.get("item_list") or []):
+        if item.get("type") not in {ITEM_IMAGE, ITEM_VOICE}:
+            continue
+        samples.append({"index": index, "item": item})
+    if not samples:
+        return
+    account_id = str(account.get("account_id") or "unknown")
+    message_id = str(msg.get("message_id") or msg.get("client_id") or uuid.uuid4().hex[:12])
+    out_dir = accounts_dir(state_dir) / f"{account_id}.media-samples"
+    out_file = out_dir / f"{int(time.time())}-{message_id}.json"
+    save_json(
+        out_file,
+        {
+            "account_id": account_id,
+            "from_user_id": msg.get("from_user_id") or "",
+            "message_id": message_id,
+            "context_token_set": bool(msg.get("context_token")),
+            "items": samples,
+        },
+    )
+
+
 def image_media_candidates_from_item(item: dict) -> list[dict]:
     image_item = item.get("image_item") if isinstance(item.get("image_item"), dict) else {}
     candidates = []
@@ -385,6 +448,65 @@ def notify_stop(client: httpx.Client, account: dict) -> None:
         )
     except Exception as exc:
         log(f"notify_stop failed account={account['account_id']} err={exc}")
+
+
+def send_typing_indicator(client: httpx.Client, account: dict, to_user_id: str, status: int = 1) -> bool:
+    if not to_user_id:
+        return False
+    try:
+        config_resp = client.post(
+            endpoint(account["base_url"], "ilink/bot/getconfig"),
+            json={"base_info": build_base_info()},
+            headers=build_headers(account["token"]),
+            timeout=8,
+        )
+        config_resp.raise_for_status()
+        config = config_resp.json() if config_resp.content else {}
+        typing_ticket = str(config.get("typing_ticket") or config.get("typingTicket") or "").strip()
+        if not typing_ticket:
+            ret = config.get("ret") if isinstance(config, dict) else None
+            message = ""
+            if isinstance(config, dict):
+                message = str(config.get("errmsg") or config.get("err_msg") or config.get("message") or config.get("msg") or "")
+            log(
+                f"typing indicator unavailable account={account.get('account_id') or ''} "
+                f"to={to_user_id} status={status} reason=missing typing_ticket"
+                f"{f' ret={ret}' if ret is not None else ''}"
+                f"{f' message={message[:120]}' if message else ''}"
+            )
+            return False
+        payload = {
+            "typing_ticket": typing_ticket,
+            "to_user_id": to_user_id,
+            "status": 1 if int(status) == 1 else 2,
+            "base_info": build_base_info(),
+        }
+        resp = client.post(
+            endpoint(account["base_url"], "ilink/bot/sendtyping"),
+            json=payload,
+            headers=build_headers(account["token"]),
+            timeout=8,
+        )
+        resp.raise_for_status()
+        data = resp.json() if resp.content else {}
+        ret = data.get("ret") if isinstance(data, dict) else None
+        if ret in (None, 0):
+            return True
+        message = ""
+        if isinstance(data, dict):
+            message = str(data.get("errmsg") or data.get("err_msg") or data.get("message") or data.get("msg") or "")
+        log(
+            f"typing indicator unavailable account={account.get('account_id') or ''} "
+            f"to={to_user_id} status={status} reason=business ret={ret}"
+            f"{f' message={message[:120]}' if message else ''}"
+        )
+        return False
+    except Exception as exc:
+        log(
+            f"typing indicator failed account={account.get('account_id') or ''} "
+            f"to={to_user_id} status={status} err={str(exc)[:180]}"
+        )
+        return False
 
 
 def send_text(client: httpx.Client, account: dict, to_user_id: str, text: str, context_token: str = "") -> str:
@@ -750,8 +872,15 @@ def dispatch_message(
 
     log(f"inbound account={account['account_id']} from={from_user_id} text={text[:120]}")
     branch_started = time.perf_counter()
-    result = call_branchwhisper(branchwhisper_url, integration_id, account["account_id"], msg, text, images=images)
-    handle_branchwhisper_result(client, state_dir, branchwhisper_url, integration_id, account, msg, from_user_id, context_token, result, branch_started)
+    typing_started = send_typing_indicator(client, account, from_user_id, status=1)
+    if typing_started:
+        log(f"typing indicator started account={account['account_id']} to={from_user_id}")
+    try:
+        result = call_branchwhisper(branchwhisper_url, integration_id, account["account_id"], msg, text, images=images)
+        handle_branchwhisper_result(client, state_dir, branchwhisper_url, integration_id, account, msg, from_user_id, context_token, result, branch_started)
+    finally:
+        if typing_started and send_typing_indicator(client, account, from_user_id, status=2):
+            log(f"typing indicator stopped account={account['account_id']} to={from_user_id}")
 
 
 def handle_branchwhisper_result(
@@ -856,6 +985,14 @@ def process_message(
     if msg.get("message_type") == MESSAGE_TYPE_BOT:
         return
     account["state_dir"] = str(state_dir)
+    media_diag = media_items_diagnostic(msg.get("item_list"))
+    if media_diag:
+        log(
+            f"inbound media account={account['account_id']} from={msg.get('from_user_id') or ''} "
+            f"message_id={msg.get('message_id') or msg.get('client_id') or ''} "
+            f"items={json.dumps(media_diag, ensure_ascii=False)}"
+        )
+        save_inbound_media_debug_sample(state_dir, account, msg)
     text = body_from_items(msg.get("item_list"))
     images = download_inbound_images(state_dir, account, msg)
     if not text:

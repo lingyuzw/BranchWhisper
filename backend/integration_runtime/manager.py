@@ -682,7 +682,11 @@ class IntegrationManager:
 
     def create_integration(self, payload: dict) -> dict:
         data = self.load_config()
-        item = self.normalize_integration({**payload, "type": "weixin_oc"})
+        raw_payload = dict(payload or {})
+        integration_id = safe_id(str(raw_payload.get("id") or f"weixin_{uuid.uuid4().hex[:8]}"))
+        if not str(raw_payload.get("openclaw_profile") or "").strip():
+            raw_payload["openclaw_profile"] = f"branchwhisper_{integration_id}"
+        item = self.normalize_integration({**raw_payload, "id": integration_id, "type": "weixin_oc"})
         if any(existing["id"] == item["id"] for existing in data["integrations"]):
             raise ValueError(f"integration already exists: {item['id']}")
         data["integrations"].append(item)

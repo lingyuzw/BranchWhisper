@@ -748,6 +748,25 @@
 }
 
 .integration-modal-panel { width: min(620px, calc(100vw - 40px)); }
+.integration-profile-hint {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border) 76%);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--primary-soft) 58%, var(--surface) 42%);
+  line-height: 1.45;
+}
+.integration-profile-hint strong {
+  color: var(--text);
+  font-size: var(--font-sm);
+}
+.integration-profile-hint span {
+  font-size: var(--font-xs);
+  overflow-wrap: anywhere;
+}
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .switch-label {
   align-content: end;

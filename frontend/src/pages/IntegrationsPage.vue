@@ -372,11 +372,11 @@ function downloadLogs() {
         <div>
           <p class="eyebrow">Channel Bots</p>
           <h1>接入管理</h1>
-          <small>微信桥接、扫码登录、人格绑定和运行日志。当前 {{ integrations.summary }}</small>
+          <small>微信机器人、扫码登录、人格绑定和运行日志。当前 {{ integrations.summary }}</small>
         </div>
         <div class="head-actions">
           <button class="primary-action" type="button" @click="openNew">
-            <Plus :size="16" /> 添加微信个人号
+            <Plus :size="16" /> 新增机器人
           </button>
           <button class="secondary-action" type="button" :disabled="integrations.loading" @click="refreshIntegrations">
             <RefreshCw :size="16" /> {{ integrations.loading ? "刷新中" : "刷新" }}
@@ -469,7 +469,7 @@ function downloadLogs() {
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Login</p>
-                <h2>登录控制</h2>
+                <h2>设备扫码</h2>
               </div>
               <span class="soft-badge">{{ selected?.id || "--" }}</span>
             </div>
@@ -522,7 +522,7 @@ function downloadLogs() {
             <div class="integration-login-actions">
               <div class="inline-actions">
                 <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startQrLogin">
-                  <QrCode :size="16" /> 扫码登录
+                  <QrCode :size="16" /> 用新设备扫码
                 </button>
                 <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="selected && runIntegration(selected, 'install')">
                   <PackagePlus :size="16" /> 安装适配器
@@ -547,7 +547,7 @@ function downloadLogs() {
             <div class="panel-head">
               <div>
                 <p class="eyebrow">WeChat Sessions</p>
-                <h2>我的微信聊天</h2>
+                <h2>微信机器人</h2>
               </div>
               <span class="soft-badge">{{ integrations.summary }}</span>
             </div>
@@ -563,7 +563,7 @@ function downloadLogs() {
                   <div class="integration-title">
                     <span class="status-dot"></span>
                     <strong>{{ item.chat_name || item.id }}</strong>
-                    <small>{{ item.id }} · {{ profileName(item.bot_profile_id) }}</small>
+                    <small>{{ item.id }} · {{ item.openclaw_profile || "--" }}</small>
                   </div>
                   <span class="service-badge">{{ integrations.humanStatus(item) }}</span>
                 </div>
@@ -572,7 +572,7 @@ function downloadLogs() {
                   <span class="meta-cell"><span>启用</span><strong>{{ item.enabled ? "守护" : "手动" }}</strong></span>
                   <span class="meta-cell"><span>回复</span><strong>{{ item.reply_mode || "text" }}</strong></span>
                   <span class="meta-cell"><span>账号</span><strong>{{ item.runtime?.account_count ?? item.accounts?.length ?? 0 }}</strong></span>
-                  <span class="meta-cell"><span>PID</span><strong>{{ item.pid || "--" }}</strong></span>
+                  <span class="meta-cell"><span>人格</span><strong>{{ profileName(item.bot_profile_id) }}</strong></span>
                 </div>
 
                 <div class="integration-card-foot">
@@ -598,7 +598,7 @@ function downloadLogs() {
                   </div>
                 </div>
               </article>
-              <p v-if="!integrations.items.length" class="integration-empty compact">还没有接入实例。添加微信个人号后会显示在这里。</p>
+              <p v-if="!integrations.items.length" class="integration-empty compact">还没有微信机器人。新增后扫码登录，新设备会显示在这里。</p>
             </div>
           </section>
         </aside>
@@ -609,15 +609,19 @@ function downloadLogs() {
           <div class="modal-head">
             <div>
               <p class="eyebrow">Instance Config</p>
-              <h2>{{ integrations.editingId ? "编辑实例" : "新增实例" }}</h2>
+              <h2>{{ integrations.editingId ? "编辑机器人" : "新增机器人" }}</h2>
             </div>
             <button class="icon-button modal-close" type="button" title="关闭" @click="configOpen = false"><X :size="16" /></button>
           </div>
           <div class="modal-body">
+            <div class="integration-profile-hint">
+              <strong>每个机器人使用独立 OpenClaw profile。</strong>
+              <span>新增后先保存，再用对应设备扫码；扫码 token、会话和消息记录会存到这个 profile 下，不会覆盖当前机器人。</span>
+            </div>
             <div class="form-grid compact">
-              <label><span>实例 ID</span><input v-model="integrations.form.id" :disabled="!!integrations.editingId" /></label>
-              <label><span>微信聊天名</span><input v-model="integrations.form.chat_name" /></label>
-              <label><span>OpenClaw profile</span><input v-model="integrations.form.openclaw_profile" /></label>
+              <label><span>机器人 ID</span><input v-model="integrations.form.id" :disabled="!!integrations.editingId" placeholder="weixin_phone2" /></label>
+              <label><span>显示名称</span><input v-model="integrations.form.chat_name" placeholder="新设备微信" /></label>
+              <label><span>隔离 profile</span><input v-model="integrations.form.openclaw_profile" placeholder="branchwhisper_weixin_phone2" /></label>
               <label><span>Bot 人格</span><select v-model="integrations.form.bot_profile_id"><option v-for="profile in profiles.profiles" :key="profile.id" :value="profile.id">{{ profile.name || profile.id }}</option></select></label>
               <label><span>回复模式</span><select v-model="integrations.form.reply_mode"><option value="text">文字默认</option><option value="voice">语音优先</option></select></label>
               <label class="switch-label"><span>启用后台守护</span><input v-model="integrations.form.enabled" type="checkbox" /></label>

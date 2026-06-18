@@ -60,11 +60,12 @@ interface IntegrationState {
 }
 
 function defaultForm(): IntegrationForm {
+  const id = `weixin_${Date.now().toString(36)}`;
   return {
-    id: "weixin_personal",
-    chat_name: "我的微信聊天",
+    id,
+    chat_name: "新设备微信",
     enabled: true,
-    openclaw_profile: "branchwhisper",
+    openclaw_profile: `branchwhisper_${id}`,
     bot_profile_id: "default",
     reply_mode: "text",
     voice_trigger_keywords: DEFAULT_KEYWORDS.join("\n"),
@@ -203,22 +204,25 @@ export const useIntegrationsStore = defineStore("integrations", {
     fillForm(item?: IntegrationItem | null) {
       const target = item || null;
       this.editingId = target?.id || "";
+      const id = target?.id || `weixin_${Date.now().toString(36)}`;
       this.form = {
-        id: target?.id || `weixin_${Date.now().toString(36)}`,
-        chat_name: target?.chat_name || "我的微信聊天",
+        id,
+        chat_name: target?.chat_name || "新设备微信",
         enabled: target?.enabled ?? true,
-        openclaw_profile: target?.openclaw_profile || "branchwhisper",
+        openclaw_profile: target?.openclaw_profile || `branchwhisper_${id}`,
         bot_profile_id: target?.bot_profile_id || "default",
         reply_mode: target?.reply_mode || "text",
         voice_trigger_keywords: (target?.voice_trigger_keywords?.length ? target.voice_trigger_keywords : DEFAULT_KEYWORDS).join("\n"),
       };
     },
     async saveForm() {
+      const id = this.form.id.trim() || `weixin_${Date.now().toString(36)}`;
+      const profile = this.form.openclaw_profile.trim() || `branchwhisper_${id}`;
       const payload = {
-        id: this.form.id.trim() || "weixin_personal",
-        chat_name: this.form.chat_name.trim() || "我的微信聊天",
+        id,
+        chat_name: this.form.chat_name.trim() || "新设备微信",
         enabled: this.form.enabled,
-        openclaw_profile: this.form.openclaw_profile.trim() || "branchwhisper",
+        openclaw_profile: profile,
         bot_profile_id: this.form.bot_profile_id || "default",
         reply_mode: this.form.reply_mode || "text",
         voice_trigger_keywords: this.form.voice_trigger_keywords
@@ -228,7 +232,7 @@ export const useIntegrationsStore = defineStore("integrations", {
       };
       const data = this.editingId ? await updateIntegration(this.editingId, payload) : await createIntegration(payload);
       this.sync(data);
-      this.selectedId = this.editingId || payload.id;
+      this.selectedId = this.editingId || id;
       this.editingId = "";
       await this.refreshLogs(true);
     },

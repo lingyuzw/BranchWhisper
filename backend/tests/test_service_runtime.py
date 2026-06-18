@@ -357,6 +357,43 @@ class ServiceHealthCheckTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("timeout", observed)
 
 
+class IntegrationManagerTests(unittest.TestCase):
+    def test_create_weixin_integration_uses_isolated_profile_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = IntegrationManager(Path(tmp) / "integrations.json", Path(tmp) / "logs", Path(tmp) / "media")
+            item = manager.create_integration({"id": "weixin_phone2", "chat_name": "新设备微信"})
+
+            data = json.loads((Path(tmp) / "integrations.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(item["id"], "weixin_phone2")
+        self.assertEqual(item["openclaw_profile"], "branchwhisper_weixin_phone2")
+        self.assertEqual(data["integrations"][1]["openclaw_profile"], "branchwhisper_weixin_phone2")
+
+    def test_create_weixin_integration_respects_explicit_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = IntegrationManager(Path(tmp) / "integrations.json", Path(tmp) / "logs", Path(tmp) / "media")
+            item = manager.create_integration(
+                {
+                    "id": "weixin_phone2",
+                    "chat_name": "新设备微信",
+                    "openclaw_profile": "my_custom_device",
+                }
+            )
+
+        self.assertEqual(item["openclaw_profile"], "my_custom_device")
+
+    def test_delete_weixin_integration_returns_true_after_create(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = IntegrationManager(Path(tmp) / "integrations.json", Path(tmp) / "logs", Path(tmp) / "media")
+            manager.create_integration({"id": "weixin_phone2", "chat_name": "新设备微信"})
+
+            deleted = manager.delete_integration("weixin_phone2")
+            ids = [item["id"] for item in manager.load_config()["integrations"]]
+
+        self.assertTrue(deleted)
+        self.assertNotIn("weixin_phone2", ids)
+
+
 class WeixinVoiceSenderTests(unittest.TestCase):
     def test_voice_sender_does_not_drive_local_windows_weixin_ui(self) -> None:
         original_run = weixin_media.subprocess.run
@@ -426,7 +463,36 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(result["cdn_verify"]["ok"], False)
         self.assertEqual(result["client_delivery"], "unconfirmed")
 
-    def test_voice_sender_can_use_audio_file_attachment_fallback(self) -> None:
+    def test_voice_sender_passes_transcript_through_legacy_text_field_only(self) -> None:
+        original_run = weixin_media.subprocess.run
+        commands: list[list[str]] = []
+
+        class FakeProc:
+            returncode = 0
+            stderr = ""
+            stdout = json.dumps({"ok": True, "stage": "sent"})
+
+        def fake_run(command, *_args, **_kwargs):
+            commands.append([str(part) for part in command])
+            return FakeProc()
+
+        weixin_media.subprocess.run = fake_run
+        try:
+            send_weixin_voice(
+                base_url="https://example.test",
+                token="token",
+                to_user_id="u",
+                voice_file="/tmp/a.wav",
+                transcript="这段文字只用于日志，不应进入 voice_item",
+            )
+        finally:
+            weixin_media.subprocess.run = original_run
+
+        self.assertIn("--text", commands[0])
+        self.assertEqual(commands[0][commands[0].index("--text") + 1], "这段文字只用于日志，不应进入 voice_item")
+        self.assertNotIn("--voice-text-field", commands[0])
+
+    def test_voice_sender_uses_audio_file_attachment_by_default(self) -> None:
         original_run = weixin_media.subprocess.run
         commands: list[list[str]] = []
 
@@ -454,7 +520,6 @@ class WeixinVoiceSenderTests(unittest.TestCase):
                 token="token",
                 to_user_id="u",
                 voice_file="/tmp/a.wav",
-                native_voice=False,
             )
         finally:
             weixin_media.subprocess.run = original_run
@@ -504,7 +569,7 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(payload["voice_format"], "silk")
         self.assertEqual(payload["voice_item"]["playtime"], 1234)
         self.assertEqual(payload["voice_item"]["encode_type"], 6)
-        self.assertNotIn("bits_per_sample", payload["voice_item"])
+        self.assertEqual(payload["voice_item"]["bits_per_sample"], 16)
         self.assertEqual(payload["voice_item"]["sample_rate"], 24000)
         self.assertNotIn("duration", payload["voice_item"])
         self.assertNotIn("mid_size", payload["voice_item"])
@@ -513,13 +578,15 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         media = payload["voice_item"]["media"]
         encoded_aes_key = base64.b64encode(b"00112233445566778899aabbccddeeff").decode()
         self.assertEqual(media["encrypt_query_param"], "download-param")
-        self.assertEqual(media["encrypted_query_param"], "download-param")
         self.assertEqual(media["aes_key"], encoded_aes_key)
-        self.assertEqual(media["aeskey"], encoded_aes_key)
         self.assertEqual(media["encrypt_type"], 1)
-        self.assertEqual(sorted(media.keys()), ["aes_key", "aeskey", "encrypt_query_param", "encrypt_type", "encrypted_query_param"])
+        self.assertEqual(
+            media["full_url"],
+            "https://novac2c.cdn.weixin.qq.com/c2c/download?encrypted_query_param=download-param",
+        )
+        self.assertEqual(sorted(media.keys()), ["aes_key", "encrypt_query_param", "encrypt_type", "full_url"])
         self.assertEqual(payload["voice_item_shape"]["playtime"], "number")
-        self.assertNotIn("bits_per_sample", payload["voice_item_shape"])
+        self.assertEqual(payload["voice_item_shape"]["bits_per_sample"], "number")
         self.assertNotIn("mid_size", payload["voice_item_shape"])
         self.assertNotIn("voice_size", payload["voice_item_shape"])
         self.assertNotIn("text", payload["voice_item_shape"])
@@ -573,7 +640,7 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(payload["voice_item"]["bits_per_sample"], 16)
         self.assertNotIn("voice_size", payload["voice_item"])
 
-    def test_voice_sender_rejects_audio_file_fallback_mode(self) -> None:
+    def test_voice_sender_file_payload_diagnostic_matches_wav_attachment_fallback(self) -> None:
         script = BACKEND_ROOT / "integration_runtime" / "weixin_voice_sender.mjs"
 
         proc = weixin_media.subprocess.run(
@@ -586,11 +653,14 @@ class WeixinVoiceSenderTests(unittest.TestCase):
             check=False,
         )
 
-        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
-        self.assertFalse(payload.get("ok"))
-        self.assertNotIn("file_item", payload)
-        self.assertNotIn("fallback", json.dumps(payload, ensure_ascii=False).lower())
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload["media_type"], "file")
+        self.assertEqual(payload["file_name"], "枝语语音.wav")
+        self.assertEqual(payload["file_item"]["file_name"], "枝语语音.wav")
+        self.assertEqual(payload["file_item"]["len"], "1234")
+        self.assertEqual(payload["client_delivery"], "file_attachment")
 
     def test_bridge_voice_api_acceptance_with_unconfirmed_delivery_is_not_failure(self) -> None:
         original_send = openclaw_bridge.send_weixin_voice
@@ -644,6 +714,34 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertNotIn("voice_error", result)
         self.assertEqual(reports[-1]["voice_send_status"], "accepted")
         self.assertEqual(sent_texts, [])
+
+    def test_bridge_voice_reply_sends_reply_text_as_legacy_voice_text(self) -> None:
+        original_send = openclaw_bridge.send_weixin_voice
+        original_report = openclaw_bridge.report_branchwhisper_timing
+        captured: dict = {}
+
+        def fake_send_weixin_voice(**kwargs):
+            captured.update(kwargs)
+            return {"message_id": "voice-1", "stage": "sent", "client_delivery": "unconfirmed"}
+
+        openclaw_bridge.send_weixin_voice = fake_send_weixin_voice
+        openclaw_bridge.report_branchwhisper_timing = lambda *_args, **_kwargs: None
+        try:
+            delivered = openclaw_bridge.send_voice_reply(
+                branchwhisper_url="http://127.0.0.1:7860",
+                integration_id="weixin_personal",
+                trace_id="trace",
+                account={"base_url": "https://example.test", "token": "token", "account_id": "account"},
+                to_user_id="user",
+                context_token="ctx",
+                result={"send_voice": True, "voice_file": "/tmp/a.wav", "reply_text": "不要塞到 voice_item 里"},
+            )
+        finally:
+            openclaw_bridge.send_weixin_voice = original_send
+            openclaw_bridge.report_branchwhisper_timing = original_report
+
+        self.assertTrue(delivered)
+        self.assertEqual(captured["transcript"], "不要塞到 voice_item 里")
 
     def test_voice_test_api_reports_audio_file_attachment_delivery(self) -> None:
         import asyncio
@@ -745,6 +843,111 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
 
 
 class OpenClawBridgeTests(unittest.TestCase):
+    def test_send_typing_indicator_fetches_ticket_and_sends_status(self) -> None:
+        calls: list[tuple[str, dict]] = []
+
+        class FakeResponse:
+            content = b"{}"
+
+            def __init__(self, payload: dict) -> None:
+                self._payload = payload
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return self._payload
+
+        class FakeClient:
+            def post(self, url: str, json: dict, headers: dict, timeout: float):
+                calls.append((url, json))
+                if url.endswith("/ilink/bot/getconfig"):
+                    return FakeResponse({"typing_ticket": "ticket-123"})
+                if url.endswith("/ilink/bot/sendtyping"):
+                    return FakeResponse({"ret": 0})
+                raise AssertionError(url)
+
+        result = openclaw_bridge.send_typing_indicator(
+            FakeClient(),
+            {
+                "base_url": "https://ilinkai.weixin.qq.com",
+                "token": "token",
+                "account_id": "account",
+            },
+            "user@im.wechat",
+            status=1,
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(calls[0][0], "https://ilinkai.weixin.qq.com/ilink/bot/getconfig")
+        self.assertEqual(calls[1][0], "https://ilinkai.weixin.qq.com/ilink/bot/sendtyping")
+        self.assertEqual(calls[1][1]["typing_ticket"], "ticket-123")
+        self.assertEqual(calls[1][1]["status"], 1)
+        self.assertEqual(calls[1][1]["to_user_id"], "user@im.wechat")
+
+    def test_send_typing_indicator_logs_missing_ticket(self) -> None:
+        messages: list[str] = []
+        original_log = openclaw_bridge.log
+
+        class FakeResponse:
+            content = b"{}"
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return {"ret": 0}
+
+        class FakeClient:
+            def post(self, url: str, json: dict, headers: dict, timeout: float):
+                return FakeResponse()
+
+        openclaw_bridge.log = messages.append
+        try:
+            result = openclaw_bridge.send_typing_indicator(
+                FakeClient(),
+                {
+                    "base_url": "https://ilinkai.weixin.qq.com",
+                    "token": "token",
+                    "account_id": "account",
+                },
+                "user@im.wechat",
+                status=1,
+            )
+        finally:
+            openclaw_bridge.log = original_log
+
+        self.assertFalse(result)
+        self.assertTrue(any("typing indicator unavailable" in item and "missing typing_ticket" in item for item in messages))
+
+    def test_media_items_diagnostic_redacts_voice_media_secrets(self) -> None:
+        diag = openclaw_bridge.media_items_diagnostic(
+            [
+                {
+                    "type": 3,
+                    "voice_item": {
+                        "media": {
+                            "encrypt_query_param": "secret-param",
+                            "aes_key": "secret-key",
+                            "encrypt_type": 1,
+                        },
+                        "encode_type": 6,
+                        "sample_rate": 24000,
+                        "playtime": 3200,
+                        "text": "识别文本",
+                    },
+                }
+            ]
+        )
+
+        encoded = json.dumps(diag, ensure_ascii=False)
+        self.assertIn('"kind": "voice"', encoded)
+        self.assertIn('"playtime": "int"', encoded)
+        self.assertNotIn("secret-param", encoded)
+        self.assertNotIn("secret-key", encoded)
+        self.assertIn('"encrypt_query_param": "[str]"', encoded)
+        self.assertIn('"aes_key": "[str]"', encoded)
+
     def test_send_text_rejects_nonzero_business_ret(self) -> None:
         class FakeResponse:
             content = b'{"ret":-2}'
