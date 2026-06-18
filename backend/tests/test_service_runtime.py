@@ -28,6 +28,7 @@ from service_runtime.services import (
     service_status_layers,
     extract_latest_started_command,
     extract_service_log_error,
+    load_service_profiles,
     linux_process_started_at,
     normalize_command_for_compare,
     service_startup_timed_out,
@@ -243,6 +244,17 @@ class ServiceRuntimeStateTests(unittest.TestCase):
 
         self.assertEqual(manager.services["asr"]["label"], "Legacy ASR")
         self.assertEqual(manager.services["asr"]["command"], "python legacy.py")
+
+    def test_default_service_profiles_include_diagnostics_metadata(self) -> None:
+        profiles = load_service_profiles(None)
+
+        self.assertEqual(profiles["asr"]["provider"], "qwen-asr")
+        self.assertIn("streaming", profiles["asr"]["capabilities"])
+        self.assertIn("conda", profiles["asr"]["required_bins"])
+        self.assertEqual(profiles["llm"]["provider"], "llama-cpp")
+        self.assertIn("openai-compatible", profiles["llm"]["capabilities"])
+        self.assertEqual(profiles["tts"]["provider"], "cosyvoice")
+        self.assertIn("voice", profiles["tts"]["capabilities"])
 
     def test_service_process_env_adds_local_conda_paths(self) -> None:
         env = service_process_env({"PATH": "/usr/bin:/bin"}, home=Path("/home/me"))

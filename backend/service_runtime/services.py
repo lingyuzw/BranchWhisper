@@ -35,6 +35,10 @@ DEFAULT_SERVICE_PROFILES = {
     "asr": {
         "label": "Qwen3-ASR vLLM",
         "description": "Speech recognition service, started by qwen-asr-serve.",
+        "provider": "qwen-asr",
+        "capabilities": ["streaming", "language_detection"],
+        "required_bins": ["conda"],
+        "optional_bins": ["ffmpeg"],
         "cwd": "${WORKSPACE_ROOT}",
         "command": (
             "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 "
@@ -49,6 +53,9 @@ DEFAULT_SERVICE_PROFILES = {
     "llm": {
         "label": "llama.cpp Qwen3.5",
         "description": "OpenAI-compatible llama.cpp server for the chat model.",
+        "provider": "llama-cpp",
+        "capabilities": ["chat", "openai-compatible"],
+        "required_bins": ["llama-server"],
         "cwd": "${WORKSPACE_ROOT}/llama.cpp",
         "command": (
             "./build-cuda/bin/llama-server -m ./Qwen3.5-9B.Q8_0.gguf --alias qwen3.5-9b "
@@ -61,6 +68,9 @@ DEFAULT_SERVICE_PROFILES = {
     "tts": {
         "label": "CosyVoice3 TTS",
         "description": "Trained CosyVoice3 API with internal vLLM acceleration.",
+        "provider": "cosyvoice",
+        "capabilities": ["voice", "streaming"],
+        "required_bins": ["conda"],
         "cwd": "${WORKSPACE_ROOT}/CosyVoice",
         "command": (
             "conda run --no-capture-output -n cosyvoice_vllm python -u "
