@@ -18,6 +18,7 @@ from diagnostics.runtime import (
     evaluate_profile,
     evaluate_profiles,
     runtime_diagnostics_payload,
+    runtime_tool_profiles,
     profiles_from_service_config,
 )
 
@@ -342,6 +343,48 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(payload["items"][0]["role"], "asr")
         self.assertEqual(payload["items"][0]["checks"][0]["kind"], "model_path")
 
+    def test_runtime_tool_profiles_report_required_and_optional_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            python_bin = workspace_root / "conda" / "envs" / "qwen3-asr" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            payload = evaluate_profiles(
+                runtime_tool_profiles(python_executable=str(python_bin)),
+                workspace_root=workspace_root,
+                command_resolver=lambda command: f"/usr/bin/{command}" if command in {"node", "npm"} else None,
+            )
+
+        items = {item["provider"]: item for item in payload["items"]}
+        self.assertEqual(items["python"]["role"], "tool")
+        self.assertEqual(items["python"]["status"], "ok")
+        self.assertEqual(items["node"]["status"], "ok")
+        self.assertEqual(items["npm"]["status"], "ok")
+        self.assertEqual(items["ffmpeg"]["status"], "warning")
+        self.assertEqual(items["cuda"]["status"], "warning")
+        self.assertEqual(items["openclaw"]["status"], "warning")
+        self.assertEqual(items["openclaw"]["checks"][0]["fix"], "Install openclaw or make it available on PATH.")
+        self.assertEqual(payload["status"], "warning")
+
+    def test_runtime_diagnostics_payload_can_include_runtime_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            python_bin = workspace_root / "python"
+            python_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            payload = runtime_diagnostics_payload(
+                {"services": {}},
+                workspace_root=workspace_root,
+                extra_profiles=runtime_tool_profiles(python_executable=str(python_bin)),
+                command_resolver=lambda command: f"/usr/bin/{command}",
+            )
+
+        self.assertEqual(payload["summary"]["total"], 6)
+        self.assertEqual(payload["summary"]["ok"], 6)
+        self.assertEqual({item["role"] for item in payload["items"]}, {"tool"})
+        self.assertEqual({item["provider"] for item in payload["items"]}, {"python", "node", "npm", "ffmpeg", "cuda", "openclaw"})
+
     def test_runtime_diagnostics_route_returns_profile_payload(self) -> None:
         class ServiceManagerStub:
             services = {
@@ -360,9 +403,10 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["summary"]["total"], 1)
+        self.assertEqual(payload["summary"]["total"], 7)
         self.assertEqual(payload["items"][0]["role"], "asr")
         self.assertEqual(payload["items"][0]["name"], "ASR")
+        self.assertEqual({item["role"] for item in payload["items"][1:]}, {"tool"})
 
 
 if __name__ == "__main__":

@@ -145,12 +145,15 @@ def runtime_diagnostics_payload(
     service_config: dict,
     *,
     workspace_root: Path,
+    extra_profiles: list[RuntimeDiagnosticProfile] | tuple[RuntimeDiagnosticProfile, ...] = (),
     command_resolver: CommandResolver | None = None,
     port_checker: PortChecker | None = None,
     health_checker: HealthChecker | None = None,
 ) -> dict:
+    profiles = profiles_from_service_config(service_config)
+    profiles.extend(extra_profiles)
     payload = evaluate_profiles(
-        profiles_from_service_config(service_config),
+        profiles,
         workspace_root=workspace_root,
         command_resolver=command_resolver,
         port_checker=port_checker,
@@ -164,6 +167,53 @@ def runtime_diagnostics_payload(
         "error": sum(1 for item in items if item.get("status") == "error"),
     }
     return payload
+
+
+def runtime_tool_profiles(*, python_executable: str) -> list[RuntimeDiagnosticProfile]:
+    return [
+        RuntimeDiagnosticProfile(
+            role="tool",
+            name="Python",
+            provider="python",
+            required_bins=(python_executable,),
+            capabilities=("backend", "runtime"),
+        ),
+        RuntimeDiagnosticProfile(
+            role="tool",
+            name="Node.js",
+            provider="node",
+            required_bins=("node",),
+            capabilities=("frontend", "weixin"),
+        ),
+        RuntimeDiagnosticProfile(
+            role="tool",
+            name="npm",
+            provider="npm",
+            required_bins=("npm",),
+            capabilities=("frontend", "weixin"),
+        ),
+        RuntimeDiagnosticProfile(
+            role="tool",
+            name="ffmpeg",
+            provider="ffmpeg",
+            optional_bins=("ffmpeg",),
+            capabilities=("audio", "weixin_voice"),
+        ),
+        RuntimeDiagnosticProfile(
+            role="tool",
+            name="CUDA",
+            provider="cuda",
+            optional_bins=("nvidia-smi",),
+            capabilities=("gpu",),
+        ),
+        RuntimeDiagnosticProfile(
+            role="tool",
+            name="OpenClaw",
+            provider="openclaw",
+            optional_bins=("openclaw",),
+            capabilities=("weixin",),
+        ),
+    ]
 
 
 def profiles_from_service_config(config: dict) -> list[RuntimeDiagnosticProfile]:

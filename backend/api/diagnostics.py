@@ -15,7 +15,7 @@ import httpx
 
 from core.config import active_asr_api_key, active_asr_model, active_asr_provider, active_asr_provider_mode, active_asr_url, active_tts_api_key, active_tts_model, active_tts_provider, active_tts_provider_mode, active_tts_url
 from core.http_client import httpx_client_for_url
-from diagnostics.runtime import runtime_diagnostics_payload
+from diagnostics.runtime import runtime_diagnostics_payload, runtime_tool_profiles
 from service_runtime.audio_pipeline import transcribe_audio, wav_bytes_from_float32
 from service_runtime.services import check_openai_compatible_endpoint, check_service, health_url_from
 from service_runtime.tts_clients import TtsServiceNotReady, synthesize_tts_bytes, synthesize_tts_wav_bytes, tts_provider_capabilities
@@ -158,6 +158,7 @@ def create_diagnostics_router() -> APIRouter:
         return runtime_diagnostics_payload(
             {"services": service_manager.services},
             workspace_root=PROJECT_ROOT.parent,
+            extra_profiles=runtime_tool_profiles(python_executable=sys.executable),
             health_checker=health_probe,
         )
 
