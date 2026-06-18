@@ -29,6 +29,7 @@ SERVICE_HEALTH_TIMEOUT_SEC = 0.8
 SERVICE_PORT_TIMEOUT_SEC = 0.15
 DEFAULT_ASR_GPU_MEMORY_UTILIZATION = "0.25"
 DEFAULT_ASR_MAX_MODEL_LEN = "1024"
+SERVICE_PROFILE_SCHEMA_VERSION = 1
 
 DEFAULT_SERVICE_PROFILES = {
     "asr": {
@@ -126,7 +127,7 @@ class ServiceManager:
         if not self.config_path:
             raise RuntimeError("service config path is not configured")
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"services": self.services}
+        payload = {"schema_version": SERVICE_PROFILE_SCHEMA_VERSION, "services": self.services}
         tmp_path = self.config_path.with_suffix(f"{self.config_path.suffix}.tmp")
         tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         tmp_path.replace(self.config_path)
@@ -503,7 +504,7 @@ def load_service_profiles(config_path: Path | None) -> dict:
                 profiles[service_id].update(service_patch)
     migrated = migrate_legacy_service_paths(profiles)
     if config_path and config_path.exists() and migrated != profiles:
-        config_path.write_text(json.dumps({"services": migrated}, ensure_ascii=False, indent=2), encoding="utf-8")
+        config_path.write_text(json.dumps({"schema_version": SERVICE_PROFILE_SCHEMA_VERSION, "services": migrated}, ensure_ascii=False, indent=2), encoding="utf-8")
     return migrated
 
 

@@ -22,6 +22,7 @@ from media.sticker_policy import StickerPolicy
 from service_runtime.audio_pipeline import clean_reply_text, strip_internal_attachment_markers
 from service_runtime.services import (
     ServiceManager,
+    SERVICE_PROFILE_SCHEMA_VERSION,
     check_service,
     friendly_service_error,
     service_status_layers,
@@ -220,6 +221,28 @@ class ServiceRuntimeStateTests(unittest.TestCase):
         self.assertIn("--gpu-memory-utilization 0.35", saved["final_command"])
         self.assertIn("--max-model-len 2048", saved["final_command"])
         self.assertNotIn("--gpu-memory-utilization 0.60", saved["final_command"])
+
+    def test_service_manager_saves_schema_version_with_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "service_profiles.json"
+            manager = ServiceManager(config_path, Path(tmp) / "logs")
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["schema_version"], SERVICE_PROFILE_SCHEMA_VERSION)
+        self.assertIn("services", data)
+
+    def test_load_service_profiles_keeps_legacy_unversioned_config_compatible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "service_profiles.json"
+            config_path.write_text(
+                json.dumps({"services": {"asr": {"label": "Legacy ASR", "command": "python legacy.py"}}}),
+                encoding="utf-8",
+            )
+
+            manager = ServiceManager(config_path, Path(tmp) / "logs")
+
+        self.assertEqual(manager.services["asr"]["label"], "Legacy ASR")
+        self.assertEqual(manager.services["asr"]["command"], "python legacy.py")
 
     def test_service_process_env_adds_local_conda_paths(self) -> None:
         env = service_process_env({"PATH": "/usr/bin:/bin"}, home=Path("/home/me"))
