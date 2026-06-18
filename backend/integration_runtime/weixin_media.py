@@ -27,9 +27,10 @@ def send_weixin_voice(
     token: str,
     to_user_id: str,
     voice_file: str,
-    text: str = "",
+    transcript: str = "",
     context_token: str = "",
     cdn_base_url: str = "",
+    native_voice: bool = True,
     timeout: float = 90.0,
 ) -> dict:
     command = [
@@ -44,12 +45,14 @@ def send_weixin_voice(
         "--voice-file",
         voice_file,
     ]
+    if not native_voice:
+        command.extend(["--voice-as-file", "--file-name", "枝语语音.wav"])
     if context_token:
         command.extend(["--context-token", context_token])
     if cdn_base_url:
         command.extend(["--cdn-base-url", cdn_base_url])
-    if text:
-        command.extend(["--text", text])
+    if transcript:
+        command.extend(["--voice-text-field", transcript])
     try:
         proc = subprocess.run(
             command,

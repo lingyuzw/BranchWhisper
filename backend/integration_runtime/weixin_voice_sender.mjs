@@ -3,9 +3,11 @@
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
+import http from "node:http";
+import https from "node:https";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -18,12 +20,14 @@ const MESSAGE_TYPE_BOT = 2;
 const MESSAGE_STATE_FINISH = 2;
 const ITEM_IMAGE = 2;
 const ITEM_VOICE = 3;
+const ITEM_FILE = 4;
 const UPLOAD_MEDIA_TYPE_IMAGE = 1;
+const UPLOAD_MEDIA_TYPE_FILE = 3;
 const UPLOAD_MEDIA_TYPE_VOICE = 4;
 const VOICE_ENCODE_SILK = 6;
 const VOICE_ENCODE_MP3 = 7;
 const VOICE_ENCODE_OGG_OPUS = 8;
-const DEFAULT_VOICE_FORMAT = "ogg_opus";
+const DEFAULT_VOICE_FORMAT = "silk";
 const WEIXIN_VOICE_SAMPLE_RATE = 24_000;
 const WEIXIN_VOICE_OPUS_SAMPLE_RATE = 48_000;
 const WEIXIN_VOICE_OPUS_BITRATE = "64k";
@@ -31,8 +35,9 @@ const WEIXIN_VOICE_GAIN_DB = 8;
 const MAX_VOICE_SECONDS = 60;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_THUMB_BYTES = 256 * 1024;
-const VOICE_CLIENT_DELIVERY = "unconfirmed";
-const VOICE_CLIENT_DELIVERY_REASON = "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client.";
+const DEFAULT_VOICE_FILE_NAME = "枝语语音.wav";
+const VOICE_CLIENT_DELIVERY_UNCONFIRMED = "unconfirmed";
+const VOICE_CLIENT_DELIVERY_UNCONFIRMED_REASON = "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client.";
 
 let silkModulePromise = null;
 
@@ -58,7 +63,7 @@ function parseArgs(argv) {
     const item = argv[i];
     if (!item.startsWith("--")) continue;
     const key = item.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    if (key === "help" || key === "selfTest" || key === "downloadMedia" || key === "voicePayloadTest" || key === "filePayloadTest") {
+    if (key === "help" || key === "selfTest" || key === "downloadMedia" || key === "voicePayloadTest" || key === "filePayloadTest" || key === "silkSdkEncode" || key === "voiceAsFile") {
       args[key] = true;
     } else {
       args[key] = argv[i + 1] || "";
@@ -81,6 +86,10 @@ function buildClientVersion(version) {
 
 function buildBaseInfo() {
   return { channel_version: "branchwhisper-bridge", bot_agent: "BranchWhisper/1.0 (openclaw-weixin)" };
+}
+
+function buildMinimalBaseInfo() {
+  return { channel_version: "branchwhisper-bridge" };
 }
 
 function buildHeaders(token = "") {
@@ -116,16 +125,91 @@ async function postJson({ baseUrl, apiPath, token, body, timeoutMs = 15_000 }) {
       throw error;
     });
     const text = await response.text();
+    const headers = {};
+    response.headers.forEach((value, key) => {
+      if (/^(content-type|content-length|server|date|x-|trace|grpc|vary)/i.test(key)) headers[key] = value;
+    });
     if (!response.ok) {
       const error = new Error(`${apiPath} HTTP ${response.status}: ${text.slice(0, 300)}`);
       error.target_url = targetUrl;
       error.stage = apiPath;
       throw error;
     }
-    return text ? JSON.parse(text) : {};
+    const parsed = text ? JSON.parse(text) : {};
+    if (parsed && typeof parsed === "object") {
+      Object.defineProperty(parsed, "__http", {
+        value: { status: response.status, body_length: text.length, headers },
+        enumerable: false,
+      });
+    }
+    return parsed;
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function postJsonRaw({ baseUrl, apiPath, token, body, timeoutMs = 15_000 }) {
+  const targetUrl = endpoint(baseUrl, apiPath);
+  const url = new URL(targetUrl);
+  const rawBody = JSON.stringify(body);
+  const headers = {
+    ...buildHeaders(token),
+    "Content-Length": Buffer.byteLength(rawBody),
+  };
+  const client = url.protocol === "http:" ? http : https;
+  return await new Promise((resolve, reject) => {
+    const req = client.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === "https:" ? 443 : 80),
+      path: `${url.pathname}${url.search}`,
+      method: "POST",
+      headers,
+      timeout: timeoutMs,
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => {
+        const text = Buffer.concat(chunks).toString("utf8");
+        const responseHeaders = {};
+        for (const [key, value] of Object.entries(res.headers || {})) {
+          if (/^(content-type|content-length|server|date|x-|trace|grpc|vary)/i.test(key)) responseHeaders[key] = Array.isArray(value) ? value.join(", ") : String(value || "");
+        }
+        if ((res.statusCode || 0) < 200 || (res.statusCode || 0) >= 300) {
+          const error = new Error(`${apiPath} HTTP ${res.statusCode}: ${text.slice(0, 300)}`);
+          error.target_url = targetUrl;
+          error.stage = apiPath;
+          reject(error);
+          return;
+        }
+        let parsed = {};
+        try {
+          parsed = text ? JSON.parse(text) : {};
+        } catch (error) {
+          error.target_url = targetUrl;
+          error.stage = apiPath;
+          reject(error);
+          return;
+        }
+        if (parsed && typeof parsed === "object") {
+          Object.defineProperty(parsed, "__http", {
+            value: { status: res.statusCode || 0, body_length: text.length, headers: responseHeaders },
+            enumerable: false,
+          });
+        }
+        resolve(parsed);
+      });
+    });
+    req.on("timeout", () => {
+      req.destroy(new Error(`${apiPath} timed out`));
+    });
+    req.on("error", (error) => {
+      error.target_url = targetUrl;
+      error.stage = apiPath;
+      reject(error);
+    });
+    req.write(rawBody);
+    req.end();
+  });
 }
 
 function aesEcbPaddedSize(plaintextSize) {
@@ -182,6 +266,14 @@ function buildOfficialMediaPayload({ downloadParam, aeskey }) {
   };
 }
 
+function buildFileItem({ downloadParam, aeskey, fileName, fileSize }) {
+  return {
+    media: buildOfficialMediaPayload({ downloadParam, aeskey }),
+    file_name: fileName || DEFAULT_VOICE_FILE_NAME,
+    len: String(Math.max(0, Number(fileSize) || 0)),
+  };
+}
+
 function normalizeVoiceFormat(value) {
   const raw = String(value || "").trim().toLowerCase();
   if (raw === "mp3" || raw === "mpeg") return "mp3";
@@ -195,6 +287,12 @@ function voiceEncodeType(voiceFormat) {
   return VOICE_ENCODE_SILK;
 }
 
+function resolveVoiceEncodeType(voiceFormat, override = "") {
+  const numeric = Number.parseInt(String(override || ""), 10);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  return voiceEncodeType(voiceFormat);
+}
+
 function voiceSampleRate(voiceFormat, fallback = 0) {
   if (voiceFormat === "ogg_opus") return WEIXIN_VOICE_OPUS_SAMPLE_RATE;
   if (voiceFormat === "silk") return WEIXIN_VOICE_SAMPLE_RATE;
@@ -204,12 +302,14 @@ function voiceSampleRate(voiceFormat, fallback = 0) {
 function buildVoiceItem({
   downloadParam,
   aeskey,
+  playtimeMs,
+  fileSize = 0,
   encodeType,
   sampleRate,
-  playtimeMs,
-  voiceSize = 0,
+  usePlaytimeField = true,
+  includeFileSize = false,
+  midSize = 0,
   includeBitsPerSample = false,
-  includeVoiceSize = false,
   includeText = "",
   aesKeyEncoding = "base64_hex_text",
 }) {
@@ -218,9 +318,15 @@ function buildVoiceItem({
     encode_type: encodeType,
     playtime: Math.max(1, Math.round(Number(playtimeMs) || 1)),
   };
-  if (sampleRate) item.sample_rate = sampleRate;
+  if (!item.encode_type) delete item.encode_type;
+  if (!usePlaytimeField) {
+    item.duration = item.playtime;
+    delete item.playtime;
+  }
+  if (includeFileSize && fileSize > 0) item.file_size = fileSize;
   if (includeBitsPerSample) item.bits_per_sample = 16;
-  if (includeVoiceSize && voiceSize > 0) item.voice_size = voiceSize;
+  if (sampleRate) item.sample_rate = sampleRate;
+  if (midSize > 0) item.mid_size = midSize;
   if (includeText) item.text = String(includeText);
   return item;
 }
@@ -228,15 +334,22 @@ function buildVoiceItem({
 async function voicePayloadTest(args = {}) {
   const aeskey = Buffer.from("00112233445566778899aabbccddeeff", "hex");
   const voiceFormat = normalizeVoiceFormat(args.voiceFormat || DEFAULT_VOICE_FORMAT);
+  const includeMidSize = String(args.voiceMidSize || "false").toLowerCase() === "true";
+  const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "false").toLowerCase() === "true";
+  const includeFileSize = String(args.voiceFileSize || args.includeFileSize || "false").toLowerCase() === "true";
+  const usePlaytimeField = String(args.voicePlaytime || args.includePlaytime || "false").toLowerCase() === "true";
+  const encodeType = args.voiceEncodeType ? resolveVoiceEncodeType(voiceFormat, args.voiceEncodeType) : voiceEncodeType(voiceFormat);
   const voiceItem = buildVoiceItem({
     downloadParam: "download-param",
     aeskey,
-    encodeType: voiceEncodeType(voiceFormat),
-    sampleRate: voiceSampleRate(voiceFormat, voiceFormat === "mp3" ? 24000 : 0),
+    encodeType,
+    sampleRate: args.voiceSampleRate ? Number(args.voiceSampleRate) || 0 : voiceSampleRate(voiceFormat, voiceFormat === "mp3" ? 24000 : 0),
     playtimeMs: 1234,
-    voiceSize: 4321,
-    includeBitsPerSample: false,
-    includeVoiceSize: false,
+    fileSize: 4321,
+    includeFileSize,
+    usePlaytimeField: args.voiceDuration ? false : true,
+    midSize: includeMidSize ? 4321 : 0,
+    includeBitsPerSample,
     includeText: String(args.voiceTextField || args.includeText || ""),
     aesKeyEncoding: args.voiceAesKey || args.aesKeyEncoding || "base64_hex_text",
   });
@@ -273,6 +386,10 @@ function firstValue(...values) {
   return "";
 }
 
+function getCurrentScriptPath() {
+  return fileURLToPath(import.meta.url);
+}
+
 function compactResponseShape(value, depth = 0) {
   if (!value || typeof value !== "object") return typeof value;
   if (depth > 1) return Array.isArray(value) ? `array(${value.length})` : "object";
@@ -300,7 +417,39 @@ function compactSendMessageResponse(value) {
   return allowed;
 }
 
-async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, cdnBaseUrl, aeskey, label = "media", methods = ["POST"] }) {
+function isEmptyObject(value) {
+  return Boolean(value && typeof value === "object" && Object.keys(value).length === 0);
+}
+
+function assertBusinessOk(response, stage) {
+  if (!response || typeof response !== "object") return;
+  for (const key of ["ret", "errcode", "error_code"]) {
+    if (!Object.prototype.hasOwnProperty.call(response, key)) continue;
+    const value = Number(response[key]);
+    if (!Number.isFinite(value) || value === 0) continue;
+    const message = response.errmsg || response.err_msg || response.message || response.msg || "";
+    const hint = value === -2
+      ? "iLink rejected the message at business layer; ask the WeChat user to send BranchWhisper a fresh message to refresh the conversation context, then retry. If text also returns ret=-2, re-login the WeChat integration."
+      : "";
+    const error = new Error(`${stage} returned ${key}=${response[key]}${message ? `: ${message}` : ""}${hint ? `. ${hint}` : ""}`);
+    error.stage = stage;
+    error.business_response = compactSendMessageResponse(response);
+    error.business_hint = hint;
+    throw error;
+  }
+}
+
+async function uploadBufferToCdn({
+  buffer,
+  uploadFullUrl,
+  uploadParam,
+  filekey,
+  cdnBaseUrl,
+  aeskey,
+  label = "media",
+  methods = ["PUT", "POST"],
+  downloadTokenSource = "cdn_short",
+}) {
   const ciphertext = encryptAesEcb(buffer, aeskey);
   const urls = [];
   if (uploadFullUrl?.trim()) urls.push(uploadFullUrl.trim());
@@ -323,10 +472,24 @@ async function uploadBufferToCdn({ buffer, uploadFullUrl, uploadParam, filekey, 
             error.urlKind = url.includes("/upload?") ? "param" : "full";
             throw error;
           }
-          const downloadParam = response.headers.get("x-encrypted-param") || "";
-          if (!downloadParam) throw new Error(`CDN ${method} response missing x-encrypted-param`);
+          const queryParam = response.headers.get("x-encrypted-query-param") || "";
+          const shortParam = response.headers.get("x-encrypted-param") || "";
+          let downloadParam = shortParam || queryParam;
+          let resolvedTokenSource = shortParam ? "cdn_short" : queryParam ? "cdn_query" : "";
+          if (downloadTokenSource === "cdn_query") {
+            downloadParam = queryParam || shortParam;
+            resolvedTokenSource = queryParam ? "cdn_query" : shortParam ? "cdn_short" : "";
+          } else if (downloadTokenSource === "upload_param") {
+            downloadParam = uploadParam || queryParam || shortParam;
+            resolvedTokenSource = uploadParam ? "upload_param" : queryParam ? "cdn_query" : shortParam ? "cdn_short" : "";
+          }
+          if (!downloadParam) throw new Error(`CDN ${method} response missing download token`);
           return {
             downloadParam,
+            uploadParam,
+            queryParam,
+            shortParam,
+            downloadTokenSource: resolvedTokenSource,
             ciphertextSize: ciphertext.length,
             uploadMethod: method,
             uploadUrlKind: url.includes("/upload?") ? "param" : "full",
@@ -611,6 +774,9 @@ function parseVolumeDetect(text) {
 }
 
 async function encodePcmToSilk(pcmPath) {
+  const sdkResult = await encodePcmToSilkWithSdkChild(pcmPath);
+  if (sdkResult.ok) return sdkResult;
+
   const { encode, getDuration } = await loadSilkWasm();
   if (typeof encode !== "function") {
     const error = new Error("silk-wasm does not export encode()");
@@ -635,7 +801,54 @@ async function encodePcmToSilk(pcmPath) {
   if (!Number.isFinite(durationMs) || durationMs <= 0) {
     durationMs = Math.max(1, Math.round((pcm.length / 2 / WEIXIN_VOICE_SAMPLE_RATE) * 1000));
   }
-  return { data, durationMs: Math.round(durationMs) };
+  return { data, durationMs: Math.round(durationMs), encoder: `silk-wasm${sdkResult.error ? ` (silk-sdk unavailable: ${sdkResult.error})` : ""}` };
+}
+
+async function encodePcmToSilkWithSdkChild(pcmPath) {
+  const outputPath = path.join(os.tmpdir(), `branchwhisper-weixin-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.silk`);
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      getCurrentScriptPath(),
+      "--silk-sdk-encode",
+      "--pcm-file",
+      pcmPath,
+      "--output-file",
+      outputPath,
+    ], { timeout: 20_000 });
+    const payload = stdout ? JSON.parse(stdout) : {};
+    if (!payload.ok) throw new Error(payload.error || "silk-sdk child failed");
+    const data = await fs.readFile(outputPath);
+    if (!data.length) throw new Error("silk-sdk returned empty encoded data");
+    return {
+      ok: true,
+      data,
+      durationMs: Math.max(1, Math.round(Number(payload.duration_ms || 0) || 1)),
+      encoder: "silk-sdk",
+    };
+  } catch (error) {
+    return { ok: false, error: error?.signal || error?.message || String(error) };
+  } finally {
+    await fs.unlink(outputPath).catch(() => {});
+  }
+}
+
+async function silkSdkEncodeCli(args) {
+  const pcmFile = String(args.pcmFile || "");
+  const outputFile = String(args.outputFile || "");
+  if (!pcmFile) throw new Error("missing --pcm-file");
+  if (!outputFile) throw new Error("missing --output-file");
+  const silkSdk = await import("silk-sdk");
+  const encode = silkSdk.default?.encode || silkSdk.encode;
+  if (typeof encode !== "function") throw new Error("silk-sdk does not export encode()");
+  const pcm = await fs.readFile(pcmFile);
+  const data = encode(pcm, { fsHz: WEIXIN_VOICE_SAMPLE_RATE, tencent: true });
+  const silk = Buffer.from(data);
+  await fs.writeFile(outputFile, silk);
+  return {
+    ok: true,
+    duration_ms: Math.max(1, Math.round((pcm.length / 2 / WEIXIN_VOICE_SAMPLE_RATE) * 1000)),
+    bytes: silk.length,
+  };
 }
 
 function makeSelfTestPcm() {
@@ -697,12 +910,25 @@ async function selfTest() {
   }
   let silkWasm = false;
   let silkError = "";
+  let silkSdk = false;
+  let silkSdkError = "";
+  let voiceEncoder = "";
   try {
     const { encode } = await loadSilkWasm();
     const encoded = await encode(makeSelfTestPcm(), WEIXIN_VOICE_SAMPLE_RATE);
     silkWasm = Boolean(encoded?.data?.byteLength || encoded?.data?.length);
   } catch (error) {
     silkError = error?.message || String(error);
+  }
+  try {
+    const pcmPath = path.join(os.tmpdir(), `branchwhisper-weixin-silk-selftest-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.pcm`);
+    await fs.writeFile(pcmPath, makeSelfTestPcm());
+    const encoded = await encodePcmToSilk(pcmPath);
+    silkSdk = encoded.encoder === "silk-sdk";
+    voiceEncoder = encoded.encoder || "";
+    await fs.unlink(pcmPath).catch(() => {});
+  } catch (error) {
+    silkSdkError = error?.message || String(error);
   }
   return {
     ok: true,
@@ -713,9 +939,14 @@ async function selfTest() {
     opus_error: opusError,
     silk_wasm: silkWasm,
     silk_error: silkError,
+    silk_sdk: silkSdk,
+    silk_sdk_error: silkSdkError,
+    voice_encoder: voiceEncoder,
     voice_format: DEFAULT_VOICE_FORMAT,
-    encode_type: voiceEncodeType(DEFAULT_VOICE_FORMAT),
-    sample_rate: voiceSampleRate(DEFAULT_VOICE_FORMAT),
+    default_payload_encode_type: null,
+    default_payload_sample_rate: null,
+    silk_encode_type: voiceEncodeType(DEFAULT_VOICE_FORMAT),
+    silk_sample_rate: voiceSampleRate(DEFAULT_VOICE_FORMAT),
   };
 }
 
@@ -730,8 +961,14 @@ async function sendVoice(args) {
   const voiceFormat = normalizeVoiceFormat(args.voiceFormat || DEFAULT_VOICE_FORMAT);
   const voiceAesKey = String(args.voiceAesKey || args.aesKeyEncoding || "base64_hex_text");
   const includeBitsPerSample = String(args.voiceBits || args.includeBitsPerSample || "false").toLowerCase() === "true";
-  const includeVoiceSize = String(args.voiceSize || args.includeVoiceSize || "false").toLowerCase() === "true";
-  const includeText = String(args.voiceTextField || args.includeText || "").trim();
+  const includeFileSize = String(args.voiceFileSize || args.includeFileSize || "false").toLowerCase() === "true";
+  const usePlaytimeField = String(args.voicePlaytime || args.includePlaytime || "false").toLowerCase() === "true";
+  const includeText = String(args.voiceTextField || args.includeText || text || "").trim();
+  const encodeType = args.voiceEncodeType ? resolveVoiceEncodeType(voiceFormat, args.voiceEncodeType) : voiceEncodeType(voiceFormat);
+  const includeMidSize = String(args.voiceMidSize || "false").toLowerCase() === "true";
+  const downloadTokenSource = String(args.voiceDownloadTokenSource || "").trim().toLowerCase() || "cdn_short";
+  const sendMode = String(args.sendMode || "fetch").trim().toLowerCase() === "raw" ? "raw" : "fetch";
+  const baseInfo = String(args.baseInfoMinimal || "false").toLowerCase() === "true" ? buildMinimalBaseInfo() : buildBaseInfo();
   if (!token) throw new Error("missing --token");
   if (!to) throw new Error("missing --to");
   if (!voiceFile) throw new Error("missing --voice-file");
@@ -775,6 +1012,7 @@ async function sendVoice(args) {
         codec: "silk",
         duration_ms: playtimeMs,
       };
+      transcodeStats.encoder = silk.encoder || "silk";
     }
     if (!plaintext.length) throw new Error("transcoded voice is empty");
     const rawsize = plaintext.length;
@@ -796,13 +1034,15 @@ async function sendVoice(args) {
         filesize,
         no_need_thumb: true,
         aeskey: aeskey.toString("hex"),
+        base_info: baseInfo,
       },
     }).catch((error) => {
       error.stage = "getuploadurl";
       throw error;
     });
-    const uploadFullUrl = String(uploadUrlResp.upload_full_url || "").trim();
-    const uploadParam = uploadUrlResp.upload_param;
+    const nestedVoice = uploadUrlResp.voice || uploadUrlResp.media || uploadUrlResp.main || uploadUrlResp.file || {};
+    const uploadFullUrl = String(firstValue(uploadUrlResp.upload_full_url, uploadUrlResp.uploadFullUrl, nestedVoice.upload_full_url, nestedVoice.uploadFullUrl) || "").trim();
+    const uploadParam = firstValue(uploadUrlResp.upload_param, uploadUrlResp.uploadParam, nestedVoice.upload_param, nestedVoice.uploadParam);
     if (!uploadFullUrl && !uploadParam) throw new Error("getuploadurl returned no upload URL");
     const upload = await uploadBufferToCdn({
       buffer: plaintext,
@@ -811,6 +1051,8 @@ async function sendVoice(args) {
       filekey,
       cdnBaseUrl,
       aeskey,
+      label: "voice",
+      downloadTokenSource,
     }).catch((error) => {
       error.stage = "cdn_upload";
       throw error;
@@ -834,76 +1076,118 @@ async function sendVoice(args) {
       };
     }
     cdnVerify.verify_ms = Date.now() - cdnVerifyStart;
+    let uploadParamVerify = null;
+    if (upload.uploadParam && upload.uploadParam !== upload.downloadParam) {
+      const uploadParamVerifyStart = Date.now();
+      try {
+        uploadParamVerify = await verifyCdnRoundTrip({
+          cdnBaseUrl,
+          downloadParam: upload.uploadParam,
+          aeskey,
+          expectedMd5: rawfilemd5,
+          expectedSize: rawsize,
+          label: "voice upload_param",
+        });
+      } catch (error) {
+        uploadParamVerify = {
+          ok: false,
+          error: error?.message || String(error),
+        };
+      }
+      uploadParamVerify.verify_ms = Date.now() - uploadParamVerifyStart;
+    }
     const sendStart = Date.now();
     const clientId = `branchwhisper-voice-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
     const voiceItem = buildVoiceItem({
       downloadParam: upload.downloadParam,
       aeskey,
-      encodeType: voiceEncodeType(voiceFormat),
-      sampleRate: voiceSampleRate(voiceFormat, transcodeStats.sample_rate),
+      encodeType,
+      sampleRate: args.voiceSampleRate ? Number(args.voiceSampleRate) || 0 : voiceSampleRate(voiceFormat, transcodeStats.sample_rate),
       playtimeMs,
-      voiceSize: rawsize,
+      fileSize: rawsize,
+      includeFileSize,
+      usePlaytimeField: args.voiceDuration ? false : true,
+      midSize: includeMidSize ? upload.ciphertextSize : 0,
       includeBitsPerSample,
-      includeVoiceSize,
       includeText,
       aesKeyEncoding: voiceAesKey,
     });
-    const sendResp = await postJson({
+    const sendPayload = {
+      msg: {
+        from_user_id: "",
+        to_user_id: to,
+        client_id: clientId,
+        message_type: MESSAGE_TYPE_BOT,
+        message_state: MESSAGE_STATE_FINISH,
+        item_list: [
+          {
+            type: ITEM_VOICE,
+            voice_item: voiceItem,
+          },
+        ],
+        ...(contextToken ? { context_token: contextToken } : {}),
+      },
+      base_info: baseInfo,
+    };
+    const sendResp = await (sendMode === "raw" ? postJsonRaw : postJson)({
       baseUrl,
       apiPath: "ilink/bot/sendmessage",
       token,
-      body: {
-        msg: {
-          from_user_id: "",
-          to_user_id: to,
-          client_id: clientId,
-          message_type: MESSAGE_TYPE_BOT,
-          message_state: MESSAGE_STATE_FINISH,
-          item_list: [
-            {
-              type: ITEM_VOICE,
-              voice_item: voiceItem,
-            },
-          ],
-          ...(contextToken ? { context_token: contextToken } : {}),
-        },
-        base_info: buildBaseInfo(),
-      },
+      body: sendPayload,
       timeoutMs: 20_000,
     }).catch((error) => {
       error.stage = "sendmessage";
       throw error;
     });
+    assertBusinessOk(sendResp, "sendmessage");
+    const emptySendMessageResponse = isEmptyObject(sendResp);
     return {
       ok: true,
       message_id: clientId,
       stage: "sent",
       transcode_format: voiceFormat,
-      encode_type: voiceEncodeType(voiceFormat),
+      encode_type: voiceItem.encode_type,
       bits_per_sample: voiceItem.bits_per_sample,
-      sample_rate: voiceSampleRate(voiceFormat, transcodeStats.sample_rate) || 0,
+      sample_rate: voiceItem.sample_rate || 0,
       gain_db: WEIXIN_VOICE_GAIN_DB,
       playtime_ms: playtimeMs,
       source_audio: sourceStats,
       transcode_audio: transcodeStats,
       raw_size: rawsize,
+      voice_encoder: transcodeStats.encoder || "",
       cipher_size: upload.ciphertextSize,
       upload_method: upload.uploadMethod,
       upload_url_kind: upload.uploadUrlKind,
+      download_token_source: upload.downloadTokenSource,
+      cdn_token_shape: {
+        upload_param: upload.uploadParam ? "string" : "",
+        query_param: upload.queryParam ? "string" : "",
+        short_param: upload.shortParam ? "string" : "",
+      },
       cdn_verify: cdnVerify,
+      cdn_upload_param_verify: uploadParamVerify,
       voice_item_shape: compactResponseShape(voiceItem),
       voice_payload_options: {
         aes_key_encoding: voiceAesKey,
+        include_encode_type: Boolean(voiceItem.encode_type),
         include_bits_per_sample: includeBitsPerSample,
-        include_voice_size: includeVoiceSize,
+        include_file_size: includeFileSize,
+        include_playtime: usePlaytimeField,
+        include_mid_size: includeMidSize,
         include_text: Boolean(includeText),
       },
       getuploadurl_shape: compactResponseShape(uploadUrlResp),
       sendmessage_shape: compactResponseShape(sendResp),
       sendmessage_response: compactSendMessageResponse(sendResp),
+      sendmessage_http: sendResp?.__http || {},
+      sendmessage_mode: sendMode,
+      sendmessage_payload_shape: compactResponseShape(sendPayload),
+      base_info: baseInfo,
       voice_format: voiceFormat,
-      client_delivery: VOICE_CLIENT_DELIVERY,
-      client_delivery_reason: VOICE_CLIENT_DELIVERY_REASON,
+      client_delivery: VOICE_CLIENT_DELIVERY_UNCONFIRMED,
+      client_delivery_reason: emptySendMessageResponse
+        ? `${VOICE_CLIENT_DELIVERY_UNCONFIRMED_REASON} iLink returned an empty {} body, which is also seen on previously working native voice bubbles.`
+        : VOICE_CLIENT_DELIVERY_UNCONFIRMED_REASON,
       upload_ms: uploadMs,
       send_ms: Date.now() - sendStart,
       total_ms: Date.now() - started,
@@ -912,6 +1196,151 @@ async function sendVoice(args) {
     if (normalizedPath) await fs.unlink(normalizedPath).catch(() => {});
     if (pcmPath) await fs.unlink(pcmPath).catch(() => {});
   }
+}
+
+async function sendVoiceAsFile(args) {
+  const baseUrl = args.baseUrl || DEFAULT_BASE_URL;
+  const cdnBaseUrl = args.cdnBaseUrl || DEFAULT_CDN_BASE_URL;
+  const token = String(args.token || "");
+  const to = String(args.to || "");
+  const voiceFile = String(args.voiceFile || "");
+  const contextToken = String(args.contextToken || "");
+  const fileName = String(args.fileName || args.voiceFileName || DEFAULT_VOICE_FILE_NAME).trim() || DEFAULT_VOICE_FILE_NAME;
+  if (!token) throw new Error("missing --token");
+  if (!to) throw new Error("missing --to");
+  if (!voiceFile) throw new Error("missing --voice-file");
+  await fs.access(voiceFile);
+
+  const started = Date.now();
+  const sourceStats = await probeAudioStats(voiceFile);
+  const plaintext = await fs.readFile(voiceFile);
+  if (!plaintext.length) throw new Error("voice file is empty");
+  const rawsize = plaintext.length;
+  const rawfilemd5 = crypto.createHash("md5").update(plaintext).digest("hex");
+  const filesize = aesEcbPaddedSize(rawsize);
+  const filekey = crypto.randomBytes(16).toString("hex");
+  const aeskey = crypto.randomBytes(16);
+  const uploadStart = Date.now();
+  const uploadUrlResp = await postJson({
+    baseUrl,
+    apiPath: "ilink/bot/getuploadurl",
+    token,
+    body: {
+      filekey,
+      media_type: UPLOAD_MEDIA_TYPE_FILE,
+      to_user_id: to,
+      rawsize,
+      rawfilemd5,
+      filesize,
+      no_need_thumb: true,
+      aeskey: aeskey.toString("hex"),
+      base_info: buildBaseInfo(),
+    },
+  }).catch((error) => {
+    error.stage = "getuploadurl";
+    throw error;
+  });
+  const nestedFile = uploadUrlResp.file || uploadUrlResp.media || uploadUrlResp.main || {};
+  const uploadFullUrl = String(firstValue(uploadUrlResp.upload_full_url, uploadUrlResp.uploadFullUrl, nestedFile.upload_full_url, nestedFile.uploadFullUrl) || "").trim();
+  const uploadParam = firstValue(uploadUrlResp.upload_param, uploadUrlResp.uploadParam, nestedFile.upload_param, nestedFile.uploadParam);
+  if (!uploadFullUrl && !uploadParam) throw new Error("getuploadurl returned no file upload URL");
+  const upload = await uploadBufferToCdn({
+    buffer: plaintext,
+    uploadFullUrl,
+    uploadParam,
+    filekey,
+    cdnBaseUrl,
+    aeskey,
+    label: "voice file",
+    downloadTokenSource: "cdn_short",
+  }).catch((error) => {
+    error.stage = "cdn_upload";
+    throw error;
+  });
+  const uploadMs = Date.now() - uploadStart;
+  const cdnVerifyStart = Date.now();
+  let cdnVerify = { ok: false, error: "not checked" };
+  try {
+    cdnVerify = await verifyCdnRoundTrip({
+      cdnBaseUrl,
+      downloadParam: upload.downloadParam,
+      aeskey,
+      expectedMd5: rawfilemd5,
+      expectedSize: rawsize,
+      label: "voice file",
+    });
+  } catch (error) {
+    cdnVerify = {
+      ok: false,
+      error: error?.message || String(error),
+    };
+  }
+  cdnVerify.verify_ms = Date.now() - cdnVerifyStart;
+
+  const sendStart = Date.now();
+  const clientId = `branchwhisper-audio-file-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const fileItem = buildFileItem({
+    downloadParam: upload.downloadParam,
+    aeskey,
+    fileName,
+    fileSize: rawsize,
+  });
+  const sendResp = await postJson({
+    baseUrl,
+    apiPath: "ilink/bot/sendmessage",
+    token,
+    body: {
+      msg: {
+        from_user_id: "",
+        to_user_id: to,
+        client_id: clientId,
+        message_type: MESSAGE_TYPE_BOT,
+        message_state: MESSAGE_STATE_FINISH,
+        item_list: [
+          {
+            type: ITEM_FILE,
+            file_item: fileItem,
+          },
+        ],
+        ...(contextToken ? { context_token: contextToken } : {}),
+      },
+      base_info: buildBaseInfo(),
+    },
+    timeoutMs: 20_000,
+  }).catch((error) => {
+    error.stage = "sendmessage";
+    throw error;
+  });
+  assertBusinessOk(sendResp, "sendmessage");
+  return {
+    ok: true,
+    message_id: clientId,
+    stage: "sent",
+    media_type: "file",
+    file_name: fileName,
+    file_item_shape: compactResponseShape(fileItem),
+    source_audio: sourceStats,
+    raw_size: rawsize,
+    cipher_size: upload.ciphertextSize,
+    upload_method: upload.uploadMethod,
+    upload_url_kind: upload.uploadUrlKind,
+    download_token_source: upload.downloadTokenSource,
+    cdn_token_shape: {
+      upload_param: upload.uploadParam ? "string" : "",
+      query_param: upload.queryParam ? "string" : "",
+      short_param: upload.shortParam ? "string" : "",
+    },
+    cdn_verify: cdnVerify,
+    getuploadurl_shape: compactResponseShape(uploadUrlResp),
+    sendmessage_shape: compactResponseShape(sendResp),
+    sendmessage_response: compactSendMessageResponse(sendResp),
+    sendmessage_http: sendResp?.__http || {},
+    client_delivery: "file_attachment",
+    client_delivery_reason: "Sent as a WeChat file attachment because iLink does not deliver bot-direction native VOICE bubbles.",
+    upload_ms: uploadMs,
+    send_ms: Date.now() - sendStart,
+    total_ms: Date.now() - started,
+  };
 }
 
 async function probeImageStats(filePath) {
@@ -1072,7 +1501,7 @@ async function sendImage(args) {
       width: stats.width,
       height: stats.height,
     };
-    await postJson({
+    const sendResp = await postJson({
       baseUrl,
       apiPath: "ilink/bot/sendmessage",
       token,
@@ -1098,6 +1527,7 @@ async function sendImage(args) {
       error.stage = "sendmessage";
       throw error;
     });
+    assertBusinessOk(sendResp, "sendmessage");
     return {
       ok: true,
       message_id: clientId,
@@ -1118,6 +1548,9 @@ async function sendImage(args) {
       media_aes_key_format: "base64_hex_text",
       image_item_shape: compactResponseShape(imageItem),
       getuploadurl_shape: compactResponseShape(uploadUrlResp),
+      sendmessage_shape: compactResponseShape(sendResp),
+      sendmessage_response: compactSendMessageResponse(sendResp),
+      sendmessage_http: sendResp?.__http || {},
       upload_ms: uploadMs,
       send_ms: Date.now() - sendStart,
       total_ms: Date.now() - started,
@@ -1136,7 +1569,9 @@ async function main() {
   try {
     const result = args.selfTest
       ? await selfTest()
-      : (args.filePayloadTest ? await filePayloadTest() : (args.voicePayloadTest ? await voicePayloadTest(args) : (args.downloadMedia ? await downloadMedia(args) : (args.imageFile ? await sendImage(args) : await sendVoice(args)))));
+      : (args.silkSdkEncode
+        ? await silkSdkEncodeCli(args)
+        : (args.filePayloadTest ? await filePayloadTest() : (args.voicePayloadTest ? await voicePayloadTest(args) : (args.downloadMedia ? await downloadMedia(args) : (args.imageFile ? await sendImage(args) : (args.voiceAsFile ? await sendVoiceAsFile(args) : await sendVoice(args)))))));
     process.stdout.write(JSON.stringify(result));
   } catch (error) {
     fail(error?.message || String(error), {
@@ -1147,8 +1582,11 @@ async function main() {
       receiver: args.to || "",
       media_file: args.voiceFile || args.imageFile || args.outputFile || "",
       response_shape: error?.response_shape,
+      business_response: error?.business_response,
     });
   }
 }
 
-await main();
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(getCurrentScriptPath())) {
+  await main();
+}

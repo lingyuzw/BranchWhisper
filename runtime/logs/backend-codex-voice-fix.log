@@ -1,0 +1,647 @@
+INFO:     Started server process [3435]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('127.0.0.1', 7860): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Started server process [412]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:7860 (Press CTRL+C to quit)
+INFO:     127.0.0.1:50955 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50955 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52153 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52153 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52011 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52011 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41431 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41435 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41445 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43971 - "POST /api/services/tts/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64073 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64073 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43667 - "POST /api/integrations/weixin_mqj5dhp1/voice-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61411 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60278 - "GET /app/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /app/assets/index-CFF1R-_M.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61411 - "GET /app/assets/index-U2TqpsrP.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61411 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55613 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50352 - "GET /api/bot-profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50352 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "POST /api/integrations/weixin_mqj5dhp1/sticker-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "POST /api/integrations/weixin_mqj5dhp1/voice-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52959 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54755 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54755 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54755 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54755 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57518 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57518 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54184 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54184 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54947 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54947 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54947 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54947 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53397 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53397 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64295 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64295 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64075 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64075 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64075 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64075 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50762 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50762 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56191 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56191 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52699 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /app/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52699 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52699 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53448 - "GET /api/bot-profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59162 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59162 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "POST /api/integrations/weixin_mqj5dhp1/voice-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54820 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54820 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53524 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53524 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53524 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53524 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53113 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53113 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56979 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56979 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56979 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56979 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49493 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49493 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53267 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53267 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53267 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53267 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49445 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49445 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57678 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57678 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55504 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55504 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63510 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63510 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62049 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62049 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62049 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62049 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65412 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65412 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50433 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50433 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49602 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49602 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41827 - "POST /api/integrations/dialog HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41831 - "POST /api/integrations/weixin_mqj5dhp1/timings/ext_179ef6dd9c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49602 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49602 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "POST /api/integrations/weixin_mqj5dhp1/voice-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62206 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62206 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49605 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49605 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56883 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56883 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50161 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50161 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50161 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50161 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50525 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50525 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55535 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55535 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59523 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59523 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59523 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59523 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63825 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63825 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57374 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57374 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52752 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52752 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52752 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52752 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60517 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60517 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64057 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64057 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64116 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64116 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49587 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49587 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61348 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61348 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65102 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65102 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65102 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65102 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50114 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50114 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49200 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49200 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63932 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63932 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63932 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63932 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54955 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54955 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51333 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51333 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50149 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50149 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50149 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50149 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55327 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55327 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59120 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59120 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64211 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64211 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64211 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64211 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61750 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61750 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56362 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56362 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52943 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52943 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52943 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52943 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63877 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63877 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58193 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58193 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49438 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49438 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49438 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49438 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54774 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54774 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62570 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62570 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57604 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57604 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57604 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57604 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61684 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61684 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59643 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59643 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54610 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54610 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54610 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54610 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64043 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64043 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62112 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62112 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62722 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62722 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62722 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62722 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59743 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59743 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62064 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62064 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59694 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59694 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62865 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62865 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52272 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52272 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52272 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52272 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50128 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50128 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51486 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51486 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56946 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56946 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53294 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53294 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54770 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54770 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59785 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59785 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59785 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59785 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52646 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52646 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53951 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53951 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64471 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64471 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64471 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64471 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63096 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63096 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63317 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63317 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63317 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63317 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53378 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53378 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53194 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53194 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57750 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57750 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57750 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57750 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61669 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61669 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53564 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53564 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50744 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50744 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50744 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50744 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64947 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64947 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51273 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51273 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63380 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63380 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63380 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63380 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61594 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61594 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53067 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53067 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49913 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49913 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49913 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49913 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60118 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60118 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55254 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55254 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50600 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50600 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50600 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50600 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51131 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51131 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50587 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50587 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62636 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62636 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62636 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62636 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53075 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53075 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57795 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57795 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60761 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60761 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60761 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60761 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59101 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59101 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64928 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64928 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62944 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62944 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65501 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65501 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60776 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60776 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55429 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55429 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55429 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55429 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49172 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49172 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53115 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53115 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55160 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55160 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55160 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55160 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62762 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62762 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58118 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58118 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56656 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56656 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56656 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56656 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64462 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64462 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62764 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62764 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57326 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59579 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59579 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64442 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64442 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64442 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64442 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61647 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61647 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52713 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52713 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55325 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55325 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55325 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55325 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62524 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62524 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56775 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56775 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55449 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55449 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58932 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58932 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56687 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56687 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [412]
+INFO:     Started server process [14551]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:7860 (Press CTRL+C to quit)
+INFO:     127.0.0.1:42273 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41177 - "POST /api/integrations/weixin_mqj5dhp1/voice-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51831 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51831 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64007 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64007 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58777 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58777 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53322 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:53322 - "GET /app/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /app/assets/index-CFF1R-_M.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53322 - "GET /app/assets/index-U2TqpsrP.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53322 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56558 - "GET /api/conversations?archived=active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/conversations/20260618_145831_934785 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64199 - "WebSocket /ws/dialog?conversation_id=20260618_145831_934785" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56558 - "GET /api/system/resources HTTP/1.1" 200 OK
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/protocol.py", line 940, in transfer_data
+    message = await self.read_message()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/protocol.py", line 1010, in read_message
+    frame = await self.read_data_frame(max_size=self.max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/protocol.py", line 1087, in read_data_frame
+    frame = await self.read_frame(max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/protocol.py", line 1144, in read_frame
+    frame = await Frame.read(
+            ^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/framing.py", line 70, in read
+    data = await reader(2)
+           ^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/asyncio/streams.py", line 750, in readexactly
+    raise exceptions.IncompleteReadError(incomplete, n)
+asyncio.exceptions.IncompleteReadError: 0 bytes read on a total of 2 expected bytes
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_impl.py", line 317, in asgi_send
+    await self.send(data)  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/protocol.py", line 618, in send
+    await self.ensure_open()
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/websockets/legacy/protocol.py", line 911, in ensure_open
+    raise self.connection_closed_exc()
+websockets.exceptions.ConnectionClosedError: no close frame received or sent
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/websockets.py", line 86, in send
+    await self._send(message)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/_exception_handler.py", line 39, in sender
+    await send(message)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_impl.py", line 330, in asgi_send
+    raise ClientDisconnected from exc
+uvicorn.protocols.utils.ClientDisconnected
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_impl.py", line 239, in run_asgi
+    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 62, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/fastapi/applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/middleware/errors.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/middleware/base.py", line 103, in __call__
+    await self.app(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/routing.py", line 350, in handle
+    await self.app(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/fastapi/routing.py", line 160, in app
+    await wrap_app_handling_exceptions(app, session)(scope, receive, send)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/fastapi/routing.py", line 157, in app
+    await func(session)
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/fastapi/routing.py", line 764, in app
+    await dependant.call(**solved_result.values)
+  File "/home/me/workspace/BranchWhisper/backend/app/server.py", line 576, in dialog_socket
+    await session.run()
+  File "/home/me/workspace/BranchWhisper/backend/dialog/session.py", line 144, in run
+    await self.send_event("ready", settings=public_settings(self.settings))
+  File "/home/me/workspace/BranchWhisper/backend/dialog/session.py", line 1156, in send_event
+    await self.websocket.send_text(json.dumps(payload, ensure_ascii=False))
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/websockets.py", line 166, in send_text
+    await self.send({"type": "websocket.send", "text": data})
+  File "/home/me/miniconda3/envs/qwen3-asr/lib/python3.12/site-packages/starlette/websockets.py", line 89, in send
+    raise WebSocketDisconnect(code=1006)
+starlette.websockets.WebSocketDisconnect
+INFO:     connection closed
+INFO:     127.0.0.1:53322 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/bot-profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "POST /api/integrations/weixin_mqj5dhp1/sticker-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "POST /api/integrations/weixin_mqj5dhp1/voice-test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57624 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57624 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50397 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52546 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63805 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49243 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61416 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59108 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64759 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64368 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56240 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56240 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56240 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56240 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63457 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51921 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57130 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57130 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57130 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65182 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52169 - "GET /api/services HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52169 - "GET /api/integrations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52169 - "GET /api/integrations/weixin_mqj5dhp1/logs?max_bytes=64000&scope=current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50840 - "GET /api/system/resources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65182 - "GET /api/services/asr/logs?max_bytes=24000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52169 - "GET /api/services HTTP/1.1" 200 OK

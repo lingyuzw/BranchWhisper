@@ -410,6 +410,16 @@ def send_text(client: httpx.Client, account: dict, to_user_id: str, text: str, c
             timeout=20,
         )
         resp.raise_for_status()
+        data = resp.json() if resp.content else {}
+        ret = data.get("ret") if isinstance(data, dict) else None
+        if ret not in (None, 0):
+            message = ""
+            if isinstance(data, dict):
+                message = str(data.get("errmsg") or data.get("err_msg") or data.get("message") or data.get("msg") or "")
+            hint = ""
+            if ret == -2:
+                hint = "iLink 业务层拒绝发送；请先让微信端给 BranchWhisper 发一条新消息刷新会话 context_token，若文本仍 ret=-2 则重新登录微信集成。"
+            raise RuntimeError(f"business ret={ret}{': ' + message if message else ''}{'; ' + hint if hint else ''}")
     except Exception as exc:
         raise RuntimeError(
             f"stage=send url={target_url} account={account.get('account_id') or ''} "
@@ -479,6 +489,8 @@ def voice_fallback_text(result: dict, voice_error: str = "") -> str:
     if not result.get("voice_requested"):
         return ""
     error = str(voice_error or result.get("voice_error") or "").strip()
+    if str(result.get("voice_client_delivery") or "") == "unsupported_by_ilink":
+        return "当前 iLink 通道会接收语音请求但不投递 bot 方向的原生语音气泡；先以文字为准。"
     if error:
         return f"语音暂时发不出来：{error[:120]}。先以文字为准。"
     if result.get("send_voice") and result.get("voice_file"):
@@ -505,20 +517,25 @@ def send_voice_reply(
             token=account["token"],
             to_user_id=to_user_id,
             voice_file=str(result.get("voice_file") or ""),
-            text=str(result.get("reply_text") or "")[:240],
+            transcript=str(result.get("reply_text") or "")[:240],
             context_token=context_token,
             cdn_base_url=str(account.get("cdn_base_url") or DEFAULT_CDN_BASE_URL),
         )
         voice_send_ms = int((time.perf_counter() - started) * 1000)
         client_delivery = str(sent.get("client_delivery") or "unconfirmed")
+        client_delivery_reason = str(sent.get("client_delivery_reason") or "")
+        unsupported_delivery = client_delivery == "unsupported_by_ilink"
+        file_attachment_delivery = client_delivery == "file_attachment"
         result["voice_client_delivery"] = client_delivery
+        if unsupported_delivery:
+            result["voice_error"] = client_delivery_reason
         report_branchwhisper_timing(
             branchwhisper_url,
             integration_id,
             trace_id,
             {
                 "voice_send_ms": voice_send_ms,
-                "voice_send_status": "accepted",
+                "voice_send_status": "unsupported_by_ilink" if unsupported_delivery else ("sent_file_attachment" if file_attachment_delivery else "accepted"),
                 "voice_message_id": str(sent.get("message_id") or ""),
                 "voice_stage": str(sent.get("stage") or "accepted"),
                 "voice_format": str(sent.get("transcode_format") or ""),
@@ -530,27 +547,38 @@ def send_voice_reply(
                         "gain_db": sent.get("gain_db"),
                         "playtime_ms": sent.get("playtime_ms"),
                         "voice_size": sent.get("raw_size"),
+                        "voice_encoder": sent.get("voice_encoder"),
                         "source_audio": sent.get("source_audio"),
                         "transcode_audio": sent.get("transcode_audio"),
                         "cdn_verify": sent.get("cdn_verify"),
+                        "cdn_upload_param_verify": sent.get("cdn_upload_param_verify"),
+                        "download_token_source": sent.get("download_token_source"),
+                        "cdn_token_shape": sent.get("cdn_token_shape"),
                         "voice_item_shape": sent.get("voice_item_shape"),
+                        "voice_payload_options": sent.get("voice_payload_options"),
                         "sendmessage_response": sent.get("sendmessage_response"),
+                        "sendmessage_http": sent.get("sendmessage_http"),
                         "upload_ms": sent.get("upload_ms"),
                         "upload_method": sent.get("upload_method"),
                         "upload_url_kind": sent.get("upload_url_kind"),
                         "send_ms": sent.get("send_ms"),
+                        "client_delivery": client_delivery,
+                        "client_delivery_reason": client_delivery_reason,
+                        "media_type": sent.get("media_type"),
+                        "file_name": sent.get("file_name"),
+                        "file_item_shape": sent.get("file_item_shape"),
                     },
                     ensure_ascii=False,
                 )[:240],
             },
         )
         log(
-            f"voice api accepted account={account['account_id']} to={to_user_id} "
+            f"voice api {sent.get('stage') or 'accepted'} account={account['account_id']} to={to_user_id} "
             f"message_id={sent.get('message_id') or ''} voice_send_ms={voice_send_ms} "
-            f"playtime_ms={sent.get('playtime_ms') or 0} format={sent.get('transcode_format') or ''} "
+            f"playtime_ms={sent.get('playtime_ms') or 0} format={sent.get('transcode_format') or sent.get('media_type') or ''} "
             f"encode_type={sent.get('encode_type') or ''} client_delivery={client_delivery}"
         )
-        return True
+        return not unsupported_delivery
     except (WeixinVoiceSendError, Exception) as exc:
         voice_send_ms = int((time.perf_counter() - started) * 1000)
         error = str(exc)

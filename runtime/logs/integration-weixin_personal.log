@@ -499,3 +499,33 @@
 [2026-06-18 12:29:31] received signal 2, stopping after current poll
 [2026-06-18 12:29:31] received signal 2, stopping after current poll
 [2026-06-18 12:29:33] bridge stopped
+
+===== 2026-06-18 14:56:34 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_personal --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 14:56:34 =====
+[config] updated integration
+
+===== 2026-06-18 14:56:34 =====
+[session] bridge started pid=162975
+
+===== 2026-06-18 14:56:34 =====
+[watchdog] bridge restart requested
+[2026-06-18 14:56:34] bridge starting integration=weixin_personal profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 14:56:34] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 14:56:45 =====
+[voice-test:voice_test_f92553d1df] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 14:56:47 =====
+[voice-test:voice_test_f92553d1df] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781765807679-3542495d format=ogg_opus diagnostic={'encode_type': 8, 'bits_per_sample': None, 'sample_rate': 48000, 'gain_db': 8, 'playtime_ms': 3927, 'voice_size': 30482, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3920, 'mean_volume_db': -18.4, 'max_volume_db': -2.2}, 'transcode_audio': {'codec': 'opus', 'sample_rate': 48000, 'channels': 1, 'duration_ms': 3927, 'mean_volume_db': -10.9, 'max_volume_db': 0}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 89}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number'}, 'upload_ms': 736, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {'ret': 'number'}, 'sendmessage_response': {'ret': -2}}
+[2026-06-18 14:56:57] received signal 15, stopping after current poll
+
+===== 2026-06-18 14:57:05 =====
+[config] updated integration
+
+===== 2026-06-18 14:57:05 =====
+[process] stopped
+
+===== 2026-06-18 14:57:05 =====
+[config] deleted integration

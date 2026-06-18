@@ -369,8 +369,8 @@ class WeixinVoiceSenderTests(unittest.TestCase):
                 {
                     "ok": True,
                     "stage": "sent",
-                    "client_delivery": "unsupported_or_unconfirmed",
-                    "client_delivery_reason": "API accepted only",
+                    "client_delivery": "unconfirmed",
+                    "client_delivery_reason": "API accepted; confirm playback in the WeChat client.",
                 }
             )
 
@@ -396,7 +396,7 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(commands[0][0], "node")
         self.assertNotIn("powershell.exe", flattened)
         self.assertNotIn("windows_weixin_native_voice.py", flattened)
-        self.assertEqual(result["client_delivery"], "unsupported_or_unconfirmed")
+        self.assertEqual(result["client_delivery"], "unconfirmed")
 
     def test_voice_sender_marks_accepted_voice_as_client_unconfirmed(self) -> None:
         original_run = weixin_media.subprocess.run
@@ -426,7 +426,44 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(result["cdn_verify"]["ok"], False)
         self.assertEqual(result["client_delivery"], "unconfirmed")
 
-    def test_voice_sender_self_test_defaults_to_openclaw_opus_outbound(self) -> None:
+    def test_voice_sender_can_use_audio_file_attachment_fallback(self) -> None:
+        original_run = weixin_media.subprocess.run
+        commands: list[list[str]] = []
+
+        class FakeProc:
+            returncode = 0
+            stderr = ""
+            stdout = json.dumps(
+                {
+                    "ok": True,
+                    "stage": "sent",
+                    "media_type": "file",
+                    "client_delivery": "file_attachment",
+                    "file_name": "枝语语音.wav",
+                }
+            )
+
+        def fake_run(command, *_args, **_kwargs):
+            commands.append([str(part) for part in command])
+            return FakeProc()
+
+        weixin_media.subprocess.run = fake_run
+        try:
+            result = send_weixin_voice(
+                base_url="https://example.test",
+                token="token",
+                to_user_id="u",
+                voice_file="/tmp/a.wav",
+                native_voice=False,
+            )
+        finally:
+            weixin_media.subprocess.run = original_run
+
+        self.assertEqual(result["client_delivery"], "file_attachment")
+        self.assertEqual(result["media_type"], "file")
+        self.assertIn("--voice-as-file", commands[0])
+
+    def test_voice_sender_self_test_defaults_to_native_silk_outbound(self) -> None:
         script = BACKEND_ROOT / "integration_runtime" / "weixin_voice_sender.mjs"
 
         proc = weixin_media.subprocess.run(
@@ -441,13 +478,14 @@ class WeixinVoiceSenderTests(unittest.TestCase):
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
-        self.assertEqual(payload.get("voice_format"), "ogg_opus")
-        self.assertEqual(payload.get("encode_type"), 8)
-        self.assertEqual(payload.get("sample_rate"), 48000)
-        self.assertTrue(payload.get("opus_encode"))
+        self.assertEqual(payload.get("voice_format"), "silk")
+        self.assertIsNone(payload.get("default_payload_encode_type"))
+        self.assertIsNone(payload.get("default_payload_sample_rate"))
+        self.assertEqual(payload.get("silk_encode_type"), 6)
+        self.assertEqual(payload.get("silk_sample_rate"), 24000)
         self.assertTrue(payload.get("silk_wasm"))
 
-    def test_voice_sender_payload_diagnostic_matches_openclaw_opus_reference_shape(self) -> None:
+    def test_voice_sender_payload_diagnostic_matches_native_silk_reference_shape(self) -> None:
         script = BACKEND_ROOT / "integration_runtime" / "weixin_voice_sender.mjs"
 
         proc = weixin_media.subprocess.run(
@@ -463,10 +501,14 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
         self.assertTrue(payload.get("ok"))
-        self.assertEqual(payload["voice_format"], "ogg_opus")
-        self.assertEqual(payload["voice_item"]["encode_type"], 8)
-        self.assertEqual(payload["voice_item"]["sample_rate"], 48000)
+        self.assertEqual(payload["voice_format"], "silk")
         self.assertEqual(payload["voice_item"]["playtime"], 1234)
+        self.assertEqual(payload["voice_item"]["encode_type"], 6)
+        self.assertNotIn("bits_per_sample", payload["voice_item"])
+        self.assertEqual(payload["voice_item"]["sample_rate"], 24000)
+        self.assertNotIn("duration", payload["voice_item"])
+        self.assertNotIn("mid_size", payload["voice_item"])
+        self.assertNotIn("file_size", payload["voice_item"])
         self.assertNotIn("text", payload["voice_item"])
         media = payload["voice_item"]["media"]
         encoded_aes_key = base64.b64encode(b"00112233445566778899aabbccddeeff").decode()
@@ -476,7 +518,9 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(media["aeskey"], encoded_aes_key)
         self.assertEqual(media["encrypt_type"], 1)
         self.assertEqual(sorted(media.keys()), ["aes_key", "aeskey", "encrypt_query_param", "encrypt_type", "encrypted_query_param"])
+        self.assertEqual(payload["voice_item_shape"]["playtime"], "number")
         self.assertNotIn("bits_per_sample", payload["voice_item_shape"])
+        self.assertNotIn("mid_size", payload["voice_item_shape"])
         self.assertNotIn("voice_size", payload["voice_item_shape"])
         self.assertNotIn("text", payload["voice_item_shape"])
 
@@ -498,11 +542,21 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertEqual(payload["voice_item"]["text"], "你好")
         self.assertEqual(payload["voice_item_shape"]["text"], "string")
 
-    def test_voice_sender_payload_diagnostic_can_switch_to_silk(self) -> None:
+    def test_voice_sender_payload_diagnostic_can_switch_to_ogg_opus(self) -> None:
         script = BACKEND_ROOT / "integration_runtime" / "weixin_voice_sender.mjs"
 
         proc = weixin_media.subprocess.run(
-            ["node", str(script), "--voice-payload-test", "--voice-format", "silk"],
+            [
+                "node",
+                str(script),
+                "--voice-payload-test",
+                "--voice-format",
+                "ogg_opus",
+                "--voice-encode-type",
+                "8",
+                "--voice-bits",
+                "true",
+            ],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -513,10 +567,10 @@ class WeixinVoiceSenderTests(unittest.TestCase):
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
-        self.assertEqual(payload["voice_format"], "silk")
-        self.assertEqual(payload["voice_item"]["encode_type"], 6)
-        self.assertEqual(payload["voice_item"]["sample_rate"], 24000)
-        self.assertNotIn("bits_per_sample", payload["voice_item"])
+        self.assertEqual(payload["voice_format"], "ogg_opus")
+        self.assertEqual(payload["voice_item"]["encode_type"], 8)
+        self.assertEqual(payload["voice_item"]["sample_rate"], 48000)
+        self.assertEqual(payload["voice_item"]["bits_per_sample"], 16)
         self.assertNotIn("voice_size", payload["voice_item"])
 
     def test_voice_sender_rejects_audio_file_fallback_mode(self) -> None:
@@ -538,7 +592,7 @@ class WeixinVoiceSenderTests(unittest.TestCase):
         self.assertNotIn("file_item", payload)
         self.assertNotIn("fallback", json.dumps(payload, ensure_ascii=False).lower())
 
-    def test_bridge_voice_api_acceptance_is_reported_as_unconfirmed(self) -> None:
+    def test_bridge_voice_api_acceptance_with_unconfirmed_delivery_is_not_failure(self) -> None:
         original_send = openclaw_bridge.send_weixin_voice
         original_report = openclaw_bridge.report_branchwhisper_timing
         reports: list[dict] = []
@@ -549,8 +603,8 @@ class WeixinVoiceSenderTests(unittest.TestCase):
                 "message_id": "voice-1",
                 "stage": "sent",
                 "transcode_format": "silk",
-                "encode_type": 6,
                 "client_delivery": "unconfirmed",
+                "client_delivery_reason": "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client.",
             }
 
         def fake_report(*_args, **kwargs):
@@ -587,10 +641,11 @@ class WeixinVoiceSenderTests(unittest.TestCase):
 
         self.assertTrue(delivered)
         self.assertEqual(result["voice_client_delivery"], "unconfirmed")
+        self.assertNotIn("voice_error", result)
         self.assertEqual(reports[-1]["voice_send_status"], "accepted")
         self.assertEqual(sent_texts, [])
 
-    def test_voice_test_api_acceptance_is_success_with_unconfirmed_client_delivery(self) -> None:
+    def test_voice_test_api_reports_audio_file_attachment_delivery(self) -> None:
         import asyncio
 
         settings = default_settings()
@@ -633,10 +688,12 @@ class WeixinVoiceSenderTests(unittest.TestCase):
                 return {
                     "ok": True,
                     "stage": "sent",
-                    "message_id": "voice-accepted",
-                    "client_delivery": "unconfirmed",
-                    "client_delivery_reason": "accepted by API; confirm in client",
-                    "transcode_format": "silk",
+                    "message_id": "voice-file",
+                    "client_delivery": "file_attachment",
+                    "client_delivery_reason": "sent as file attachment",
+                    "media_type": "file",
+                    "file_name": "枝语语音.wav",
+                    "file_item_shape": {"file_name": "string", "len": "string"},
                 }
 
             engine.synthesize_voice = fake_synthesize_voice
@@ -648,8 +705,10 @@ class WeixinVoiceSenderTests(unittest.TestCase):
 
         self.assertTrue(result["ok"])
         self.assertTrue(result["send_done"])
-        self.assertEqual(result["stage"], "accepted")
-        self.assertEqual(result["client_delivery"], "unconfirmed")
+        self.assertEqual(result["stage"], "sent_file_attachment")
+        self.assertEqual(result["client_delivery"], "file_attachment")
+        self.assertEqual(result["voice_format"], "file")
+        self.assertEqual(result["voice_diagnostic"]["file_name"], "枝语语音.wav")
 
 
 class IntegrationDiagnosticsTests(unittest.TestCase):
@@ -686,6 +745,29 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
 
 
 class OpenClawBridgeTests(unittest.TestCase):
+    def test_send_text_rejects_nonzero_business_ret(self) -> None:
+        class FakeResponse:
+            content = b'{"ret":-2}'
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"ret": -2}
+
+        class FakeClient:
+            def post(self, *_args, **_kwargs):
+                return FakeResponse()
+
+        with self.assertRaisesRegex(RuntimeError, "business ret=-2"):
+            openclaw_bridge.send_text(
+                FakeClient(),
+                {"base_url": "https://example.test", "token": "token", "account_id": "account"},
+                "user@im.wechat",
+                "hello",
+                context_token="ctx",
+            )
+
     def test_reply_fingerprint_is_sent_once_per_source_message(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)

@@ -1,0 +1,443 @@
+
+===== 2026-06-18 16:24:10 =====
+[logs] cleared
+
+===== 2026-06-18 16:24:13 =====
+[voice-test:voice_test_200c48ecb7] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781771053079-d04eff1c format=silk diagnostic={'encode_type': None, 'bits_per_sample': None, 'sample_rate': 0, 'gain_db': 8, 'playtime_ms': 3480, 'voice_size': 11886, 'voice_encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3480, 'mean_volume_db': -17.9, 'max_volume_db': -0.3}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 16000, 'channels': 1, 'duration_ms': 3480, 'mean_volume_db': -10.6, 'max_volume_db': 0, 'encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)'}, 'cdn_verify': {'ok': True, 'cipher_size': 11888, 'raw_size': 11886, 'md5': '5d35b027cd4c4350b53a1024841ffba5', 'verify_ms': 107}, 'download_token_source': 'upload_param', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'duration': 'number'}, 'upload_ms': 709, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}}
+
+===== 2026-06-18 16:24:18 =====
+[voice-test:voice_test_f03733b670] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 16:24:21 =====
+[voice-test:voice_test_f03733b670] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781771060835-f7faaf6f format=silk diagnostic={'encode_type': None, 'bits_per_sample': None, 'sample_rate': 0, 'gain_db': 8, 'playtime_ms': 3520, 'voice_size': 12577, 'voice_encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3520, 'mean_volume_db': -15.3, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 16000, 'channels': 1, 'duration_ms': 3520, 'mean_volume_db': -8.8, 'max_volume_db': 0, 'encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)'}, 'cdn_verify': {'ok': True, 'cipher_size': 12592, 'raw_size': 12577, 'md5': 'd95e9c708a8fad71fb211c3a19303e99', 'verify_ms': 127}, 'download_token_source': 'upload_param', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'duration': 'number'}, 'upload_ms': 679, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}}
+
+===== 2026-06-18 16:25:04 =====
+[sticker-test:sticker_test_c3707efac7] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_030
+
+===== 2026-06-18 16:25:06 =====
+[sticker-test:sticker_test_c3707efac7] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781771106691-5b386c8d diagnostic={'image_format': 'png', 'source_image': {'size': 352654, 'width': 600, 'height': 600}, 'image': {'size': 672242, 'width': 600, 'height': 600}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 672256, 'mid_size': 672256, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1602, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 248}
+
+===== 2026-06-18 16:26:37 =====
+[voice-test:voice_test_35fe1afb1a] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 16:26:40 =====
+[voice-test:voice_test_35fe1afb1a] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781771200621-869e73e7 format=silk diagnostic={'encode_type': None, 'bits_per_sample': None, 'sample_rate': 0, 'gain_db': 8, 'playtime_ms': 4280, 'voice_size': 12879, 'voice_encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4280, 'mean_volume_db': -17.1, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 16000, 'channels': 1, 'duration_ms': 4280, 'mean_volume_db': -10.5, 'max_volume_db': 0, 'encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 30}, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'duration': 'number'}, 'upload_ms': 690, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}}
+
+===== 2026-06-18 16:41:46 =====
+[process] stopped orphan bridge pid=21603
+
+===== 2026-06-18 16:41:47 =====
+[process] killed orphan bridge pid=21603
+
+===== 2026-06-18 16:41:47 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 16:41:47 =====
+[config] updated integration
+
+===== 2026-06-18 16:41:47 =====
+[session] bridge started pid=36189
+
+===== 2026-06-18 16:41:47 =====
+[watchdog] bridge restart requested
+[2026-06-18 16:41:47] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 16:41:47] loaded accounts: 8397c5c17324-im-bot
+[2026-06-18 16:44:11] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=？
+
+===== 2026-06-18 16:44:11 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260618_145831_934785
+
+===== 2026-06-18 16:44:11 =====
+[dialog:ext_e411d15bab] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=？
+
+===== 2026-06-18 16:44:15 =====
+[dialog:ext_e411d15bab] reply text_len=15 parts=2 clean_len=15 diag={'finish_reason': 'stop', 'llm_reply_len': 15, 'llm_clean_len': 15, 'reply_len': 15, 'reply_clean_len': 15} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 4264, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 4269} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-18 16:44:16] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781772255704-0ca1bd5a,branchwhisper-1781772256069-d83b3838 branch_ms=4351 send_ms=558 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 4264, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 4269}
+
+===== 2026-06-18 16:44:18 =====
+[voice-test:voice_test_912a0496ad] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 16:44:22 =====
+[voice-test:voice_test_912a0496ad] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781772261909-0b6d6b03 format=silk diagnostic={'encode_type': None, 'bits_per_sample': None, 'sample_rate': 0, 'gain_db': 8, 'playtime_ms': 5840, 'voice_size': 14934, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 5840, 'mean_volume_db': -22.3, 'max_volume_db': -2.3}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 16000, 'channels': 1, 'duration_ms': 5840, 'mean_volume_db': -14.9, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': True, 'cipher_size': 14944, 'raw_size': 14934, 'md5': 'b5a9c9603d9d3c5f5703081b43ad091a', 'verify_ms': 132}, 'cdn_upload_param_verify': None, 'download_token_source': 'upload_param', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'duration': 'number'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': False, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': False}, 'upload_ms': 835, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 16:58:33 =====
+[sticker-test:sticker_test_ccb7b39932] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 16:58:35 =====
+[sticker-test:sticker_test_ccb7b39932] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781773115167-f7a647f0 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1611, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 219}
+
+===== 2026-06-18 16:58:42 =====
+[voice-test:voice_test_096c5c41d5] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 16:58:45 =====
+[voice-test:voice_test_096c5c41d5] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781773125302-88eef8c0 format=silk diagnostic={'encode_type': None, 'bits_per_sample': None, 'sample_rate': 0, 'gain_db': 8, 'playtime_ms': 4320, 'voice_size': 10131, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -17.4, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 16000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -10.8, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': True, 'cipher_size': 10144, 'raw_size': 10131, 'md5': 'd08fdda41ede7b9f9a60f24ff52babff', 'verify_ms': 99}, 'cdn_upload_param_verify': None, 'download_token_source': 'upload_param', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'duration': 'number'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': False, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': False}, 'upload_ms': 678, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+[2026-06-18 17:00:58] received signal 15, stopping after current poll
+[2026-06-18 17:04:28] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 17:04:28] loaded accounts: 8397c5c17324-im-bot
+[2026-06-18 17:05:27] received signal 15, stopping after current poll
+
+===== 2026-06-18 17:05:27 =====
+[process] stopped orphan bridge pid=414
+
+===== 2026-06-18 17:05:27 =====
+[process] killed orphan bridge pid=414
+
+===== 2026-06-18 17:05:27 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 17:05:27 =====
+[config] updated integration
+
+===== 2026-06-18 17:05:27 =====
+[session] bridge started pid=796
+
+===== 2026-06-18 17:05:27 =====
+[watchdog] bridge restart requested
+[2026-06-18 17:05:27] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 17:05:27] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 17:06:21 =====
+[sticker-test:sticker_test_68c5d70f8a] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 17:06:24 =====
+[sticker-test:sticker_test_68c5d70f8a] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781773584027-428ccb47 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1920, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 232}
+
+===== 2026-06-18 17:06:27 =====
+[voice-test:voice_test_0de02a1745] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 17:06:27 =====
+[voice-test:voice_test_0de02a1745] failed stage=tts target_url=- account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=All connection attempts failed
+                                                                                                                                                                                                                                                                                                                          
+===== 2026-06-18 17:32:39 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 17:32:39 =====
+[config] updated integration
+
+===== 2026-06-18 17:32:39 =====
+[session] bridge started pid=2464
+
+===== 2026-06-18 17:32:39 =====
+[watchdog] bridge restart requested
+[2026-06-18 17:32:39] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 17:32:39] loaded accounts: 8397c5c17324-im-bot
+[2026-06-18 17:32:39] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你突然就不能发语音了，我好难过
+
+===== 2026-06-18 17:32:39 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260618_145831_934785
+
+===== 2026-06-18 17:32:39 =====
+[dialog:ext_f5c8b1f602] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=你突然就不能发语音了，我好难过
+
+===== 2026-06-18 17:32:44 =====
+[dialog:ext_f5c8b1f602] tts failed: All connection attempts failed
+
+===== 2026-06-18 17:32:44 =====
+[dialog:ext_f5c8b1f602] reply text_len=17 parts=2 clean_len=17 diag={'finish_reason': 'stop', 'llm_reply_len': 17, 'llm_clean_len': 17, 'reply_len': 17, 'reply_clean_len': 17} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 4686, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 4708} voice_requested=True send_voice=False voice_file= voice_error=All connection attempts failed
+
+===== 2026-06-18 17:32:44 =====
+[sticker-test:sticker_test_2d330ef846] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 17:32:46 =====
+[sticker-test:sticker_test_2d330ef846] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781775166634-902c93b9 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1549, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 203}
+[2026-06-18 17:32:46] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781775164635-834560e0,branchwhisper-1781775165042-8d556503 branch_ms=4722 send_ms=663 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 4686, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 4708}
+[2026-06-18 17:32:47] sent voice fallback notice account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat client_id=branchwhisper-1781775166875-8c777dc8
+
+===== 2026-06-18 17:33:12 =====
+[voice-test:voice_test_4e690d8609] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 17:33:12 =====
+[voice-test:voice_test_4e690d8609] failed stage=tts target_url=- account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=All connection attempts failed
+[2026-06-18 17:37:38] getUpdates error account=8397c5c17324-im-bot: Server disconnected without sending a response.
+[2026-06-18 17:37:41] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused
+[2026-06-18 17:37:44] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused
+[2026-06-18 17:37:47] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused
+[2026-06-18 17:38:08] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 10 次)
+[2026-06-18 17:38:39] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 20 次)
+[2026-06-18 17:39:10] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 30 次)
+[2026-06-18 17:39:40] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 40 次)
+[2026-06-18 17:49:05] getUpdates error account=8397c5c17324-im-bot: Server disconnected without sending a response.
+[2026-06-18 17:49:08] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused
+[2026-06-18 17:49:11] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused
+[2026-06-18 17:49:14] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused
+[2026-06-18 17:49:35] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 10 次)
+[2026-06-18 17:50:05] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 20 次)
+[2026-06-18 17:50:36] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 30 次)
+[2026-06-18 17:51:07] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 40 次)
+[2026-06-18 17:51:38] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 50 次)
+[2026-06-18 17:52:08] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 60 次)
+[2026-06-18 17:52:39] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 70 次)
+[2026-06-18 17:53:09] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 80 次)
+[2026-06-18 17:53:39] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 90 次)
+[2026-06-18 17:54:10] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 100 次)
+
+===== 2026-06-18 17:54:11 =====
+[voice-test:voice_test_b5e991504a] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 17:54:11 =====
+[voice-test:voice_test_b5e991504a] failed stage=tts target_url=- account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=All connection attempts failed
+[2026-06-18 17:54:40] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 110 次)
+[2026-06-18 17:55:11] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 120 次)
+[2026-06-18 17:55:41] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 130 次)
+[2026-06-18 17:56:12] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 140 次)
+
+===== 2026-06-18 17:56:23 =====
+[voice-test:voice_test_0ed044bf9b] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 17:56:27 =====
+[voice-test:voice_test_0ed044bf9b] voice api unsupported_by_ilink account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781776587035-9aa6cab5 format=silk diagnostic={'encode_type': None, 'bits_per_sample': None, 'sample_rate': 0, 'gain_db': 8, 'playtime_ms': 4320, 'voice_size': 16529, 'voice_encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -17.2, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 16000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -10.3, 'max_volume_db': 0, 'encoder': 'silk-wasm (silk-sdk unavailable: SIGSEGV)'}, 'cdn_verify': {'ok': True, 'cipher_size': 16544, 'raw_size': 16529, 'md5': '3620e343dc4736c3a9dddc204ed2b195', 'verify_ms': 151}, 'cdn_upload_param_verify': None, 'download_token_source': 'upload_param', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'duration': 'number'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': False, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': False}, 'upload_ms': 771, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+[2026-06-18 17:56:42] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 150 次)
+[2026-06-18 17:57:13] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 160 次)
+
+===== 2026-06-18 17:57:32 =====
+[sticker-test:sticker_test_cf6949dac1] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_030
+
+===== 2026-06-18 17:57:34 =====
+[sticker-test:sticker_test_cf6949dac1] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781776654394-a8ee6f28 diagnostic={'image_format': 'png', 'source_image': {'size': 352654, 'width': 600, 'height': 600}, 'image': {'size': 672242, 'width': 600, 'height': 600}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 672256, 'mid_size': 672256, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1431, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 212}
+[2026-06-18 17:57:43] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 170 次)
+[2026-06-18 17:58:14] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 180 次)
+[2026-06-18 17:58:44] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 190 次)
+[2026-06-18 17:59:15] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 200 次)
+[2026-06-18 17:59:46] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 210 次)
+[2026-06-18 18:00:16] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 220 次)
+[2026-06-18 18:00:46] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 230 次)
+[2026-06-18 18:01:17] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 240 次)
+[2026-06-18 18:01:47] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 250 次)
+[2026-06-18 18:02:18] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 260 次)
+[2026-06-18 18:02:48] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 270 次)
+[2026-06-18 18:03:19] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 280 次)
+[2026-06-18 18:03:50] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 290 次)
+[2026-06-18 18:04:20] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 300 次)
+[2026-06-18 18:04:51] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 310 次)
+[2026-06-18 18:05:21] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 320 次)
+[2026-06-18 18:05:52] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 330 次)
+[2026-06-18 18:06:23] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 340 次)
+[2026-06-18 18:06:53] getUpdates error account=8397c5c17324-im-bot: [Errno 111] Connection refused (重复 350 次)
+[2026-06-18 18:07:06] received signal 15, stopping after current poll
+[2026-06-18 18:07:08] notify_stop failed account=8397c5c17324-im-bot err=[Errno 111] Connection refused
+[2026-06-18 18:07:08] bridge stopped
+[2026-06-18 18:08:39] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:08:39] loaded accounts: 8397c5c17324-im-bot
+[2026-06-18 18:08:39] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=[流泪]我把你的语音系统搞坏了，天塌了
+[2026-06-18 18:08:39] message processing error account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=7473312822255194376 branchwhisper_url=http://127.0.0.1:7860 err=stage=branchwhisper_dialog url=http://127.0.0.1:7860/api/integrations/dialog account=8397c5c17324-im-bot message_id=7473312822255194376 error=connection_refused
+[2026-06-18 18:09:25] received signal 15, stopping after current poll
+
+===== 2026-06-18 18:09:25 =====
+[process] stopped orphan bridge pid=727
+
+===== 2026-06-18 18:09:25 =====
+[process] killed orphan bridge pid=727
+
+===== 2026-06-18 18:09:25 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 18:09:25 =====
+[config] updated integration
+
+===== 2026-06-18 18:09:25 =====
+[session] bridge started pid=982
+
+===== 2026-06-18 18:09:25 =====
+[watchdog] bridge restart requested
+[2026-06-18 18:09:25] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:09:25] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 18:11:42 =====
+[voice-test:voice_test_f0ae71f386] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 18:11:46 =====
+[voice-test:voice_test_f0ae71f386] voice api sent_file_attachment account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-audio-file-1781777506160-72ea02c0 format=file diagnostic={'media_type': 'file', 'file_name': '枝语语音.wav', 'file_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'file_name': 'string', 'len': 'string'}, 'encode_type': None, 'bits_per_sample': None, 'sample_rate': None, 'gain_db': None, 'playtime_ms': None, 'voice_size': 207404, 'voice_encoder': None, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -17.2, 'max_volume_db': -0.1}, 'transcode_audio': None, 'cdn_verify': {'ok': False, 'error': 'voice file CDN verify HTTP 400: ', 'verify_ms': 94}, 'cdn_upload_param_verify': None, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': None, 'voice_payload_options': None, 'upload_ms': 948, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 18:17:17 =====
+[voice-test:voice_test_6f69510d22] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 18:17:19 =====
+[voice-test:voice_test_6f69510d22] voice api sent_file_attachment account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-audio-file-1781777839542-9672f1e0 format=file diagnostic={'media_type': 'file', 'file_name': '枝语语音.wav', 'file_item_shape': {'media': {'encrypt_query_param': '[string]', 'aes_key': '[string]', 'encrypt_type': 'number'}, 'file_name': 'string', 'len': 'string'}, 'encode_type': None, 'bits_per_sample': None, 'sample_rate': None, 'gain_db': None, 'playtime_ms': None, 'voice_size': 172844, 'voice_encoder': None, 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3600, 'mean_volume_db': -17.2, 'max_volume_db': -0.6}, 'transcode_audio': None, 'cdn_verify': {'ok': False, 'error': 'voice file CDN verify HTTP 400: ', 'verify_ms': 91}, 'cdn_upload_param_verify': None, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': None, 'voice_payload_options': None, 'upload_ms': 1058, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 18:17:58 =====
+[sticker-test:sticker_test_c99de31d95] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 18:18:00 =====
+[sticker-test:sticker_test_c99de31d95] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781777879923-0c98a866 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1672, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 211}
+[2026-06-18 18:31:54] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:31:54] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 18:37:41 =====
+[process] stopped orphan bridge pid=2175
+[2026-06-18 18:37:41] received signal 15, stopping after current poll
+
+===== 2026-06-18 18:37:41 =====
+[process] killed orphan bridge pid=2175
+
+===== 2026-06-18 18:37:41 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 18:37:41 =====
+[config] updated integration
+
+===== 2026-06-18 18:37:41 =====
+[session] bridge started pid=3087
+
+===== 2026-06-18 18:37:41 =====
+[watchdog] bridge restart requested
+[2026-06-18 18:37:41] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:37:41] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 18:38:28 =====
+[process] stopped orphan bridge pid=3087
+[2026-06-18 18:38:28] received signal 15, stopping after current poll
+
+===== 2026-06-18 18:38:29 =====
+[process] killed orphan bridge pid=3087
+
+===== 2026-06-18 18:38:29 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 18:38:29 =====
+[config] updated integration
+
+===== 2026-06-18 18:38:29 =====
+[session] bridge started pid=3636
+
+===== 2026-06-18 18:38:29 =====
+[watchdog] bridge restart requested
+[2026-06-18 18:38:29] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:38:29] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 18:38:32 =====
+[process] process exited with code -9
+
+===== 2026-06-18 18:38:32 =====
+[process] stopped orphan bridge pid=3636
+[2026-06-18 18:38:32] received signal 15, stopping after current poll
+
+===== 2026-06-18 18:38:33 =====
+[process] killed orphan bridge pid=3636
+
+===== 2026-06-18 18:38:33 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 18:38:33 =====
+[config] updated integration
+
+===== 2026-06-18 18:38:33 =====
+[session] bridge started pid=3651
+
+===== 2026-06-18 18:38:33 =====
+[watchdog] bridge restart requested
+[2026-06-18 18:38:33] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:38:33] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 18:42:11 =====
+[sticker-test:sticker_test_38796238a8] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 18:42:13 =====
+[sticker-test:sticker_test_38796238a8] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781779333462-fc5e4695 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1683, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 196}
+
+===== 2026-06-18 18:42:27 =====
+[voice-test:voice_test_2667aacab4] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 18:42:30 =====
+[voice-test:voice_test_2667aacab4] voice api unsupported_by_ilink account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781779350248-457c583c format=silk diagnostic={'media_type': None, 'file_name': None, 'file_item_shape': None, 'encode_type': 6, 'bits_per_sample': None, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 4320, 'voice_size': 13053, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -17.2, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -10.2, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 31}, 'cdn_upload_param_verify': {'ok': True, 'cipher_size': 13056, 'raw_size': 13053, 'md5': 'a1f0a3ab749b42fed911f2890bb0d836', 'verify_ms': 173}, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number', 'text': 'string'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': True, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': True}, 'upload_ms': 826, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 18:47:19 =====
+[sticker-test:sticker_test_374f799947] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_030
+
+===== 2026-06-18 18:47:21 =====
+[sticker-test:sticker_test_374f799947] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781779641118-df12ae5e diagnostic={'image_format': 'png', 'source_image': {'size': 352654, 'width': 600, 'height': 600}, 'image': {'size': 672242, 'width': 600, 'height': 600}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 672256, 'mid_size': 672256, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1612, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 234}
+
+===== 2026-06-18 18:47:26 =====
+[voice-test:voice_test_62d5145371] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 18:47:29 =====
+[voice-test:voice_test_62d5145371] voice api unsupported_by_ilink account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781779649077-811c53fd format=silk diagnostic={'media_type': None, 'file_name': None, 'file_item_shape': None, 'encode_type': 6, 'bits_per_sample': None, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 3600, 'voice_size': 10367, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3600, 'mean_volume_db': -17.2, 'max_volume_db': -0.6}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3600, 'mean_volume_db': -10.1, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 34}, 'cdn_upload_param_verify': {'ok': True, 'cipher_size': 10368, 'raw_size': 10367, 'md5': '7b4a92e6794b23d1db0ae9dee740cef4', 'verify_ms': 88}, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': 'string', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number', 'text': 'string'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': True, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': True}, 'upload_ms': 839, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 18:57:04 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 18:57:04 =====
+[config] updated integration
+
+===== 2026-06-18 18:57:04 =====
+[session] bridge started pid=732
+
+===== 2026-06-18 18:57:04 =====
+[watchdog] bridge restart requested
+[2026-06-18 18:57:04] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 18:57:04] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 19:02:02 =====
+[voice-test:voice_test_09b4def582] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 19:02:05 =====
+[voice-test:voice_test_09b4def582] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781780525246-01e88502 format=silk diagnostic={'media_type': None, 'file_name': None, 'file_item_shape': None, 'encode_type': 6, 'bits_per_sample': None, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 4320, 'voice_size': 13053, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -17.2, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 4320, 'mean_volume_db': -10.2, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 34}, 'cdn_upload_param_verify': None, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': '', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number', 'text': 'string'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': True, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': True}, 'upload_ms': 653, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 19:03:27 =====
+[sticker-test:sticker_test_35e7f01ccf] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 19:03:28 =====
+[sticker-test:sticker_test_35e7f01ccf] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781780608280-685c6ae9 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 996, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 240}
+
+===== 2026-06-18 19:03:32 =====
+[voice-test:voice_test_f66514852b] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 19:03:34 =====
+[voice-test:voice_test_f66514852b] failed stage=sendmessage target_url=https://ilinkai.weixin.qq.com account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=sendmessage: sendmessage returned ret=-2. iLink rejected the message at business layer; ask the WeChat user to send BranchWhisper a fresh message to refresh the conversation context, then retry. If text also returns ret=-2, re-login
+
+===== 2026-06-18 19:05:00 =====
+[voice-test:voice_test_d9adf82fb5] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 19:05:03 =====
+[voice-test:voice_test_d9adf82fb5] failed stage=sendmessage target_url=https://ilinkai.weixin.qq.com account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat error=sendmessage: sendmessage returned ret=-2. iLink rejected the message at business layer; ask the WeChat user to send BranchWhisper a fresh message to refresh the conversation context, then retry. If text also returns ret=-2, re-login
+[2026-06-18 19:07:09] inbound account=8397c5c17324-im-bot from=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=啥意思，为啥语音不能用了
+
+===== 2026-06-18 19:07:09 =====
+[weixin-session] bound my session sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat conversation=20260618_145831_934785
+
+===== 2026-06-18 19:07:09 =====
+[dialog:ext_179ef6dd9c] recv sender=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=啥意思，为啥语音不能用了
+
+===== 2026-06-18 19:07:14 =====
+[dialog:ext_179ef6dd9c] reply text_len=23 parts=2 clean_len=23 diag={'finish_reason': 'stop', 'llm_reply_len': 23, 'llm_clean_len': 23, 'reply_len': 23, 'reply_clean_len': 23} tool=- direct=False timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 5024, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 5034} voice_requested=False send_voice=False voice_file= voice_error=
+[2026-06-18 19:07:15] sent text account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat parts=2 client_ids=branchwhisper-1781780834689-5894b73d,branchwhisper-1781780835161-44672ce7 branch_ms=5101 send_ms=730 timings={'receive_ms': 0, 'tool_ms': 0, 'llm_ms': 5024, 'tts_ms': 0, 'memory_ms': 0, 'send_ms': 0, 'total_ms': 5034}
+
+===== 2026-06-18 19:07:27 =====
+[voice-test:voice_test_2e25f60753] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 19:07:30 =====
+[voice-test:voice_test_2e25f60753] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781780850392-e33fe464 format=silk diagnostic={'media_type': None, 'file_name': None, 'file_item_shape': None, 'encode_type': 6, 'bits_per_sample': None, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 6000, 'voice_size': 15353, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 6000, 'mean_volume_db': -20.3, 'max_volume_db': -2}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 6000, 'mean_volume_db': -12.8, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 30}, 'cdn_upload_param_verify': None, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': '', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number', 'text': 'string'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': True, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': True}, 'upload_ms': 841, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+[2026-06-18 19:23:02] received signal 15, stopping after current poll
+[2026-06-18 19:23:14] received signal 15, stopping after current poll
+[2026-06-18 19:23:14] bridge stopped
+
+===== 2026-06-18 19:23:33 =====
+[process] start: /home/me/miniconda3/envs/qwen3-asr/bin/python -u /home/me/workspace/BranchWhisper/backend/integration_runtime/openclaw_bridge.py --integration-id weixin_mqj5dhp1 --profile branchwhisper --state-dir /home/me/.openclaw-branchwhisper --branchwhisper-url http://127.0.0.1:7860
+
+===== 2026-06-18 19:23:33 =====
+[config] updated integration
+
+===== 2026-06-18 19:23:33 =====
+[session] bridge started pid=14669
+
+===== 2026-06-18 19:23:33 =====
+[watchdog] bridge restart requested
+[2026-06-18 19:23:33] bridge starting integration=weixin_mqj5dhp1 profile=branchwhisper state_dir=/home/me/.openclaw-branchwhisper branchwhisper_url=http://127.0.0.1:7860
+[2026-06-18 19:23:33] loaded accounts: 8397c5c17324-im-bot
+
+===== 2026-06-18 19:24:05 =====
+[voice-test:voice_test_1d43040151] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 19:24:07 =====
+[voice-test:voice_test_1d43040151] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781781847361-3838e793 format=silk diagnostic={'media_type': None, 'file_name': None, 'file_item_shape': None, 'encode_type': 6, 'bits_per_sample': None, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 3480, 'voice_size': 9547, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3480, 'mean_volume_db': -17.9, 'max_volume_db': -0.3}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3480, 'mean_volume_db': -10.4, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 32}, 'cdn_upload_param_verify': None, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': '', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number', 'text': 'string'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': True, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': True}, 'upload_ms': 726, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}
+
+===== 2026-06-18 19:26:49 =====
+[sticker-test:sticker_test_37822697ae] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat sticker=laugh_039
+
+===== 2026-06-18 19:26:51 =====
+[sticker-test:sticker_test_37822697ae] image api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-image-1781782011020-0ef94f05 diagnostic={'image_format': 'png', 'source_image': {'size': 291687, 'width': 600, 'height': 589}, 'image': {'size': 552097, 'width': 600, 'height': 589}, 'thumbnail': None, 'thumbnail_skipped': True, 'cipher_size': 552112, 'mid_size': 552112, 'media_aes_key_format': 'base64_hex_text', 'upload_ms': 1177, 'upload_method': 'POST', 'upload_url_kind': 'param', 'send_ms': 227}
+
+===== 2026-06-18 19:26:54 =====
+[voice-test:voice_test_6bd207cd04] start account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat text=我在，听得到的话我们继续聊。
+
+===== 2026-06-18 19:26:56 =====
+[voice-test:voice_test_6bd207cd04] voice api accepted account=8397c5c17324-im-bot to=o9cq804jcxY4NxKcDhq50bHFdeRM@im.wechat message_id=branchwhisper-voice-1781782016477-e02cd660 format=silk diagnostic={'media_type': None, 'file_name': None, 'file_item_shape': None, 'encode_type': 6, 'bits_per_sample': None, 'sample_rate': 24000, 'gain_db': 8, 'playtime_ms': 3520, 'voice_size': 9870, 'voice_encoder': 'silk-sdk', 'source_audio': {'codec': 'pcm_s16le', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3520, 'mean_volume_db': -15.3, 'max_volume_db': -0.1}, 'transcode_audio': {'codec': 'silk', 'sample_rate': 24000, 'channels': 1, 'duration_ms': 3520, 'mean_volume_db': -8.6, 'max_volume_db': 0, 'encoder': 'silk-sdk'}, 'cdn_verify': {'ok': False, 'error': 'voice CDN verify HTTP 400: ', 'verify_ms': 33}, 'cdn_upload_param_verify': None, 'download_token_source': 'cdn_short', 'cdn_token_shape': {'upload_param': '', 'query_param': '', 'short_param': 'string'}, 'voice_item_shape': {'media': {'encrypt_query_param': '[string]', 'encrypted_query_param': '[string]', 'aes_key': '[string]', 'aeskey': '[string]', 'encrypt_type': 'number'}, 'encode_type': 'number', 'playtime': 'number', 'sample_rate': 'number', 'text': 'string'}, 'voice_payload_options': {'aes_key_encoding': 'base64_hex_text', 'include_encode_type': True, 'include_bits_per_sample': False, 'include_file_size': False, 'include_playtime': False, 'include_mid_size': False, 'include_text': True}, 'upload_ms': 792, 'upload_method': 'POST', 'upload_url_kind': 'param', 'sendmessage_shape': {}, 'sendmessage_response': {}, 'sendmessage_http': {'status': 200, 'body_length': 2, 'headers': {'content-length': '2', 'content-type': 'application/octet-stream'}}}

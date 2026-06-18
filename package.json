@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "silk-sdk": "^0.2.2",
     "silk-wasm": "^3.7.1"
   }
 }

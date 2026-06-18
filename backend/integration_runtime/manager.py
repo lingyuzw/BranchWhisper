@@ -441,6 +441,92 @@ class IntegrationManager:
         state_dir = openclaw_state_dir(integration.get("openclaw_profile") or "branchwhisper")
         return state_dir / "openclaw-weixin" / "accounts" / f"{account_id}.context-tokens.json"
 
+    def _fresh_context_token_mtime(self, integration: dict, account_id: str, sender_id: str, within_hours: float = 24.0) -> float:
+        account = str(account_id or "")
+        sender = str(sender_id or "")
+        if not account or not sender:
+            return 0.0
+        token_path = self.context_tokens_path(integration, account)
+        data = read_json_file(token_path, {})
+        if not isinstance(data, dict) or not str(data.get(sender) or ""):
+            return 0.0
+        modified_at = token_path.stat().st_mtime if token_path.exists() else 0.0
+        if not modified_at:
+            return 0.0
+        age_hours = (time.time() - modified_at) / 3600
+        if age_hours > within_hours:
+            return 0.0
+        return modified_at
+
+    def _session_reachability_timestamp(self, integration_id: str, session: dict) -> float:
+        updated_at = float(session.get("updated_at_ts") or 0)
+        integration = self.get_integration(integration_id or str(session.get("platform_id") or ""))
+        if not integration:
+            return updated_at
+        context_updated_at = self._fresh_context_token_mtime(
+            integration,
+            str(session.get("account_id") or ""),
+            str(session.get("sender_id") or ""),
+        )
+        return max(updated_at, context_updated_at)
+
+    def _sync_my_weixin_session_from_target(self, integration_id: str, target: dict) -> None:
+        data = self.load_config()
+        session = data.get("my_weixin_session") if isinstance(data.get("my_weixin_session"), dict) else {}
+        platform_id = safe_id(integration_id)
+        if not session or session.get("platform_id") != platform_id:
+            return
+        if str(session.get("account_id") or "") != str(target.get("account_id") or ""):
+            return
+        if str(session.get("sender_id") or "") != str(target.get("sender_id") or ""):
+            return
+        integration = self.get_integration(platform_id)
+        if not integration:
+            return
+        context_updated_at = self._fresh_context_token_mtime(
+            integration,
+            str(target.get("account_id") or ""),
+            str(target.get("sender_id") or ""),
+        )
+        if context_updated_at <= float(session.get("updated_at_ts") or 0):
+            return
+        session = dict(session)
+        session["context_token_set"] = True
+        session["updated_at_ts"] = context_updated_at
+        session["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(context_updated_at))
+        data["my_weixin_session"] = session
+        self.save_config(data)
+        self.runtime.setdefault(platform_id, {})["my_weixin_session"] = session
+
+    def _weixin_business_error(self, data: object, stage: str) -> dict | None:
+        if not isinstance(data, dict):
+            return None
+        for key in ("ret", "errcode", "error_code"):
+            if key not in data:
+                continue
+            try:
+                value = int(data.get(key))
+            except (TypeError, ValueError):
+                continue
+            if value == 0:
+                continue
+            message = str(data.get("errmsg") or data.get("err_msg") or data.get("message") or data.get("msg") or "")
+            hint = ""
+            if value == -2:
+                hint = "iLink 业务层拒绝发送；请先让微信端给 BranchWhisper 发一条新消息刷新会话 context_token，若文本仍 ret=-2 则重新登录微信集成。"
+            error = f"{stage} returned {key}={data.get(key)}"
+            if message:
+                error += f": {message}"
+            if hint:
+                error += f". {hint}"
+            return {
+                "ok": False,
+                "error": error,
+                "stage": stage,
+                "business_response": {k: data[k] for k in ("ret", "errcode", "error_code", "errmsg", "err_msg", "message", "msg") if k in data},
+            }
+        return None
+
     def recent_weixin_targets(self, integration_id: str, within_hours: float = 24.0) -> list[dict]:
         integration = self.get_integration(integration_id)
         if not integration:
@@ -485,8 +571,12 @@ class IntegrationManager:
         targets = self.recent_weixin_targets(integration_id)
         for item in targets:
             if item.get("sender_id") == sender_id and (not account_id or item.get("account_id") == account_id):
+                self._sync_my_weixin_session_from_target(integration_id, item)
                 return item
-        return targets[0] if targets else None
+        if targets:
+            self._sync_my_weixin_session_from_target(integration_id, targets[0])
+            return targets[0]
+        return None
 
     async def send_weixin_text(self, integration_id: str, text: str, sender_id: str = "", account_id: str = "") -> dict:
         integration = self.require_integration(integration_id)
@@ -517,6 +607,22 @@ class IntegrationManager:
                 headers=weixin_api_headers(target["token"]),
             )
             resp.raise_for_status()
+            try:
+                data = resp.json() if getattr(resp, "content", b"") else {}
+            except Exception:
+                data = {}
+        business_error = self._weixin_business_error(data, "sendmessage")
+        if business_error:
+            self.append_log(
+                integration_id,
+                f"[proactive] send failed account={target['account_id']} to={target['sender_id']} client_id={client_id} error={business_error['error']}",
+            )
+            return {
+                **business_error,
+                "client_id": client_id,
+                "account_id": target["account_id"],
+                "sender_id": target["sender_id"],
+            }
         self.append_log(
             integration_id,
             f"[proactive] sent text account={target['account_id']} to={target['sender_id']} client_id={client_id}",
@@ -530,10 +636,11 @@ class IntegrationManager:
             return {}
         if not session:
             return {}
-        updated_at = float(session.get("updated_at_ts") or 0)
+        updated_at = self._session_reachability_timestamp(safe_id(integration_id or str(session.get("platform_id") or "")), session)
         remaining = max(0, int(24 * 3600 - (time.time() - updated_at))) if updated_at else 0
         return {
             **session,
+            "context_token_updated_at_ts": updated_at or None,
             "bound": bool(session.get("sender_id") and session.get("account_id")),
             "reachable": remaining > 0,
             "reachable_remaining_sec": remaining,
@@ -1643,48 +1750,61 @@ class ExternalDialogEngine:
                 token=target["token"],
                 to_user_id=target["sender_id"],
                 voice_file=voice_file,
-                text=text[:240],
+                transcript=text[:240],
                 context_token=target["context_token"],
                 cdn_base_url=str(target.get("cdn_base_url") or DEFAULT_WEIXIN_CDN_BASE_URL),
             )
             client_delivery = str(sent.get("client_delivery") or "unconfirmed")
+            client_delivery_reason = str(
+                sent.get("client_delivery_reason")
+                or "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client."
+            )
+            unsupported_delivery = client_delivery == "unsupported_by_ilink"
             result.update(
                 {
-                    "ok": True,
-                    "stage": "accepted",
+                    "ok": not unsupported_delivery,
+                    "stage": "unsupported_by_ilink" if unsupported_delivery else ("sent_file_attachment" if client_delivery == "file_attachment" else "accepted"),
                     "send_done": True,
                     "send_ms": int((time.perf_counter() - send_started) * 1000),
                     "total_ms": int((time.perf_counter() - started_at) * 1000),
                     "voice_message_id": sent.get("message_id") or "",
                     "voice_stage": sent.get("stage") or "accepted",
-                    "voice_format": sent.get("transcode_format") or "",
+                    "voice_format": sent.get("transcode_format") or sent.get("media_type") or "",
                     "voice_diagnostic": {
+                        "media_type": sent.get("media_type"),
+                        "file_name": sent.get("file_name"),
+                        "file_item_shape": sent.get("file_item_shape"),
                         "encode_type": sent.get("encode_type"),
                         "bits_per_sample": sent.get("bits_per_sample"),
                         "sample_rate": sent.get("sample_rate"),
                         "gain_db": sent.get("gain_db"),
                         "playtime_ms": sent.get("playtime_ms"),
                         "voice_size": sent.get("raw_size"),
+                        "voice_encoder": sent.get("voice_encoder"),
                         "source_audio": sent.get("source_audio"),
                         "transcode_audio": sent.get("transcode_audio"),
                         "cdn_verify": sent.get("cdn_verify"),
+                        "cdn_upload_param_verify": sent.get("cdn_upload_param_verify"),
+                        "download_token_source": sent.get("download_token_source"),
+                        "cdn_token_shape": sent.get("cdn_token_shape"),
                         "voice_item_shape": sent.get("voice_item_shape"),
+                        "voice_payload_options": sent.get("voice_payload_options"),
                         "upload_ms": sent.get("upload_ms"),
                         "upload_method": sent.get("upload_method"),
                         "upload_url_kind": sent.get("upload_url_kind"),
                         "sendmessage_shape": sent.get("sendmessage_shape"),
                         "sendmessage_response": sent.get("sendmessage_response"),
+                        "sendmessage_http": sent.get("sendmessage_http"),
                     },
                     "client_delivery": client_delivery,
-                    "client_delivery_reason": str(
-                        sent.get("client_delivery_reason")
-                        or "OpenClaw/iLink accepted the voice message request; confirm playback in the WeChat client."
-                    ),
+                    "client_delivery_reason": client_delivery_reason,
                 }
             )
+            if unsupported_delivery:
+                result["error"] = client_delivery_reason
             self.integration_manager.append_log(
                 platform_id,
-                f"[voice-test:{trace_id}] voice api accepted account={target['account_id']} to={target['sender_id']} "
+                f"[voice-test:{trace_id}] voice api {result['stage']} account={target['account_id']} to={target['sender_id']} "
                 f"message_id={result['voice_message_id']} format={result['voice_format']} diagnostic={result['voice_diagnostic']}",
             )
             return result
