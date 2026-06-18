@@ -33,14 +33,34 @@ class DialogTraceStore:
         self.record(trace_id, "turn", "start", {"source": source})
         return trace_id
 
-    def record(self, trace_id: str, stage: str, message: str, metadata: dict | None = None) -> None:
+    def record(
+        self,
+        trace_id: str,
+        stage: str,
+        message: str,
+        metadata: dict | None = None,
+        *,
+        status: str = "",
+        started_at: float | None = None,
+        profile_role: str = "",
+        profile_name: str = "",
+        failure_reason: str = "",
+    ) -> None:
         if not trace_id:
             return
         now = self.clock()
+        duration_ms = None
+        if started_at is not None:
+            duration_ms = max(0, int(round((now - started_at) * 1000)))
         event = {
             "at": now,
             "stage": str(stage or "event"),
             "message": " ".join(str(message or "").split()),
+            "status": str(status or ""),
+            "duration_ms": duration_ms,
+            "profile_role": str(profile_role or ""),
+            "profile_name": str(profile_name or ""),
+            "failure_reason": str(failure_reason or ""),
             "metadata": metadata or {},
         }
         with self._lock:
@@ -51,10 +71,10 @@ class DialogTraceStore:
             trace["updated_at"] = now
             self._traces.move_to_end(trace_id)
 
-    def finish(self, trace_id: str, status: str = "done") -> None:
+    def finish(self, trace_id: str, status: str = "done", *, failure_reason: str = "") -> None:
         if not trace_id:
             return
-        self.record(trace_id, "turn", "finish", {"status": status})
+        self.record(trace_id, "turn", "finish", {"status": status}, status=status, failure_reason=failure_reason)
         with self._lock:
             trace = self._traces.get(trace_id)
             if trace:

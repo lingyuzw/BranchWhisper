@@ -35,6 +35,39 @@ class DialogTraceStoreTests(unittest.TestCase):
         self.assertEqual([event["stage"] for event in trace["events"]], ["turn", "llm", "llm", "turn"])
         self.assertEqual(trace["events"][2]["metadata"], {"answer_len": 42})
 
+    def test_trace_events_include_failure_attribution_fields(self) -> None:
+        counter = {"value": 100.0}
+
+        def clock() -> float:
+            counter["value"] += 0.25
+            return counter["value"]
+
+        store = DialogTraceStore(max_traces=5, clock=clock)
+
+        trace_id = store.start(source="voice", conversation_id="conv-voice")
+        store.record(
+            trace_id,
+            "tts",
+            "synthesis failed",
+            {"provider": "local"},
+            status="error",
+            started_at=100.5,
+            profile_role="tts",
+            profile_name="Local TTS",
+            failure_reason="connection refused",
+        )
+        store.finish(trace_id, status="failed", failure_reason="connection refused")
+
+        event = store.payload(limit=5)["traces"][0]["events"][1]
+        finish_event = store.payload(limit=5)["traces"][0]["events"][-1]
+        self.assertEqual(event["status"], "error")
+        self.assertEqual(event["duration_ms"], 250)
+        self.assertEqual(event["profile_role"], "tts")
+        self.assertEqual(event["profile_name"], "Local TTS")
+        self.assertEqual(event["failure_reason"], "connection refused")
+        self.assertEqual(finish_event["status"], "failed")
+        self.assertEqual(finish_event["failure_reason"], "connection refused")
+
     def test_trace_store_keeps_recent_traces_only(self) -> None:
         counter = {"value": 0.0}
 
