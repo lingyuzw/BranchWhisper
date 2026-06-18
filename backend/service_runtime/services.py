@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import platform
 import re
@@ -20,9 +19,11 @@ from service_runtime.profiles import (
     LEGACY_AUTODL_PROJECT,
     LEGACY_AUTODL_REPO,
     expand_profile_paths,
+    load_profile_services,
     migrate_legacy_profile_paths,
     service_path_tokens,
     workspace_root_from_env,
+    write_profile_services,
 )
 
 
@@ -139,11 +140,7 @@ class ServiceManager:
     def save_profiles(self) -> None:
         if not self.config_path:
             raise RuntimeError("service config path is not configured")
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"schema_version": SERVICE_PROFILE_SCHEMA_VERSION, "services": self.services}
-        tmp_path = self.config_path.with_suffix(f"{self.config_path.suffix}.tmp")
-        tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp_path.replace(self.config_path)
+        write_profile_services(self.config_path, self.services, schema_version=SERVICE_PROFILE_SCHEMA_VERSION)
 
     def service_config_view(self, service_id: str) -> dict:
         service = self.services[service_id]
@@ -506,19 +503,7 @@ class ServiceManager:
 
 
 def load_service_profiles(config_path: Path | None) -> dict:
-    profiles = json.loads(json.dumps(DEFAULT_SERVICE_PROFILES))
-    if config_path and config_path.exists():
-        try:
-            data = json.loads(config_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            data = {}
-        for service_id, service_patch in (data.get("services") or {}).items():
-            if service_id in profiles and isinstance(service_patch, dict):
-                profiles[service_id].update(service_patch)
-    migrated = migrate_legacy_service_paths(profiles)
-    if config_path and config_path.exists() and migrated != profiles:
-        config_path.write_text(json.dumps({"schema_version": SERVICE_PROFILE_SCHEMA_VERSION, "services": migrated}, ensure_ascii=False, indent=2), encoding="utf-8")
-    return migrated
+    return load_profile_services(config_path, defaults=DEFAULT_SERVICE_PROFILES, schema_version=SERVICE_PROFILE_SCHEMA_VERSION)
 
 
 def final_service_command(service_id: str, service: dict) -> str:

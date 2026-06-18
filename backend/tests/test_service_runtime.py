@@ -37,7 +37,15 @@ from service_runtime.services import (
     tune_start_command,
     _is_pid_alive,
 )
-from service_runtime.profiles import expand_profile_paths, migrate_legacy_profile_paths, service_path_tokens, workspace_root_from_env
+from service_runtime.profiles import (
+    expand_profile_paths,
+    load_profile_services,
+    migrate_legacy_profile_paths,
+    service_path_tokens,
+    service_profiles_payload,
+    workspace_root_from_env,
+    write_profile_services,
+)
 from tools.runtime_brain import MemoryStore, ToolManager, admit_memory_candidate, extract_memory_candidates
 from integration_runtime import manager as manager_module
 
@@ -275,6 +283,38 @@ class ServiceRuntimeStateTests(unittest.TestCase):
         root = workspace_root_from_env(project_root=Path("/workspace/BranchWhisper"), env={"BRANCHWHISPER_WORKSPACE_ROOT": "/custom/models"})
 
         self.assertEqual(root, Path("/custom/models"))
+
+    def test_profile_config_helpers_load_write_and_migrate_services(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "service_profiles.json"
+            defaults = {"asr": {"label": "Default ASR", "command": "python default.py"}}
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "services": {
+                            "asr": {
+                                "label": "Legacy ASR",
+                                "cwd": "/root/autodl-tmp/project/Qwen3-ASR",
+                            },
+                            "unknown": {"label": "Ignored"},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            loaded = load_profile_services(config_path, defaults=defaults, schema_version=SERVICE_PROFILE_SCHEMA_VERSION)
+            payload = service_profiles_payload(loaded, schema_version=SERVICE_PROFILE_SCHEMA_VERSION)
+            write_profile_services(config_path, loaded, schema_version=SERVICE_PROFILE_SCHEMA_VERSION)
+            saved = json.loads(config_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(loaded["asr"]["label"], "Legacy ASR")
+        self.assertEqual(loaded["asr"]["command"], "python default.py")
+        self.assertEqual(loaded["asr"]["cwd"], "${WORKSPACE_ROOT}/Qwen3-ASR")
+        self.assertNotIn("unknown", loaded)
+        self.assertEqual(payload["schema_version"], SERVICE_PROFILE_SCHEMA_VERSION)
+        self.assertEqual(saved["schema_version"], SERVICE_PROFILE_SCHEMA_VERSION)
+        self.assertEqual(saved["services"]["asr"]["cwd"], "${WORKSPACE_ROOT}/Qwen3-ASR")
 
     def test_default_service_profiles_include_diagnostics_metadata(self) -> None:
         profiles = load_service_profiles(None)
