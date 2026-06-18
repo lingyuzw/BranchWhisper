@@ -34,6 +34,7 @@ import { useAppStore } from "@/stores/app";
 import { listModelFiles, uploadVoiceSample, type ModelFileEntry, type ModelFilesResponse, type PublicConfig } from "@/api/config";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
 import AsrProviderPanel from "@/components/settings/AsrProviderPanel.vue";
+import PromptSettingsPanel from "@/components/settings/PromptSettingsPanel.vue";
 import SettingsOverviewBoard from "@/components/settings/SettingsOverviewBoard.vue";
 import TtsProviderPanel from "@/components/settings/TtsProviderPanel.vue";
 import type { ServiceSummary } from "@/api/services";
@@ -1771,10 +1772,7 @@ function formatTime(value?: string) {
           <p v-if="profiles.error" class="muted-copy">人格配置读取失败：{{ profiles.error }}</p>
         </article>
 
-        <article v-show="activeSettingsSection === 'prompt'" class="settings-panel settings-panel--prominent settings-section-detached is-active is-current" id="prompt">
-          <div class="panel-head"><div><p class="eyebrow">提示词</p><h2>Prompt 配置</h2></div></div>
-          <label class="wide"><span>系统提示词</span><textarea v-model="form.system" class="prompt-textarea"></textarea></label>
-        </article>
+        <PromptSettingsPanel v-show="activeSettingsSection === 'prompt'" :form="form" />
 
         <TtsProviderPanel
           v-show="activeSettingsSection === 'tts'"
