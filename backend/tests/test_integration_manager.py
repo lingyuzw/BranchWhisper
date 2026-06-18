@@ -16,10 +16,19 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import integration_runtime.manager as manager_module
 from integration_runtime.manager import IntegrationManager
+from integration_runtime.openclaw_runtime import gateway_disabled_hint
 from integration_runtime.weixin_protocol import select_recent_weixin_target, weixin_business_error
 
 
 class IntegrationManagerProcessEnvTests(unittest.TestCase):
+    def test_gateway_disabled_hint_detects_systemd_unavailable_output(self) -> None:
+        hint = gateway_disabled_hint({"stdout": "", "stderr": "systemd user services are unavailable"})
+        unrelated = gateway_disabled_hint({"stdout": "gateway started", "stderr": ""})
+
+        self.assertIn("OpenClaw gateway", hint)
+        self.assertIn("前台桥接进程", hint)
+        self.assertEqual("", unrelated)
+
     def test_bridge_process_env_always_bypasses_proxy_for_loopback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, patch.dict(
             os.environ,

@@ -37,6 +37,7 @@ from data.conversations import ConversationStore
 from tools.direct_answers import direct_answer_from_tool
 from data.profiles import BotProfileStore
 from tools.runtime_brain import MemoryStore, ToolManager
+from integration_runtime.openclaw_runtime import gateway_disabled_hint
 from integration_runtime.weixin_media import (
     WeixinImageSendError,
     WeixinVoiceSendError,
@@ -938,14 +939,7 @@ class IntegrationManager:
         return result
 
     def gateway_disabled_hint(self, result: dict) -> str:
-        text = f"{result.get('stdout') or ''}\n{result.get('stderr') or ''}"
-        lowered = text.lower()
-        if "gateway service disabled" in lowered or "systemd user services are unavailable" in lowered:
-            return (
-                "OpenClaw gateway systemd 服务不可用。容器环境下这是常见情况，"
-                "请使用“启动桥接”运行 BranchWhisper 的前台桥接进程。"
-            )
-        return ""
+        return gateway_disabled_hint(result)
 
     async def login(self, integration_id: str) -> dict:
         integration = self.require_integration(integration_id)
