@@ -141,21 +141,40 @@ class DialogSession:
         self.trace_log(trace_id, f"start source={source} conversation={self.conversation.get('id')}")
         return trace_id
 
-    def trace_log(self, trace_id: str, message: str) -> None:
+    def trace_log(
+        self,
+        trace_id: str,
+        message: str,
+        *,
+        status: str = "",
+        started_at: float | None = None,
+        profile_role: str = "",
+        profile_name: str = "",
+        failure_reason: str = "",
+    ) -> None:
         if not trace_id:
             return
         safe_message = " ".join(str(message).split())
         if self.trace_store:
             stage = safe_message.split(":", 1)[0] if ":" in safe_message else "dialog"
-            self.trace_store.record(trace_id, stage, safe_message)
+            self.trace_store.record(
+                trace_id,
+                stage,
+                safe_message,
+                status=status,
+                started_at=started_at,
+                profile_role=profile_role,
+                profile_name=profile_name,
+                failure_reason=failure_reason,
+            )
         print(f"[dialog:{trace_id}] {safe_message}", flush=True)
 
-    def finish_trace(self, trace_id: str, status: str = "done") -> None:
+    def finish_trace(self, trace_id: str, status: str = "done", *, failure_reason: str = "") -> None:
         if not trace_id:
             return
-        self.trace_log(trace_id, f"finish status={status}")
+        self.trace_log(trace_id, f"finish status={status}", status=status, failure_reason=failure_reason)
         if self.trace_store:
-            self.trace_store.finish(trace_id, status)
+            self.trace_store.finish(trace_id, status, failure_reason=failure_reason)
         if self.current_trace_id == trace_id:
             self.current_trace_id = ""
 
@@ -1137,4 +1156,3 @@ class DialogSession:
         max_history_messages = max(2, active_history_turns(self.settings) * 2)
         if len(self.messages) > 1 + max_history_messages:
             del self.messages[1 : len(self.messages) - max_history_messages]
-

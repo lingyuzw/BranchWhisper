@@ -12,6 +12,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from api.diagnostics import create_diagnostics_router
+from dialog.session import DialogSession
 from dialog.trace import DialogTraceStore
 
 
@@ -67,6 +68,35 @@ class DialogTraceStoreTests(unittest.TestCase):
         self.assertEqual(event["failure_reason"], "connection refused")
         self.assertEqual(finish_event["status"], "failed")
         self.assertEqual(finish_event["failure_reason"], "connection refused")
+
+    def test_dialog_session_trace_helpers_forward_attribution_fields(self) -> None:
+        store = DialogTraceStore(max_traces=5, clock=lambda: 100.0)
+        session = object.__new__(DialogSession)
+        session.trace_store = store
+        session.conversation = {"id": "conv"}
+        session.current_trace_id = ""
+
+        trace_id = session.begin_trace("voice")
+        session.trace_log(
+            trace_id,
+            "asr:error boom",
+            status="error",
+            profile_role="asr",
+            profile_name="Local ASR",
+            failure_reason="boom",
+        )
+        session.finish_trace(trace_id, "failed", failure_reason="boom")
+
+        trace = store.payload(limit=5)["traces"][0]
+        event = next(item for item in trace["events"] if item["stage"] == "asr")
+        finish_event = trace["events"][-1]
+        self.assertEqual(event["stage"], "asr")
+        self.assertEqual(event["status"], "error")
+        self.assertEqual(event["profile_role"], "asr")
+        self.assertEqual(event["profile_name"], "Local ASR")
+        self.assertEqual(event["failure_reason"], "boom")
+        self.assertEqual(finish_event["status"], "failed")
+        self.assertEqual(finish_event["failure_reason"], "boom")
 
     def test_trace_store_keeps_recent_traces_only(self) -> None:
         counter = {"value": 0.0}
