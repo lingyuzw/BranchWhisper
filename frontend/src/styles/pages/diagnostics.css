@@ -311,6 +311,122 @@
   line-height: 1.5;
 }
 
+.trace-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.trace-panel-head,
+.trace-card-head,
+.trace-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trace-panel-head h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-lg);
+}
+
+.trace-panel-head > span {
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+}
+
+.trace-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 10px;
+}
+
+.trace-card {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.trace-card.done {
+  border-color: rgba(120, 199, 122, 0.22);
+}
+
+.trace-card.running {
+  border-color: rgba(217, 155, 79, 0.24);
+}
+
+.trace-card-head strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-sm);
+  overflow-wrap: anywhere;
+}
+
+.trace-card-head span,
+.trace-meta span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+}
+
+.trace-meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trace-events {
+  display: grid;
+  gap: 5px;
+}
+
+.trace-events div {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.trace-events span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+}
+
+.trace-events strong {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.trace-empty {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: var(--font-sm);
+}
+
 @media (max-width: 760px) {
   .diagnostics-overview {
     align-items: stretch;
@@ -326,6 +442,10 @@
   }
 
   .diagnostics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-list {
     grid-template-columns: 1fr;
   }
 

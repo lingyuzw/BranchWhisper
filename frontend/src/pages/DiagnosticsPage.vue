@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { AlertTriangle, CheckCircle2, Copy, RefreshCw, Stethoscope, XCircle } from "@lucide/vue";
-import { loadRuntimeDiagnostics } from "@/api/diagnostics";
-import type { RuntimeDiagnosticItem, RuntimeDiagnostics, RuntimeDiagnosticStatus } from "@/api/diagnostics";
+import { loadDialogTraces, loadRuntimeDiagnostics } from "@/api/diagnostics";
+import type { DialogTrace, RuntimeDiagnosticItem, RuntimeDiagnostics, RuntimeDiagnosticStatus } from "@/api/diagnostics";
 import { useUiStore } from "@/stores/ui";
 
 const ui = useUiStore();
 const loading = ref(false);
 const diagnostics = ref<RuntimeDiagnostics | null>(null);
+const traces = ref<DialogTrace[]>([]);
 const loadedAt = ref<Date | null>(null);
 
 const overall = computed(() => diagnostics.value?.status || "warning");
@@ -22,6 +23,7 @@ async function refreshDiagnostics() {
   loading.value = true;
   try {
     diagnostics.value = await loadRuntimeDiagnostics();
+    traces.value = (await loadDialogTraces(8)).traces || [];
     loadedAt.value = new Date();
   } catch (error) {
     ui.error(`运行诊断读取失败：${errorMessage(error)}`);
@@ -76,6 +78,17 @@ function loadedAtText() {
 
 function actionableChecks(item: RuntimeDiagnosticItem) {
   return item.checks.filter((check) => check.status !== "ok");
+}
+
+function formatTraceTime(value: number) {
+  if (!value) return "--";
+  return new Date(value * 1000).toLocaleTimeString();
+}
+
+function traceDuration(trace: DialogTrace) {
+  if (!trace.created_at || !trace.updated_at) return "--";
+  const duration = Math.max(0, trace.updated_at - trace.created_at);
+  return `${Math.round(duration * 1000)} ms`;
 }
 </script>
 
@@ -156,6 +169,39 @@ function actionableChecks(item: RuntimeDiagnosticItem) {
         <Stethoscope :size="28" />
         <strong>{{ loading ? "正在读取运行诊断" : "暂无运行 profile" }}</strong>
         <span>{{ loading ? "请稍候。" : "配置 ASR、LLM 或 TTS 服务后，这里会显示路径、端口、命令和健康检查结果。" }}</span>
+      </section>
+
+      <section class="trace-panel">
+        <header class="trace-panel-head">
+          <div>
+            <p class="eyebrow">Dialog Trace</p>
+            <h2>最近对话链路</h2>
+          </div>
+          <span>{{ traces.length }} 条</span>
+        </header>
+
+        <div v-if="traces.length" class="trace-list">
+          <article v-for="trace in traces" :key="trace.id" class="trace-card" :class="trace.status">
+            <div class="trace-card-head">
+              <strong>{{ trace.source || "dialog" }}</strong>
+              <span>{{ trace.status }} · {{ traceDuration(trace) }}</span>
+            </div>
+            <div class="trace-meta">
+              <span>{{ trace.id }}</span>
+              <span>{{ formatTraceTime(trace.created_at) }}</span>
+            </div>
+            <div class="trace-events">
+              <div v-for="event in trace.events.slice(-8)" :key="`${trace.id}:${event.at}:${event.stage}:${event.message}`">
+                <span>{{ event.stage }}</span>
+                <strong>{{ event.message || "--" }}</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div v-else class="trace-empty">
+          <span>还没有对话 trace。完成一次文本或语音对话后，这里会显示 ASR、LLM、TTS 和后台任务阶段。</span>
+        </div>
       </section>
     </div>
   </main>
