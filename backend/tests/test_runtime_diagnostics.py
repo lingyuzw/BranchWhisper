@@ -65,6 +65,82 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(checks["ffmpeg"].fix, "Install ffmpeg or make it available on PATH.")
         self.assertEqual(item.status, "error")
 
+    def test_evaluate_profile_resolves_relative_model_path_from_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            llama_dir = workspace_root / "llama.cpp"
+            llama_dir.mkdir()
+            (llama_dir / "model.gguf").write_text("model", encoding="utf-8")
+            profile = RuntimeDiagnosticProfile(
+                role="llm",
+                name="local-llm",
+                provider="llama.cpp",
+                cwd="${WORKSPACE_ROOT}/llama.cpp",
+                model_path="./model.gguf",
+            )
+
+            item = evaluate_profile(profile, workspace_root=workspace_root)
+
+        checks = {check.kind: check for check in item.checks}
+        self.assertEqual(checks["model_path"].status, "ok")
+        self.assertEqual(checks["cwd"].status, "ok")
+        self.assertEqual(item.status, "ok")
+
+    def test_evaluate_profile_resolves_relative_command_from_cwd_before_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            bin_dir = workspace_root / "llama.cpp" / "build" / "bin"
+            bin_dir.mkdir(parents=True)
+            server = bin_dir / "llama-server"
+            server.write_text("#!/bin/sh\n", encoding="utf-8")
+            profile = RuntimeDiagnosticProfile(
+                role="llm",
+                name="local-llm",
+                provider="llama.cpp",
+                cwd="${WORKSPACE_ROOT}/llama.cpp",
+                required_bins=("./build/bin/llama-server",),
+            )
+
+            item = evaluate_profile(
+                profile,
+                workspace_root=workspace_root,
+                command_resolver=lambda command: None,
+            )
+
+        checks = {check.target: check for check in item.checks}
+        self.assertEqual(checks["./build/bin/llama-server"].status, "ok")
+        self.assertEqual(item.status, "ok")
+
+    def test_runtime_payload_preserves_relative_command_path_from_service_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            llama_dir = workspace_root / "llama.cpp"
+            bin_dir = llama_dir / "build" / "bin"
+            bin_dir.mkdir(parents=True)
+            (bin_dir / "llama-server").write_text("#!/bin/sh\n", encoding="utf-8")
+            (llama_dir / "model.gguf").write_text("model", encoding="utf-8")
+
+            payload = runtime_diagnostics_payload(
+                {
+                    "services": {
+                        "llm": {
+                            "label": "Local LLM",
+                            "cwd": "${WORKSPACE_ROOT}/llama.cpp",
+                            "command": "./build/bin/llama-server -m ./model.gguf --port 8080",
+                        }
+                    }
+                },
+                workspace_root=workspace_root,
+                command_resolver=lambda command: None,
+                port_checker=lambda port: True,
+            )
+
+        checks = {check["kind"]: check for check in payload["items"][0]["checks"]}
+        self.assertTrue(payload["ok"])
+        self.assertEqual(checks["model_path"]["status"], "ok")
+        self.assertEqual(checks["binary"]["target"], "./build/bin/llama-server")
+        self.assertEqual(checks["binary"]["status"], "ok")
+
     def test_evaluate_profile_reports_port_conflict(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace_root = Path(temp_dir)

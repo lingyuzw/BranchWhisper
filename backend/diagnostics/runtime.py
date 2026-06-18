@@ -87,14 +87,15 @@ def evaluate_profile(
     health_checker = health_checker or default_health_checker
 
     checks: list[RuntimeDiagnosticCheck] = []
+    cwd_path = _resolve_profile_cwd(profile, workspace_root)
     if profile.model_path:
-        checks.append(_check_model_path(profile.model_path, workspace_root))
+        checks.append(_check_model_path(profile.model_path, workspace_root, cwd_path))
     if profile.cwd:
         checks.append(_check_cwd(profile.cwd, workspace_root))
     for binary in profile.required_bins:
-        checks.append(_check_binary(binary, command_resolver, required=True))
+        checks.append(_check_binary(binary, command_resolver, required=True, workspace_root=workspace_root, cwd_path=cwd_path))
     for binary in profile.optional_bins:
-        checks.append(_check_binary(binary, command_resolver, required=False))
+        checks.append(_check_binary(binary, command_resolver, required=False, workspace_root=workspace_root, cwd_path=cwd_path))
     for required_file in profile.required_files:
         checks.append(_check_required_file(required_file, profile, workspace_root))
     if profile.port is not None:
@@ -218,9 +219,13 @@ def _required_bins_from_command(command: str) -> tuple[str, ...]:
         for token in tokens[1:]:
             if "=" in token and not token.startswith("-"):
                 continue
-            return (Path(token).name,)
+            return (_command_target(token),)
         return ()
-    return (Path(first).name,)
+    return (_command_target(first),)
+
+
+def _command_target(token: str) -> str:
+    return token if _has_path_separator(token) else Path(token).name
 
 
 def _port_from_service(service: dict, command: str, health_url: str) -> int | None:
@@ -278,8 +283,8 @@ def _split_command(command: str) -> list[str]:
         return command.split()
 
 
-def _check_model_path(raw_path: str, workspace_root: Path) -> RuntimeDiagnosticCheck:
-    path = _resolve_runtime_path(raw_path, workspace_root)
+def _check_model_path(raw_path: str, workspace_root: Path, cwd_path: Path | None = None) -> RuntimeDiagnosticCheck:
+    path = _resolve_runtime_path(raw_path, workspace_root, base_path=cwd_path)
     if path.exists():
         return RuntimeDiagnosticCheck("model_path", raw_path, "ok", f"Found {path}")
     return RuntimeDiagnosticCheck(
@@ -306,7 +311,17 @@ def _check_cwd(raw_path: str, workspace_root: Path) -> RuntimeDiagnosticCheck:
     )
 
 
-def _check_binary(binary: str, command_resolver: CommandResolver, *, required: bool) -> RuntimeDiagnosticCheck:
+def _check_binary(
+    binary: str,
+    command_resolver: CommandResolver,
+    *,
+    required: bool,
+    workspace_root: Path,
+    cwd_path: Path | None = None,
+) -> RuntimeDiagnosticCheck:
+    binary_path = _resolve_command_path(binary, workspace_root, cwd_path)
+    if binary_path is not None and binary_path.exists():
+        return RuntimeDiagnosticCheck("binary", binary, "ok", f"Found {binary_path}", metadata={"path": str(binary_path)})
     resolved = command_resolver(binary)
     if resolved:
         return RuntimeDiagnosticCheck("binary", binary, "ok", f"Found {resolved}", metadata={"path": resolved})
@@ -361,10 +376,30 @@ def _check_health(url: str, health_checker: HealthChecker) -> RuntimeDiagnosticC
     )
 
 
-def _resolve_runtime_path(raw_path: str, workspace_root: Path) -> Path:
+def _resolve_profile_cwd(profile: RuntimeDiagnosticProfile, workspace_root: Path) -> Path | None:
+    if not profile.cwd:
+        return None
+    return _resolve_runtime_path(profile.cwd, workspace_root)
+
+
+def _resolve_runtime_path(raw_path: str, workspace_root: Path, *, base_path: Path | None = None) -> Path:
     expanded = raw_path.replace("${WORKSPACE_ROOT}", str(workspace_root))
     expanded = expanded.replace("${PROJECT_ROOT}", str(workspace_root / "BranchWhisper"))
-    return Path(expanded).expanduser()
+    path = Path(expanded).expanduser()
+    if not path.is_absolute() and base_path is not None:
+        return base_path / path
+    return path
+
+
+def _resolve_command_path(binary: str, workspace_root: Path, cwd_path: Path | None = None) -> Path | None:
+    path = _resolve_runtime_path(binary, workspace_root, base_path=cwd_path)
+    if path.is_absolute() or _has_path_separator(binary):
+        return path
+    return None
+
+
+def _has_path_separator(value: str) -> bool:
+    return "/" in value or "\\" in value
 
 
 def _overall_status(checks: list[RuntimeDiagnosticCheck]) -> DiagnosticStatus:
