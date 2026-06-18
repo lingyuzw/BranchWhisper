@@ -59,6 +59,32 @@ export async function loadRuntimeDiagnostics() {
   return fetchJson<RuntimeDiagnostics>("/api/diagnostics/runtime");
 }
 
+export interface DialogTraceEvent {
+  at: number;
+  stage: string;
+  message: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface DialogTrace {
+  id: string;
+  source: string;
+  conversation_id: string;
+  status: string;
+  created_at: number;
+  updated_at: number;
+  events: DialogTraceEvent[];
+}
+
+export interface DialogTraces {
+  total: number;
+  traces: DialogTrace[];
+}
+
+export async function loadDialogTraces(limit = 30) {
+  return fetchJson<DialogTraces>(`/api/diagnostics/dialog-traces?limit=${encodeURIComponent(String(limit))}`);
+}
+
 export interface LlmApiDiagnostic {
   ok: boolean;
   url: string;
