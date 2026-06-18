@@ -1,0 +1,33 @@
+<svg width="1200" height="520" viewBox="0 0 1200 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="520" rx="28" fill="#F8F6EF"/>
+  <path d="M80 260 C180 120, 300 400, 420 260 S660 120, 780 260 S1020 400, 1120 260" stroke="#D96C45" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.28"/>
+  <text x="72" y="74" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="34" font-weight="800" fill="#21302F">From message to voice, locally orchestrated</text>
+  <text x="74" y="110" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="16" fill="#64706B">BranchWhisper keeps the assistant loop visible: input, recognition, reasoning, memory, tools, synthesis and delivery.</text>
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">
+    <rect x="78" y="190" width="150" height="100" rx="18" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <text x="112" y="232" font-size="18" font-weight="700" fill="#21302F">Input</text>
+    <text x="108" y="260" font-size="13" fill="#64706B">Mic / Weixin</text>
+    <path d="M242 240H306" stroke="#98AAA3" stroke-width="3" stroke-linecap="round"/>
+    <path d="M298 232L310 240L298 248" stroke="#98AAA3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="322" y="190" width="150" height="100" rx="18" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <text x="367" y="232" font-size="18" font-weight="700" fill="#21302F">ASR</text>
+    <text x="354" y="260" font-size="13" fill="#64706B">Speech to text</text>
+    <path d="M486 240H550" stroke="#98AAA3" stroke-width="3" stroke-linecap="round"/>
+    <path d="M542 232L554 240L542 248" stroke="#98AAA3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="566" y="190" width="150" height="100" rx="18" fill="#263238"/>
+    <text x="610" y="232" font-size="18" font-weight="700" fill="#FFFFFF">LLM</text>
+    <text x="604" y="260" font-size="13" fill="#D8E5E1">Reasoning core</text>
+    <path d="M730 240H794" stroke="#98AAA3" stroke-width="3" stroke-linecap="round"/>
+    <path d="M786 232L798 240L786 248" stroke="#98AAA3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="810" y="190" width="150" height="100" rx="18" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <text x="852" y="232" font-size="18" font-weight="700" fill="#21302F">TTS</text>
+    <text x="842" y="260" font-size="13" fill="#64706B">Text to voice</text>
+    <path d="M974 240H1038" stroke="#98AAA3" stroke-width="3" stroke-linecap="round"/>
+    <path d="M1030 232L1042 240L1030 248" stroke="#98AAA3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="1054" y="190" width="88" height="100" rx="18" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <text x="1076" y="232" font-size="18" font-weight="700" fill="#21302F">Reply</text>
+    <text x="1075" y="260" font-size="13" fill="#64706B">Text/voice</text>
+    <rect x="380" y="346" width="440" height="64" rx="18" fill="#EAF2EF" stroke="#CADAD3"/>
+    <text x="422" y="384" font-size="16" font-weight="700" fill="#21302F">Memory + Tools + Stickers + Proactive messages</text>
+  </g>
+</svg>

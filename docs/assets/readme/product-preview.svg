@@ -1,0 +1,70 @@
+<svg width="1200" height="680" viewBox="0 0 1200 680" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F3EA"/>
+      <stop offset="0.55" stop-color="#EEF5F1"/>
+      <stop offset="1" stop-color="#EAF0F8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="172" y1="96" x2="1028" y2="584" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F5F8FA"/>
+    </linearGradient>
+    <filter id="shadow" x="120" y="62" width="960" height="580" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="24"/>
+      <feGaussianBlur stdDeviation="26"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.18 0 0 0 0 0.24 0 0 0 0 0.27 0 0 0 0.14 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="680" fill="url(#bg)"/>
+  <circle cx="104" cy="112" r="54" fill="#D96C45" fill-opacity="0.12"/>
+  <circle cx="1076" cy="572" r="86" fill="#2C7A7B" fill-opacity="0.10"/>
+  <g filter="url(#shadow)">
+    <rect x="172" y="96" width="856" height="488" rx="28" fill="url(#panel)" stroke="#D8E0E0"/>
+    <rect x="172" y="96" width="856" height="58" rx="28" fill="#263238"/>
+    <rect x="172" y="126" width="856" height="28" fill="#263238"/>
+    <circle cx="213" cy="125" r="7" fill="#E0644A"/>
+    <circle cx="237" cy="125" r="7" fill="#E5B649"/>
+    <circle cx="261" cy="125" r="7" fill="#5BAF78"/>
+    <text x="302" y="132" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" fill="#DDE7E8">BranchWhisper Console</text>
+    <rect x="204" y="184" width="194" height="360" rx="18" fill="#F1F5F2" stroke="#DCE5E0"/>
+    <text x="232" y="222" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="24" font-weight="700" fill="#21302F">枝语</text>
+    <text x="232" y="250" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#60706B">Local-first AI companion</text>
+    <rect x="232" y="288" width="138" height="34" rx="17" fill="#263238"/>
+    <text x="260" y="310" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#FFFFFF">Dashboard</text>
+    <rect x="232" y="338" width="132" height="13" rx="6.5" fill="#CBD8D4"/>
+    <rect x="232" y="374" width="108" height="13" rx="6.5" fill="#CBD8D4"/>
+    <rect x="232" y="410" width="146" height="13" rx="6.5" fill="#CBD8D4"/>
+    <rect x="232" y="446" width="118" height="13" rx="6.5" fill="#CBD8D4"/>
+    <rect x="430" y="184" width="354" height="206" rx="22" fill="#FFFFFF" stroke="#DCE5E0"/>
+    <text x="460" y="226" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#21302F">Live Dialog Pipeline</text>
+    <rect x="460" y="260" width="286" height="36" rx="18" fill="#F7EEE8"/>
+    <text x="482" y="283" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#704230">Mic / Weixin message</text>
+    <rect x="460" y="310" width="286" height="36" rx="18" fill="#EAF4F3"/>
+    <text x="482" y="333" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#24595A">ASR -> LLM -> Memory -> TTS</text>
+    <rect x="460" y="360" width="180" height="8" rx="4" fill="#D96C45"/>
+    <rect x="648" y="360" width="62" height="8" rx="4" fill="#BFD0CE"/>
+    <rect x="812" y="184" width="184" height="206" rx="22" fill="#263238"/>
+    <text x="838" y="226" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Service Health</text>
+    <rect x="838" y="258" width="86" height="26" rx="13" fill="#5BAF78"/>
+    <text x="858" y="276" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#FFFFFF">Ready</text>
+    <rect x="838" y="314" width="118" height="10" rx="5" fill="#E8F0EF" fill-opacity="0.35"/>
+    <rect x="838" y="314" width="82" height="10" rx="5" fill="#E5B649"/>
+    <rect x="838" y="346" width="118" height="10" rx="5" fill="#E8F0EF" fill-opacity="0.35"/>
+    <rect x="838" y="346" width="58" height="10" rx="5" fill="#72B7B2"/>
+    <rect x="430" y="416" width="268" height="128" rx="22" fill="#FFFDF9" stroke="#DCE5E0"/>
+    <text x="460" y="456" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#21302F">Memory</text>
+    <text x="460" y="484" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#60706B">Extract, decay and recall stable facts.</text>
+    <rect x="460" y="508" width="184" height="10" rx="5" fill="#D8E4DE"/>
+    <rect x="724" y="416" width="272" height="128" rx="22" fill="#FFFDF9" stroke="#DCE5E0"/>
+    <text x="754" y="456" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#21302F">Assets</text>
+    <text x="754" y="484" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#60706B">Stickers, uploads and visual context.</text>
+    <rect x="754" y="508" width="56" height="14" rx="7" fill="#D96C45" fill-opacity="0.25"/>
+    <rect x="820" y="508" width="86" height="14" rx="7" fill="#2C7A7B" fill-opacity="0.20"/>
+  </g>
+  <text x="90" y="634" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" fill="#566360">A product-style preview illustration. Replace with real screenshots when publishing.</text>
+</svg>

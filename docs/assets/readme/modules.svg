@@ -1,0 +1,27 @@
+<svg width="1200" height="620" viewBox="0 0 1200 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="620" rx="28" fill="#F4F7F5"/>
+  <text x="72" y="76" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="34" font-weight="800" fill="#21302F">One console, seven working rooms</text>
+  <text x="74" y="112" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="16" fill="#64706B">Each page owns a real part of the assistant lifecycle, from runtime health to Weixin delivery.</text>
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">
+    <rect x="72" y="166" width="320" height="126" rx="18" fill="#FFFFFF" stroke="#D8E2DD"/>
+    <text x="104" y="208" font-size="21" font-weight="800" fill="#21302F">Dashboard</text>
+    <text x="104" y="238" font-size="14" fill="#64706B">Live conversation view, pipeline state and runtime metrics.</text>
+    <rect x="440" y="166" width="320" height="126" rx="18" fill="#FFFFFF" stroke="#D8E2DD"/>
+    <text x="472" y="208" font-size="21" font-weight="800" fill="#21302F">Services</text>
+    <text x="472" y="238" font-size="14" fill="#64706B">Start, stop and inspect ASR / LLM / TTS workers.</text>
+    <rect x="808" y="166" width="320" height="126" rx="18" fill="#FFFFFF" stroke="#D8E2DD"/>
+    <text x="840" y="208" font-size="21" font-weight="800" fill="#21302F">Integrations</text>
+    <text x="840" y="238" font-size="14" fill="#64706B">Bridge Weixin accounts and run delivery tests.</text>
+    <rect x="72" y="330" width="320" height="126" rx="18" fill="#FFFFFF" stroke="#D8E2DD"/>
+    <text x="104" y="372" font-size="21" font-weight="800" fill="#21302F">Memory</text>
+    <text x="104" y="402" font-size="14" fill="#64706B">Extract stable facts, review recall and configure decay.</text>
+    <rect x="440" y="330" width="320" height="126" rx="18" fill="#FFFFFF" stroke="#D8E2DD"/>
+    <text x="472" y="372" font-size="21" font-weight="800" fill="#21302F">Assets</text>
+    <text x="472" y="402" font-size="14" fill="#64706B">Manage stickers, uploads, OCR tags and usage contexts.</text>
+    <rect x="808" y="330" width="320" height="126" rx="18" fill="#FFFFFF" stroke="#D8E2DD"/>
+    <text x="840" y="372" font-size="21" font-weight="800" fill="#21302F">Settings</text>
+    <text x="840" y="402" font-size="14" fill="#64706B">Configure model providers, identity and tool access.</text>
+    <rect x="256" y="494" width="688" height="72" rx="18" fill="#263238"/>
+    <text x="308" y="538" font-size="20" font-weight="800" fill="#FFFFFF">Diagnostics remain available when you need a deeper inspection loop.</text>
+  </g>
+</svg>
