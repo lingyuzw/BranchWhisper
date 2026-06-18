@@ -35,8 +35,10 @@ import { listModelFiles, uploadVoiceSample, type ModelFileEntry, type ModelFiles
 import InlineProbe from "@/components/layout/InlineProbe.vue";
 import AsrProviderPanel from "@/components/settings/AsrProviderPanel.vue";
 import PromptSettingsPanel from "@/components/settings/PromptSettingsPanel.vue";
+import ServiceCommandPanel from "@/components/settings/ServiceCommandPanel.vue";
 import SettingsOverviewBoard from "@/components/settings/SettingsOverviewBoard.vue";
 import TtsProviderPanel from "@/components/settings/TtsProviderPanel.vue";
+import type { ServiceDraft } from "@/components/settings/types";
 import VadSettingsPanel from "@/components/settings/VadSettingsPanel.vue";
 import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
@@ -83,13 +85,6 @@ const probeState = reactive<Record<string, { status: ProbeStatus; text: string; 
   localModels: { status: "idle", text: "未检测", detail: "" },
   proactive: { status: "idle", text: "未检测", detail: "" },
 });
-interface ServiceDraft {
-  id: string;
-  cwd: string;
-  health_url: string;
-  startup_wait_sec: number;
-  command: string;
-}
 const serviceDrafts = reactive<Record<string, ServiceDraft>>({});
 const serviceDraftDirty = reactive<Record<string, boolean>>({});
 const serviceSaving = reactive<Record<string, boolean>>({});
@@ -1800,49 +1795,21 @@ function formatTime(value?: string) {
 
         <VadSettingsPanel v-show="activeSettingsSection === 'vad'" :form="form" />
 
-        <article v-show="activeSettingsSection === 'commands'" class="settings-panel settings-section-detached is-active is-current" id="commands">
-          <div class="panel-head">
-            <div><p class="eyebrow">服务</p><h2>服务命令</h2></div>
-            <div class="inline-actions">
-              <span class="soft-badge">只编辑启动参数</span>
-              <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
-            </div>
-          </div>
-          <div class="profile-list">
-            <section v-for="{ service, draft } in serviceDraftList" :key="service.id" class="profile-card service-config-card" :class="{ dirty: serviceDraftDirty[service.id] }">
-              <div class="profile-head">
-                <div>
-                  <strong>{{ service.label || service.id }}</strong>
-                  <span>{{ serviceRuntimeLabel(service) }} · {{ service.external ? "外部进程" : "BranchWhisper 配置" }}</span>
-                </div>
-                <span class="soft-badge">{{ serviceDraftDirty[service.id] ? "未保存" : service.id }}</span>
-              </div>
-              <div class="service-command-summary">
-                <span>工作目录：{{ draft.cwd || "--" }}</span>
-                <span>健康检查：{{ draft.health_url || "--" }}</span>
-                <span>等待：{{ draft.startup_wait_sec || 0 }}s</span>
-              </div>
-              <div v-if="commandsExpanded[service.id]" class="form-grid compact service-command-body">
-                <label class="wide"><span>工作目录</span><input v-model="draft.cwd" @input="markServiceDraftDirty(service.id)" /></label>
-                <label class="wide"><span>Health URL</span><input v-model="draft.health_url" @input="markServiceDraftDirty(service.id)" /></label>
-                <label><span>启动等待秒</span><input v-model.number="draft.startup_wait_sec" type="number" min="0" max="180" step="1" @input="markServiceDraftDirty(service.id)" /></label>
-                <label class="wide"><span>启动命令</span><textarea v-model="draft.command" class="profile-command" @input="markServiceDraftDirty(service.id)"></textarea></label>
-              </div>
-              <div class="inline-actions">
-                <button class="secondary-action" type="button" @click="toggleCommandExpanded(service.id)">
-                  <component :is="commandsExpanded[service.id] ? ChevronUp : ChevronDown" :size="15" />
-                  {{ commandsExpanded[service.id] ? "收起" : "展开" }}
-                </button>
-                <button class="secondary-action" type="button" :disabled="serviceSaving[service.id] || settingsSaving" @click="saveServiceDraft(service.id)"><Save :size="15" />{{ serviceSaving[service.id] ? "保存中..." : "保存服务" }}</button>
-                <button class="secondary-action" type="button" @click="copyServiceCommand(draft.command || '')"><Copy :size="15" />复制命令</button>
-                <button class="secondary-action" type="button" @click="openServices"><Terminal :size="15" />去服务页</button>
-              </div>
-            </section>
-          </div>
-          <div v-if="!serviceDraftList.length" class="model-file-empty">
-            {{ settingsHydrating ? "正在读取服务配置..." : "未读取到本地服务配置" }}
-          </div>
-        </article>
+        <ServiceCommandPanel
+          v-show="activeSettingsSection === 'commands'"
+          :service-draft-list="serviceDraftList"
+          :service-draft-dirty="serviceDraftDirty"
+          :service-saving="serviceSaving"
+          :commands-expanded="commandsExpanded"
+          :settings-saving="settingsSaving"
+          :settings-hydrating="settingsHydrating"
+          :service-runtime-label="serviceRuntimeLabel"
+          @open-services="openServices"
+          @toggle-expanded="toggleCommandExpanded"
+          @mark-dirty="markServiceDraftDirty"
+          @save-service="saveServiceDraft"
+          @copy-command="copyServiceCommand"
+        />
       </section>
     </div>
 
