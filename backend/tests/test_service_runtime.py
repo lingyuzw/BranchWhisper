@@ -37,6 +37,7 @@ from service_runtime.services import (
     tune_start_command,
     _is_pid_alive,
 )
+from service_runtime.profiles import expand_profile_paths, migrate_legacy_profile_paths, service_path_tokens, workspace_root_from_env
 from tools.runtime_brain import MemoryStore, ToolManager, admit_memory_candidate, extract_memory_candidates
 from integration_runtime import manager as manager_module
 
@@ -244,6 +245,36 @@ class ServiceRuntimeStateTests(unittest.TestCase):
 
         self.assertEqual(manager.services["asr"]["label"], "Legacy ASR")
         self.assertEqual(manager.services["asr"]["command"], "python legacy.py")
+
+    def test_profile_path_helpers_expand_tokens_and_legacy_paths(self) -> None:
+        project_root = Path("/workspace/BranchWhisper")
+        workspace_root = Path("/models")
+
+        tokens = service_path_tokens(project_root=project_root, workspace_root=workspace_root)
+        expanded = expand_profile_paths(
+            "${PROJECT_ROOT}/services ${WORKSPACE_ROOT}/llama.cpp /root/autodl-tmp/project/CosyVoice /root/autodl-tmp/project/BranchWhisper/backend",
+            project_root=project_root,
+            workspace_root=workspace_root,
+        )
+        migrated = migrate_legacy_profile_paths(
+            {
+                "asr": {
+                    "cwd": "/root/autodl-tmp/project/Qwen3-ASR",
+                    "command": "/root/autodl-tmp/project/BranchWhisper/backend/main.py",
+                }
+            }
+        )
+
+        self.assertEqual(tokens["${PROJECT_ROOT}"], "/workspace/BranchWhisper")
+        self.assertEqual(tokens["${WORKSPACE_ROOT}"], "/models")
+        self.assertEqual(expanded, "/workspace/BranchWhisper/services /models/llama.cpp /models/CosyVoice /workspace/BranchWhisper/backend")
+        self.assertEqual(migrated["asr"]["cwd"], "${WORKSPACE_ROOT}/Qwen3-ASR")
+        self.assertEqual(migrated["asr"]["command"], "${PROJECT_ROOT}/backend/main.py")
+
+    def test_workspace_root_from_env_prefers_override(self) -> None:
+        root = workspace_root_from_env(project_root=Path("/workspace/BranchWhisper"), env={"BRANCHWHISPER_WORKSPACE_ROOT": "/custom/models"})
+
+        self.assertEqual(root, Path("/custom/models"))
 
     def test_default_service_profiles_include_diagnostics_metadata(self) -> None:
         profiles = load_service_profiles(None)

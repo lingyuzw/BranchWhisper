@@ -16,15 +16,18 @@ import httpx
 
 from core.http_client import httpx_client_for_url
 from domain.paths import PROJECT_ROOT
+from service_runtime.profiles import (
+    LEGACY_AUTODL_PROJECT,
+    LEGACY_AUTODL_REPO,
+    expand_profile_paths,
+    migrate_legacy_profile_paths,
+    service_path_tokens,
+    workspace_root_from_env,
+)
 
 
-WORKSPACE_ROOT = Path(os.environ.get("BRANCHWHISPER_WORKSPACE_ROOT") or PROJECT_ROOT.parent).expanduser().resolve()
-LEGACY_AUTODL_PROJECT = Path("/", "root", "autodl-tmp", "project").as_posix()
-LEGACY_AUTODL_REPO = f"{LEGACY_AUTODL_PROJECT}/BranchWhisper"
-SERVICE_PATH_TOKENS = {
-    "${PROJECT_ROOT}": PROJECT_ROOT.as_posix(),
-    "${WORKSPACE_ROOT}": WORKSPACE_ROOT.as_posix(),
-}
+WORKSPACE_ROOT = workspace_root_from_env(project_root=PROJECT_ROOT)
+SERVICE_PATH_TOKENS = service_path_tokens(project_root=PROJECT_ROOT, workspace_root=WORKSPACE_ROOT)
 SERVICE_HEALTH_TIMEOUT_SEC = 0.8
 SERVICE_PORT_TIMEOUT_SEC = 0.15
 DEFAULT_ASR_GPU_MEMORY_UTILIZATION = "0.25"
@@ -546,28 +549,11 @@ def service_process_env(base_env: dict[str, str] | None = None, *, home: Path | 
 
 
 def expand_service_paths(value: str) -> str:
-    text = str(value or "")
-    if not text:
-        return ""
-    text = text.replace(LEGACY_AUTODL_REPO, PROJECT_ROOT.as_posix())
-    text = text.replace(LEGACY_AUTODL_PROJECT, WORKSPACE_ROOT.as_posix())
-    for token, path in SERVICE_PATH_TOKENS.items():
-        text = text.replace(f"{token}/", f"{path.rstrip('/')}/")
-        text = text.replace(token, path)
-    return text
+    return expand_profile_paths(value, project_root=PROJECT_ROOT, workspace_root=WORKSPACE_ROOT)
 
 
 def migrate_legacy_service_paths(profiles: dict) -> dict:
-    def migrate_value(value):
-        if isinstance(value, dict):
-            return {key: migrate_value(item) for key, item in value.items()}
-        if isinstance(value, list):
-            return [migrate_value(item) for item in value]
-        if not isinstance(value, str):
-            return value
-        return value.replace(LEGACY_AUTODL_REPO, "${PROJECT_ROOT}").replace(LEGACY_AUTODL_PROJECT, "${WORKSPACE_ROOT}")
-
-    return migrate_value(profiles)
+    return migrate_legacy_profile_paths(profiles)
 
 
 def service_runtime_state(
