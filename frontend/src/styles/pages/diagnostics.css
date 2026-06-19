@@ -4,8 +4,8 @@
 
 .diagnostics-page {
   gap: 14px;
-  --diagnostic-label-col: 88px;
-  --diagnostic-status-col: 76px;
+  --diagnostic-label-col: 92px;
+  --diagnostic-status-col: 78px;
   --trace-label-col: 74px;
 }
 
@@ -125,7 +125,7 @@
 
 .diagnostics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
   gap: 12px;
 }
 
@@ -224,9 +224,9 @@
 .diagnostic-check {
   display: grid;
   grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr) var(--diagnostic-status-col);
-  gap: 4px 10px;
-  align-items: center;
-  padding: 8px 9px 9px;
+  gap: 0 10px;
+  align-items: start;
+  padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-muted) 94%, var(--info) 6%);
@@ -243,26 +243,41 @@
 }
 
 .diagnostic-check-kind {
-  min-width: 0;
+  width: var(--diagnostic-label-col);
+  min-width: var(--diagnostic-label-col);
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
   color: var(--text-muted);
   font-size: var(--font-xs);
   font-weight: 750;
-  line-height: 1.45;
+  line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.diagnostic-check-body {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  align-content: start;
 }
 
 .diagnostic-check-target {
   min-width: 0;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
   color: var(--text);
   font-size: var(--font-xs);
-  line-height: 1.45;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   text-align: left;
 }
 
 .diagnostic-check-state {
   justify-self: end;
-  min-width: 62px;
+  width: var(--diagnostic-status-col);
+  min-width: var(--diagnostic-status-col);
   min-height: 24px;
   display: inline-flex;
   align-items: center;
@@ -298,7 +313,6 @@
 
 .diagnostic-check-message,
 .diagnostic-check-fix {
-  grid-column: 2 / 4;
   min-width: 0;
   color: var(--text-muted);
   font-size: var(--font-xs);
@@ -308,7 +322,7 @@
 
 .diagnostic-check-fix {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr);
   gap: 7px;
   align-items: start;
   margin-top: 2px;
@@ -331,15 +345,14 @@
 }
 
 .diagnostic-check-meta {
-  grid-column: 1 / -1;
   display: grid;
   gap: 4px;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .diagnostic-check-meta div {
   display: grid;
-  grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr);
+  grid-template-columns: minmax(70px, 0.32fr) minmax(0, 1fr);
   gap: 10px;
   padding: 5px 7px;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
@@ -560,6 +573,10 @@
     grid-template-columns: 1fr;
   }
 
+  .diagnostic-card {
+    padding: 12px;
+  }
+
   .trace-list {
     grid-template-columns: 1fr;
   }
@@ -582,7 +599,18 @@
   }
 
   .diagnostic-check {
+    gap: 5px;
     align-items: start;
+  }
+
+  .diagnostic-check-kind {
+    width: auto;
+    min-width: 0;
+  }
+
+  .diagnostic-check-state {
+    width: var(--diagnostic-status-col);
+    min-width: var(--diagnostic-status-col);
   }
 
   .diagnostic-check-state {
@@ -590,7 +618,6 @@
   }
 
   .diagnostic-check-message,
-  .diagnostic-check-fix,
   .trace-events small {
     grid-column: 1;
   }

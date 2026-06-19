@@ -87,16 +87,20 @@ assert(diagnosticCheckList.includes("checkMetadataRows"), "运行诊断检查项
 assert(diagnosticCheckList.includes("raw_target") && diagnosticCheckList.includes("resolved_target") && diagnosticCheckList.includes("resolution_base"), "运行诊断检查项组件需要读取后端 resolved target metadata");
 assert(diagnosticsCss.includes(".diagnostic-check-meta"), "运行诊断解析详情需要专用样式");
 assert(diagnosticsCss.includes("overflow-wrap: anywhere"), "运行诊断长路径需要允许换行，避免挤出卡片");
-assert(diagnosticsCss.includes("--diagnostic-label-col: 88px"), "运行诊断检查项需要使用稳定标签列，避免不同卡片标签错位");
+assert(diagnosticsCss.includes("--diagnostic-label-col: 92px"), "运行诊断检查项需要使用稳定标签列，避免不同卡片标签错位");
 assert(diagnosticsCss.includes("grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr)"), "运行诊断检查项主行需要固定标签列并左对齐内容");
 assert(diagnosticsCss.includes("grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr)") && !diagnosticsCss.includes("minmax(72px, 0.4fr)"), "运行诊断检查项不能再使用比例标签列");
+assert(diagnosticsCss.includes("repeat(auto-fit, minmax(460px, 1fr))"), "运行诊断卡片需要保持足够宽度，避免长模型路径把页面切碎");
 assert(diagnosticsCss.includes("--trace-label-col: 74px"), "运行诊断 trace 详情需要使用稳定标签列，保持事件列表整齐");
 assert(diagnosticCheckList.includes('class="diagnostic-check-kind"'), "运行诊断检查项标签需要有独立 class，避免标签、目标和失败原因互相影响");
 assert(diagnosticCheckList.includes('class="diagnostic-check-target"'), "运行诊断检查项目标值需要有独立 class，确保长路径在固定内容列内换行");
 assert(diagnosticCheckList.includes('class="diagnostic-check-state"'), "运行诊断检查项状态需要有独立状态列，避免不同文案把标签列顶歪");
 assert(diagnosticCheckList.includes('class="diagnostic-check-message"'), "运行诊断失败原因需要占用内容列，不应混在标签列或状态列");
-assert(diagnosticsCss.includes("--diagnostic-status-col: 76px"), "运行诊断检查项需要固定状态列，保持每张卡内状态标签对齐");
+assert(diagnosticCheckList.includes('class="diagnostic-check-body"'), "运行诊断检查项需要独立正文容器，统一目标、原因、建议和解析详情的左边界");
+assert(diagnosticsCss.includes("--diagnostic-status-col: 78px"), "运行诊断检查项需要固定状态列，保持每张卡内状态标签对齐");
 assert(diagnosticsCss.includes("grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr) var(--diagnostic-status-col)"), "运行诊断检查项主行需要固定标签列、内容列和状态列");
+assert(diagnosticsCss.includes("width: var(--diagnostic-label-col)") && diagnosticsCss.includes("width: var(--diagnostic-status-col)"), "运行诊断检查项标签和状态徽标需要使用固定宽度，避免视觉标签错位");
+assert(diagnosticsCss.includes(".diagnostic-check-body"), "运行诊断检查项正文容器需要专用样式，保证详情层级连续不割裂");
 assert(diagnosticsCss.includes(".diagnostic-check-message"), "运行诊断失败原因需要专用样式，避免页面信息层级割裂");
 assert(diagnosticsCss.includes("align-content: start"), "运行诊断卡片内部需要从顶部紧凑排布，避免同一行卡片高度拉伸后内容被推散");
 
