@@ -76,6 +76,9 @@ assert(integrationsCss.includes("grid-template-columns: repeat(4, minmax(0, 1fr)
 assert(integrationsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && integrationsPage.includes('<AdvancedDisclosure title="运行日志">'), "接入页运行日志需要进入高级折叠区，避免日志占据主流程");
 assert(integrationsPage.indexOf("<AdvancedDisclosure") < integrationsPage.indexOf("<IntegrationLogsPanel"), "接入页日志面板需要包在运行日志高级折叠区内");
 assert(integrationsCss.includes("grid-template-rows: auto auto") && integrationsCss.includes(".integration-test-column .workspace-advanced-disclosure"), "接入页左栏应按链路测试和高级日志两段布局");
+const integrationProbePanel = read("src/components/integrations/IntegrationProbePanel.vue");
+assert(integrationProbePanel.includes('title="测试文字回复"') && integrationProbePanel.includes('title="测试语音回复"') && integrationProbePanel.includes('title="测试表情包回复"'), "接入页测试卡标题需要使用用户任务文案，而不是链路调试文案");
+assert(!integrationProbePanel.includes("文本回复链路") && !integrationProbePanel.includes("语音发送链路") && !integrationProbePanel.includes("素材发送链路"), "接入页测试卡不应继续使用链路调试标题");
 assert(memoryPage.includes("memory-probe-cell memory-probe-text") && memoryPage.includes("memory-probe-cell memory-probe-loop"), "记忆入库测试两侧需要使用统一 cell 结构");
 assert(memoryCss.includes(".memory-probe-cell") && memoryCss.includes("grid-template-rows: auto auto minmax(0, 1fr)"), "记忆入库测试两侧需要统一高度和内部行轨道");
 assert(memoryPage.includes("memory-admission-card") && memoryPage.includes("memory-admission-action-card"), "记忆入库回路需要使用重新设计的统一工具卡");

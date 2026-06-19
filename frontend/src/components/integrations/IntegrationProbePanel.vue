@@ -67,8 +67,8 @@ function stickerStatusText(status: ProbeStatus) {
         <input :value="testText" type="text" placeholder="你好，测试一下" @input="emit('update:testText', ($event.target as HTMLInputElement).value)" @keydown.enter="emit('runDialog')" />
         <InlineProbe
           variant="compact"
-          title="文本回复链路"
-          summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
+          title="测试文字回复"
+          summary="发送一条模拟微信消息，确认机器人能生成并回传文字回复。"
           :status="dialogStatus"
           :status-text="dialogStatusText(dialogStatus)"
           :detail="testResult"
@@ -82,8 +82,8 @@ function stickerStatusText(status: ProbeStatus) {
         <input :value="voiceText" type="text" placeholder="我在，听得到的话我们继续。" @input="emit('update:voiceText', ($event.target as HTMLInputElement).value)" @keydown.enter="emit('runVoice')" />
         <InlineProbe
           variant="compact"
-          title="语音发送链路"
-          summary="生成短音频并尝试发送微信原生语音；本地文件不算送达。"
+          title="测试语音回复"
+          summary="生成一段短语音并发送到微信，确认客户端能收到语音气泡。"
           :status="voiceStatus"
           :status-text="voiceStatusText(voiceStatus, voiceUnconfirmed)"
           :detail="voiceResult"
@@ -97,8 +97,8 @@ function stickerStatusText(status: ProbeStatus) {
         <input :value="stickerText" type="text" placeholder="打一架" @input="emit('update:stickerText', ($event.target as HTMLInputElement).value)" @keydown.enter="emit('runSticker')" />
         <InlineProbe
           variant="compact"
-          title="素材发送链路"
-          summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
+          title="测试表情包回复"
+          summary="按测试文本选择素材并发送到微信，确认表情包策略可用。"
           :status="stickerStatus"
           :status-text="stickerStatusText(stickerStatus)"
           :detail="stickerResult"
