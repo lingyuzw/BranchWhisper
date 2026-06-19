@@ -1338,6 +1338,8 @@ class MemoryRuntimeTests(unittest.TestCase):
 
         self.assertIn("最喜欢的歌手：周杰伦", context)
         self.assertIn("有相关记忆时不要说不知道", context)
+        self.assertIn("内部参考", context)
+        self.assertIn("不要主动复述", context)
 
     def test_memory_lookup_question_is_not_saved_as_user_preference(self) -> None:
         text = "你知道我最喜欢的歌手是谁吗？"
