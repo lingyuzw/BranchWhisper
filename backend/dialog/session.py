@@ -4,7 +4,6 @@ import asyncio
 import base64
 import contextlib
 import json
-import re
 import time
 import uuid
 from dataclasses import asdict
@@ -39,6 +38,7 @@ from dialog.message_flow import compose_user_request_text as build_user_request_
 from dialog.message_flow import draft_conversation as build_draft_conversation
 from dialog.message_flow import memory_observation_text as build_memory_observation_text
 from dialog.text_helpers import attachment_text, build_request_user_text, extract_repeat_text, last_assistant_content
+from dialog.tool_flow import has_tool_routing_signal
 from dialog.trace import DialogTraceStore
 from dialog.voice_pipeline import TtsPcmStream
 from engagement.proactive import FollowupPolicy
@@ -742,13 +742,7 @@ class DialogSession:
             return None
 
         heuristic_call = self.tool_manager.suggest_from_text(user_text)
-        custom_enabled = any(not spec.get("builtin") for spec in specs)
-        tool_signal = bool(
-            heuristic_call
-            or custom_enabled
-            or re.search(r"(当前|现在|几点|几号|星期|最新|实时|热点|新闻|搜索|查一下|网上|天气|价格|汇率|网址|地图|地址|位置|附近|周边|路线|导航|怎么走|距离|在哪|在哪里|属于哪里|属于哪|哪个城市|哪个省|哪个区|哪个县|https?://)", user_text, flags=re.I)
-        )
-        if not tool_signal:
+        if not has_tool_routing_signal(user_text, specs, heuristic_call=heuristic_call):
             return None
 
         call = heuristic_call
