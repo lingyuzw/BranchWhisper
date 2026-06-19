@@ -6,6 +6,8 @@ import time
 import uuid
 from pathlib import Path
 
+from core.io_utils import write_json_file
+
 
 class ConversationStore:
     """Small JSON-backed conversation store for the browser console."""
@@ -254,10 +256,7 @@ class ConversationStore:
         return item
 
     def _write_json(self, path: Path, data) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(path)
+        write_json_file(path, data)
 
     def _now(self) -> str:
         return time.strftime("%Y-%m-%d %H:%M:%S")
