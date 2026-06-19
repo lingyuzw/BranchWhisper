@@ -58,6 +58,11 @@ MEMORY_SECRET_HINTS = (
 MEMORY_LOOKUP_QUESTION_HINTS = (
     "你知道", "你记得", "还记得", "记不记得", "知道我", "记得我",
 )
+MEMORY_RECALL_TOPIC_HINTS = (
+    "我之前", "我上次", "之前我", "上次我", "以前我", "我的偏好",
+    "我的习惯", "我的名字", "我的身份", "我的生日", "我喜欢什么",
+    "我讨厌什么", "我住哪", "我来自哪",
+)
 MEMORY_UNRESOLVED_QUESTION_HINTS = (
     "是谁", "谁", "什么", "哪个", "哪位", "哪首", "哪里", "哪儿", "多少",
     "为什么", "怎么", "吗", "么", "是不是", "是否",
@@ -84,6 +89,20 @@ def compact_text(text: str, limit: int = 280) -> str:
 def normalize_key(text: str) -> str:
     text = re.sub(r"\s+", "", str(text or "").lower())
     return text[:160]
+
+
+def memory_recall_intent(query: str) -> str:
+    """Return explicit, implicit, or none for whether memory should enter context."""
+    value = re.sub(r"\s+", "", str(query or ""))
+    if not value:
+        return "none"
+    if looks_like_memory_lookup_question(value):
+        return "explicit"
+    if any(hint in value for hint in MEMORY_RECALL_TOPIC_HINTS):
+        return "explicit"
+    if has_strong_stable_memory_signal(value):
+        return "implicit"
+    return "none"
 
 
 def scoped_key_norm(mode: str, key_norm: str) -> str:
@@ -526,9 +545,14 @@ class MemoryStore:
     def relevant_memories(self, settings: Any, query: str, limit: int | None = None, mode: str | None = None) -> list[dict]:
         if not getattr(settings, "memory_enabled", True):
             return []
+        recall_intent = memory_recall_intent(query)
+        if recall_intent == "none":
+            return []
         mode = normalize_memory_mode(mode, settings)
         self.apply_decay(settings, mode=mode)
         limit = limit or int(getattr(settings, "memory_max_context_items", 12))
+        if recall_intent == "implicit":
+            limit = min(limit, 5)
         with self.session() as conn:
             rows = conn.execute("SELECT * FROM memory_items WHERE mode = ? ORDER BY last_seen_at DESC LIMIT 300", (mode,)).fetchall()
 
@@ -551,7 +575,9 @@ class MemoryStore:
             scored.append((score, data))
 
         scored.sort(key=lambda item: item[0], reverse=True)
-        return [data for _score, data in scored[: max(1, min(30, limit))]]
+        min_score = 5.0 if recall_intent == "implicit" else 0.0
+        filtered = [data for score, data in scored if score >= min_score]
+        return filtered[: max(1, min(30, limit))]
 
     def format_context(self, settings: Any, query: str, mode: str | None = None) -> str:
         memories = self.relevant_memories(settings, query, mode=mode)

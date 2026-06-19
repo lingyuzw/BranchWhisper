@@ -1294,6 +1294,28 @@ class ToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
 
 
 class MemoryRuntimeTests(unittest.TestCase):
+    def test_memory_context_stays_quiet_for_ordinary_chat(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "用户偏好",
+                    "value": "用户喜欢周杰伦",
+                    "layer": "long",
+                    "confidence": 0.9,
+                    "importance": 0.9,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+
+            context = store.format_context(settings, "今天有点累，随便聊两句", mode="api")
+
+        self.assertEqual(context, "")
+
     def test_memory_context_keeps_key_value_relation_for_user_preferences(self) -> None:
         settings = default_settings()
         settings.dialog_mode = "api"
