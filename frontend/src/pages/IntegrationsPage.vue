@@ -55,24 +55,24 @@ const stickerProbeStatus = computed<ProbeStatus>(() => {
 });
 const integrationSteps = computed(() => [
   {
-    label: "登录",
-    status: loginReady.value ? "已登录" : integrations.qrSession ? "待扫码" : "未配置",
+    label: "新增机器人",
+    status: selected.value ? selected.value.chat_name || selected.value.id || "已选择" : "先新增实例",
+    state: selected.value ? "ok" : "idle",
+  },
+  {
+    label: "扫码登录",
+    status: loginReady.value ? "已登录" : integrations.qrSession ? "等待扫码" : "未开始",
     state: loginReady.value ? "ok" : integrations.qrSession ? "pending" : "idle",
   },
   {
-    label: "桥接",
-    status: bridgeRunning.value ? "桥接成功" : selected.value?.status === "failed" ? "失败" : "未启动",
+    label: "启动桥接",
+    status: bridgeRunning.value ? "运行中" : selected.value?.status === "failed" ? "失败" : "未启动",
     state: bridgeRunning.value ? "ok" : selected.value?.status === "failed" ? "failed" : "idle",
   },
   {
-    label: "文字",
-    status: textProbeReady.value ? "接收正常" : integrations.testResult ? "失败" : "未测试",
+    label: "测试收发",
+    status: textProbeReady.value ? "文字正常" : integrations.testResult ? "测试失败" : "未测试",
     state: textProbeReady.value ? "ok" : integrations.testResult ? "failed" : "idle",
-  },
-  {
-    label: "语音",
-    status: voiceProbeReady.value ? "发送正常" : voiceProbeUnconfirmed.value ? "待客户端确认" : voiceProbeStatus.value === "warning" ? "等待 TTS" : integrations.voiceResult ? "失败" : "未测试",
-    state: voiceProbeReady.value ? "ok" : voiceProbeStatus.value === "warning" ? "pending" : integrations.voiceResult ? "failed" : "idle",
   },
 ]);
 

@@ -79,10 +79,12 @@ const emit = defineEmits<{
         <small v-if="qrSession.expire_at">过期时间 {{ qrSession.expire_at }}</small>
       </div>
       <div class="integration-step-track">
-        <span v-for="step in steps" :key="step.label" :class="step.state">
-          <b></b>
-          <em>{{ step.label }}</em>
-          <strong>{{ step.status }}</strong>
+        <span v-for="(step, index) in steps" :key="step.label" :class="step.state">
+          <b class="integration-step-index">{{ index + 1 }}</b>
+          <span class="integration-step-copy">
+            <em>{{ step.label }}</em>
+            <strong>{{ step.status }}</strong>
+          </span>
         </span>
       </div>
     </div>

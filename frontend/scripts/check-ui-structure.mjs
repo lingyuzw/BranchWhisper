@@ -70,6 +70,9 @@ assert(!integrationsPage.includes("integration-console-accounts"), "接入页登
 assert(integrationsCss.includes("grid-template-rows: minmax(0, auto) minmax(320px, 1fr)"), "接入页右栏需要给微信聊天区保留稳定高度，避免卡片被登录区挤压");
 assert(integrationsCss.includes("grid-auto-rows: minmax(160px, auto)"), "接入页微信聊天卡片需要使用稳定的自动行高度，避免一张卡也被裁切");
 assert(integrationsCss.includes(".integration-card-note"), "接入页微信聊天卡片需要使用单行状态说明，保持紧凑不溢出");
+assert(integrationsPage.includes('label: "新增机器人"') && integrationsPage.includes('label: "扫码登录"') && integrationsPage.includes('label: "启动桥接"') && integrationsPage.includes('label: "测试收发"'), "接入页需要按新增机器人、扫码登录、启动桥接、测试收发展示 4 步流程");
+assert(integrationLoginPanel.includes("integration-step-index") && integrationLoginPanel.includes("integration-step-copy"), "接入页 4 步流程需要有编号和清晰文案层级");
+assert(integrationsCss.includes("grid-template-columns: repeat(4, minmax(0, 1fr))") && integrationsCss.includes(".integration-step-index"), "接入页步骤流程需要桌面四列展示并有编号样式");
 assert(memoryPage.includes("memory-probe-cell memory-probe-text") && memoryPage.includes("memory-probe-cell memory-probe-loop"), "记忆入库测试两侧需要使用统一 cell 结构");
 assert(memoryCss.includes(".memory-probe-cell") && memoryCss.includes("grid-template-rows: auto auto minmax(0, 1fr)"), "记忆入库测试两侧需要统一高度和内部行轨道");
 assert(memoryPage.includes("memory-admission-card") && memoryPage.includes("memory-admission-action-card"), "记忆入库回路需要使用重新设计的统一工具卡");
