@@ -8,6 +8,7 @@ import IntegrationLoginPanel from "@/components/integrations/IntegrationLoginPan
 import IntegrationLogsPanel from "@/components/integrations/IntegrationLogsPanel.vue";
 import IntegrationProbePanel from "@/components/integrations/IntegrationProbePanel.vue";
 import IntegrationSessionsPanel from "@/components/integrations/IntegrationSessionsPanel.vue";
+import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
 import { useUiStore } from "@/stores/ui";
@@ -395,14 +396,16 @@ function downloadLogs() {
             @copy-sticker="copyProbeResult('素材发送', integrations.stickerResult)"
           />
 
-          <IntegrationLogsPanel
-            v-model:scope="integrations.logScope"
-            :logs="integrations.logs"
-            @refresh="refreshLogs"
-            @copy="copyLogs"
-            @download="downloadLogs"
-            @clear="clearLogs"
-          />
+          <AdvancedDisclosure title="运行日志">
+            <IntegrationLogsPanel
+              v-model:scope="integrations.logScope"
+              :logs="integrations.logs"
+              @refresh="refreshLogs"
+              @copy="copyLogs"
+              @download="downloadLogs"
+              @clear="clearLogs"
+            />
+          </AdvancedDisclosure>
         </div>
 
         <aside class="integration-workbench">
