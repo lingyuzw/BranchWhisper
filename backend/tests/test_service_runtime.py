@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -980,6 +981,24 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
 
 
 class OpenClawBridgeTests(unittest.TestCase):
+    def test_openclaw_bridge_save_json_uses_shared_compact_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state" / "sync.json"
+            calls = []
+
+            def fake_write(target: Path, data, **kwargs) -> None:
+                calls.append((target, data, kwargs))
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+            with patch("integration_runtime.openclaw_bridge.write_json_file", side_effect=fake_write):
+                openclaw_bridge.save_json(path, {"buf": "下一页"})
+
+            self.assertEqual(path, calls[0][0])
+            self.assertEqual({"buf": "下一页"}, calls[0][1])
+            self.assertEqual({"compact": True}, calls[0][2])
+            self.assertEqual('{"buf":"下一页"}', path.read_text(encoding="utf-8"))
+
     def test_send_typing_indicator_fetches_ticket_and_sends_status(self) -> None:
         calls: list[tuple[str, dict]] = []
 

@@ -20,6 +20,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from core.io_utils import write_json_file
 from core.text_utils import split_reply_messages
 from service_runtime.audio_pipeline import strip_internal_attachment_markers
 
@@ -123,8 +124,7 @@ def load_json(path: Path, fallback: Any) -> Any:
 
 
 def save_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    write_json_file(path, data, compact=True)
 
 
 def derive_raw_account_id(account_id: str) -> str | None:

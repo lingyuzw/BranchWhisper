@@ -42,6 +42,14 @@ class JsonIoUtilsTests(unittest.TestCase):
 
             self.assertEqual({"name": "小枝"}, json.loads(path.read_text(encoding="utf-8")))
 
+    def test_write_json_file_can_write_compact_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+
+            write_json_file(path, {"items": ["一", "二"]}, compact=True)
+
+            self.assertEqual('{"items":["一","二"]}', path.read_text(encoding="utf-8"))
+
     def test_conversation_store_uses_shared_json_writer(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             calls = []

@@ -14,9 +14,12 @@ def read_json_file(path: Path, fallback: Any) -> Any:
         return fallback
 
 
-def write_json_file(path: Path, data: Any) -> None:
+def write_json_file(path: Path, data: Any, *, compact: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(data, ensure_ascii=False, indent=2)
+    if compact:
+        payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    else:
+        payload = json.dumps(data, ensure_ascii=False, indent=2)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     tmp_path = Path(tmp_name)
     try:
