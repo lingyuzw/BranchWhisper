@@ -16,6 +16,7 @@ function assert(condition, message) {
 
 const settingsPage = read("src/pages/SettingsPage.vue");
 const appearanceSettingsPanel = read("src/components/settings/AppearanceSettingsPanel.vue");
+const dialogModelPanel = read("src/components/settings/DialogModelPanel.vue");
 const settingsCss = read("src/styles/pages/settings.css");
 const memoryPage = read("src/pages/MemoryPage.vue");
 const memoryCss = read("src/styles/pages/memory.css");
@@ -35,7 +36,7 @@ assert(!settingsPage.includes("title: \"对话能力\""), "配置页导航不应
 assert(!settingsPage.includes("显示与模式"), "配置页顶部概览不应出现显示与模式中间块");
 assert(settingsPage.includes('id: "asr"'), "ASR 需要作为独立配置页存在");
 assert(settingsPage.includes("title: \"语音识别\""), "ASR 独立页标题应为语音识别");
-assert(settingsPage.includes("context-compaction-card"), "上下文压缩需要并入 TTS 或对话链路区域的独立卡片");
+assert(dialogModelPanel.includes("context-compaction-card"), "上下文压缩需要并入 TTS 或对话链路区域的独立卡片");
 assert(settingsPage.includes("toolGridItems"), "联网工具需要使用统一九宫格数据源");
 assert(settingsPage.includes("system_time") && settingsPage.includes("direct_answer"), "联网工具应补足系统时间和直接回答两张本地能力卡");
 assert(settingsCss.includes("repeat(3, minmax(0, 1fr))"), "联网工具桌面布局应支持三列网格");
