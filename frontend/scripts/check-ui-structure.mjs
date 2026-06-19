@@ -54,6 +54,9 @@ assert(settingsCss.includes("repeat(3, minmax(0, 1fr))"), "联网工具桌面布
 assert(settingsPage.includes("selectedToolKey"), "联网工具应使用九宫格概览加单个详情面板，避免九张卡全部展开");
 assert(!settingsPage.includes('class="form-grid compact">\n                <label v-for="field in item.fields"'), "联网工具概览卡内不应直接展开完整配置表单");
 assert(settingsPage.includes("commandsExpanded"), "服务命令页需要支持展开/收起");
+assert(settingsPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && settingsPage.includes("<PageHeader"), "配置页需要接入共享 PageHeader，统一顶部结构");
+assert(settingsPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && settingsPage.includes("<StatusSummary"), "配置页需要用状态摘要展示当前运行方案");
+assert(settingsPage.includes("settingsSummaryItems") && settingsPage.includes('label: "当前 LLM"') && settingsPage.includes('label: "当前 ASR"') && settingsPage.includes('label: "当前 TTS"') && settingsPage.includes('label: "能力开关"'), "配置页顶部摘要需要显示 LLM、ASR、TTS 和能力开关");
 assert(!memoryStore.includes("我喜欢晚上写代码，猫叫布丁。"), "记忆入库默认测试文本需要换成自然稳定偏好句");
 assert(integrationsCss.includes("integration-shell"), "接入页需要保持两栏布局");
 assert(integrationsCss.includes("integration-test-column") && integrationsCss.includes("integration-log-column"), "接入页左侧需要放链路测试和运行日志");

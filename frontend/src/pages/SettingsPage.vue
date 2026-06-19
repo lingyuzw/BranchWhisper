@@ -34,6 +34,8 @@ import ToolSettingsPanel from "@/components/settings/ToolSettingsPanel.vue";
 import TtsProviderPanel from "@/components/settings/TtsProviderPanel.vue";
 import type { ServiceDraft } from "@/components/settings/types";
 import VadSettingsPanel from "@/components/settings/VadSettingsPanel.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusSummary from "@/components/ui/StatusSummary.vue";
 import type { ServiceSummary } from "@/api/services";
 import { PROVIDER_FIELDS, PROVIDER_LABELS, useToolsStore } from "@/stores/tools";
 import { useEngagementStore } from "@/stores/engagement";
@@ -89,6 +91,13 @@ interface ToolGridItem {
   summary: string;
   badge: string;
   fields: string[];
+}
+type MetricTone = "neutral" | "ok" | "warning" | "danger" | "info";
+interface StatusMetricItem {
+  label: string;
+  value: string | number;
+  detail?: string;
+  tone?: MetricTone;
 }
 const pendingReminders = computed(() => engagement.pendingReminders.slice(0, 8));
 const recentEvents = computed(() => engagement.recentEvents);
@@ -385,6 +394,41 @@ const settingsSections = computed(() => [
   },
 ]);
 const activeSection = computed(() => settingsSections.value.find((section) => section.id === activeSettingsSection.value) || settingsSections.value[0]);
+const settingsHeaderStatus = computed(() => {
+  if (settingsSaving.value) return "保存中";
+  if (settingsHydrating.value) return "读取中";
+  return formHasDirtyChanges() || tools.dirty ? "有未保存修改" : "配置已同步";
+});
+const settingsHeaderTone = computed(() => {
+  if (settingsSaving.value || settingsHydrating.value) return "running";
+  return formHasDirtyChanges() || tools.dirty ? "warning" : "ok";
+});
+const settingsSummaryItems = computed<StatusMetricItem[]>(() => [
+  {
+    label: "当前 LLM",
+    value: form.dialog_mode === "api" ? String(form.api_llm_model || "--") : String(form.llm_model || "--"),
+    detail: form.dialog_mode === "api" ? "API 对话模型" : "本地对话模型",
+    tone: form.dialog_mode === "api" ? "info" : "ok",
+  },
+  {
+    label: "当前 ASR",
+    value: form.asr_provider_mode === "api" ? String(form.api_asr_model || "--") : String(form.asr_model || "--"),
+    detail: form.asr_provider_mode === "api" ? "API 语音识别" : "本地语音识别",
+    tone: form.asr_provider_mode === "api" ? "info" : "ok",
+  },
+  {
+    label: "当前 TTS",
+    value: form.tts_enabled ? (form.tts_provider_mode === "api" ? String(form.api_tts_model || "--") : String(form.tts_model || "--")) : "关闭",
+    detail: form.tts_enabled ? (form.tts_provider_mode === "api" ? "API 语音合成" : "本地语音合成") : "不会自动播报",
+    tone: form.tts_enabled ? "ok" : "neutral",
+  },
+  {
+    label: "能力开关",
+    value: `${form.tools_enabled ? "工具" : "无工具"} / ${form.context_compaction_enabled ? "记忆" : "无记忆"}`,
+    detail: "联网工具和上下文压缩状态",
+    tone: form.tools_enabled || form.context_compaction_enabled ? "info" : "neutral",
+  },
+]);
 const runtimeChainItems = computed(() => [
   {
     id: "llm",
@@ -1288,6 +1332,22 @@ function formatTime(value?: string) {
       </aside>
 
       <section class="settings-content settings-workspace">
+        <PageHeader
+          eyebrow="Settings"
+          title="配置中心"
+          description="先确认当前 LLM、ASR、TTS 和能力开关，再进入对应分区调整高级参数。"
+          :status-text="settingsHeaderStatus"
+          :status-tone="settingsHeaderTone"
+        >
+          <template #actions>
+            <button class="primary-action" type="button" :disabled="settingsSaving" @click="saveAll">
+              <Save :size="16" /> {{ settingsSaving ? "保存中..." : "应用全部配置" }}
+            </button>
+          </template>
+        </PageHeader>
+
+        <StatusSummary :items="settingsSummaryItems" />
+
         <SettingsOverviewBoard
           :active-section="activeSection"
           :runtime-chain-items="runtimeChainItems"
