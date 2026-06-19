@@ -8,7 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "check": "vue-tsc --noEmit",
-    "check:ui": "node scripts/check-ui-structure.mjs"
+    "check:ui": "node scripts/check-ui-structure.mjs && node scripts/check-diagnostics-matching.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "5.2.4",

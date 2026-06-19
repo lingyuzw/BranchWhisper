@@ -44,6 +44,7 @@ import DiagnosticCheckList from "@/components/diagnostics/DiagnosticCheckList.vu
 import DialogTracePanel from "@/components/diagnostics/DialogTracePanel.vue";
 import { useServicesStore } from "@/stores/services";
 import { useUiStore } from "@/stores/ui";
+import { findDiagnosticItemForRole, findServiceForDiagnosticRole } from "@/utils/diagnosticsMatching";
 
 type DisplayStatus = RuntimeDiagnosticStatus | "unknown" | "running";
 
@@ -339,33 +340,11 @@ async function selectLogService(id: string) {
 }
 
 function findDiagnosticForRole(role: string) {
-  const aliases = roleAliases(role);
-  return items.value.find((item) => aliases.some((alias) => normalized(`${item.role} ${item.name} ${item.provider}`).includes(alias))) || null;
+  return findDiagnosticItemForRole(role, items.value);
 }
 
 function findServiceForRole(role: string, item?: RuntimeDiagnosticItem | null) {
-  const aliases = roleAliases(role);
-  const itemText = normalized(`${item?.role || ""} ${item?.name || ""} ${item?.provider || ""}`);
-  return services.services.find((service) => {
-    const text = normalized(`${service.id} ${service.label} ${service.description || ""} ${service.health_url || ""}`);
-    return aliases.some((alias) => text.includes(alias) || itemText.includes(alias));
-  }) || null;
-}
-
-function roleAliases(role: string) {
-  const aliases: Record<string, string[]> = {
-    asr: ["asr", "speech", "recognition", "qwen"],
-    llm: ["llm", "chat", "llama", "qwen"],
-    tts: ["tts", "voice", "cosyvoice"],
-    backend: ["backend", "api", "fastapi", "branchwhisper"],
-    websocket: ["websocket", "ws", "socket"],
-    integration: ["wechat", "weixin", "wx", "bridge", "integration"],
-  };
-  return aliases[role] || [normalized(role)];
-}
-
-function normalized(value: string) {
-  return String(value || "").toLowerCase().replace(/\s+/g, "");
+  return findServiceForDiagnosticRole(role, item, services.services);
 }
 
 function roleStatus(role: string): DisplayStatus {
