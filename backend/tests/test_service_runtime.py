@@ -1108,6 +1108,54 @@ class OpenClawBridgeTests(unittest.TestCase):
                 context_token="ctx",
             )
 
+    def test_send_text_parts_reports_attempted_and_sent_counts(self) -> None:
+        sent: list[str] = []
+        reported: list[dict] = []
+        source_msg = {"message_id": "m1", "client_id": "c1", "session_id": "s1"}
+        account = {"account_id": "account", "base_url": "https://example.test", "token": "token"}
+        original_send_text = openclaw_bridge.send_text
+        original_report = openclaw_bridge.report_branchwhisper_timing
+        original_sleep = openclaw_bridge.time.sleep
+
+        def fake_send_text(_client, _account, _to_user_id, text, context_token=""):
+            sent.append(text)
+            return f"id-{len(sent)}"
+
+        def fake_report(_branchwhisper_url, _integration_id, _trace_id, patch):
+            reported.append(patch)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            duplicate = reply_fingerprint(account["account_id"], "user@im.wechat", source_msg, "重复")
+            self.assertTrue(mark_reply_sent_once(state_dir, account["account_id"], duplicate))
+            openclaw_bridge.send_text = fake_send_text
+            openclaw_bridge.report_branchwhisper_timing = fake_report
+            openclaw_bridge.time.sleep = lambda _seconds: None
+            try:
+                summary = openclaw_bridge.send_text_parts(
+                    client=object(),
+                    state_dir=state_dir,
+                    branchwhisper_url="http://branchwhisper",
+                    integration_id="weixin",
+                    trace_id="trace-1",
+                    branch_ms=12,
+                    account=account,
+                    source_msg=source_msg,
+                    to_user_id="user@im.wechat",
+                    context_token="ctx",
+                    reply_parts=["新消息", "重复"],
+                    timings={"llm_ms": 5},
+                )
+            finally:
+                openclaw_bridge.send_text = original_send_text
+                openclaw_bridge.report_branchwhisper_timing = original_report
+                openclaw_bridge.time.sleep = original_sleep
+
+        self.assertEqual(["新消息"], sent)
+        self.assertEqual({"attempted": 2, "sent": 1, "message_ids": ["id-1"]}, summary)
+        self.assertEqual(2, reported[0]["text_parts"])
+        self.assertEqual(1, reported[0]["sent_text_parts"])
+
     def test_reply_fingerprint_is_sent_once_per_source_message(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)

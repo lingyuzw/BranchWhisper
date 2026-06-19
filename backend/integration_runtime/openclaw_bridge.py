@@ -636,6 +636,48 @@ def reply_parts_for_delivery(result: dict, *, voice_sent: bool = False, include_
     return reply_parts
 
 
+def send_text_parts(
+    *,
+    client: httpx.Client,
+    state_dir: Path,
+    branchwhisper_url: str,
+    integration_id: str,
+    trace_id: str,
+    branch_ms: int,
+    account: dict,
+    source_msg: dict,
+    to_user_id: str,
+    context_token: str,
+    reply_parts: list[str],
+    timings: dict,
+) -> dict:
+    send_started = time.perf_counter()
+    message_ids: list[str] = []
+    for index, part in enumerate(reply_parts):
+        fingerprint = reply_fingerprint(account["account_id"], to_user_id, source_msg, part)
+        if not mark_reply_sent_once(state_dir, account["account_id"], fingerprint):
+            log(
+                f"skip duplicate text reply account={account['account_id']} to={to_user_id} "
+                f"source_message_id={source_msg.get('message_id') or source_msg.get('client_id') or ''}"
+            )
+            continue
+        message_ids.append(send_text(client, account, to_user_id, part, context_token=context_token))
+        if index < len(reply_parts) - 1:
+            time.sleep(0.18)
+    send_ms = int((time.perf_counter() - send_started) * 1000)
+    report_branchwhisper_timing(
+        branchwhisper_url,
+        integration_id,
+        trace_id,
+        {"send_ms": send_ms, "branch_ms": branch_ms, "text_parts": len(reply_parts), "sent_text_parts": len(message_ids)},
+    )
+    log(
+        f"sent text account={account['account_id']} to={to_user_id} parts={len(reply_parts)} "
+        f"sent={len(message_ids)} client_ids={','.join(message_ids)} branch_ms={branch_ms} send_ms={send_ms} timings={timings}"
+    )
+    return {"attempted": len(reply_parts), "sent": len(message_ids), "message_ids": message_ids}
+
+
 def send_voice_reply(
     *,
     branchwhisper_url: str,
@@ -915,31 +957,21 @@ def handle_branchwhisper_result(
     trace_id = str(result.get("trace_id") or "")
     reply_parts = reply_parts_for_delivery(result, include_voice_fallback=False)
     if reply_parts:
-        send_started = time.perf_counter()
         try:
-            message_ids: list[str] = []
-            for index, part in enumerate(reply_parts):
-                fingerprint = reply_fingerprint(account["account_id"], from_user_id, source_msg, part)
-                if not mark_reply_sent_once(state_dir, account["account_id"], fingerprint):
-                    log(
-                        f"skip duplicate text reply account={account['account_id']} to={from_user_id} "
-                        f"source_message_id={source_msg.get('message_id') or source_msg.get('client_id') or ''}"
-                    )
-                    continue
-                message_ids.append(send_text(client, account, from_user_id, part, context_token=context_token))
-                if index < len(reply_parts) - 1:
-                    time.sleep(0.18)
-            send_ms = int((time.perf_counter() - send_started) * 1000)
             timings = result.get("timings") if isinstance(result.get("timings"), dict) else {}
-            report_branchwhisper_timing(
-                branchwhisper_url,
-                integration_id,
-                trace_id,
-                {"send_ms": send_ms, "branch_ms": branch_ms, "text_parts": len(reply_parts)},
-            )
-            log(
-                f"sent text account={account['account_id']} to={from_user_id} parts={len(reply_parts)} "
-                f"client_ids={','.join(message_ids)} branch_ms={branch_ms} send_ms={send_ms} timings={timings}"
+            send_text_parts(
+                client=client,
+                state_dir=state_dir,
+                branchwhisper_url=branchwhisper_url,
+                integration_id=integration_id,
+                trace_id=trace_id,
+                branch_ms=branch_ms,
+                account=account,
+                source_msg=source_msg,
+                to_user_id=from_user_id,
+                context_token=context_token,
+                reply_parts=reply_parts,
+                timings=timings,
             )
         except Exception as exc:
             log(f"send text failed account={account['account_id']} to={from_user_id} err={exc}")
