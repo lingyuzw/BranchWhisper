@@ -14,3 +14,18 @@ def has_tool_routing_signal(user_text: str, specs: list[dict], *, heuristic_call
         return False
     custom_enabled = any(not spec.get("builtin") for spec in specs)
     return bool(heuristic_call or custom_enabled or TOOL_SIGNAL_PATTERN.search(user_text))
+
+
+def build_tool_planner_messages(user_text: str, planner_tool_text: str) -> list[dict[str, str]]:
+    planner_system = (
+        "你是工具路由器，只输出 JSON，不输出解释。"
+        "当用户需要当前、实时、联网、热点新闻、天气、财经价格、URL 读取或某个自定义 API 时，选择一个工具。"
+        "普通闲聊、稳定常识、情绪陪伴和不需要联网的问题，输出 {\"tool_call\": null}。"
+        "输出格式必须是 {\"tool_call\":{\"id\":\"工具id\",\"arguments\":{...}}} 或 {\"tool_call\":null}。\n\n"
+        "可用工具：\n"
+        f"{planner_tool_text}"
+    )
+    return [
+        {"role": "system", "content": planner_system},
+        {"role": "user", "content": user_text},
+    ]

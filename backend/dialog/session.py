@@ -38,6 +38,7 @@ from dialog.message_flow import compose_user_request_text as build_user_request_
 from dialog.message_flow import draft_conversation as build_draft_conversation
 from dialog.message_flow import memory_observation_text as build_memory_observation_text
 from dialog.text_helpers import attachment_text, build_request_user_text, extract_repeat_text, last_assistant_content
+from dialog.tool_flow import build_tool_planner_messages
 from dialog.tool_flow import has_tool_routing_signal
 from dialog.trace import DialogTraceStore
 from dialog.voice_pipeline import TtsPcmStream
@@ -772,18 +773,7 @@ class DialogSession:
             return {"tool": tool_id, "arguments": arguments, "result": {"ok": False, "error": str(exc)}}
 
     async def plan_tool_call(self, user_text: str) -> dict | None:
-        planner_system = (
-            "你是工具路由器，只输出 JSON，不输出解释。"
-            "当用户需要当前、实时、联网、热点新闻、天气、财经价格、URL 读取或某个自定义 API 时，选择一个工具。"
-            "普通闲聊、稳定常识、情绪陪伴和不需要联网的问题，输出 {\"tool_call\": null}。"
-            "输出格式必须是 {\"tool_call\":{\"id\":\"工具id\",\"arguments\":{...}}} 或 {\"tool_call\":null}。\n\n"
-            "可用工具：\n"
-            f"{self.tool_manager.planner_tool_text()}"
-        )
-        messages = [
-            {"role": "system", "content": planner_system},
-            {"role": "user", "content": user_text},
-        ]
+        messages = build_tool_planner_messages(user_text, self.tool_manager.planner_tool_text())
         try:
             text = await self.complete_llm_text(messages, temperature=0.0, max_tokens=260)
         except Exception:

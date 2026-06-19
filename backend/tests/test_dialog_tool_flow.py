@@ -8,7 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from dialog.tool_flow import has_tool_routing_signal
+from dialog.tool_flow import build_tool_planner_messages, has_tool_routing_signal
 
 
 class DialogToolFlowTests(unittest.TestCase):
@@ -35,6 +35,14 @@ class DialogToolFlowTests(unittest.TestCase):
 
     def test_tool_signal_ignores_plain_chat_with_builtin_tools_only(self) -> None:
         self.assertFalse(has_tool_routing_signal("我今天有点累", [{"id": "search", "builtin": True}], heuristic_call=None))
+
+    def test_build_tool_planner_messages_includes_available_tools_and_user_text(self) -> None:
+        messages = build_tool_planner_messages("今天上海天气如何", "weather: 查询天气")
+
+        self.assertEqual("system", messages[0]["role"])
+        self.assertIn("工具路由器", messages[0]["content"])
+        self.assertIn("weather: 查询天气", messages[0]["content"])
+        self.assertEqual({"role": "user", "content": "今天上海天气如何"}, messages[1])
 
 
 if __name__ == "__main__":
