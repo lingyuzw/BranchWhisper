@@ -127,7 +127,11 @@ def replay_cases(cases: list[dict[str, Any]], reply_fn) -> dict[str, Any]:
     for case in cases:
         replay_case = dict(case)
         messages = build_case_messages(replay_case)
-        replay_case["assistant"] = str(reply_fn(messages, replay_case) or "")
+        try:
+            replay_case["assistant"] = str(reply_fn(messages, replay_case) or "")
+        except Exception as exc:
+            replay_case["assistant"] = ""
+            replay_case["replay_error"] = f"{type(exc).__name__}: {exc}"
         replayed.append(replay_case)
     report = evaluate_cases(replayed)
     for result, replay_case in zip(report["results"], replayed):
@@ -230,6 +234,9 @@ def format_text_report(report: dict[str, Any]) -> str:
 def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     assistant = str(case.get("assistant") or "")
     issues: list[dict[str, str]] = []
+
+    if case.get("replay_error"):
+        issues.append({"rule": "live_replay_error", "detail": str(case.get("replay_error"))})
 
     for phrase in case.get("forbidden") or []:
         if phrase and phrase in assistant:

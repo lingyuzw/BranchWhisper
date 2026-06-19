@@ -188,6 +188,26 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertEqual("那就先别硬撑，缓一会儿。", report["results"][0]["assistant"])
         self.assertEqual(1, report["passed"])
 
+    def test_replay_cases_reports_reply_errors_per_case(self) -> None:
+        def reply_fn(_messages, _case):
+            raise RuntimeError("llm offline")
+
+        report = replay_cases(
+            [
+                {
+                    "id": "ordinary",
+                    "category": "ordinary_chat",
+                    "user": "你好",
+                }
+            ],
+            reply_fn,
+        )
+
+        self.assertEqual(0, report["passed"])
+        self.assertEqual(1, report["failed"])
+        self.assertIn("live_replay_error", {issue["rule"] for issue in report["results"][0]["issues"]})
+        self.assertIn("llm offline", report["results"][0]["issues"][0]["detail"])
+
     def test_live_http_reply_posts_openai_compatible_payload(self) -> None:
         class Response:
             def raise_for_status(self):

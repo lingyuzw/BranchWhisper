@@ -43,6 +43,8 @@ Replay against a live OpenAI-compatible model endpoint:
 Live replay is optional and is not part of the default quality gate, because local model services
 may be offline during development. Live replay skips `expect_fail` samples by default; pass
 `--include-expected-failures` only when testing the evaluator rules themselves.
+If the model endpoint is unavailable, the report marks the affected samples with
+`live_replay_error` instead of crashing.
 
 The report includes a `summary` block with category totals and rule hit counts, so regressions can
 be triaged without reading every sample result.
