@@ -15,16 +15,12 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from core.config import (
     SessionSettings,
-    active_asr_model,
-    active_asr_provider,
     active_dialog_mode,
     active_history_turns,
     active_llm_model,
     active_llm_url,
     active_max_tokens,
     active_temperature,
-    active_tts_model,
-    active_tts_provider,
     llm_headers,
     memory_mode,
     public_settings,
@@ -39,6 +35,7 @@ from dialog.message_flow import build_llm_messages as build_conversation_llm_mes
 from dialog.message_flow import compose_user_request_text as build_user_request_text
 from dialog.message_flow import draft_conversation as build_draft_conversation
 from dialog.message_flow import memory_observation_text as build_memory_observation_text
+from dialog.profile_context import trace_profile_context as build_trace_profile_context
 from dialog.text_helpers import attachment_text, build_request_user_text, extract_repeat_text, last_assistant_content
 from dialog.tool_flow import build_tool_planner_messages
 from dialog.tool_flow import has_tool_routing_signal
@@ -190,23 +187,7 @@ class DialogSession:
             self.current_trace_id = ""
 
     def trace_profile_context(self, role: str) -> dict[str, str]:
-        role = str(role or "").strip().lower()
-        if role == "asr":
-            return {
-                "profile_role": "asr",
-                "profile_name": f"{active_asr_provider(self.settings)}:{active_asr_model(self.settings)}",
-            }
-        if role == "llm":
-            return {
-                "profile_role": "llm",
-                "profile_name": f"{active_dialog_mode(self.settings)}:{active_llm_model(self.settings)}",
-            }
-        if role == "tts":
-            return {
-                "profile_role": "tts",
-                "profile_name": f"{active_tts_provider(self.settings)}:{active_tts_model(self.settings)}",
-            }
-        return {"profile_role": "", "profile_name": ""}
+        return build_trace_profile_context(self.settings, role)
 
     async def handle_text_message(self, raw: str) -> None:
         try:

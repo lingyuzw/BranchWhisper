@@ -14,6 +14,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from api.diagnostics import create_diagnostics_router
+from dialog.profile_context import trace_profile_context
 from dialog.session import DialogSession
 from dialog.trace import DialogTraceStore
 from service_runtime.tts_clients import TtsServiceNotReady
@@ -133,6 +134,28 @@ class DialogTraceStoreTests(unittest.TestCase):
             {"profile_role": "tts", "profile_name": "local:cosyvoice-local"},
         )
         self.assertEqual(session.trace_profile_context("media"), {"profile_role": "", "profile_name": ""})
+
+    def test_trace_profile_context_maps_active_settings_without_session(self) -> None:
+        class Settings:
+            asr_provider_mode = "api"
+            api_asr_provider = "custom_openai"
+            api_asr_model = "branch-asr"
+            asr_mode = "local"
+            asr_model = "local-asr"
+            dialog_mode = "api"
+            api_llm_model = "qwen-plus"
+            llm_model = "local-llm"
+            tts_provider_mode = "local"
+            api_tts_provider = "remote-tts"
+            api_tts_model = "remote-voice"
+            tts_model = "cosyvoice-local"
+
+        settings = Settings()
+
+        self.assertEqual(trace_profile_context(settings, "asr"), {"profile_role": "asr", "profile_name": "custom_openai:branch-asr"})
+        self.assertEqual(trace_profile_context(settings, "llm"), {"profile_role": "llm", "profile_name": "api:qwen-plus"})
+        self.assertEqual(trace_profile_context(settings, "tts"), {"profile_role": "tts", "profile_name": "local:cosyvoice-local"})
+        self.assertEqual(trace_profile_context(settings, "media"), {"profile_role": "", "profile_name": ""})
 
     def test_trace_store_keeps_recent_traces_only(self) -> None:
         counter = {"value": 0.0}
