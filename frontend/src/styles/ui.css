@@ -1,0 +1,297 @@
+/* ============================================================
+   ui.css — Shared workspace primitives for BranchWhisper pages
+   ============================================================ */
+
+.workspace-page {
+  width: min(1360px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 18px 0 28px;
+  display: grid;
+  gap: 14px;
+}
+
+.workspace-page.wide {
+  width: min(1440px, calc(100vw - 32px));
+}
+
+.workspace-page-header,
+.workspace-task-panel,
+.workspace-status-metric,
+.workspace-advanced-disclosure {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.workspace-page-header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+}
+
+.workspace-page-header-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-page-header-copy h1 {
+  color: var(--text);
+  font-size: calc(27px * var(--ui-font-scale));
+  line-height: 1.18;
+}
+
+.workspace-page-header-copy p {
+  max-width: 760px;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.workspace-page-header-status {
+  justify-self: end;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.workspace-page-header-status.ok {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 32%, var(--border));
+  background: var(--success-soft);
+}
+
+.workspace-page-header-status.warning {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: var(--warning-soft);
+}
+
+.workspace-page-header-status.running {
+  color: var(--info);
+  border-color: color-mix(in srgb, var(--info) 34%, var(--border));
+  background: var(--info-soft);
+}
+
+.workspace-page-header-status.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--border));
+  background: var(--danger-soft);
+}
+
+.workspace-page-header-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.workspace-status-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workspace-status-metric {
+  min-width: 0;
+  min-height: 94px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 13px;
+}
+
+.workspace-status-metric small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.workspace-status-metric strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: calc(25px * var(--ui-font-scale));
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.workspace-status-metric span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.workspace-status-metric.ok {
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+}
+
+.workspace-status-metric.warning {
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--border));
+}
+
+.workspace-status-metric.danger {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+}
+
+.workspace-status-metric.info {
+  border-color: color-mix(in srgb, var(--info) 30%, var(--border));
+}
+
+.workspace-task-panel {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+}
+
+.workspace-task-panel-head,
+.workspace-section-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workspace-task-panel-title {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-task-panel-title h2 {
+  color: var(--text);
+  font-size: var(--font-lg);
+  line-height: 1.25;
+}
+
+.workspace-task-panel-title p {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.workspace-task-panel-toolbar,
+.workspace-section-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.workspace-advanced-disclosure {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.workspace-advanced-disclosure summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 13px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  font-weight: 750;
+}
+
+.workspace-advanced-disclosure summary::marker {
+  color: var(--text-muted);
+}
+
+.workspace-advanced-disclosure-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 13px 13px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-muted) 76%, transparent);
+}
+
+.workspace-empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 22px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  text-align: center;
+}
+
+.workspace-empty-state strong {
+  color: var(--text);
+  font-size: var(--font-md);
+}
+
+.workspace-empty-state span {
+  max-width: 520px;
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .workspace-status-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-page,
+  .workspace-page.wide {
+    width: min(100%, calc(100vw - 20px));
+    padding-top: 12px;
+  }
+
+  .workspace-page-header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .workspace-page-header-status {
+    justify-self: start;
+  }
+
+  .workspace-page-header-actions,
+  .workspace-task-panel-head,
+  .workspace-section-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-page-header-actions .primary-action,
+  .workspace-page-header-actions .secondary-action,
+  .workspace-task-panel-toolbar .primary-action,
+  .workspace-task-panel-toolbar .secondary-action {
+    width: 100%;
+  }
+
+  .workspace-status-summary {
+    grid-template-columns: 1fr;
+  }
+}
