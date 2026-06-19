@@ -8,7 +8,13 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from dialog.message_flow import build_llm_messages, compose_user_request_text, draft_conversation, memory_observation_text
+from dialog.message_flow import (
+    build_contextual_request_messages,
+    build_llm_messages,
+    compose_user_request_text,
+    draft_conversation,
+    memory_observation_text,
+)
 
 
 class DialogMessageFlowTests(unittest.TestCase):
@@ -64,6 +70,39 @@ class DialogMessageFlowTests(unittest.TestCase):
         self.assertEqual("新的对话", draft["title"])
         self.assertEqual([], draft["messages"])
         self.assertEqual("2026-06-19 09:10:00", draft["created_at"])
+
+    def test_build_contextual_request_messages_adds_runtime_context(self) -> None:
+        messages = [
+            {"role": "system", "content": "base"},
+            {"role": "user", "content": "天气怎样"},
+            {"role": "assistant", "content": "刚才说过要带伞。"},
+            {"role": "user", "content": "天气怎样"},
+        ]
+
+        request = build_contextual_request_messages(
+            messages,
+            "天气怎样",
+            "天气怎样\n请联网查询",
+            memory_context="记忆：用户在上海",
+            context_summary="用户正在准备出门。",
+            now_text="2026年06月19日 Friday 09:20",
+        )
+
+        self.assertEqual(messages, [
+            {"role": "system", "content": "base"},
+            {"role": "user", "content": "天气怎样"},
+            {"role": "assistant", "content": "刚才说过要带伞。"},
+            {"role": "user", "content": "天气怎样"},
+        ])
+        system_content = request[0]["content"]
+        self.assertIn("base", system_content)
+        self.assertIn("会话压缩摘要", system_content)
+        self.assertIn("用户正在准备出门。", system_content)
+        self.assertIn("记忆：用户在上海", system_content)
+        self.assertIn("当前时间：2026年06月19日 Friday 09:20", system_content)
+        self.assertIn("完全一样的问题", system_content)
+        self.assertIn("刚才说过要带伞", system_content)
+        self.assertEqual({"role": "user", "content": "天气怎样\n请联网查询"}, request[-1])
 
 
 if __name__ == "__main__":

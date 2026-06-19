@@ -32,11 +32,12 @@ from core.config import (
 )
 from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
+from dialog.message_flow import build_contextual_request_messages as build_contextual_llm_request_messages
 from dialog.message_flow import build_llm_messages as build_conversation_llm_messages
 from dialog.message_flow import compose_user_request_text as build_user_request_text
 from dialog.message_flow import draft_conversation as build_draft_conversation
 from dialog.message_flow import memory_observation_text as build_memory_observation_text
-from dialog.text_helpers import attachment_text, build_request_user_text, compact_str, extract_repeat_text, last_assistant_content
+from dialog.text_helpers import attachment_text, build_request_user_text, extract_repeat_text, last_assistant_content
 from dialog.trace import DialogTraceStore
 from dialog.voice_pipeline import TtsPcmStream
 from engagement.proactive import FollowupPolicy
@@ -722,41 +723,15 @@ class DialogSession:
         self.persist_messages(items)
 
     def build_contextual_request_messages(self, user_text: str, request_user_text: str) -> list[dict[str, str]]:
-        messages = list(self.messages)
         memory_context = self.memory_store.format_context(self.settings, user_text, mode=memory_mode(self.settings))
-
-        # 注入当前时间
-        from datetime import datetime
-        now_str = datetime.now().strftime("%Y年%m月%d日 %A %H:%M")
-        time_note = f"\n\n当前时间：{now_str}。你要自然地感知这个时间（比如晚上就聊晚上的话题，早上就聊早上的），但不要生硬地报时。"
-        # 重复检测
-        recent_user_msgs = [m.get("content","") for m in messages[-6:] if m.get("role") == "user"]
-        if len(recent_user_msgs) >= 2 and recent_user_msgs[-1]:
-            last = compact_str(recent_user_msgs[-1])
-            prev = compact_str(recent_user_msgs[-2])
-            if last and prev and last == prev:
-                time_note += "\n注意：用户刚才问了和上一轮完全一样的问题。你应该稍微不耐烦或用不同方式回答，而不是原句重复。"
-
-        recent_assistant = [compact_str(m.get("content", "")) for m in messages[-8:] if m.get("role") == "assistant"]
-        recent_assistant = [text for text in recent_assistant if text]
-        if recent_assistant:
-            time_note += (
-                "\n\n最近你已经说过这些回复片段，请避免原句复用、固定开头和重复解释；"
-                "除非用户明确要求复读，否则要换一种自然说法：\n"
-                + "\n".join(f"- {text[:80]}" for text in recent_assistant[-3:])
-            )
-
-        old_content = messages[0].get("content", "")
         context_summary = str(self.conversation.get("context_summary") or "").strip()
-        if context_summary:
-            old_content += "\n\n会话压缩摘要（较早聊天的浓缩记录，可能不完整，但比遗忘更可靠）：\n" + context_summary
-        if memory_context:
-            old_content += "\n\n" + memory_context
-        old_content += time_note
-        messages[0] = {**messages[0], "content": old_content}
-
-        messages.append({"role": "user", "content": request_user_text})
-        return messages
+        return build_contextual_llm_request_messages(
+            self.messages,
+            user_text,
+            request_user_text,
+            memory_context=memory_context,
+            context_summary=context_summary,
+        )
 
     async def extract_memories_with_llm(self, prompt: str) -> str:
         messages = [
