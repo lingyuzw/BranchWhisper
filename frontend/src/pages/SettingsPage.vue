@@ -393,6 +393,20 @@ const settingsSections = computed(() => [
     status: `${services.services.length || 0} 个服务`,
   },
 ]);
+const settingsNavGroups = computed(() => [
+  {
+    label: "基础",
+    items: settingsSections.value.filter((section) => ["appearance", "engine", "asr", "tts"].includes(section.id)),
+  },
+  {
+    label: "能力",
+    items: settingsSections.value.filter((section) => ["tools", "proactive", "botProfiles", "prompt", "vad"].includes(section.id)),
+  },
+  {
+    label: "高级",
+    items: settingsSections.value.filter((section) => ["commands"].includes(section.id)),
+  },
+]);
 const activeSection = computed(() => settingsSections.value.find((section) => section.id === activeSettingsSection.value) || settingsSections.value[0]);
 const settingsHeaderStatus = computed(() => {
   if (settingsSaving.value) return "保存中";
@@ -1315,17 +1329,20 @@ function formatTime(value?: string) {
       <aside class="settings-nav">
         <p class="eyebrow">BranchWhisper</p>
         <h1>配置中心</h1>
-        <button
-          v-for="section in settingsSections"
-          :key="section.id"
-          class="settings-nav-item"
-          :class="{ active: activeSettingsSection === section.id }"
-          type="button"
-          @click="openSettingsSection(section.id)"
-        >
-          <component :is="section.icon" :size="16" />
-          <span>{{ section.title }}</span>
-        </button>
+        <div v-for="group in settingsNavGroups" :key="group.label" class="settings-nav-group">
+          <span class="settings-nav-group-title">{{ group.label }}</span>
+          <button
+            v-for="section in group.items"
+            :key="section.id"
+            class="settings-nav-item"
+            :class="{ active: activeSettingsSection === section.id }"
+            type="button"
+            @click="openSettingsSection(section.id)"
+          >
+            <component :is="section.icon" :size="16" />
+            <span>{{ section.title }}</span>
+          </button>
+        </div>
         <button class="primary-action full settings-save-main" type="button" :disabled="settingsSaving" @click="saveAll">
           <Save :size="16" /> {{ settingsSaving ? "保存中..." : "应用全部配置" }}
         </button>
