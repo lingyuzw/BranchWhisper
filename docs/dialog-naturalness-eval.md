@@ -34,6 +34,15 @@ Replay the prompt-building path while still using fixture replies:
 /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/evaluate_dialog_naturalness.py --replay-fixture-replies --format text
 ```
 
+Replay against a live OpenAI-compatible model endpoint:
+
+```bash
+/home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/evaluate_dialog_naturalness.py --live-url http://127.0.0.1:8080/v1/chat/completions --live-model qwen3.5-9b --format text --allow-failures
+```
+
+Live replay is optional and is not part of the default quality gate, because local model services
+may be offline during development.
+
 The report includes a `summary` block with category totals and rule hit counts, so regressions can
 be triaged without reading every sample result.
 

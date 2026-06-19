@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -17,6 +18,7 @@ from dialog.naturalness_eval import (
     evaluate_case,
     evaluate_cases,
     format_text_report,
+    live_http_reply,
     load_cases,
     main,
     replay_cases,
@@ -185,6 +187,45 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertEqual("那就先别硬撑，缓一会儿。", report["results"][0]["assistant"])
         self.assertEqual(1, report["passed"])
 
+    def test_live_http_reply_posts_openai_compatible_payload(self) -> None:
+        class Response:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"choices": [{"message": {"content": "来了。"}}]}
+
+        class Client:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def post(self, url, json, headers):
+                calls.append({"url": url, "json": json, "headers": headers, "kwargs": self.kwargs})
+                return Response()
+
+        calls = []
+
+        with patch("dialog.naturalness_eval.httpx.Client", Client):
+            text = live_http_reply(
+                [{"role": "user", "content": "你好"}],
+                url="http://127.0.0.1:8080/v1/chat/completions",
+                model="qwen",
+                timeout=3,
+                api_key="secret",
+            )
+
+        self.assertEqual("来了。", text)
+        self.assertEqual("http://127.0.0.1:8080/v1/chat/completions", calls[0]["url"])
+        self.assertEqual("qwen", calls[0]["json"]["model"])
+        self.assertFalse(calls[0]["json"]["stream"])
+        self.assertEqual("Bearer secret", calls[0]["headers"]["Authorization"])
+
     def test_default_sample_file_loads_multiple_categories(self) -> None:
         cases = load_cases(DEFAULT_SAMPLE_PATH)
         categories = {case["category"] for case in cases}
@@ -296,6 +337,43 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
             self.assertEqual(0, exit_code)
             data = json.loads(output.read_text(encoding="utf-8"))
             self.assertIn("assistant", data["results"][0])
+
+    def test_cli_can_replay_live_http_replies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            samples = Path(tmp) / "samples.json"
+            output = Path(tmp) / "report.json"
+            samples.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "ordinary",
+                            "category": "ordinary_chat",
+                            "user": "你好",
+                        }
+                    ],
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            with patch("dialog.naturalness_eval.live_http_reply", return_value="来了。") as reply:
+                exit_code = main(
+                    [
+                        "--samples",
+                        str(samples),
+                        "--live-url",
+                        "http://127.0.0.1:8080/v1/chat/completions",
+                        "--live-model",
+                        "qwen",
+                        "--output",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, exit_code)
+            self.assertEqual(1, reply.call_count)
+            data = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual("来了。", data["results"][0]["assistant"])
 
     def test_repository_script_runs_from_project_root(self) -> None:
         script = BACKEND_ROOT.parent / "scripts" / "evaluate_dialog_naturalness.py"

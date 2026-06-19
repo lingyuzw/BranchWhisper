@@ -7,7 +7,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from core.config import DEFAULT_SYSTEM, SessionSettings, add_settings_args
+from core.http_client import trust_env_for_url
+from dialog.llm_flow import build_llm_completion_payload
 from dialog.message_flow import build_contextual_request_messages, build_llm_messages
 from tools.runtime_brain import MemoryStore
 
@@ -129,6 +133,33 @@ def replay_cases(cases: list[dict[str, Any]], reply_fn) -> dict[str, Any]:
     for result, replay_case in zip(report["results"], replayed):
         result["assistant"] = replay_case.get("assistant", "")
     return report
+
+
+def live_http_reply(
+    messages: list[dict[str, str]],
+    *,
+    url: str,
+    model: str,
+    timeout: float = 60.0,
+    api_key: str = "",
+    temperature: float = 0.35,
+    max_tokens: int = 512,
+) -> str:
+    payload = build_llm_completion_payload(
+        messages,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        thinking_enabled=False,
+    )
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    with httpx.Client(timeout=timeout, trust_env=trust_env_for_url(url)) as client:
+        response = client.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    return str(((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "")
 
 
 def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
@@ -309,11 +340,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default="", help="Optional path for JSON report.")
     parser.add_argument("--format", choices=["json", "text"], default="json", help="Report format.")
     parser.add_argument("--replay-fixture-replies", action="store_true", help="Build prompts and replay fixture assistant replies.")
+    parser.add_argument("--live-url", default="", help="OpenAI-compatible chat completions URL for live replay.")
+    parser.add_argument("--live-model", default="", help="Model name for live replay.")
+    parser.add_argument("--live-api-key", default="", help="Optional bearer token for live replay.")
+    parser.add_argument("--live-timeout", type=float, default=60.0, help="HTTP timeout in seconds for live replay.")
     parser.add_argument("--allow-failures", action="store_true", help="Return 0 even when samples fail.")
     args = parser.parse_args(argv)
 
     cases = load_cases(args.samples)
-    if args.replay_fixture_replies:
+    if args.live_url or args.live_model:
+        if not args.live_url or not args.live_model:
+            parser.error("--live-url and --live-model must be provided together")
+        report = replay_cases(
+            cases,
+            lambda messages, _case: live_http_reply(
+                messages,
+                url=args.live_url,
+                model=args.live_model,
+                timeout=args.live_timeout,
+                api_key=args.live_api_key,
+            ),
+        )
+    elif args.replay_fixture_replies:
         report = replay_cases(cases, lambda _messages, case: case.get("assistant", ""))
     else:
         report = evaluate_cases(cases)
