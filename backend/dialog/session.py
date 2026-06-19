@@ -32,6 +32,8 @@ from core.config import (
 )
 from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
+from dialog.message_flow import compose_user_request_text as build_user_request_text
+from dialog.message_flow import memory_observation_text as build_memory_observation_text
 from dialog.text_helpers import attachment_text, build_request_user_text, compact_str, extract_repeat_text, last_assistant_content
 from dialog.trace import DialogTraceStore
 from engagement.proactive import FollowupPolicy
@@ -572,14 +574,7 @@ class DialogSession:
             return f"图片理解失败：{exc}"
 
     def compose_user_request_text(self, user_text: str, attachments: list[dict]) -> str:
-        text = user_text.strip() or "请看看这张图片。"
-        image_lines = []
-        for index, item in enumerate(attachments, start=1):
-            if item.get("type") == "image":
-                image_lines.append(f"图片{index}摘要：{item.get('summary') or '未生成摘要'}")
-        if image_lines:
-            text += "\n\n用户随消息发送了图片。你只能基于图片摘要理解图片，不要假装看到了摘要以外的细节：\n" + "\n".join(image_lines)
-        return text
+        return build_user_request_text(user_text, attachments)
 
     def choose_reply_sticker(self, user_text: str, reply_text: str, source: str, requested_tags: list[str] | None = None) -> list[dict]:
         session_id = self.conversation.get("id") or source or "web"
@@ -620,16 +615,11 @@ class DialogSession:
         ]
 
     def memory_observation_text(self, user_text: str, attachments: list[dict]) -> str:
-        if not getattr(self.settings, "vision_memory_extract_enabled", False):
-            return user_text
-        image_summaries = [
-            str(item.get("summary") or "").strip()
-            for item in attachments or []
-            if item.get("type") == "image" and item.get("summary")
-        ]
-        if not image_summaries:
-            return user_text
-        return user_text + "\n\n图片摘要（仅在通过记忆准入时才可记住）：\n" + "\n".join(image_summaries)
+        return build_memory_observation_text(
+            user_text,
+            attachments,
+            vision_memory_extract_enabled=bool(getattr(self.settings, "vision_memory_extract_enabled", False)),
+        )
 
     async def maybe_compact_conversation(self, conversation_id: str = "") -> None:
         if not getattr(self.settings, "context_compaction_enabled", True):
