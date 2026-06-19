@@ -13,6 +13,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from dialog.naturalness_eval import (
     DEFAULT_SAMPLE_PATH,
+    build_case_messages,
     evaluate_case,
     evaluate_cases,
     load_cases,
@@ -86,6 +87,32 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertIn("ordinary_chat", categories)
         self.assertIn("memory_lookup", categories)
         self.assertIn("anti_fabrication", categories)
+
+    def test_build_case_messages_keeps_memory_out_of_ordinary_chat(self) -> None:
+        messages = build_case_messages(
+            {
+                "id": "ordinary",
+                "category": "ordinary_chat",
+                "user": "今天有点累，随便聊两句",
+                "seed_memories": [{"key": "用户偏好", "value": "用户喜欢深夜写代码"}],
+            }
+        )
+
+        self.assertEqual("user", messages[-1]["role"])
+        self.assertNotIn("用户喜欢深夜写代码", messages[0]["content"])
+
+    def test_build_case_messages_includes_quiet_memory_for_lookup(self) -> None:
+        messages = build_case_messages(
+            {
+                "id": "memory",
+                "category": "memory_lookup",
+                "user": "你记得我的偏好吗？",
+                "seed_memories": [{"key": "用户偏好", "value": "用户喜欢深夜写代码"}],
+            }
+        )
+
+        self.assertIn("内部参考", messages[0]["content"])
+        self.assertIn("用户喜欢深夜写代码", messages[0]["content"])
 
     def test_cli_writes_json_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

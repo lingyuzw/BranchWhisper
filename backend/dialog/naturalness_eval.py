@@ -3,8 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import tempfile
 from pathlib import Path
 from typing import Any
+
+from core.config import DEFAULT_SYSTEM, SessionSettings, add_settings_args
+from dialog.message_flow import build_contextual_request_messages, build_llm_messages
+from tools.runtime_brain import MemoryStore
 
 
 DEFAULT_SAMPLE_PATH = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "dialog_naturalness_samples.json"
@@ -43,6 +48,61 @@ def load_cases(path: str | Path = DEFAULT_SAMPLE_PATH) -> list[dict[str, Any]]:
     if not isinstance(data, list):
         raise ValueError("dialog naturalness samples must be a JSON array")
     return [case for case in data if isinstance(case, dict)]
+
+
+def build_case_messages(case: dict[str, Any]) -> list[dict[str, str]]:
+    user_text = str(case.get("user") or "")
+    request_user_text = str(case.get("request_user_text") or user_text)
+    memory_mode = str(case.get("memory_mode") or case.get("dialog_mode") or "api")
+    settings = default_eval_settings(memory_mode)
+
+    messages = build_llm_messages(
+        {"messages": case.get("history") or []},
+        system_prompt=str(case.get("system") or DEFAULT_SYSTEM),
+    )
+    memory_context = build_case_memory_context(case, settings, user_text, memory_mode)
+    return build_contextual_request_messages(
+        messages,
+        user_text,
+        request_user_text,
+        memory_context=memory_context,
+        context_summary=str(case.get("context_summary") or ""),
+        now_text=str(case.get("now_text") or "2026年06月19日 Friday 15:00"),
+    )
+
+
+def default_eval_settings(memory_mode: str) -> SessionSettings:
+    parser = argparse.ArgumentParser(add_help=False)
+    add_settings_args(parser)
+    settings = SessionSettings.from_args(parser.parse_args([]))
+    settings.dialog_mode = memory_mode
+    return settings
+
+
+def build_case_memory_context(
+    case: dict[str, Any],
+    settings: SessionSettings,
+    user_text: str,
+    memory_mode: str,
+) -> str:
+    seed_memories = case.get("seed_memories") or []
+    if not seed_memories:
+        return ""
+    with tempfile.TemporaryDirectory() as tmp:
+        store = MemoryStore(Path(tmp) / "memory.sqlite3")
+        for item in seed_memories:
+            if isinstance(item, str):
+                memory = {"key": "测试记忆", "value": item}
+            elif isinstance(item, dict):
+                memory = dict(item)
+            else:
+                continue
+            memory.setdefault("layer", "long")
+            memory.setdefault("confidence", 0.9)
+            memory.setdefault("importance", 0.9)
+            memory.setdefault("memory_type", "semantic_fact")
+            store.upsert_memory(memory, source="chat", mode=memory_mode)
+        return store.format_context(settings, user_text, mode=memory_mode)
 
 
 def evaluate_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
