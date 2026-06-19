@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { Plus, RefreshCw, Save, X } from "@lucide/vue";
+import { Plus, RefreshCw } from "@lucide/vue";
 import type { IntegrationItem } from "@/api/integrations";
 import { formatApiError } from "@/api/client";
+import IntegrationConfigModal from "@/components/integrations/IntegrationConfigModal.vue";
 import IntegrationLoginPanel from "@/components/integrations/IntegrationLoginPanel.vue";
 import IntegrationLogsPanel from "@/components/integrations/IntegrationLogsPanel.vue";
 import IntegrationProbePanel from "@/components/integrations/IntegrationProbePanel.vue";
@@ -440,37 +441,16 @@ function downloadLogs() {
         </aside>
       </section>
 
-      <div v-if="configOpen" class="modal-overlay" @click.self="configOpen = false">
-        <section class="modal-panel integration-modal-panel" role="dialog" aria-modal="true" aria-label="接入实例配置">
-          <div class="modal-head">
-            <div>
-              <p class="eyebrow">Instance Config</p>
-              <h2>{{ integrations.editingId ? "编辑机器人" : "新增机器人" }}</h2>
-            </div>
-            <button class="icon-button modal-close" type="button" title="关闭" @click="configOpen = false"><X :size="16" /></button>
-          </div>
-          <div class="modal-body">
-            <div class="integration-profile-hint">
-              <strong>每个机器人使用独立 OpenClaw profile。</strong>
-              <span>新增后先保存，再用对应设备扫码；扫码 token、会话和消息记录会存到这个 profile 下，不会覆盖当前机器人。</span>
-            </div>
-            <div class="form-grid compact">
-              <label><span>机器人 ID</span><input v-model="integrations.form.id" :disabled="!!integrations.editingId" placeholder="weixin_phone2" /></label>
-              <label><span>显示名称</span><input v-model="integrations.form.chat_name" placeholder="新设备微信" /></label>
-              <label><span>隔离 profile</span><input v-model="integrations.form.openclaw_profile" placeholder="branchwhisper_weixin_phone2" /></label>
-              <label><span>Bot 人格</span><select v-model="integrations.form.bot_profile_id"><option v-for="profile in profiles.profiles" :key="profile.id" :value="profile.id">{{ profile.name || profile.id }}</option></select></label>
-              <label><span>回复模式</span><select v-model="integrations.form.reply_mode"><option value="text">文字默认</option><option value="voice">语音优先</option></select></label>
-              <label class="switch-label"><span>启用后台守护</span><input v-model="integrations.form.enabled" type="checkbox" /></label>
-              <label class="wide"><span>语音触发词</span><textarea v-model="integrations.form.voice_trigger_keywords" rows="5"></textarea></label>
-            </div>
-            <p v-if="integrations.error" class="asset-error">{{ integrations.error }}</p>
-          </div>
-          <div class="modal-actions">
-            <button class="secondary-action" type="button" @click="configOpen = false">取消</button>
-            <button class="primary-action" type="button" :disabled="configSaving" @click="saveConfig"><Save :size="16" /> {{ configSaving ? "保存中" : "保存" }}</button>
-          </div>
-        </section>
-      </div>
+      <IntegrationConfigModal
+        v-if="configOpen"
+        :form="integrations.form"
+        :profiles="profiles.profiles"
+        :editing-id="integrations.editingId"
+        :error="integrations.error"
+        :saving="configSaving"
+        @close="configOpen = false"
+        @save="saveConfig"
+      />
     </div>
   </main>
 </template>
