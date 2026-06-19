@@ -6,6 +6,8 @@ import argparse
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from core.io_utils import write_json_file
+
 MASKED_SECRET_CHARS = "*"
 DEFAULT_TTS_VOLUME = 0.88
 DEFAULT_TTS_FADE_MS = 5
@@ -375,11 +377,8 @@ def migrate_legacy_defaults(settings: SessionSettings) -> None:
 
 
 def save_persisted_settings(settings: SessionSettings, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     payload = asdict(settings)
-    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp_path.replace(path)
+    write_json_file(path, payload)
     try:
         verified = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:

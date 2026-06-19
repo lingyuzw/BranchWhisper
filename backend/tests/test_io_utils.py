@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from core.config import save_persisted_settings
 from core.io_utils import write_json_file
 from data.conversations import ConversationStore
 from service_runtime.profiles import write_profile_services
@@ -66,6 +68,28 @@ class JsonIoUtilsTests(unittest.TestCase):
 
             self.assertEqual(config_path, calls[0][0])
             self.assertEqual({"schema_version": 2, "services": {"llm": {"command": "llama-server"}}}, calls[0][1])
+
+    def test_persisted_settings_use_shared_json_writer_and_verify_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_path = Path(tmp) / "settings.json"
+
+            @dataclass
+            class Settings:
+                name: str
+                enabled: bool
+
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("core.config.write_json_file", side_effect=fake_write):
+                save_persisted_settings(Settings(name="小枝", enabled=True), settings_path)
+
+            self.assertEqual(settings_path, calls[0][0])
+            self.assertEqual({"name": "小枝", "enabled": True}, calls[0][1])
+            self.assertEqual({"name": "小枝", "enabled": True}, json.loads(settings_path.read_text(encoding="utf-8")))
 
 
 if __name__ == "__main__":
