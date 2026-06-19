@@ -90,10 +90,6 @@ function checkKindLabel(kind: string) {
 function loadedAtText() {
   return loadedAt.value ? loadedAt.value.toLocaleTimeString() : "尚未检测";
 }
-
-function actionableChecks(item: RuntimeDiagnosticItem) {
-  return item.checks.filter((check) => check.status !== "ok");
-}
 </script>
 
 <template>
@@ -153,13 +149,6 @@ function actionableChecks(item: RuntimeDiagnosticItem) {
           <p class="diagnostic-summary">{{ item.summary }}</p>
 
           <DiagnosticCheckList :checks="item.checks" :kind-label="checkKindLabel" :status-label="statusLabel" />
-
-          <div v-if="actionableChecks(item).length" class="diagnostic-fixes">
-            <div v-for="check in actionableChecks(item)" :key="`fix:${check.kind}:${check.target}`">
-              <span>{{ checkKindLabel(check.kind) }}</span>
-              <strong>{{ check.fix || "检查对应 profile 配置。" }}</strong>
-            </div>
-          </div>
         </article>
       </section>
 

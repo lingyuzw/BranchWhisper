@@ -32,9 +32,14 @@ function checkMetadataRows(check: RuntimeDiagnosticCheck) {
 <template>
   <div class="diagnostic-checks">
     <div v-for="check in checks" :key="`${check.kind}:${check.target}`" class="diagnostic-check" :class="check.status">
-      <span>{{ kindLabel(check.kind) }}</span>
-      <strong>{{ check.target || "--" }}</strong>
-      <small>{{ check.message || statusLabel(check.status) }}</small>
+      <span class="diagnostic-check-kind">{{ kindLabel(check.kind) }}</span>
+      <strong class="diagnostic-check-target">{{ check.target || "--" }}</strong>
+      <span class="diagnostic-check-state">{{ statusLabel(check.status) }}</span>
+      <small class="diagnostic-check-message">{{ check.message || statusLabel(check.status) }}</small>
+      <small v-if="check.status !== 'ok' && check.fix" class="diagnostic-check-fix">
+        <span>建议</span>
+        <strong>{{ check.fix }}</strong>
+      </small>
       <div v-if="checkMetadataRows(check).length" class="diagnostic-check-meta">
         <div v-for="row in checkMetadataRows(check)" :key="`${check.kind}:${check.target}:${row.key}`">
           <span>{{ row.label }}</span>
