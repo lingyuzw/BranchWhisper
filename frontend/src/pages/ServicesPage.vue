@@ -5,6 +5,9 @@ import ResourceSection from "@/components/services/ResourceSection.vue";
 import ServiceCard from "@/components/services/ServiceCard.vue";
 import ServiceLogsPanel from "@/components/services/ServiceLogsPanel.vue";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusSummary from "@/components/ui/StatusSummary.vue";
+import TaskPanel from "@/components/ui/TaskPanel.vue";
 import { runLocalModelsDiagnostic } from "@/api/diagnostics";
 import type { ServiceSummary } from "@/api/services";
 import { useServicesStore } from "@/stores/services";
@@ -17,7 +20,55 @@ const detailServiceId = ref("");
 const serviceDetailExpanded = ref(false);
 const detailService = computed(() => services.services.find((item) => item.id === detailServiceId.value) || null);
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+type MetricTone = "neutral" | "ok" | "warning" | "danger" | "info";
+interface StatusMetricItem {
+  label: string;
+  value: string | number;
+  detail?: string;
+  tone?: MetricTone;
+}
 const serviceProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
+const runningServices = computed(() => services.services.filter((service) => service.running || ["ready", "running"].includes(serviceRuntimeState(service))).length);
+const healthyServices = computed(() => services.services.filter((service) => service.port_open || service.health).length);
+const problemServices = computed(() => services.services.filter((service) => service.error || service.command_mismatch || ["failed", "error"].includes(serviceRuntimeState(service))).length);
+const serviceHeaderTone = computed(() => {
+  if (problemServices.value > 0) return "danger";
+  if (services.loading || bulkBusy.value) return "running";
+  if (runningServices.value > 0) return "ok";
+  return "idle";
+});
+const serviceHeaderStatus = computed(() => {
+  if (problemServices.value > 0) return `${problemServices.value} 项需要处理`;
+  if (services.loading || bulkBusy.value) return "服务状态更新中";
+  if (runningServices.value > 0) return `${runningServices.value} 个服务运行中`;
+  return "等待启动";
+});
+const serviceSummaryItems = computed<StatusMetricItem[]>(() => [
+  {
+    label: "运行服务",
+    value: `${runningServices.value}/${services.services.length || 0}`,
+    detail: services.services.length ? "ASR、LLM、TTS 当前状态" : "等待读取服务列表",
+    tone: runningServices.value ? "ok" : "neutral",
+  },
+  {
+    label: "接口可用",
+    value: healthyServices.value,
+    detail: "端口开放或健康检查有返回",
+    tone: healthyServices.value ? "info" : "neutral",
+  },
+  {
+    label: "当前问题",
+    value: problemServices.value,
+    detail: problemServices.value ? "存在错误、命令不一致或失败状态" : "未发现服务异常",
+    tone: problemServices.value ? "danger" : "ok",
+  },
+  {
+    label: "资源状态",
+    value: services.resourceLoading ? "更新中" : services.resources ? "已读取" : "未读取",
+    detail: "CPU、内存和 GPU 辅助判断",
+    tone: services.resourceLoading ? "info" : services.resources ? "ok" : "neutral",
+  },
+]);
 
 onMounted(async () => {
   try {
@@ -210,17 +261,24 @@ async function copyText(label: string, text: string) {
 
 <template>
   <main class="page-view">
-    <div class="ops-page services-page">
-      <section class="page-head">
-        <div><p class="eyebrow">Service Orchestration</p><h1>服务编排</h1></div>
-        <div class="head-actions">
+    <div class="workspace-page services-page">
+      <PageHeader
+        eyebrow="Service Orchestration"
+        title="服务编排"
+        description="启动和管理本地 ASR、LLM、TTS，让对话和语音回复可用。"
+        :status-text="serviceHeaderStatus"
+        :status-tone="serviceHeaderTone"
+      >
+        <template #actions>
           <button class="primary-action" type="button" :disabled="bulkBusy" @click="handleStartAll"><Power :size="16" /> {{ services.bulkPending === "starting" ? "启动中..." : "一键启动" }}</button>
           <button class="secondary-action" type="button" :disabled="bulkBusy" @click="handleStopAll"><Square :size="16" /> {{ services.bulkPending === "stopping" ? "停止中..." : "停止全部" }}</button>
           <button class="secondary-action" type="button" :disabled="bulkBusy" @click="handleRestartAll"><RefreshCcw :size="16" /> {{ services.bulkPending === "restarting" ? "重启中..." : "重启全部" }}</button>
           <button class="secondary-action" type="button" :disabled="bulkBusy" @click="handleClearAllLogs"><Trash2 :size="16" /> 清空日志</button>
           <button class="icon-button" type="button" title="刷新" :disabled="services.loading" @click="handleRefresh"><RefreshCw :size="16" /></button>
-        </div>
-      </section>
+        </template>
+      </PageHeader>
+
+      <StatusSummary :items="serviceSummaryItems" />
 
       <ResourceSection :resources="services.resources" />
 
@@ -236,19 +294,21 @@ async function copyText(label: string, text: string) {
         @copy="copyServiceProbe"
       />
 
-      <div class="service-list">
-        <ServiceCard
-          v-for="service in services.services"
-          :key="service.id"
-          :service="service"
-          :pending="servicePending(service.id)"
-          @select="services.select"
-          @detail="openServiceDetail"
-          @start="handleStart"
-          @stop="handleStop"
-          @restart="handleRestart"
-        />
-      </div>
+      <TaskPanel title="本地模型服务" description="优先确认三个核心服务能启动、端口可访问、健康检查有返回。">
+        <div class="service-list">
+          <ServiceCard
+            v-for="service in services.services"
+            :key="service.id"
+            :service="service"
+            :pending="servicePending(service.id)"
+            @select="services.select"
+            @detail="openServiceDetail"
+            @start="handleStart"
+            @stop="handleStop"
+            @restart="handleRestart"
+          />
+        </div>
+      </TaskPanel>
 
       <div v-if="detailService" class="modal-overlay service-detail-overlay" @click.self="closeServiceDetail">
         <section class="modal-panel service-detail-modal" role="dialog" aria-modal="true" aria-label="服务参数详情">

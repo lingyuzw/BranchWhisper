@@ -120,5 +120,12 @@ assert(read("src/components/ui/PageHeader.vue").includes("workspace-page-header"
 assert(read("src/components/ui/StatusSummary.vue").includes("workspace-status-summary"), "共享 UI 组件需要提供 StatusSummary");
 assert(read("src/components/ui/TaskPanel.vue").includes("workspace-task-panel"), "共享 UI 组件需要提供 TaskPanel");
 assert(read("src/components/ui/AdvancedDisclosure.vue").includes("workspace-advanced-disclosure"), "共享 UI 组件需要提供 AdvancedDisclosure");
+assert(baseCss.includes("html.theme-light") && baseCss.includes("--bg: #f6f4ef;") && baseCss.includes("--primary: #9a6b34;"), "浅色主题需要按 B 方案调整为暖灰底和克制琥珀主色");
+assert(servicesPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && servicesPage.includes("<PageHeader"), "服务页需要先接入共享 PageHeader，统一顶部结构");
+assert(servicesPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && servicesPage.includes("<StatusSummary"), "服务页需要使用共享 StatusSummary 展示 2-4 个关键状态");
+assert(servicesPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && servicesPage.includes("<TaskPanel"), "服务页主任务区域需要使用共享 TaskPanel");
+assert(memoryPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && memoryPage.includes("<PageHeader"), "记忆页需要先接入共享 PageHeader，统一顶部结构");
+assert(memoryPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && memoryPage.includes("<StatusSummary"), "记忆页需要使用共享 StatusSummary 展示记忆概况");
+assert(memoryPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && memoryPage.includes("<TaskPanel"), "记忆页主任务区域需要使用共享 TaskPanel");
 
 console.log("UI structure checks passed");

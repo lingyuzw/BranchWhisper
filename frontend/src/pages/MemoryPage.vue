@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { Brain, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from "@lucide/vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusSummary from "@/components/ui/StatusSummary.vue";
+import TaskPanel from "@/components/ui/TaskPanel.vue";
 import { useMemoryStore } from "@/stores/memory";
 import { useUiStore } from "@/stores/ui";
 import type { MemoryLayer } from "@/api/memory";
@@ -10,6 +13,13 @@ const ui = useUiStore();
 const memoryBusy = ref(false);
 const decayOpen = ref(false);
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+type MetricTone = "neutral" | "ok" | "warning" | "danger" | "info";
+interface StatusMetricItem {
+  label: string;
+  value: string | number;
+  detail?: string;
+  tone?: MetricTone;
+}
 const admissionProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
 
 const statCards = computed(() => [
@@ -18,8 +28,26 @@ const statCards = computed(() => [
   { label: "中期", value: memory.stats.mid, detail: "重复出现的稳定信息", layer: "mid" as MemoryLayer },
   { label: "长期", value: memory.stats.long, detail: "置顶或高置信信息", layer: "long" as MemoryLayer },
 ]);
+const memorySummaryItems = computed<StatusMetricItem[]>(() =>
+  statCards.value.map((card) => ({
+    label: card.label,
+    value: card.value,
+    detail: card.detail,
+    tone: card.layer === "long" ? "ok" : card.layer === "mid" ? "info" : "neutral",
+  })),
+);
 const activeLayerLabel = computed(() => (memory.layer ? layerLabel(memory.layer) : "全部分层"));
 const activeModeLabel = computed(() => ({ local: "本地模型", api: "API 模型" }[memory.mode || ""] || "跟随当前配置"));
+const memoryHeaderStatus = computed(() => {
+  if (memory.loading) return "刷新中";
+  if (memory.error) return "读取异常";
+  return `${memory.stats.total} 条记忆`;
+});
+const memoryHeaderTone = computed(() => {
+  if (memory.error) return "danger";
+  if (memory.loading) return "running";
+  return memory.stats.total ? "ok" : "idle";
+});
 
 onMounted(() => {
   void memory.reload();
@@ -147,20 +175,24 @@ function formatTime(value?: string | number) {
 
 <template>
   <main class="page-view">
-    <div class="ops-page memory-page">
-      <section class="page-head">
-        <div>
-          <p class="eyebrow">Memory Center</p>
-          <h1>记忆中心</h1>
-          <small>本地模型和 API 模式的记忆分开管理，点击左侧概况可以直接筛选。</small>
-        </div>
-        <div class="head-actions">
+    <div class="workspace-page memory-page">
+      <PageHeader
+        eyebrow="Memory Center"
+        title="记忆中心"
+        description="管理机器人会长期记住的偏好和事实，本地模型和 API 模式分开维护。"
+        :status-text="memoryHeaderStatus"
+        :status-tone="memoryHeaderTone"
+      >
+        <template #actions>
           <button class="secondary-action" type="button" :disabled="memory.loading" @click="refreshMemory">
             <RefreshCw :size="16" /> {{ memory.loading ? "刷新中" : "刷新" }}
           </button>
-        </div>
-      </section>
+        </template>
+      </PageHeader>
 
+      <StatusSummary :items="memorySummaryItems" />
+
+      <TaskPanel title="记忆管理" description="先搜索和维护稳定记忆，入库测试与衰减清理作为辅助工具保留在页面内。">
       <section class="memory-workbench">
         <aside class="memory-side-panel">
           <div class="memory-side-head">
@@ -323,6 +355,7 @@ function formatTime(value?: string | number) {
           </footer>
         </section>
       </section>
+      </TaskPanel>
     </div>
   </main>
 </template>

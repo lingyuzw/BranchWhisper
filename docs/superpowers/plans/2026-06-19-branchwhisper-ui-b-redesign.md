@@ -559,9 +559,9 @@ Files：
 
 - [x] 新增 `frontend/src/styles/ui.css`，放通用工作台、状态卡、折叠区、抽屉样式。
 - [x] 在 `frontend/src/styles/main.css` 中引入 `ui.css`，位置在 `layout.css` 后、页面 CSS 前。
-- [ ] 调整 `base.css` 浅色主题 tokens，降低米黄色和棕色占比。
+- [x] 调整 `base.css` 浅色主题 tokens，降低米黄色和棕色占比。
 - [x] 新增 `components/ui` 通用组件。
-- [ ] 让 `PageHeader` 先接入 ServicesPage 和 MemoryPage 验证。
+- [x] 让 `PageHeader` 先接入 ServicesPage 和 MemoryPage 验证。
 - [x] 运行 `cd frontend && npm run check && npm run check:ui && npm run build`。
 
 ### Phase 2：核心使用链路
