@@ -470,6 +470,34 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(output.exists())
 
+    def test_live_replay_script_writes_default_runtime_report(self) -> None:
+        script = BACKEND_ROOT.parent / "scripts" / "replay_dialog_naturalness.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "live-report.json"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--live-url",
+                    "http://127.0.0.1:9/v1/chat/completions",
+                    "--live-model",
+                    "qwen",
+                    "--limit",
+                    "1",
+                    "--output",
+                    str(output),
+                    "--allow-failures",
+                ],
+                cwd=BACKEND_ROOT.parent,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue(output.exists())
+
     def test_backend_quality_script_runs_dialog_checks(self) -> None:
         script = BACKEND_ROOT.parent / "scripts" / "check_backend_quality.py"
 

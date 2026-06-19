@@ -46,6 +46,13 @@ may be offline during development. Live replay skips `expect_fail` samples by de
 If the model endpoint is unavailable, the report marks the affected samples with
 `live_replay_error` instead of crashing.
 
+For repeated live checks, use the wrapper script. It writes a text report to
+`runtime/dialog-naturalness-live-report.txt` by default:
+
+```bash
+/home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/replay_dialog_naturalness.py --live-url http://127.0.0.1:8080/v1/chat/completions --live-model qwen3.5-9b --limit 5 --allow-failures
+```
+
 The report includes a `summary` block with category totals and rule hit counts, so regressions can
 be triaged without reading every sample result.
 
