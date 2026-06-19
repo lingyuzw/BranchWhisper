@@ -577,8 +577,8 @@ Files：
 - [x] 改造 MemoryPage：列表优先，高级工具折叠。
 - [x] 改造 AssetsPage：图库优先，配置和测试后置。
 - [x] 改造 SettingsPage：基础/高级分层。
-- [ ] 删除重复 CSS，把通用样式迁到 `ui.css`。
-- [ ] 运行前端检查和构建。
+- [x] 删除重复 CSS，把通用样式迁到 `ui.css`。
+- [x] 运行前端检查和构建。
 
 ### Phase 4：诊断体验
 
