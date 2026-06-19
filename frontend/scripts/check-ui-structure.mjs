@@ -75,7 +75,7 @@ assert(integrationLoginPanel.includes("integration-step-index") && integrationLo
 assert(integrationsCss.includes("grid-template-columns: repeat(4, minmax(0, 1fr))") && integrationsCss.includes(".integration-step-index"), "接入页步骤流程需要桌面四列展示并有编号样式");
 assert(integrationsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && integrationsPage.includes('<AdvancedDisclosure title="运行日志">'), "接入页运行日志需要进入高级折叠区，避免日志占据主流程");
 assert(integrationsPage.indexOf("<AdvancedDisclosure") < integrationsPage.indexOf("<IntegrationLogsPanel"), "接入页日志面板需要包在运行日志高级折叠区内");
-assert(integrationsCss.includes("grid-template-rows: auto auto") && integrationsCss.includes(".integration-test-column .workspace-advanced-disclosure"), "接入页左栏应按链路测试和高级日志两段布局");
+assert(integrationsCss.includes("grid-template-rows: auto auto") && integrationsCss.includes("align-content: start") && integrationsCss.includes(".integration-test-column .workspace-advanced-disclosure"), "接入页左栏应按链路测试和高级日志两段自然高度布局，避免折叠日志被拉成空白块");
 const integrationProbePanel = read("src/components/integrations/IntegrationProbePanel.vue");
 assert(integrationProbePanel.includes('title="测试文字回复"') && integrationProbePanel.includes('title="测试语音回复"') && integrationProbePanel.includes('title="测试表情包回复"'), "接入页测试卡标题需要使用用户任务文案，而不是链路调试文案");
 assert(!integrationProbePanel.includes("文本回复链路") && !integrationProbePanel.includes("语音发送链路") && !integrationProbePanel.includes("素材发送链路"), "接入页测试卡不应继续使用链路调试标题");
@@ -133,6 +133,7 @@ assert(read("src/components/ui/PageHeader.vue").includes("workspace-page-header"
 assert(read("src/components/ui/StatusSummary.vue").includes("workspace-status-summary"), "共享 UI 组件需要提供 StatusSummary");
 assert(read("src/components/ui/TaskPanel.vue").includes("workspace-task-panel"), "共享 UI 组件需要提供 TaskPanel");
 assert(read("src/components/ui/AdvancedDisclosure.vue").includes("workspace-advanced-disclosure"), "共享 UI 组件需要提供 AdvancedDisclosure");
+assert(read("src/styles/ui.css").includes(".workspace-advanced-disclosure:not([open]) .workspace-advanced-disclosure-body"), "高级折叠区关闭时必须隐藏正文，避免日志在首屏占位");
 assert(baseCss.includes("html.theme-light") && baseCss.includes("--bg: #f6f4ef;") && baseCss.includes("--primary: #9a6b34;"), "浅色主题需要按 B 方案调整为暖灰底和克制琥珀主色");
 assert(servicesPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && servicesPage.includes("<PageHeader"), "服务页需要先接入共享 PageHeader，统一顶部结构");
 assert(servicesPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && servicesPage.includes("<StatusSummary"), "服务页需要使用共享 StatusSummary 展示 2-4 个关键状态");

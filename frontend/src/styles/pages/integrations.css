@@ -30,6 +30,7 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto;
+  align-content: start;
   gap: 12px;
 }
 
