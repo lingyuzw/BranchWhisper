@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { Brain, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from "@lucide/vue";
+import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
 import StatusSummary from "@/components/ui/StatusSummary.vue";
 import TaskPanel from "@/components/ui/TaskPanel.vue";
@@ -281,30 +282,6 @@ function formatTime(value?: string | number) {
             </div>
           </header>
 
-          <section class="memory-admission-probe">
-            <label class="memory-probe-cell memory-probe-text memory-admission-card">
-              <span>入库测试文本</span>
-              <small>输入一句偏好、身份或长期事实，先看它是否值得进入记忆。</small>
-              <textarea v-model="memory.admissionText"></textarea>
-            </label>
-            <div class="memory-probe-cell memory-probe-loop memory-admission-action-card" :class="admissionProbe.status">
-              <div class="memory-admission-action-copy">
-                <span>记忆入库回路</span>
-                <strong>{{ admissionProbe.text }}</strong>
-                <small>使用当前抽取规则做一次最小检测。</small>
-              </div>
-              <div class="memory-admission-actions">
-                <button class="primary-action" type="button" :disabled="admissionProbe.status === 'running'" @click="runAdmissionProbe">
-                  <Brain :size="16" /> {{ admissionProbe.status === "running" ? "检测中" : "测试入库" }}
-                </button>
-                <button class="secondary-action" type="button" :disabled="!admissionProbe.detail" @click="copyAdmissionProbe">
-                  复制结果
-                </button>
-              </div>
-              <code v-if="admissionProbe.detail">{{ admissionProbe.detail }}</code>
-            </div>
-          </section>
-
           <div class="memory-context-strip">
             <span><b>{{ activeLayerLabel }}</b> · {{ memory.filtered.length }} 条</span>
             <small>{{ memory.query ? `搜索：${memory.query}` : "未输入搜索条件" }}</small>
@@ -353,6 +330,32 @@ function formatTime(value?: string | number) {
               <RefreshCw :size="16" /> {{ memory.loading ? "刷新中" : "刷新" }}
             </button>
           </footer>
+
+          <AdvancedDisclosure title="入库测试">
+            <section class="memory-admission-probe">
+              <label class="memory-probe-cell memory-probe-text memory-admission-card">
+                <span>入库测试文本</span>
+                <small>输入一句偏好、身份或长期事实，先看它是否值得进入记忆。</small>
+                <textarea v-model="memory.admissionText"></textarea>
+              </label>
+              <div class="memory-probe-cell memory-probe-loop memory-admission-action-card" :class="admissionProbe.status">
+                <div class="memory-admission-action-copy">
+                  <span>记忆入库回路</span>
+                  <strong>{{ admissionProbe.text }}</strong>
+                  <small>使用当前抽取规则做一次最小检测。</small>
+                </div>
+                <div class="memory-admission-actions">
+                  <button class="primary-action" type="button" :disabled="admissionProbe.status === 'running'" @click="runAdmissionProbe">
+                    <Brain :size="16" /> {{ admissionProbe.status === "running" ? "检测中" : "测试入库" }}
+                  </button>
+                  <button class="secondary-action" type="button" :disabled="!admissionProbe.detail" @click="copyAdmissionProbe">
+                    复制结果
+                  </button>
+                </div>
+                <code v-if="admissionProbe.detail">{{ admissionProbe.detail }}</code>
+              </div>
+            </section>
+          </AdvancedDisclosure>
         </section>
       </section>
       </TaskPanel>

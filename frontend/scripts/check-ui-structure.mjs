@@ -146,6 +146,9 @@ assert(servicesCss.includes("grid-template-columns: repeat(3, minmax(92px, 1fr))
 assert(memoryPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && memoryPage.includes("<PageHeader"), "记忆页需要先接入共享 PageHeader，统一顶部结构");
 assert(memoryPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && memoryPage.includes("<StatusSummary"), "记忆页需要使用共享 StatusSummary 展示记忆概况");
 assert(memoryPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && memoryPage.includes("<TaskPanel"), "记忆页主任务区域需要使用共享 TaskPanel");
+assert(memoryPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && memoryPage.includes('<AdvancedDisclosure title="入库测试">'), "记忆页入库测试需要进入高级折叠区，列表和搜索应优先展示");
+assert(memoryPage.indexOf("memory-context-strip") < memoryPage.indexOf("<AdvancedDisclosure"), "记忆页应先展示搜索结果上下文和列表，再展示入库测试高级工具");
+assert(memoryCss.includes("grid-template-rows: auto auto minmax(0, 1fr) auto auto"), "记忆主面板网格需要让列表优先占据主要高度，高级工具后置");
 assert(dashboardPage.includes('class="dashboard-runtime-strip"'), "对话页运行状态需要放在聊天区底部横向链路，避免左栏像调试面板");
 assert(runtimeMetrics.includes('class="dashboard-runtime-strip"') && runtimeMetrics.includes('class="dashboard-pipeline-track"'), "对话页运行状态组件需要输出横向 pipeline");
 assert(!runtimeMetrics.includes("runtime-chips") && !runtimeMetrics.includes("sidebar-chips"), "对话页不应常驻 ASR/LLM/TTS/TRACE 小指标卡");
