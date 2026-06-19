@@ -678,6 +678,23 @@ def send_text_parts(
     return {"attempted": len(reply_parts), "sent": len(message_ids), "message_ids": message_ids}
 
 
+def send_voice_fallback_notice(
+    *,
+    client: httpx.Client,
+    account: dict,
+    to_user_id: str,
+    context_token: str,
+    result: dict,
+    voice_sent: bool,
+) -> dict:
+    voice_notice = "" if voice_sent else voice_fallback_text(result)
+    if not voice_notice:
+        return {"sent": False, "message_id": "", "notice": ""}
+    notice_id = send_text(client, account, to_user_id, voice_notice, context_token=context_token)
+    log(f"sent voice fallback notice account={account['account_id']} to={to_user_id} client_id={notice_id}")
+    return {"sent": True, "message_id": notice_id, "notice": voice_notice}
+
+
 def send_voice_reply(
     *,
     branchwhisper_url: str,
@@ -984,13 +1001,17 @@ def handle_branchwhisper_result(
         context_token=context_token,
         result=result,
     )
-    voice_notice = "" if voice_sent else voice_fallback_text(result)
-    if voice_notice:
-        try:
-            notice_id = send_text(client, account, from_user_id, voice_notice, context_token=context_token)
-            log(f"sent voice fallback notice account={account['account_id']} to={from_user_id} client_id={notice_id}")
-        except Exception as exc:
-            log(f"voice fallback notice failed account={account['account_id']} to={from_user_id} err={exc}")
+    try:
+        send_voice_fallback_notice(
+            client=client,
+            account=account,
+            to_user_id=from_user_id,
+            context_token=context_token,
+            result=result,
+            voice_sent=voice_sent,
+        )
+    except Exception as exc:
+        log(f"voice fallback notice failed account={account['account_id']} to={from_user_id} err={exc}")
     if result.get("send_voice") and result.get("voice_file") and not voice_sent:
         if result.get("voice_error"):
             log(

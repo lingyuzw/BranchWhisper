@@ -1156,6 +1156,39 @@ class OpenClawBridgeTests(unittest.TestCase):
         self.assertEqual(2, reported[0]["text_parts"])
         self.assertEqual(1, reported[0]["sent_text_parts"])
 
+    def test_send_voice_fallback_notice_sends_when_voice_failed(self) -> None:
+        sent: list[str] = []
+        original_send_text = openclaw_bridge.send_text
+
+        def fake_send_text(_client, _account, _to_user_id, text, context_token=""):
+            sent.append(text)
+            return "notice-1"
+
+        openclaw_bridge.send_text = fake_send_text
+        try:
+            summary = openclaw_bridge.send_voice_fallback_notice(
+                client=object(),
+                account={"account_id": "account", "base_url": "https://example.test", "token": "token"},
+                to_user_id="user@im.wechat",
+                context_token="ctx",
+                result={"voice_requested": True, "voice_error": "tts offline"},
+                voice_sent=False,
+            )
+            skipped = openclaw_bridge.send_voice_fallback_notice(
+                client=object(),
+                account={"account_id": "account", "base_url": "https://example.test", "token": "token"},
+                to_user_id="user@im.wechat",
+                context_token="ctx",
+                result={"voice_requested": True, "voice_error": "tts offline"},
+                voice_sent=True,
+            )
+        finally:
+            openclaw_bridge.send_text = original_send_text
+
+        self.assertEqual(["语音暂时发不出来：tts offline。先以文字为准。"], sent)
+        self.assertEqual({"sent": True, "message_id": "notice-1", "notice": sent[0]}, summary)
+        self.assertEqual({"sent": False, "message_id": "", "notice": ""}, skipped)
+
     def test_reply_fingerprint_is_sent_once_per_source_message(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
