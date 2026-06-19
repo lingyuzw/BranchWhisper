@@ -100,8 +100,6 @@ def memory_recall_intent(query: str) -> str:
         return "explicit"
     if any(hint in value for hint in MEMORY_RECALL_TOPIC_HINTS):
         return "explicit"
-    if has_strong_stable_memory_signal(value):
-        return "implicit"
     return "none"
 
 

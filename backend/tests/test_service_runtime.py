@@ -1316,6 +1316,50 @@ class MemoryRuntimeTests(unittest.TestCase):
 
         self.assertEqual(context, "")
 
+    def test_memory_context_stays_quiet_for_new_preference_statement(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "用户偏好",
+                    "value": "用户喜欢深夜写代码",
+                    "layer": "long",
+                    "confidence": 0.9,
+                    "importance": 0.9,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+
+            context = store.format_context(settings, "我喜欢今天这样安静点", mode="api")
+
+        self.assertEqual(context, "")
+
+    def test_memory_context_still_recalls_for_explicit_preference_lookup(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "用户偏好",
+                    "value": "用户喜欢深夜写代码",
+                    "layer": "long",
+                    "confidence": 0.9,
+                    "importance": 0.9,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+
+            context = store.format_context(settings, "你记得我喜欢什么吗？", mode="api")
+
+        self.assertIn("用户喜欢深夜写代码", context)
+
     def test_memory_context_keeps_key_value_relation_for_user_preferences(self) -> None:
         settings = default_settings()
         settings.dialog_mode = "api"
