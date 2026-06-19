@@ -134,6 +134,7 @@ assert(diagnosticsCss.includes(".diagnostic-check-message"), "运行诊断失败
 assert(diagnosticsCss.includes("align-content: start"), "运行诊断卡片内部需要从顶部紧凑排布，避免同一行卡片高度拉伸后内容被推散");
 assert(diagnosticsPage.includes("failureReasonText(check)") && diagnosticsPage.includes("probableCauseText(check)"), "运行诊断修复建议需要拆分当前异常和可能原因，避免重复展示同一段失败信息");
 assert(!diagnosticsPage.includes("<p>{{ compactProblem(check.message) }}</p>"), "运行诊断修复建议不应把失败摘要作为孤立段落重复堆叠");
+assert(diagnosticsPage.indexOf('class="diagnostics-fix-panel"') < diagnosticsPage.indexOf('class="diagnostics-log-panel"'), "运行诊断右侧栏需要先展示修复建议，再展示日志证据");
 assert(mainCss.includes('@import "./ui.css";'), "共享工作台 UI 样式需要在 main.css 中引入，并位于页面 CSS 前");
 assert(read("src/styles/ui.css").includes(".workspace-page"), "共享 UI 样式需要提供 workspace-page 页面骨架");
 assert(read("src/components/ui/PageHeader.vue").includes("workspace-page-header"), "共享 UI 组件需要提供 PageHeader");

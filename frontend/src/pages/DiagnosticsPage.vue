@@ -739,30 +739,6 @@ async function copyText(label: string, text: string) {
         </section>
 
         <aside class="diagnostics-insight-rail">
-          <section class="diagnostics-log-panel">
-            <div class="diagnostics-panel-head">
-              <div>
-                <p class="eyebrow">Live Logs</p>
-                <h2>实时日志</h2>
-              </div>
-              <span>{{ logLineCount }} 行</span>
-            </div>
-            <div class="diagnostics-log-controls">
-              <select :value="services.selectedId" @change="selectLogService(($event.target as HTMLSelectElement).value)">
-                <option v-for="service in services.services" :key="service.id" :value="service.id">{{ service.label || service.id }}</option>
-              </select>
-              <button class="icon-button" type="button" title="刷新日志" @click="services.refreshLogs()"><RotateCw :size="15" /></button>
-              <button class="icon-button" :class="{ active: onlyErrorLogs }" type="button" title="只看错误" @click="onlyErrorLogs = !onlyErrorLogs">
-                <AlertTriangle :size="15" />
-              </button>
-              <button class="icon-button" :class="{ active: pauseLogScroll }" type="button" title="暂停滚动" @click="pauseLogScroll = !pauseLogScroll">
-                <Pause :size="15" />
-              </button>
-              <button class="icon-button" type="button" title="复制日志" @click="copyCurrentLogs"><Copy :size="15" /></button>
-            </div>
-            <pre ref="logBox" class="diagnostics-log-viewer">{{ filteredLogs || "选择一个服务查看日志。" }}</pre>
-          </section>
-
           <section class="diagnostics-fix-panel">
             <div class="diagnostics-panel-head">
               <div>
@@ -800,6 +776,31 @@ async function copyText(label: string, text: string) {
               <strong>当前选中服务没有异常</strong>
               <span>如果语音链路仍不可用，可以先运行接口测试，再查看实时日志。</span>
             </div>
+          </section>
+
+          <section class="diagnostics-log-panel">
+            <div class="diagnostics-panel-head">
+              <div>
+                <p class="eyebrow">Log Evidence</p>
+                <h2>日志证据</h2>
+                <small>用于核对修复过程中的启动输出和错误堆栈。</small>
+              </div>
+              <span>{{ logLineCount }} 行</span>
+            </div>
+            <div class="diagnostics-log-controls">
+              <select :value="services.selectedId" @change="selectLogService(($event.target as HTMLSelectElement).value)">
+                <option v-for="service in services.services" :key="service.id" :value="service.id">{{ service.label || service.id }}</option>
+              </select>
+              <button class="icon-button" type="button" title="刷新日志" @click="services.refreshLogs()"><RotateCw :size="15" /></button>
+              <button class="icon-button" :class="{ active: onlyErrorLogs }" type="button" title="只看错误" @click="onlyErrorLogs = !onlyErrorLogs">
+                <AlertTriangle :size="15" />
+              </button>
+              <button class="icon-button" :class="{ active: pauseLogScroll }" type="button" title="暂停滚动" @click="pauseLogScroll = !pauseLogScroll">
+                <Pause :size="15" />
+              </button>
+              <button class="icon-button" type="button" title="复制日志" @click="copyCurrentLogs"><Copy :size="15" /></button>
+            </div>
+            <pre ref="logBox" class="diagnostics-log-viewer">{{ filteredLogs || "选择一个服务查看日志。" }}</pre>
           </section>
 
           <DialogTracePanel :traces="traces" />
