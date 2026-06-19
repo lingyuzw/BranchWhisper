@@ -237,37 +237,6 @@ function formatTime(value?: string | number) {
             </label>
           </div>
 
-          <section class="memory-decay-panel" :class="{ expanded: decayOpen }">
-            <div class="memory-decay-card-head">
-              <button class="memory-decay-toggle" type="button" @click="decayOpen = !decayOpen">
-                <span>
-                  <strong>衰减清理条件</strong>
-                  <small>只影响本次清理</small>
-                </span>
-                <ChevronDown v-if="decayOpen" :size="15" />
-                <ChevronRight v-else :size="15" />
-              </button>
-              <button class="secondary-action compact-action" type="button" :disabled="memoryBusy" @click="decayMemory">
-                <Brain :size="14" /> 清理
-              </button>
-            </div>
-            <div class="memory-decay-summary">
-              <span>删短期 {{ memory.decayOptions.short_delete_days }} 天</span>
-              <span>短转中 {{ memory.decayOptions.short_to_mid_count }} 次</span>
-              <span>长降级 {{ memory.decayOptions.long_downgrade_days }} 天</span>
-            </div>
-            <div v-if="decayOpen" class="memory-decay-body">
-              <div class="memory-decay-grid">
-                <label><span>短期删除/天</span><input v-model.number="memory.decayOptions.short_delete_days" type="number" min="1" /></label>
-                <label><span>短期晋升/天</span><input v-model.number="memory.decayOptions.short_to_mid_days" type="number" min="1" /></label>
-                <label><span>短期次数</span><input v-model.number="memory.decayOptions.short_to_mid_count" type="number" min="1" /></label>
-                <label><span>中期晋升/天</span><input v-model.number="memory.decayOptions.mid_to_long_days" type="number" min="1" /></label>
-                <label><span>中期次数</span><input v-model.number="memory.decayOptions.mid_to_long_count" type="number" min="1" /></label>
-                <label><span>中期降级/天</span><input v-model.number="memory.decayOptions.mid_downgrade_days" type="number" min="1" /></label>
-                <label class="wide"><span>长期降级/天</span><input v-model.number="memory.decayOptions.long_downgrade_days" type="number" min="1" /></label>
-              </div>
-            </div>
-          </section>
         </aside>
 
         <section class="memory-page-panel">
@@ -353,6 +322,40 @@ function formatTime(value?: string | number) {
                   </button>
                 </div>
                 <code v-if="admissionProbe.detail">{{ admissionProbe.detail }}</code>
+              </div>
+            </section>
+          </AdvancedDisclosure>
+
+          <AdvancedDisclosure title="衰减清理">
+            <section class="memory-decay-panel" :class="{ expanded: decayOpen }">
+              <div class="memory-decay-card-head">
+                <button class="memory-decay-toggle" type="button" @click="decayOpen = !decayOpen">
+                  <span>
+                    <strong>衰减清理条件</strong>
+                    <small>只影响本次清理</small>
+                  </span>
+                  <ChevronDown v-if="decayOpen" :size="15" />
+                  <ChevronRight v-else :size="15" />
+                </button>
+                <button class="secondary-action compact-action" type="button" :disabled="memoryBusy" @click="decayMemory">
+                  <Brain :size="14" /> 清理
+                </button>
+              </div>
+              <div class="memory-decay-summary">
+                <span>删短期 {{ memory.decayOptions.short_delete_days }} 天</span>
+                <span>短转中 {{ memory.decayOptions.short_to_mid_count }} 次</span>
+                <span>长降级 {{ memory.decayOptions.long_downgrade_days }} 天</span>
+              </div>
+              <div v-if="decayOpen" class="memory-decay-body">
+                <div class="memory-decay-grid">
+                  <label><span>短期删除/天</span><input v-model.number="memory.decayOptions.short_delete_days" type="number" min="1" /></label>
+                  <label><span>短期晋升/天</span><input v-model.number="memory.decayOptions.short_to_mid_days" type="number" min="1" /></label>
+                  <label><span>短期次数</span><input v-model.number="memory.decayOptions.short_to_mid_count" type="number" min="1" /></label>
+                  <label><span>中期晋升/天</span><input v-model.number="memory.decayOptions.mid_to_long_days" type="number" min="1" /></label>
+                  <label><span>中期次数</span><input v-model.number="memory.decayOptions.mid_to_long_count" type="number" min="1" /></label>
+                  <label><span>中期降级/天</span><input v-model.number="memory.decayOptions.mid_downgrade_days" type="number" min="1" /></label>
+                  <label class="wide"><span>长期降级/天</span><input v-model.number="memory.decayOptions.long_downgrade_days" type="number" min="1" /></label>
+                </div>
               </div>
             </section>
           </AdvancedDisclosure>
