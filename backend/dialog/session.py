@@ -38,6 +38,7 @@ from dialog.message_flow import draft_conversation as build_draft_conversation
 from dialog.message_flow import memory_observation_text as build_memory_observation_text
 from dialog.text_helpers import attachment_text, build_request_user_text, compact_str, extract_repeat_text, last_assistant_content
 from dialog.trace import DialogTraceStore
+from dialog.voice_pipeline import TtsPcmStream
 from engagement.proactive import FollowupPolicy
 from media.assets import ChatImageStore, StickerStore
 from media.sticker_policy import StickerPolicy
@@ -104,9 +105,7 @@ class DialogSession:
         self.send_lock = asyncio.Lock()
         self.processing = False
         self.current_task: asyncio.Task | None = None
-        self.tts_pcm_pending = b""
-        self.tts_pcm_tail = np.array([], dtype=np.int16)
-        self.tts_pcm_started = False
+        self.tts_pcm_stream: TtsPcmStream | None = None
         self.current_trace_id = ""
         self.pending_sticker_tags: list[str] = []
 
@@ -1119,71 +1118,26 @@ class DialogSession:
                 self.reset_tts_pcm_state()
 
     def reset_tts_pcm_state(self) -> None:
-        self.tts_pcm_pending = b""
-        self.tts_pcm_tail = np.array([], dtype=np.int16)
-        self.tts_pcm_started = False
+        self.tts_pcm_stream = TtsPcmStream(
+            sample_rate=int(self.settings.tts_sample_rate),
+            fade_ms=int(self.settings.tts_fade_ms),
+            volume=float(self.settings.tts_volume),
+        )
 
     def process_tts_pcm_chunk(self, chunk: bytes) -> bytes:
-        data = self.tts_pcm_pending + chunk
-        if len(data) < 2:
-            self.tts_pcm_pending = data
-            return b""
-
-        if len(data) % 2:
-            self.tts_pcm_pending = data[-1:]
-            data = data[:-1]
-        else:
-            self.tts_pcm_pending = b""
-
-        samples = np.frombuffer(data, dtype="<i2").astype(np.float32)
-        if samples.size == 0:
-            return b""
-
-        volume = float(np.clip(self.settings.tts_volume, 0.05, 1.5))
-        samples *= volume
-
-        fade_samples = self.tts_fade_samples()
-        if not self.tts_pcm_started:
-            fade_len = min(fade_samples, samples.size)
-            if fade_len > 1:
-                samples[:fade_len] *= np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
-            self.tts_pcm_started = True
-
-        samples = np.clip(samples, -32768, 32767).astype(np.int16)
-
-        if fade_samples <= 0:
-            return samples.astype("<i2", copy=False).tobytes()
-
-        if self.tts_pcm_tail.size:
-            samples = np.concatenate([self.tts_pcm_tail, samples])
-
-        if samples.size <= fade_samples:
-            self.tts_pcm_tail = samples
-            return b""
-
-        send_samples = samples[:-fade_samples]
-        self.tts_pcm_tail = samples[-fade_samples:]
-        return send_samples.astype("<i2", copy=False).tobytes()
+        if not self.tts_pcm_stream:
+            self.reset_tts_pcm_state()
+        return self.tts_pcm_stream.process(chunk)
 
     def finish_tts_pcm_stream(self) -> bytes:
-        if self.tts_pcm_pending:
-            self.tts_pcm_pending = b""
-
-        tail = self.tts_pcm_tail.astype(np.float32)
-        self.tts_pcm_tail = np.array([], dtype=np.int16)
-        if tail.size == 0:
+        if not self.tts_pcm_stream:
             return b""
-
-        fade_len = min(self.tts_fade_samples(), tail.size)
-        if fade_len > 1:
-            tail[-fade_len:] *= np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
-
-        tail = np.clip(tail, -32768, 32767).astype(np.int16)
-        return tail.astype("<i2", copy=False).tobytes()
+        return self.tts_pcm_stream.finish()
 
     def tts_fade_samples(self) -> int:
-        fade_ms = max(0, int(self.settings.tts_fade_ms))
-        return int(self.settings.tts_sample_rate * fade_ms / 1000)
+        if not self.tts_pcm_stream:
+            self.reset_tts_pcm_state()
+        return self.tts_pcm_stream.fade_samples()
 
     async def send_event(self, event_type: str, **payload) -> None:
         if self.current_trace_id and "trace_id" not in payload:
