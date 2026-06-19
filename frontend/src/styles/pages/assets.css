@@ -4,6 +4,10 @@
   align-content: start;
 }
 
+.assets-page.workspace-page {
+  width: min(1360px, calc(100vw - 32px));
+}
+
 .assets-head small {
   display: block;
   margin-top: 6px;
@@ -325,7 +329,7 @@
 
 .asset-workbench {
   min-width: 0;
-  height: clamp(520px, calc(100vh - var(--topbar-h) - 360px), 760px);
+  height: clamp(560px, calc(100vh - var(--topbar-h) - 310px), 780px);
   min-height: 0;
   display: grid;
   grid-template-columns: 210px minmax(360px, 1fr);

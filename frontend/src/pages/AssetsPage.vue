@@ -7,6 +7,9 @@ import AssetDetailPanel from "@/components/assets/AssetDetailPanel.vue";
 import AssetGallery from "@/components/assets/AssetGallery.vue";
 import AssetSidebar from "@/components/assets/AssetSidebar.vue";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
+import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusSummary from "@/components/ui/StatusSummary.vue";
 import { useAssetsStore } from "@/stores/assets";
 import { useUiStore } from "@/stores/ui";
 
@@ -21,6 +24,13 @@ const detailOpen = ref(false);
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
 const assetProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
 const stickerProbe = ref<{ status: ProbeStatus; text: string; detail: string }>({ status: "idle", text: "未检测", detail: "" });
+type MetricTone = "neutral" | "ok" | "warning" | "danger" | "info";
+interface StatusMetricItem {
+  label: string;
+  value: string | number;
+  detail?: string;
+  tone?: MetricTone;
+}
 const visibleStickers = computed(() => assets.stickers.slice(0, visibleLimit.value));
 const hasMoreStickers = computed(() => visibleLimit.value < assets.stickers.length);
 const progressStage = computed(() => {
@@ -49,6 +59,31 @@ const stats = computed(() => {
     { label: "已通过", value: approved },
     { label: "失败", value: failed },
   ];
+});
+const assetSummaryItems = computed<StatusMetricItem[]>(() =>
+  stats.value.map((item) => ({
+    label: item.label,
+    value: item.value,
+    detail:
+      item.label === "当前视图"
+        ? "当前筛选下可见素材"
+        : item.label === "待审核"
+          ? "需要确认标签和用途"
+          : item.label === "已通过"
+            ? "可参与发送策略"
+            : "识别或审核失败",
+    tone: item.label === "已通过" ? "ok" : item.label === "待审核" ? "warning" : item.label === "失败" ? "danger" : "neutral",
+  })),
+);
+const assetHeaderStatus = computed(() => {
+  if (assets.loading) return "刷新中";
+  if (assets.error) return "读取异常";
+  return `${assets.stickers.length} 张素材`;
+});
+const assetHeaderTone = computed(() => {
+  if (assets.error) return "danger";
+  if (assets.loading || assets.progress.active) return "running";
+  return assets.stickers.length ? "ok" : "idle";
 });
 
 onMounted(() => {
@@ -216,17 +251,19 @@ async function removeOne(id: string) {
 
 <template>
   <main class="page-view">
-    <div class="ops-page assets-page">
-      <section class="page-head assets-head">
-        <div>
-          <p class="eyebrow">Asset Library</p>
-          <h1>素材库</h1>
-          <small>表情包上传、识别、审核和发送策略配置在这里处理；识图和策略测试就在本页完成。</small>
-        </div>
-        <div class="head-actions">
+    <div class="workspace-page assets-page">
+      <PageHeader
+        eyebrow="Asset Library"
+        title="素材库"
+        description="上传、识别、审核和选择表情包。高级配置与策略测试默认收起，避免打断图库管理。"
+        :status-text="assetHeaderStatus"
+        :status-tone="assetHeaderTone"
+      >
+        <template #actions>
+          <button class="primary-action" type="button" @click="openUploadPicker"><ImagePlus :size="16" />上传素材</button>
           <button class="icon-button" type="button" title="刷新" :disabled="assets.loading" @click="refreshAssets"><RefreshCw :size="16" /></button>
-        </div>
-      </section>
+        </template>
+      </PageHeader>
 
       <section
         class="asset-upload-dock"
@@ -248,39 +285,7 @@ async function removeOne(id: string) {
         </div>
       </section>
 
-      <AssetConfigStrip />
-
-      <section class="asset-probe-strip">
-        <InlineProbe
-          variant="strip"
-          title="素材识图 API"
-          summary="用当前选中素材或内置样例请求识图接口，验证模型与 Key。"
-          :status="assetProbe.status"
-          :status-text="assetProbe.text"
-          :detail="assetProbe.detail"
-          action-text="测试识图"
-          @run="runVisionProbe"
-          @copy="copyProbeDetail(assetProbe.detail)"
-        />
-        <InlineProbe
-          variant="strip"
-          title="表情策略匹配"
-          summary="用测试文案运行素材选择逻辑，检查是否误发或匹配不到。"
-          :status="stickerProbe.status"
-          :status-text="stickerProbe.text"
-          :detail="stickerProbe.detail"
-          action-text="测试策略"
-          @run="runStickerPolicyProbe"
-          @copy="copyProbeDetail(stickerProbe.detail)"
-        />
-      </section>
-
-      <section class="asset-stats-grid">
-        <article v-for="item in stats" :key="item.label" class="asset-stat-card">
-          <small>{{ item.label }}</small>
-          <strong>{{ item.value }}</strong>
-        </article>
-      </section>
+      <StatusSummary :items="assetSummaryItems" />
 
       <AssetBulkBar :visible-stickers="visibleStickers" />
 
@@ -309,6 +314,35 @@ async function removeOne(id: string) {
         />
         <AssetDetailPanel v-if="detailOpen" :selected="selected" @close="detailOpen = false" />
       </section>
+
+      <AdvancedDisclosure title="高级配置与测试">
+        <AssetConfigStrip />
+
+        <section class="asset-probe-strip">
+          <InlineProbe
+            variant="strip"
+            title="素材识图 API"
+            summary="用当前选中素材或内置样例请求识图接口，验证模型与 Key。"
+            :status="assetProbe.status"
+            :status-text="assetProbe.text"
+            :detail="assetProbe.detail"
+            action-text="测试识图"
+            @run="runVisionProbe"
+            @copy="copyProbeDetail(assetProbe.detail)"
+          />
+          <InlineProbe
+            variant="strip"
+            title="表情策略匹配"
+            summary="用测试文案运行素材选择逻辑，检查是否误发或匹配不到。"
+            :status="stickerProbe.status"
+            :status-text="stickerProbe.text"
+            :detail="stickerProbe.detail"
+            action-text="测试策略"
+            @run="runStickerPolicyProbe"
+            @copy="copyProbeDetail(stickerProbe.detail)"
+          />
+        </section>
+      </AdvancedDisclosure>
     </div>
   </main>
 </template>
