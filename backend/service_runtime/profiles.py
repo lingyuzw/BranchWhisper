@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 
+from core.io_utils import write_json_file
 from domain.paths import PROJECT_ROOT
 
 LEGACY_AUTODL_PROJECT = Path("/", "root", "autodl-tmp", "project").as_posix()
@@ -76,8 +77,5 @@ def load_profile_services(config_path: Path | None, *, defaults: dict, schema_ve
 
 
 def write_profile_services(config_path: Path, services: dict, *, schema_version: int) -> None:
-    config_path.parent.mkdir(parents=True, exist_ok=True)
     payload = service_profiles_payload(services, schema_version=schema_version)
-    tmp_path = config_path.with_suffix(f"{config_path.suffix}.tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp_path.replace(config_path)
+    write_json_file(config_path, payload)

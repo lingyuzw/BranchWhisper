@@ -13,6 +13,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from core.io_utils import write_json_file
 from data.conversations import ConversationStore
+from service_runtime.profiles import write_profile_services
 
 
 class JsonIoUtilsTests(unittest.TestCase):
@@ -50,6 +51,21 @@ class JsonIoUtilsTests(unittest.TestCase):
 
             self.assertIn("index.json", [name for name, _data in calls])
             self.assertTrue(any(name.endswith(".json") and name != "index.json" for name, _data in calls))
+
+    def test_service_profiles_use_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "service_profiles.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("service_runtime.profiles.write_json_file", side_effect=fake_write):
+                write_profile_services(config_path, {"llm": {"command": "llama-server"}}, schema_version=2)
+
+            self.assertEqual(config_path, calls[0][0])
+            self.assertEqual({"schema_version": 2, "services": {"llm": {"command": "llama-server"}}}, calls[0][1])
 
 
 if __name__ == "__main__":
