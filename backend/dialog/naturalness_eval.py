@@ -17,6 +17,7 @@ from tools.runtime_brain import MemoryStore
 
 
 DEFAULT_SAMPLE_PATH = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "dialog_naturalness_samples.json"
+DEFAULT_LIVE_REPLAY_SAMPLE_PATH = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "dialog_live_replay_samples.json"
 
 AI_CLICHE_PHRASES = (
     "作为一个AI语言模型",

@@ -1,0 +1,248 @@
+[
+  {
+    "id": "ordinary_evening_tired",
+    "category": "ordinary_chat",
+    "user": "今天有点累，想随便聊两句",
+    "assistant": "那就别硬撑了，先松一口气。"
+  },
+  {
+    "id": "ordinary_quiet_preference_no_memory",
+    "category": "ordinary_chat",
+    "user": "我喜欢今天这样安静点",
+    "seed_memories": [
+      {
+        "key": "用户偏好",
+        "value": "用户喜欢深夜写代码"
+      }
+    ],
+    "assistant": "嗯，安静一点确实舒服。"
+  },
+  {
+    "id": "ordinary_small_talk_no_followup_chain",
+    "category": "ordinary_chat",
+    "user": "没什么事，就是想找你说句话",
+    "assistant": "在呢。那就随便说两句，不用非得有正事。"
+  },
+  {
+    "id": "ordinary_bored",
+    "category": "ordinary_chat",
+    "user": "有点无聊",
+    "assistant": "那先找个小事垫一下，别一上来就逼自己振作。"
+  },
+  {
+    "id": "emotional_messy_head",
+    "category": "emotional_chat",
+    "user": "我现在脑子有点乱",
+    "assistant": "先别急着理清，乱的时候越拽越打结。"
+  },
+  {
+    "id": "emotional_low_energy",
+    "category": "emotional_chat",
+    "user": "今天什么都不想干",
+    "assistant": "那就先把要求放低一点，能歇会儿也是正事。"
+  },
+  {
+    "id": "emotional_need_company",
+    "category": "emotional_chat",
+    "user": "我也说不上来，就是想有人陪一下",
+    "assistant": "嗯，我在。你不用马上解释清楚。"
+  },
+  {
+    "id": "emotional_avoid_scripted_advice",
+    "category": "emotional_chat",
+    "user": "最近有点烦，但又不知道烦什么",
+    "assistant": "这种烦最磨人，像后台一直开着个小噪音。"
+  },
+  {
+    "id": "multi_turn_repeat_user_question",
+    "category": "multi_turn",
+    "user": "那现在呢？",
+    "history": [
+      {
+        "role": "user",
+        "content": "我有点烦"
+      },
+      {
+        "role": "assistant",
+        "content": "先慢一点，别把所有事都往身上揽。"
+      },
+      {
+        "role": "user",
+        "content": "那现在呢？"
+      },
+      {
+        "role": "assistant",
+        "content": "现在先别急着解决，先把这股烦劲放一边。"
+      }
+    ],
+    "assistant": "现在就先别追着自己要答案。"
+  },
+  {
+    "id": "multi_turn_avoid_same_opening",
+    "category": "multi_turn",
+    "user": "还是烦",
+    "history": [
+      {
+        "role": "user",
+        "content": "我有点烦"
+      },
+      {
+        "role": "assistant",
+        "content": "先慢一点，喝口水再说。"
+      },
+      {
+        "role": "user",
+        "content": "还是烦"
+      },
+      {
+        "role": "assistant",
+        "content": "别硬压，烦就先烦一会儿。"
+      }
+    ],
+    "assistant": "那就先承认它还在，别急着把它赶走。"
+  },
+  {
+    "id": "multi_turn_reference_previous_message",
+    "category": "multi_turn",
+    "user": "我刚才说我卡在哪了？",
+    "history": [
+      {
+        "role": "user",
+        "content": "这个服务启动了，但 8080 一直连不上"
+      },
+      {
+        "role": "assistant",
+        "content": "那先看端口有没有监听，再看 llama-server 日志。"
+      }
+    ],
+    "assistant": "你刚才说服务启动了，但 8080 一直连不上。"
+  },
+  {
+    "id": "multi_turn_user_correction",
+    "category": "multi_turn",
+    "user": "不是这个，我说的是前端页面",
+    "history": [
+      {
+        "role": "user",
+        "content": "诊断页面看起来还是有点乱"
+      },
+      {
+        "role": "assistant",
+        "content": "那我先看后端诊断接口。"
+      }
+    ],
+    "assistant": "明白，是前端诊断页面，不是后端接口。"
+  },
+  {
+    "id": "memory_lookup_preference",
+    "category": "memory_lookup",
+    "user": "你记得我的偏好吗？",
+    "seed_memories": [
+      {
+        "key": "用户偏好",
+        "value": "用户喜欢深夜写代码"
+      }
+    ],
+    "known_memory": "用户喜欢深夜写代码",
+    "assistant": "记得，你喜欢深夜写代码。"
+  },
+  {
+    "id": "memory_lookup_name",
+    "category": "memory_lookup",
+    "user": "你还记得我的名字吗？",
+    "seed_memories": [
+      {
+        "key": "用户名字",
+        "value": "用户叫灵羽"
+      }
+    ],
+    "known_memory": "用户叫灵羽",
+    "assistant": "记得，你叫灵羽。"
+  },
+  {
+    "id": "memory_lookup_project",
+    "category": "memory_lookup",
+    "user": "你记得我现在主要在做哪个项目吗？",
+    "seed_memories": [
+      {
+        "key": "当前项目",
+        "value": "用户正在优化 BranchWhisper"
+      }
+    ],
+    "known_memory": "用户正在优化 BranchWhisper",
+    "assistant": "你现在主要在优化 BranchWhisper。"
+  },
+  {
+    "id": "memory_lookup_unknown_food",
+    "category": "anti_fabrication",
+    "user": "你记得我昨天吃了什么吗？",
+    "known_memory": "",
+    "expect_uncertainty": true,
+    "assistant": "没有记录，我不确定你昨天吃了什么。"
+  },
+  {
+    "id": "anti_fabrication_last_week",
+    "category": "anti_fabrication",
+    "user": "上周我跟谁见面了？",
+    "known_memory": "",
+    "expect_uncertainty": true,
+    "assistant": "这个我没有记录，不能确定。"
+  },
+  {
+    "id": "anti_fabrication_assistant_location",
+    "category": "anti_fabrication",
+    "user": "你现在在哪儿？",
+    "known_memory": "",
+    "assistant": "我没有现实里的位置状态，不能装作自己在哪。"
+  },
+  {
+    "id": "anti_fabrication_yesterday_work",
+    "category": "anti_fabrication",
+    "user": "你还记得我昨天修到哪一步了吗？",
+    "known_memory": "",
+    "expect_uncertainty": true,
+    "assistant": "没有记录，我不能确定你昨天修到哪一步。"
+  },
+  {
+    "id": "memory_correction_preference",
+    "category": "memory_correction",
+    "user": "不是，我现在不喜欢深夜写代码了",
+    "seed_memories": [
+      {
+        "key": "用户偏好",
+        "value": "用户喜欢深夜写代码"
+      }
+    ],
+    "assistant": "好，那按你现在说的来。"
+  },
+  {
+    "id": "memory_correction_name",
+    "category": "memory_correction",
+    "user": "别叫我小林，叫我灵羽",
+    "seed_memories": [
+      {
+        "key": "用户名字",
+        "value": "用户叫小林"
+      }
+    ],
+    "assistant": "好，叫你灵羽。"
+  },
+  {
+    "id": "technical_port_debug",
+    "category": "technical",
+    "user": "8080 页面打不开，ERR_CONNECTION_REFUSED 是什么原因？",
+    "assistant": "一般是端口没服务在监听，先查进程和端口。"
+  },
+  {
+    "id": "technical_model_path",
+    "category": "technical",
+    "user": "模型路径明明有，为什么诊断说不存在？",
+    "assistant": "多半是工作目录不同，先看配置里的相对路径从哪里解析。"
+  },
+  {
+    "id": "technical_command_copy_period",
+    "category": "technical",
+    "user": "命令最后多了个点会有影响吗？",
+    "assistant": "会。命令行会把那个点当成参数的一部分。"
+  }
+]

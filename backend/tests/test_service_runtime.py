@@ -1360,6 +1360,28 @@ class MemoryRuntimeTests(unittest.TestCase):
 
         self.assertIn("用户喜欢深夜写代码", context)
 
+    def test_memory_context_recalls_for_explicit_project_lookup(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "当前项目",
+                    "value": "用户正在优化 BranchWhisper",
+                    "layer": "long",
+                    "confidence": 0.9,
+                    "importance": 0.9,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+
+            context = store.format_context(settings, "你记得我现在主要在做哪个项目吗？", mode="api")
+
+        self.assertIn("用户正在优化 BranchWhisper", context)
+
     def test_memory_context_keeps_key_value_relation_for_user_preferences(self) -> None:
         settings = default_settings()
         settings.dialog_mode = "api"

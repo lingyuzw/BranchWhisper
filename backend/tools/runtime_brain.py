@@ -944,7 +944,12 @@ def looks_like_memory_lookup_question(text: str) -> bool:
         return False
     has_lookup_hint = any(hint in value for hint in MEMORY_LOOKUP_QUESTION_HINTS)
     asks_unresolved_slot = any(hint in value for hint in MEMORY_UNRESOLVED_QUESTION_HINTS)
-    asks_user_memory = bool(re.search(r"(我|我的).{0,12}(喜欢|讨厌|偏好|名字|身份|生日|住|来自|歌手|歌曲|爱好)", value))
+    asks_user_memory = bool(
+        re.search(
+            r"(我|我的).{0,16}(喜欢|讨厌|偏好|名字|身份|生日|住|来自|歌手|歌曲|爱好|习惯|项目|目标|计划|工作|职业)",
+            value,
+        )
+    )
     return asks_user_memory and (has_lookup_hint or asks_unresolved_slot)
 
 

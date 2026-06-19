@@ -14,6 +14,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from dialog.naturalness_eval import (
     DEFAULT_SAMPLE_PATH,
+    DEFAULT_LIVE_REPLAY_SAMPLE_PATH,
     build_case_messages,
     evaluate_case,
     evaluate_cases,
@@ -276,6 +277,21 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertIn("ordinary_chat", categories)
         self.assertIn("memory_lookup", categories)
         self.assertIn("anti_fabrication", categories)
+
+    def test_live_replay_sample_file_covers_real_dialog_pressure_cases(self) -> None:
+        cases = load_cases(DEFAULT_LIVE_REPLAY_SAMPLE_PATH)
+        categories = {case["category"] for case in cases}
+
+        self.assertGreaterEqual(len(cases), 20)
+        self.assertIn("ordinary_chat", categories)
+        self.assertIn("emotional_chat", categories)
+        self.assertIn("multi_turn", categories)
+        self.assertIn("memory_lookup", categories)
+        self.assertIn("anti_fabrication", categories)
+        self.assertIn("memory_correction", categories)
+        self.assertTrue(any(case.get("history") for case in cases))
+        self.assertTrue(any(case.get("seed_memories") for case in cases))
+        self.assertTrue(any(case.get("expect_uncertainty") for case in cases))
 
     def test_default_samples_include_prompt_context_checks(self) -> None:
         report = evaluate_cases(load_cases(DEFAULT_SAMPLE_PATH))
