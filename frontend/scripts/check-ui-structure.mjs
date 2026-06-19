@@ -130,6 +130,9 @@ assert(servicesPage.includes('import StatusSummary from "@/components/ui/StatusS
 assert(servicesPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && servicesPage.includes("<TaskPanel"), "服务页主任务区域需要使用共享 TaskPanel");
 assert(servicesPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && servicesPage.includes("<AdvancedDisclosure"), "服务页运行日志需要进入高级折叠区，避免首屏被日志占据");
 assert(servicesPage.includes('<AdvancedDisclosure title="运行日志">') && servicesPage.indexOf("<AdvancedDisclosure") < servicesPage.indexOf("<ServiceLogsPanel"), "服务页日志面板需要包在运行日志高级折叠区内");
+assert(!read("src/components/services/ServiceCard.vue").includes("<span>PID</span>"), "服务卡首屏不应展示 PID，PID 应进入参数详情");
+assert(read("src/components/services/ServiceCard.vue").includes("service-primary-action") && read("src/components/services/ServiceCard.vue").includes("service-secondary-actions"), "服务卡需要区分启动/停止主操作和重启/详情次操作");
+assert(servicesCss.includes("grid-template-columns: repeat(3, minmax(92px, 1fr))") && !servicesCss.includes("repeat(6, minmax"), "服务卡元数据应收敛为状态、端口、健康三项");
 assert(memoryPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && memoryPage.includes("<PageHeader"), "记忆页需要先接入共享 PageHeader，统一顶部结构");
 assert(memoryPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && memoryPage.includes("<StatusSummary"), "记忆页需要使用共享 StatusSummary 展示记忆概况");
 assert(memoryPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && memoryPage.includes("<TaskPanel"), "记忆页主任务区域需要使用共享 TaskPanel");
