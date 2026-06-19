@@ -31,3 +31,9 @@ before any live model call:
 - explicit memory lookup should receive quiet internal memory context
 
 A later phase can plug in live LLM responses and feed them through the same rules.
+
+Samples can also set `expect_fail: true` for negative examples. In that case the suite passes only
+when the evaluator actually catches an issue, and the report keeps both fields:
+
+- `actual_passed`: whether the reply itself passed all rules
+- `passed`: whether the sample behaved as expected by the suite

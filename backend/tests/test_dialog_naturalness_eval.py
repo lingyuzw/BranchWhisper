@@ -36,6 +36,20 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertIn("forbidden_phrase", {issue["rule"] for issue in result["issues"]})
 
+    def test_ordinary_chat_flags_revealing_seeded_memory_even_without_fixed_phrase(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "ordinary_seed_leak",
+                "category": "ordinary_chat",
+                "user": "今天有点累，随便聊两句",
+                "seed_memories": [{"key": "用户偏好", "value": "用户喜欢深夜写代码"}],
+                "assistant": "深夜写代码本来就容易累，你先歇会儿。",
+            }
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertIn("unprompted_memory_detail", {issue["rule"] for issue in result["issues"]})
+
     def test_evaluate_case_flags_fabricated_memory_when_no_evidence(self) -> None:
         result = evaluate_case(
             {
@@ -78,6 +92,24 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertEqual(1, report["passed"])
         self.assertEqual(1, report["failed"])
         self.assertEqual("bad", report["results"][1]["id"])
+
+    def test_evaluate_cases_treats_expected_failures_as_passing_the_suite(self) -> None:
+        report = evaluate_cases(
+            [
+                {
+                    "id": "expected_bad",
+                    "category": "ordinary_chat",
+                    "user": "今天有点累，随便聊两句",
+                    "seed_memories": [{"key": "用户偏好", "value": "用户喜欢深夜写代码"}],
+                    "assistant": "深夜写代码本来就容易累，你先歇会儿。",
+                    "expect_fail": True,
+                }
+            ]
+        )
+
+        self.assertEqual(1, report["passed"])
+        self.assertEqual(0, report["failed"])
+        self.assertTrue(report["results"][0]["expected_failure"])
 
     def test_default_sample_file_loads_multiple_categories(self) -> None:
         cases = load_cases(DEFAULT_SAMPLE_PATH)

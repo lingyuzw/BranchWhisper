@@ -19,6 +19,19 @@
     "forbidden": ["我记得你之前", "你之前说过"]
   },
   {
+    "id": "ordinary_chat_memory_leak_bad",
+    "category": "ordinary_chat",
+    "user": "今天有点累，随便聊两句",
+    "seed_memories": [
+      {
+        "key": "用户偏好",
+        "value": "用户喜欢深夜写代码"
+      }
+    ],
+    "assistant": "深夜写代码本来就容易累，你先歇会儿。",
+    "expect_fail": true
+  },
+  {
     "id": "memory_lookup_ok",
     "category": "memory_lookup",
     "user": "你记得我的偏好吗？",

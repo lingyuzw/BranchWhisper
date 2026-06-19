@@ -133,6 +133,8 @@ def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
         for phrase in UNPROMPTED_MEMORY_PHRASES:
             if phrase in assistant:
                 issues.append({"rule": "unprompted_memory_recall", "detail": phrase})
+        for detail in leaked_seed_memory_details(case, assistant):
+            issues.append({"rule": "unprompted_memory_detail", "detail": detail})
 
     if case.get("expect_uncertainty") and not str(case.get("known_memory") or "").strip():
         if not any(phrase in assistant for phrase in UNCERTAINTY_PHRASES):
@@ -149,13 +151,47 @@ def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     prompt = evaluate_prompt_context(case)
     issues.extend(prompt["issues"])
 
+    actual_passed = not issues
+    expected_failure = bool(case.get("expect_fail"))
+    passed = not actual_passed if expected_failure else actual_passed
+
+    if expected_failure and actual_passed:
+        issues.append({"rule": "expected_failure_not_triggered", "detail": "sample was expected to fail but no issue was found"})
+
     return {
         "id": str(case.get("id") or ""),
         "category": str(case.get("category") or "uncategorized"),
-        "passed": not issues,
+        "passed": passed,
+        "actual_passed": actual_passed,
+        "expected_failure": expected_failure,
         "issues": issues,
         "prompt": prompt,
     }
+
+
+def leaked_seed_memory_details(case: dict[str, Any], assistant: str) -> list[str]:
+    details: list[str] = []
+    for item in case.get("seed_memories") or []:
+        value = item if isinstance(item, str) else item.get("value") if isinstance(item, dict) else ""
+        for phrase in meaningful_memory_phrases(str(value or "")):
+            if phrase and phrase in assistant:
+                details.append(phrase)
+    return details
+
+
+def meaningful_memory_phrases(value: str) -> list[str]:
+    text = re.sub(r"\s+", "", value)
+    if not text:
+        return []
+    phrases = {text}
+    stripped = re.sub(r"^(用户|我|你)(喜欢|不喜欢|讨厌|偏好|习惯|经常|通常)", "", text)
+    if len(stripped) >= 4:
+        phrases.add(stripped)
+    for token in re.split(r"[，。！？!?、；;：:\s]+", value):
+        token = token.strip()
+        if len(token) >= 4:
+            phrases.add(token)
+    return sorted(phrases, key=len, reverse=True)
 
 
 def evaluate_prompt_context(case: dict[str, Any]) -> dict[str, Any]:
