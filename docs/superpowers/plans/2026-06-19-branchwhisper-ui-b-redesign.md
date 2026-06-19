@@ -582,11 +582,11 @@ Files：
 
 ### Phase 4：诊断体验
 
-- [ ] 改造 DiagnosticsPage：问题优先、修复建议优先。
-- [ ] 统一 DiagnosticCheckList 的文案层级。
-- [ ] 把日志收敛为右侧辅助或抽屉。
-- [ ] 验证异常、正常、无数据三种状态。
-- [ ] 运行前端检查和构建。
+- [x] 改造 DiagnosticsPage：问题优先、修复建议优先。
+- [x] 统一 DiagnosticCheckList 的文案层级。
+- [x] 把日志收敛为右侧辅助或抽屉。
+- [x] 验证异常、正常、无数据三种状态。
+- [x] 运行前端检查和构建。
 
 ### Phase 5：视觉 QA
 
