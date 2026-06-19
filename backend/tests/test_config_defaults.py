@@ -20,8 +20,14 @@ class ConfigDefaultPromptTests(unittest.TestCase):
     def test_default_system_prompt_sets_factual_boundaries(self) -> None:
         self.assertIn("不知道", DEFAULT_SYSTEM)
         self.assertIn("不确定", DEFAULT_SYSTEM)
+        self.assertIn("没有记录", DEFAULT_SYSTEM)
         self.assertIn("不要编造当前现实行动、实时位置或真实经历", DEFAULT_SYSTEM)
         self.assertIn("不要主动复述长期记忆", DEFAULT_SYSTEM)
+
+    def test_default_system_prompt_prevents_unprompted_memory_performance(self) -> None:
+        self.assertIn("普通闲聊", DEFAULT_SYSTEM)
+        self.assertIn("只有用户明确问", DEFAULT_SYSTEM)
+        self.assertIn("长期记忆", DEFAULT_SYSTEM)
 
 
 if __name__ == "__main__":
