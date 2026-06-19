@@ -37,11 +37,12 @@ import BotProfilesPanel from "@/components/settings/BotProfilesPanel.vue";
 import PromptSettingsPanel from "@/components/settings/PromptSettingsPanel.vue";
 import ServiceCommandPanel from "@/components/settings/ServiceCommandPanel.vue";
 import SettingsOverviewBoard from "@/components/settings/SettingsOverviewBoard.vue";
+import ToolSettingsPanel from "@/components/settings/ToolSettingsPanel.vue";
 import TtsProviderPanel from "@/components/settings/TtsProviderPanel.vue";
 import type { ServiceDraft } from "@/components/settings/types";
 import VadSettingsPanel from "@/components/settings/VadSettingsPanel.vue";
 import type { ServiceSummary } from "@/api/services";
-import { PROVIDER_FIELDS, PROVIDER_LABELS, PROVIDER_OPTIONS, useToolsStore } from "@/stores/tools";
+import { PROVIDER_FIELDS, PROVIDER_LABELS, useToolsStore } from "@/stores/tools";
 import { useEngagementStore } from "@/stores/engagement";
 import { useProfilesStore } from "@/stores/profiles";
 import { useServicesStore } from "@/stores/services";
@@ -1025,10 +1026,6 @@ async function handleVoiceSampleSelected(event: Event) {
   }
 }
 
-function eventValue(event: Event) {
-  return (event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value;
-}
-
 function parseProviderValue(field: string, value: string) {
   if (field === "enabled" || field.endsWith("_enabled")) return value === "true";
   if (["limit", "max_chars"].includes(field)) return Number(value || 0);
@@ -1066,49 +1063,6 @@ async function saveToolsOnly() {
   } catch (error) {
     announceSettings(`联网工具保存失败：${error instanceof Error ? error.message : String(error)}`, "error");
   }
-}
-
-function providerFieldValue(providerKey: string, field: string) {
-  const value = (tools.config[providerKey] || {})[field];
-  if (typeof value === "boolean") return String(value);
-  if ((field === "api_key" || field === "webhook_url") && !value && (tools.config[providerKey]?.[`${field}_set`] || tools.config[providerKey]?.[`${field}_masked`])) {
-    return "";
-  }
-  return String(value ?? "");
-}
-
-function providerFieldLabel(field: string) {
-  return {
-    enabled: "启用",
-    provider: "服务商",
-    base_url: "Base URL",
-    api_key: "API Key",
-    default_location: "默认地点",
-    limit: "数量上限",
-    region: "区域",
-    user_agent: "User Agent",
-    max_chars: "最大字符",
-    web_enabled: "Web",
-    weixin_enabled: "微信",
-    webhook_url: "Webhook",
-  }[field] || field;
-}
-
-function providerSecretState(providerKey: string) {
-  const provider = tools.config[providerKey] || {};
-  if (provider.api_key_set || provider.webhook_url_set) return "密钥已保存";
-  if (provider.api_key_masked || provider.webhook_url_masked) return provider.api_key_masked || provider.webhook_url_masked;
-  return "未配置密钥";
-}
-
-function providerInputType(field: string) {
-  if (field === "api_key" || field === "webhook_url") return "password";
-  if (field === "limit" || field === "max_chars") return "number";
-  return "text";
-}
-
-function providerCardDisabled(providerKey: string) {
-  return Boolean(PROVIDER_FIELDS[providerKey]?.length && tools.config[providerKey]?.enabled === false);
 }
 
 function selectTool(providerKey: string) {
@@ -1501,110 +1455,26 @@ function formatTime(value?: string) {
           @copy-local-probe="copyProbeDetail('localModels')"
         />
 
-        <article v-show="activeSettingsSection === 'tools'" class="settings-panel settings-section-detached is-active is-current" id="tools">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">工具</p>
-              <h2>联网工具</h2>
-            </div>
-            <div class="inline-actions">
-              <span class="soft-badge">{{ tools.loading ? "加载中" : toolsAnyDirty ? "有未保存修改" : "配置已同步" }}</span>
-              <button class="secondary-action" type="button" :disabled="tools.saving || !toolsAnyDirty" @click="saveToolsOnly">
-                <Save :size="15" />{{ tools.saving ? "保存中..." : "保存联网工具" }}
-              </button>
-            </div>
-          </div>
-          <section class="tools-control-strip">
-            <label><span>工具总开关</span><select v-model="form.tools_enabled"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-            <label><span>自动调用</span><select v-model="form.tools_auto_call"><option :value="true">启用</option><option :value="false">关闭</option></select></label>
-            <label><span>工具超时秒</span><input v-model.number="form.tools_timeout" type="number" min="2" max="60" step="1" /></label>
-            <label><span>结果最大字符</span><input v-model.number="form.tools_max_result_chars" type="number" min="500" max="16000" step="100" /></label>
-          </section>
-
-          <div class="tool-provider-list tool-provider-grid">
-            <button
-              v-for="item in toolGridItems"
-              :key="item.key"
-              class="tool-provider-card overview-card"
-              :class="{ active: selectedToolKey === item.key, disabled: providerCardDisabled(item.key), 'readonly-tool-card': !item.fields.length }"
-              type="button"
-              @click="selectTool(item.key)"
-            >
-              <div class="tool-provider-head">
-                <div>
-                  <strong>{{ item.label }}</strong>
-                  <small>{{ item.summary }}</small>
-                </div>
-                <span class="tool-provider-state" :class="{ off: providerCardDisabled(item.key) }">
-                  {{ providerCardDisabled(item.key) ? "关闭" : item.badge }}
-                </span>
-              </div>
-              <div class="tool-provider-status">
-                <span v-if="tools.config[item.key]?.provider">{{ tools.config[item.key]?.provider }}</span>
-                <span v-if="item.fields.includes('api_key') || item.fields.includes('webhook_url')">{{ providerSecretState(item.key) }}</span>
-                <span v-if="tools.config[item.key]?.limit">limit {{ tools.config[item.key]?.limit }}</span>
-                <span v-if="!item.fields.length">无需配置</span>
-              </div>
-              <span class="tool-card-action">配置 / 测试</span>
-            </button>
-          </div>
-
-          <section v-if="selectedToolItem" class="tool-detail-panel">
-            <div class="tool-detail-head">
-              <div>
-                <p class="eyebrow">当前工具</p>
-                <h3>{{ selectedToolItem.label }}</h3>
-                <small>{{ selectedToolItem.summary }}</small>
-              </div>
-              <span class="tool-provider-state" :class="{ off: providerCardDisabled(selectedToolItem.key) }">
-                {{ providerCardDisabled(selectedToolItem.key) ? "关闭" : selectedToolItem.badge }}
-              </span>
-            </div>
-            <div v-if="selectedToolItem.fields.length" class="form-grid compact tool-detail-form">
-              <label v-for="field in selectedToolItem.fields" :key="field" :class="{ wide: field === 'base_url' || field === 'api_key' || field === 'webhook_url' || field === 'user_agent' }">
-                <span>{{ providerFieldLabel(field) }}</span>
-                <select v-if="field === 'enabled' || field.endsWith('_enabled')" :value="providerFieldValue(selectedToolItem.key, field)" @change="setProviderField(selectedToolItem.key, field, eventValue($event))">
-                  <option value="true">启用</option>
-                  <option value="false">关闭</option>
-                </select>
-                <select v-else-if="field === 'provider'" :value="providerFieldValue(selectedToolItem.key, field)" @change="setProviderField(selectedToolItem.key, field, eventValue($event))">
-                  <option v-for="[value, label] in PROVIDER_OPTIONS[selectedToolItem.key] || []" :key="value" :value="value">{{ label }}</option>
-                </select>
-                <input
-                  v-else
-                  :type="providerInputType(field)"
-                  :value="providerFieldValue(selectedToolItem.key, field)"
-                  :placeholder="field === 'api_key' || field === 'webhook_url' ? providerSecretState(selectedToolItem.key) : ''"
-                  @input="setProviderField(selectedToolItem.key, field, eventValue($event))"
-                />
-              </label>
-            </div>
-            <p v-else class="tool-readonly-note">由本地运行时提供，不需要填写服务商或密钥。</p>
-            <InlineProbe
-              class="provider-inline-probe"
-              variant="strip"
-              :title="`${selectedToolItem.label} API`"
-              :summary="selectedToolItem.summary"
-              :status="toolProbeStatus(selectedToolItem.key)"
-              :status-text="toolProbeText(selectedToolItem.key)"
-              :detail="tools.testResults[selectedToolItem.key]"
-              action-text="调用测试"
-              :disabled="providerCardDisabled(selectedToolItem.key)"
-              @run="runToolProbe(selectedToolItem.key)"
-              @copy="copyToolProbeDetail(selectedToolItem.key)"
-            />
-          </section>
-
-          <div class="settings-diagnostics-callout">
-            <div>
-              <strong>工具路由测试</strong>
-              <small>用“漳州今天天气怎么样”检查工具解析，并按各 Provider 卡片逐项调用。</small>
-            </div>
-            <button class="secondary-action" type="button" @click="tools.runResolve"><Globe2 :size="15" />解析测试</button>
-          </div>
-          <pre v-if="tools.resolveResult" class="settings-probe-result">{{ formatProbeDetail(tools.resolveResult) }}</pre>
-          <p v-if="tools.error" class="muted-copy">工具配置读取失败：{{ tools.error }}</p>
-        </article>
+        <ToolSettingsPanel
+          v-show="activeSettingsSection === 'tools'"
+          :form="form"
+          :tools-config="tools.config"
+          :tools-loading="tools.loading"
+          :tools-saving="tools.saving"
+          :tools-any-dirty="toolsAnyDirty"
+          :tool-grid-items="toolGridItems"
+          :selected-tool-key="selectedToolKey"
+          :selected-tool-item="selectedToolItem"
+          :test-results="tools.testResults"
+          :resolve-result="tools.resolveResult"
+          :tools-error="tools.error"
+          @save-tools="saveToolsOnly"
+          @select-tool="selectTool"
+          @set-provider-field="setProviderField"
+          @run-tool-probe="runToolProbe"
+          @copy-tool-probe="copyToolProbeDetail"
+          @run-resolve="tools.runResolve"
+        />
 
         <article v-show="activeSettingsSection === 'proactive'" class="settings-panel proactive-panel settings-section-detached is-active is-current" id="proactive">
           <div class="panel-head">
