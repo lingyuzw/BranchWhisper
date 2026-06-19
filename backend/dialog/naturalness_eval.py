@@ -135,6 +135,22 @@ def replay_cases(cases: list[dict[str, Any]], reply_fn) -> dict[str, Any]:
     return report
 
 
+def filter_replay_cases(
+    cases: list[dict[str, Any]],
+    *,
+    limit: int = 0,
+    include_expected_failures: bool = False,
+) -> list[dict[str, Any]]:
+    filtered = [
+        case
+        for case in cases
+        if include_expected_failures or not bool(case.get("expect_fail"))
+    ]
+    if limit > 0:
+        return filtered[:limit]
+    return filtered
+
+
 def live_http_reply(
     messages: list[dict[str, str]],
     *,
@@ -344,6 +360,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--live-model", default="", help="Model name for live replay.")
     parser.add_argument("--live-api-key", default="", help="Optional bearer token for live replay.")
     parser.add_argument("--live-timeout", type=float, default=60.0, help="HTTP timeout in seconds for live replay.")
+    parser.add_argument("--limit", type=int, default=0, help="Limit replay to the first N selected cases.")
+    parser.add_argument(
+        "--include-expected-failures",
+        action="store_true",
+        help="Include expect_fail samples during replay.",
+    )
     parser.add_argument("--allow-failures", action="store_true", help="Return 0 even when samples fail.")
     args = parser.parse_args(argv)
 
@@ -351,6 +373,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.live_url or args.live_model:
         if not args.live_url or not args.live_model:
             parser.error("--live-url and --live-model must be provided together")
+        cases = filter_replay_cases(
+            cases,
+            limit=args.limit,
+            include_expected_failures=args.include_expected_failures,
+        )
         report = replay_cases(
             cases,
             lambda messages, _case: live_http_reply(

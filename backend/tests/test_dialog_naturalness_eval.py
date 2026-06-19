@@ -17,6 +17,7 @@ from dialog.naturalness_eval import (
     build_case_messages,
     evaluate_case,
     evaluate_cases,
+    filter_replay_cases,
     format_text_report,
     live_http_reply,
     load_cases,
@@ -226,6 +227,27 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertFalse(calls[0]["json"]["stream"])
         self.assertEqual("Bearer secret", calls[0]["headers"]["Authorization"])
 
+    def test_filter_replay_cases_skips_expected_failures_by_default(self) -> None:
+        cases = [
+            {"id": "ok", "assistant": "来了。"},
+            {"id": "bad", "assistant": "坏例", "expect_fail": True},
+        ]
+
+        filtered = filter_replay_cases(cases)
+
+        self.assertEqual(["ok"], [case["id"] for case in filtered])
+
+    def test_filter_replay_cases_can_limit_and_include_expected_failures(self) -> None:
+        cases = [
+            {"id": "one", "assistant": "1"},
+            {"id": "two", "assistant": "2", "expect_fail": True},
+            {"id": "three", "assistant": "3"},
+        ]
+
+        filtered = filter_replay_cases(cases, limit=2, include_expected_failures=True)
+
+        self.assertEqual(["one", "two"], [case["id"] for case in filtered])
+
     def test_default_sample_file_loads_multiple_categories(self) -> None:
         cases = load_cases(DEFAULT_SAMPLE_PATH)
         categories = {case["category"] for case in cases}
@@ -374,6 +396,43 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
             self.assertEqual(1, reply.call_count)
             data = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual("来了。", data["results"][0]["assistant"])
+
+    def test_cli_live_replay_skips_expected_failures_and_honors_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            samples = Path(tmp) / "samples.json"
+            output = Path(tmp) / "report.json"
+            samples.write_text(
+                json.dumps(
+                    [
+                        {"id": "one", "category": "ordinary_chat", "user": "你好"},
+                        {"id": "bad", "category": "ordinary_chat", "user": "坏例", "expect_fail": True},
+                        {"id": "two", "category": "ordinary_chat", "user": "还在吗"},
+                    ],
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            with patch("dialog.naturalness_eval.live_http_reply", return_value="来了。") as reply:
+                exit_code = main(
+                    [
+                        "--samples",
+                        str(samples),
+                        "--live-url",
+                        "http://127.0.0.1:8080/v1/chat/completions",
+                        "--live-model",
+                        "qwen",
+                        "--limit",
+                        "1",
+                        "--output",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, exit_code)
+            self.assertEqual(1, reply.call_count)
+            data = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(["one"], [result["id"] for result in data["results"]])
 
     def test_repository_script_runs_from_project_root(self) -> None:
         script = BACKEND_ROOT.parent / "scripts" / "evaluate_dialog_naturalness.py"
