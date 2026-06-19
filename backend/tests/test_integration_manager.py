@@ -44,6 +44,43 @@ class IntegrationManagerProcessEnvTests(unittest.TestCase):
             self.assertEqual(config_path, calls[-1][0])
             self.assertTrue(calls[-1][1]["integrations"][0]["enabled"])
 
+    def test_save_weixin_account_uses_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ,
+            {"OPENCLAW_STATE_DIR": str(Path(tmp) / "state")},
+            clear=True,
+        ):
+            root = Path(tmp)
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("integration_runtime.manager.write_json_file", side_effect=fake_write):
+                manager = IntegrationManager(
+                    config_path=root / "integrations.json",
+                    log_dir=root / "logs",
+                    media_dir=root / "media",
+                )
+                calls.clear()
+                manager.save_weixin_account(
+                    {"openclaw_profile": "branchwhisper"},
+                    "account-a",
+                    token="token-a",
+                    base_url="https://weixin.example",
+                    user_id="user-a",
+                )
+
+            accounts_path = Path(os.environ["OPENCLAW_STATE_DIR"]) / "openclaw-weixin" / "accounts.json"
+            account_file = Path(os.environ["OPENCLAW_STATE_DIR"]) / "openclaw-weixin" / "accounts" / "account-a.json"
+            self.assertEqual([accounts_path, account_file], [path for path, _data in calls])
+            self.assertEqual(["account-a"], calls[0][1])
+            self.assertEqual("token-a", calls[1][1]["token"])
+            self.assertEqual("https://weixin.example", calls[1][1]["baseUrl"])
+            self.assertEqual("user-a", calls[1][1]["userId"])
+
     def test_gateway_disabled_hint_detects_systemd_unavailable_output(self) -> None:
         hint = gateway_disabled_hint({"stdout": "", "stderr": "systemd user services are unavailable"})
         unrelated = gateway_disabled_hint({"stdout": "gateway started", "stderr": ""})

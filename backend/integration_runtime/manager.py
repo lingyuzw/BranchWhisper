@@ -1284,7 +1284,7 @@ class IntegrationManager:
         ids = [str(item) for item in index if str(item).strip()]
         if account_id not in ids:
             ids.append(account_id)
-        accounts_path.write_text(json.dumps(ids, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(accounts_path, ids)
         account_payload = {
             "token": token,
             "savedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -1292,7 +1292,7 @@ class IntegrationManager:
             **({"userId": user_id} if user_id else {}),
         }
         account_file = account_dir / f"{account_id}.json"
-        account_file.write_text(json.dumps(account_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(account_file, account_payload)
 
     def require_integration(self, integration_id: str) -> dict:
         integration = self.get_integration(integration_id)
