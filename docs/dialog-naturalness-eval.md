@@ -3,6 +3,8 @@
 This lightweight evaluation checks dialog samples for common failures that make replies feel artificial:
 
 - unprompted long-term memory recall in ordinary chat
+- hidden memory detail leaks even when the reply avoids fixed recall phrases
+- scripted customer-service tone in ordinary chat
 - fabricated personal memory when no evidence exists
 - AI-cliche disclaimers
 - fabricated real-world actions or locations

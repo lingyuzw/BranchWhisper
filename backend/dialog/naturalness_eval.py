@@ -135,6 +135,9 @@ def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
                 issues.append({"rule": "unprompted_memory_recall", "detail": phrase})
         for detail in leaked_seed_memory_details(case, assistant):
             issues.append({"rule": "unprompted_memory_detail", "detail": detail})
+        scripted_detail = scripted_explanation_tone_issue(assistant)
+        if scripted_detail:
+            issues.append({"rule": "scripted_explanation_tone", "detail": scripted_detail})
 
     if case.get("expect_uncertainty") and not str(case.get("known_memory") or "").strip():
         if not any(phrase in assistant for phrase in UNCERTAINTY_PHRASES):
@@ -192,6 +195,17 @@ def meaningful_memory_phrases(value: str) -> list[str]:
         if len(token) >= 4:
             phrases.add(token)
     return sorted(phrases, key=len, reverse=True)
+
+
+def scripted_explanation_tone_issue(text: str) -> str:
+    compact = re.sub(r"\s+", "", text)
+    ordered_markers = ("首先", "其次", "然后", "最后")
+    count = sum(1 for marker in ordered_markers if marker in compact)
+    if count >= 3:
+        return "ordered_markers"
+    if "我理解你的感受" in compact and ("你需要" in compact or "建议你" in compact):
+        return "generic_empathy_advice"
+    return ""
 
 
 def evaluate_prompt_context(case: dict[str, Any]) -> dict[str, Any]:

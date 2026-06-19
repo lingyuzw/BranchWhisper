@@ -6,6 +6,13 @@
     "assistant": "那就先别硬撑，缓一会儿。"
   },
   {
+    "id": "ordinary_chat_scripted_tone_bad",
+    "category": "ordinary_chat",
+    "user": "我有点累",
+    "assistant": "首先，我理解你的感受。其次，你需要注意休息。最后，保持积极心态。",
+    "expect_fail": true
+  },
+  {
     "id": "ordinary_chat_no_memory",
     "category": "ordinary_chat",
     "user": "我现在脑子有点乱",

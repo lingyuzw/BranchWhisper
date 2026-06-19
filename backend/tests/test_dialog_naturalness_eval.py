@@ -65,6 +65,19 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertIn("missing_uncertainty", {issue["rule"] for issue in result["issues"]})
 
+    def test_evaluate_case_flags_explanatory_customer_service_tone(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "service_tone",
+                "category": "ordinary_chat",
+                "user": "我有点累",
+                "assistant": "首先，我理解你的感受。其次，你需要注意休息。最后，保持积极心态。",
+            }
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertIn("scripted_explanation_tone", {issue["rule"] for issue in result["issues"]})
+
     def test_evaluate_case_accepts_uncertain_answer_without_memory(self) -> None:
         result = evaluate_case(
             {
@@ -154,6 +167,24 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
 
         self.assertIn("内部参考", messages[0]["content"])
         self.assertIn("用户喜欢深夜写代码", messages[0]["content"])
+
+    def test_build_case_messages_adds_recent_reply_anti_repeat_context(self) -> None:
+        messages = build_case_messages(
+            {
+                "id": "multi_turn",
+                "category": "ordinary_chat",
+                "user": "还是有点烦",
+                "history": [
+                    {"role": "user", "content": "我有点烦"},
+                    {"role": "assistant", "content": "先慢一点，别把所有事都往身上揽。"},
+                    {"role": "user", "content": "还是烦"},
+                    {"role": "assistant", "content": "先慢一点，喝口水再说。"},
+                ],
+            }
+        )
+
+        self.assertIn("最近你已经说过这些回复片段", messages[0]["content"])
+        self.assertIn("先慢一点，喝口水再说。", messages[0]["content"])
 
     def test_evaluate_case_reports_prompt_context_for_seeded_memory_lookup(self) -> None:
         result = evaluate_case(
