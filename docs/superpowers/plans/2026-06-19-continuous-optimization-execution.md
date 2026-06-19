@@ -87,7 +87,7 @@ If a failure is discovered after push:
 
 **Steps:**
 
-- [ ] Check current branch and cleanliness:
+- [x] Check current branch and cleanliness:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git status --short --branch
@@ -95,7 +95,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git status --short --b
 
 Expected: branch is `main...origin/main`; only this plan file may be untracked or modified.
 
-- [ ] Verify the documentation diff:
+- [x] Verify the documentation diff:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git diff -- docs/superpowers/plans/2026-06-19-continuous-optimization-execution.md
@@ -103,7 +103,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git diff -- docs/super
 
 Expected: the diff contains only this execution plan.
 
-- [ ] Run whitespace validation:
+- [x] Run whitespace validation:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git diff --check
@@ -111,7 +111,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git diff --check
 
 Expected: exit code `0`.
 
-- [ ] Commit and push:
+- [x] Commit and push:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git add docs/superpowers/plans/2026-06-19-continuous-optimization-execution.md
@@ -140,14 +140,14 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git push
 
 **Steps:**
 
-- [ ] Add tests proving relative `model_path`, relative command binaries, `cwd`, and `required_files` expose:
+- [x] Add tests proving relative `model_path`, relative command binaries, `cwd`, and `required_files` expose:
   - original target
   - resolved path
   - resolution base
   - existence result
   - fix suggestion
 
-- [ ] Run the focused test:
+- [x] Run the focused test:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
@@ -155,7 +155,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 
 Expected before implementation: new assertions fail.
 
-- [ ] Implement generic metadata in diagnostic checks. Use keys:
+- [x] Implement generic metadata in diagnostic checks. Use keys:
   - `raw_target`
   - `resolved_target`
   - `resolution_base`
@@ -163,16 +163,16 @@ Expected before implementation: new assertions fail.
   - `profile_cwd`
   - `workspace_root`
 
-- [ ] Rerun the focused test.
+- [x] Rerun the focused test.
 
-- [ ] Run stage backend gate:
+- [x] Run stage backend gate:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend/diagnostics backend/api
 ```
 
-- [ ] Commit and push:
+- [x] Commit and push:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git add backend/diagnostics/runtime.py backend/tests/test_runtime_diagnostics.py
@@ -194,18 +194,18 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git push
 
 **Steps:**
 
-- [ ] Add TypeScript types for diagnostic `metadata`.
+- [x] Add TypeScript types for diagnostic `metadata`.
 
-- [ ] Show each failed or warning check with:
+- [x] Show each failed or warning check with:
   - raw target
   - resolved target
   - failure reason
   - repair suggestion
   - copyable diagnostics JSON already available through the page button
 
-- [ ] Keep status labels generic: `路径`, `命令`, `端口`, `健康检查`, `依赖`, `配置`.
+- [x] Keep status labels generic: `路径`, `命令`, `端口`, `健康检查`, `依赖`, `配置`.
 
-- [ ] Run frontend checks:
+- [x] Run frontend checks:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check
@@ -213,7 +213,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run build
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check:ui
 ```
 
-- [ ] Commit and push:
+- [x] Commit and push:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git add frontend/src/api/diagnostics.ts frontend/src/pages/DiagnosticsPage.vue frontend/src/components/diagnostics
@@ -235,20 +235,20 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git push
 
 **Steps:**
 
-- [ ] Add tests for generic tool profiles covering Python, Node, npm, ffmpeg, CUDA command discovery, and OpenClaw command discovery.
+- [x] Add tests for generic tool profiles covering Python, Node, npm, ffmpeg, CUDA command discovery, and OpenClaw command discovery.
 
-- [ ] Implement additive profile creation for tool checks. Treat tool names as labels; check availability through command resolution.
+- [x] Implement additive profile creation for tool checks. Treat tool names as labels; check availability through command resolution.
 
-- [ ] Keep missing optional tools as `warning` unless the current profile marks them required.
+- [x] Keep missing optional tools as `warning` unless the current profile marks them required.
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_runtime_diagnostics -v
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
-- [ ] Commit and push:
+- [x] Commit and push:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git add backend/api/diagnostics.py backend/diagnostics/runtime.py backend/tests/test_runtime_diagnostics.py
@@ -275,11 +275,11 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git push
 
 **Steps:**
 
-- [ ] Extract profile loading and path token resolution from service runtime into `backend/service_runtime/profiles.py`.
+- [x] Extract profile loading and path token resolution from service runtime into `backend/service_runtime/profiles.py`.
 
-- [ ] Add tests proving `${PROJECT_ROOT}`, `${WORKSPACE_ROOT}`, `BRANCHWHISPER_WORKSPACE_ROOT`, profile `cwd`, relative `command`, and relative `model_path` resolve identically for service startup and diagnostics.
+- [x] Add tests proving `${PROJECT_ROOT}`, `${WORKSPACE_ROOT}`, `BRANCHWHISPER_WORKSPACE_ROOT`, profile `cwd`, relative `command`, and relative `model_path` resolve identically for service startup and diagnostics.
 
-- [ ] Keep old `runtime/service_profiles.json` compatible. If schema metadata is added, make it additive:
+- [x] Keep old `runtime/service_profiles.json` compatible. If schema metadata is added, make it additive:
 
 ```json
 {
@@ -288,7 +288,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git push
 }
 ```
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_service_runtime -v
@@ -296,7 +296,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend/service_runtime backend/diagnostics backend/api
 ```
 
-- [ ] Commit and push after each extracted helper or compatibility shim, not as one large commit.
+- [x] Commit and push after each extracted helper or compatibility shim, not as one large commit.
 
 **Done when:** changing a profile path in one place affects service startup, diagnostics, and settings consistently.
 
@@ -316,7 +316,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 
 **Steps:**
 
-- [ ] Extend trace events with additive fields:
+- [x] Extend trace events with additive fields:
   - `stage`
   - `status`
   - `duration_ms`
@@ -324,11 +324,11 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
   - `profile_name`
   - `failure_reason`
 
-- [ ] Add tests for successful text dialog trace and failing voice pipeline trace.
+- [x] Add tests for successful text dialog trace and failing voice pipeline trace.
 
-- [ ] Keep existing `/api/diagnostics/dialog-traces` response compatible by adding fields rather than renaming current fields.
+- [x] Keep existing `/api/diagnostics/dialog-traces` response compatible by adding fields rather than renaming current fields.
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_dialog_trace -v
@@ -337,7 +337,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run build
 ```
 
-- [ ] Commit and push each trace extension and UI display improvement separately.
+- [x] Commit and push each trace extension and UI display improvement separately.
 
 **Done when:** a failed voice or external-channel reply has a visible trace reason without reading backend logs.
 
@@ -359,16 +359,16 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run build
 
 **Steps:**
 
-- [ ] Split one panel at a time from `SettingsPage.vue`; keep props/events explicit.
+- [x] Split one panel at a time from `SettingsPage.vue`; keep props/events explicit.
 
-- [ ] After each panel extraction, run:
+- [x] After each panel extraction, run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check:ui
 ```
 
-- [ ] Commit and push each panel extraction separately:
+- [x] Commit and push each panel extraction separately:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git add frontend/src/pages/SettingsPage.vue frontend/src/components/settings
@@ -376,7 +376,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git commit -m "refacto
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git push
 ```
 
-- [ ] Run full frontend gate at the end of the stage:
+- [x] Run full frontend gate at the end of the stage:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check
@@ -402,15 +402,15 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check
 
 **Steps:**
 
-- [ ] Extract one pure helper at a time from `manager.py` for target selection, send mode selection, media preparation, and fallback reason.
+- [x] Extract one pure helper at a time from `manager.py` for target selection, send mode selection, media preparation, and fallback reason.
 
-- [ ] Add tests for:
+- [x] Add tests for:
   - text-only fallback when voice conversion fails
   - missing OpenClaw binary
   - missing ffmpeg or silk conversion tool
   - unavailable target conversation
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_integration_manager -v
@@ -418,7 +418,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper node --test backend/te
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
-- [ ] Commit and push each helper extraction or behavior fix separately.
+- [x] Commit and push each helper extraction or behavior fix separately.
 
 **Done when:** integration failures surface as explicit reasons in API/UI diagnostics and do not silently drop replies.
 
@@ -441,20 +441,20 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 
 **Steps:**
 
-- [ ] Identify one pure helper currently inside `session.py`.
+- [x] Identify one pure helper currently inside `session.py`.
 
-- [ ] Move it to the smallest new module.
+- [x] Move it to the smallest new module.
 
-- [ ] Add or update tests that exercise behavior through public session/dialog APIs rather than private implementation details.
+- [x] Add or update tests that exercise behavior through public session/dialog APIs rather than private implementation details.
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend/dialog backend/api
 ```
 
-- [ ] Commit and push after each extraction.
+- [x] Commit and push after each extraction.
 
 **Done when:** voice/text dialog orchestration, transport, memory tasks, and tool flow can be read independently and full backend tests still pass.
 
@@ -475,20 +475,20 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 
 **Steps:**
 
-- [ ] Ensure JSON writes that affect settings, service profiles, integration state, and memory metadata use atomic write helpers.
+- [x] Ensure JSON writes that affect settings, service profiles, integration state, and memory metadata use atomic write helpers.
 
-- [ ] Add tests for interrupted write behavior where feasible using temporary directories.
+- [x] Add tests for interrupted write behavior where feasible using temporary directories.
 
-- [ ] Add log retention guidance for service logs without deleting user logs automatically.
+- [x] Add log retention guidance for service logs without deleting user logs automatically.
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend services
 ```
 
-- [ ] Commit and push each repository/io improvement separately.
+- [x] Commit and push each repository/io improvement separately.
 
 **Done when:** runtime settings updates are atomic and documented.
 
@@ -507,7 +507,7 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 
 **Steps:**
 
-- [ ] Create a runbook with exact commands:
+- [x] Create a runbook with exact commands:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest discover -s backend/tests -p "test_*.py" -v
@@ -519,15 +519,15 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run build
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run check:ui
 ```
 
-- [ ] Update docs to state backend/page runtime should be started from `qwen3-asr`:
+- [x] Update docs to state backend/page runtime should be started from `qwen3-asr`:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860
 ```
 
-- [ ] Run the full regression command set from the runbook.
+- [x] Run the full regression command set from the runbook.
 
-- [ ] Commit and push:
+- [x] Commit and push:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper git add README.md docs/deployment/local-deploy.md docs/development/refactor-roadmap.md docs/development/optimization-runbook.md
