@@ -10,6 +10,12 @@
     "category": "ordinary_chat",
     "user": "我现在脑子有点乱",
     "assistant": "先停一下，别急着把所有事一起想。",
+    "seed_memories": [
+      {
+        "key": "用户偏好",
+        "value": "用户喜欢深夜写代码"
+      }
+    ],
     "forbidden": ["我记得你之前", "你之前说过"]
   },
   {
@@ -17,6 +23,12 @@
     "category": "memory_lookup",
     "user": "你记得我的偏好吗？",
     "known_memory": "用户喜欢深夜写代码",
+    "seed_memories": [
+      {
+        "key": "用户偏好",
+        "value": "用户喜欢深夜写代码"
+      }
+    ],
     "assistant": "记得，你喜欢深夜写代码。"
   },
   {

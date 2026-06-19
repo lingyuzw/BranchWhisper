@@ -146,10 +146,35 @@ def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     if repeat_issue:
         issues.append({"rule": "repetitive_opening", "detail": repeat_issue})
 
+    prompt = evaluate_prompt_context(case)
+    issues.extend(prompt["issues"])
+
     return {
         "id": str(case.get("id") or ""),
         "category": str(case.get("category") or "uncategorized"),
         "passed": not issues,
+        "issues": issues,
+        "prompt": prompt,
+    }
+
+
+def evaluate_prompt_context(case: dict[str, Any]) -> dict[str, Any]:
+    seed_memories = case.get("seed_memories") or []
+    if not seed_memories:
+        return {"checked": False, "memory_context_present": False, "issues": []}
+
+    messages = build_case_messages(case)
+    system_content = messages[0]["content"] if messages else ""
+    memory_context_present = "内部参考" in system_content
+    issues: list[dict[str, str]] = []
+    category = str(case.get("category") or "")
+    if category == "ordinary_chat" and memory_context_present:
+        issues.append({"rule": "prompt_memory_leak", "detail": "ordinary chat should not receive long-term memory context"})
+    if category == "memory_lookup" and not memory_context_present:
+        issues.append({"rule": "prompt_missing_memory", "detail": "memory lookup should receive relevant quiet memory context"})
+    return {
+        "checked": True,
+        "memory_context_present": memory_context_present,
         "issues": issues,
     }
 

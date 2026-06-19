@@ -88,6 +88,15 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertIn("memory_lookup", categories)
         self.assertIn("anti_fabrication", categories)
 
+    def test_default_samples_include_prompt_context_checks(self) -> None:
+        report = evaluate_cases(load_cases(DEFAULT_SAMPLE_PATH))
+        checked = [result for result in report["results"] if result["prompt"]["checked"]]
+
+        self.assertGreaterEqual(len(checked), 2)
+        self.assertTrue(any(not result["prompt"]["memory_context_present"] for result in checked))
+        self.assertTrue(any(result["prompt"]["memory_context_present"] for result in checked))
+        self.assertEqual(0, report["failed"])
+
     def test_build_case_messages_keeps_memory_out_of_ordinary_chat(self) -> None:
         messages = build_case_messages(
             {
@@ -113,6 +122,35 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
 
         self.assertIn("内部参考", messages[0]["content"])
         self.assertIn("用户喜欢深夜写代码", messages[0]["content"])
+
+    def test_evaluate_case_reports_prompt_context_for_seeded_memory_lookup(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "memory",
+                "category": "memory_lookup",
+                "user": "你记得我的偏好吗？",
+                "seed_memories": [{"key": "用户偏好", "value": "用户喜欢深夜写代码"}],
+                "assistant": "记得，你喜欢深夜写代码。",
+            }
+        )
+
+        self.assertTrue(result["prompt"]["checked"])
+        self.assertTrue(result["prompt"]["memory_context_present"])
+        self.assertEqual([], result["prompt"]["issues"])
+
+    def test_evaluate_case_includes_prompt_issues_in_pass_status(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "ordinary",
+                "category": "ordinary_chat",
+                "user": "你记得我的偏好吗？",
+                "seed_memories": [{"key": "用户偏好", "value": "用户喜欢深夜写代码"}],
+                "assistant": "先慢点说。",
+            }
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertIn("prompt_memory_leak", {issue["rule"] for issue in result["issues"]})
 
     def test_cli_writes_json_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

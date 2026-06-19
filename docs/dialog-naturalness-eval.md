@@ -21,5 +21,13 @@ Write a JSON report:
 ```
 
 The first version is deterministic and offline. It evaluates curated sample outputs in
-`backend/tests/fixtures/dialog_naturalness_samples.json`. A later phase can plug in live LLM
-responses and feed them through the same rules.
+`backend/tests/fixtures/dialog_naturalness_samples.json`.
+
+Samples can include `seed_memories`. The evaluator will build the same request messages used by
+the dialog runtime and report prompt checks under `prompt`. This catches two high-value failures
+before any live model call:
+
+- ordinary chat should not receive long-term memory context
+- explicit memory lookup should receive quiet internal memory context
+
+A later phase can plug in live LLM responses and feed them through the same rules.
