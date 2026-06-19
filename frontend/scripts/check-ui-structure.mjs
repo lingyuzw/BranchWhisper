@@ -163,6 +163,8 @@ assert(assetsPage.includes('import StatusSummary from "@/components/ui/StatusSum
 assert(assetsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && assetsPage.includes('<AdvancedDisclosure title="高级配置与测试">'), "素材库配置和测试需要进入高级折叠区，避免挤占图库首屏");
 assert(assetsPage.indexOf("<AssetGallery") < assetsPage.indexOf("<AdvancedDisclosure"), "素材库应先展示图库，再展示高级配置与测试");
 assert(assetsCss.includes(".assets-page.workspace-page"), "素材库需要使用共享 workspace 页面宽度，而不是旧 ops-page 宽度");
+assert(!assetsCss.includes(".assets-head") && !assetsCss.includes(".asset-stats-grid"), "素材库应删除旧页头和旧统计卡样式，统一使用共享 PageHeader/StatusSummary");
+assert(!settingsCss.includes(".settings-hero"), "配置页应删除旧 hero 样式，统一使用共享 PageHeader");
 assert(dashboardPage.includes('class="dashboard-runtime-strip"'), "对话页运行状态需要放在聊天区底部横向链路，避免左栏像调试面板");
 assert(runtimeMetrics.includes('class="dashboard-runtime-strip"') && runtimeMetrics.includes('class="dashboard-pipeline-track"'), "对话页运行状态组件需要输出横向 pipeline");
 assert(!runtimeMetrics.includes("runtime-chips") && !runtimeMetrics.includes("sidebar-chips"), "对话页不应常驻 ASR/LLM/TTS/TRACE 小指标卡");
