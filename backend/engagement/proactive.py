@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from core.io_utils import write_json_file
+
 
 DEFAULT_PROACTIVE_CONFIG: dict[str, Any] = {
     "enabled": False,
@@ -278,9 +280,7 @@ class ProactiveStore:
 
     def save_config(self, data: dict) -> dict:
         payload = deep_merge(DEFAULT_PROACTIVE_CONFIG, data or {})
-        tmp = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(self.config_path)
+        write_json_file(self.config_path, payload)
         return payload
 
     def update_config(self, patch: dict) -> dict:

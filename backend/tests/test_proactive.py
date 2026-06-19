@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -113,6 +115,23 @@ class ProactiveStoreTests(unittest.TestCase):
         ids = [item["id"] for item in store.list_events()]
         self.assertNotIn(first["id"], ids)
         self.assertIn(second["id"], ids)
+
+    def test_save_config_uses_shared_json_writer(self) -> None:
+        tmp, store = self.make_store()
+        self.addCleanup(tmp.cleanup)
+        calls = []
+
+        def fake_write(path: Path, data) -> None:
+            calls.append((path, data))
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        with patch("engagement.proactive.write_json_file", side_effect=fake_write):
+            saved = store.save_config({"enabled": True, "channels": {"weixin": True}})
+
+        self.assertEqual(store.config_path, calls[0][0])
+        self.assertTrue(calls[0][1]["enabled"])
+        self.assertTrue(calls[0][1]["channels"]["weixin"])
+        self.assertEqual(saved, calls[0][1])
 
 
 if __name__ == "__main__":
