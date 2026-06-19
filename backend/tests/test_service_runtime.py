@@ -1406,6 +1406,24 @@ class MemoryRuntimeTests(unittest.TestCase):
         self.assertIsNone(admitted)
         self.assertIn(reason, {"memory_lookup_question", "unresolved_question"})
 
+    def test_casual_mood_is_not_saved_as_long_term_memory(self) -> None:
+        text = "我现在脑子有点乱，随便聊两句"
+
+        for candidate in extract_memory_candidates(text):
+            admitted, reason = admit_memory_candidate(candidate, text, default_settings())
+            self.assertIsNone(admitted)
+            self.assertIn(reason, {"low_value", "no_stable_signal", "importance"})
+
+    def test_stable_preference_is_still_saved_as_memory(self) -> None:
+        text = "我喜欢深夜写代码"
+        candidates = extract_memory_candidates(text)
+
+        self.assertTrue(candidates)
+        admitted, reason = admit_memory_candidate(candidates[0], text, default_settings())
+
+        self.assertIsNotNone(admitted)
+        self.assertEqual("semantic", reason)
+
     def test_external_dialog_answers_memory_lookup_directly(self) -> None:
         settings = default_settings()
         settings.dialog_mode = "api"
