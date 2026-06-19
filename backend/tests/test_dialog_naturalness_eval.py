@@ -136,6 +136,21 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertEqual([], result["issues"])
 
+    def test_evaluate_case_accepts_record_absence_uncertainty_synonym(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "unknown_food_synonym",
+                "category": "anti_fabrication",
+                "user": "你记得我昨天吃了什么吗？",
+                "assistant": "没记着，昨天聊天的记录里没提吃饭的事。",
+                "expect_uncertainty": True,
+                "known_memory": "",
+            }
+        )
+
+        self.assertTrue(result["passed"])
+        self.assertEqual([], result["issues"])
+
     def test_evaluate_cases_summarizes_pass_rate(self) -> None:
         report = evaluate_cases(
             [
@@ -574,6 +589,38 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
 
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(output.exists())
+
+    def test_live_replay_script_writes_json_sidecar_for_text_report(self) -> None:
+        script = BACKEND_ROOT.parent / "scripts" / "replay_dialog_naturalness.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "live-report.txt"
+            json_output = Path(tmp) / "live-report.json"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--live-url",
+                    "http://127.0.0.1:9/v1/chat/completions",
+                    "--live-model",
+                    "qwen",
+                    "--limit",
+                    "1",
+                    "--output",
+                    str(output),
+                    "--allow-failures",
+                ],
+                cwd=BACKEND_ROOT.parent,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue(output.exists())
+            self.assertTrue(json_output.exists())
+            data = json.loads(json_output.read_text(encoding="utf-8"))
+            self.assertIn("results", data)
 
     def test_backend_quality_script_runs_dialog_checks(self) -> None:
         script = BACKEND_ROOT.parent / "scripts" / "check_backend_quality.py"

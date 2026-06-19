@@ -40,8 +40,10 @@ FABRICATED_EXPERIENCE_PATTERNS = (
 UNCERTAINTY_PHRASES = (
     "不知道",
     "不确定",
+    "没记着",
     "没记录",
     "没有记录",
+    "记录里没提",
     "当前记录里没有",
     "我看不到",
     "不能确定",
@@ -405,6 +407,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate dialog naturalness samples.")
     parser.add_argument("--samples", default=str(DEFAULT_SAMPLE_PATH), help="Path to JSON sample cases.")
     parser.add_argument("--output", default="", help="Optional path for JSON report.")
+    parser.add_argument("--json-output", default="", help="Optional sidecar path for the full JSON report.")
     parser.add_argument("--format", choices=["json", "text"], default="json", help="Report format.")
     parser.add_argument("--replay-fixture-replies", action="store_true", help="Build prompts and replay fixture assistant replies.")
     parser.add_argument("--live-url", default="", help="OpenAI-compatible chat completions URL for live replay.")
@@ -449,6 +452,9 @@ def main(argv: list[str] | None = None) -> int:
         Path(args.output).write_text(text + "\n", encoding="utf-8")
     else:
         print(text)
+    if args.json_output:
+        Path(args.json_output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json_output).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0 if args.allow_failures or report["failed"] == 0 else 1
 
 
