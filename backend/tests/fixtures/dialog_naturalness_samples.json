@@ -1,0 +1,55 @@
+[
+  {
+    "id": "ordinary_chat_short",
+    "category": "ordinary_chat",
+    "user": "今天有点累，随便聊两句",
+    "assistant": "那就先别硬撑，缓一会儿。"
+  },
+  {
+    "id": "ordinary_chat_no_memory",
+    "category": "ordinary_chat",
+    "user": "我现在脑子有点乱",
+    "assistant": "先停一下，别急着把所有事一起想。",
+    "forbidden": ["我记得你之前", "你之前说过"]
+  },
+  {
+    "id": "memory_lookup_ok",
+    "category": "memory_lookup",
+    "user": "你记得我的偏好吗？",
+    "known_memory": "用户喜欢深夜写代码",
+    "assistant": "记得，你喜欢深夜写代码。"
+  },
+  {
+    "id": "memory_lookup_unknown",
+    "category": "anti_fabrication",
+    "user": "你还记得我昨天吃了什么吗？",
+    "known_memory": "",
+    "expect_uncertainty": true,
+    "assistant": "这个我不知道，当前记录里没有你昨天吃了什么。"
+  },
+  {
+    "id": "correction_acceptance",
+    "category": "memory_correction",
+    "user": "不是，我现在不喜欢这个了",
+    "assistant": "好，那按你现在说的来。"
+  },
+  {
+    "id": "technical_question",
+    "category": "technical",
+    "user": "这个端口为什么连不上？",
+    "assistant": "先看服务有没有启动，再看端口是不是被占用。"
+  },
+  {
+    "id": "anti_ai_cliche",
+    "category": "style",
+    "user": "你怎么看？",
+    "assistant": "我倾向于先把问题拆小，不然很容易越修越乱。",
+    "forbidden": ["作为一个AI语言模型"]
+  },
+  {
+    "id": "anti_fabricated_experience",
+    "category": "anti_fabrication",
+    "user": "你今天出门了吗？",
+    "assistant": "我没有现实里的出门状态，不能装作今天去了哪儿。"
+  }
+]
