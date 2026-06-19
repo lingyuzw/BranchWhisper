@@ -617,6 +617,41 @@
 }
 
 @media (max-width: 620px) {
+  .settings-content {
+    order: 1;
+  }
+
+  .settings-nav {
+    order: 2;
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    padding: 12px;
+  }
+
+  .settings-nav h1,
+  .settings-save-main {
+    grid-column: 1 / -1;
+  }
+
+  .settings-nav-group {
+    align-content: start;
+  }
+
+  .settings-nav-group + .settings-nav-group {
+    margin-top: 0;
+    border-top: 0;
+  }
+
+  .settings-nav-group-title {
+    padding: 0 6px;
+  }
+
+  .settings-nav-item {
+    min-height: 34px;
+    padding: 0 7px;
+  }
+
   .settings-command-bar {
     align-items: start;
   }

@@ -60,6 +60,7 @@ assert(settingsPage.includes('import StatusSummary from "@/components/ui/StatusS
 assert(settingsPage.includes("settingsSummaryItems") && settingsPage.includes('label: "当前 LLM"') && settingsPage.includes('label: "当前 ASR"') && settingsPage.includes('label: "当前 TTS"') && settingsPage.includes('label: "能力开关"'), "配置页顶部摘要需要显示 LLM、ASR、TTS 和能力开关");
 assert(settingsPage.includes("settingsNavGroups") && settingsPage.includes('label: "基础"') && settingsPage.includes('label: "能力"') && settingsPage.includes('label: "高级"'), "配置页左侧导航需要按基础、能力、高级分组");
 assert(settingsCss.includes(".settings-nav-group") && settingsCss.includes(".settings-nav-group-title"), "配置页分组导航需要有专用样式");
+assert(settingsCss.includes(".settings-content {\n    order: 1;") && settingsCss.includes(".settings-nav {\n    order: 2;"), "配置页移动端需要内容优先，导航后置为紧凑入口，避免首屏只有导航");
 assert(!memoryStore.includes("我喜欢晚上写代码，猫叫布丁。"), "记忆入库默认测试文本需要换成自然稳定偏好句");
 assert(integrationsCss.includes("integration-shell"), "接入页需要保持两栏布局");
 assert(integrationsCss.includes("integration-test-column") && integrationsCss.includes("integration-log-column"), "接入页左侧需要放链路测试和运行日志");
