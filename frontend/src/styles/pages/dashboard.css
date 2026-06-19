@@ -16,7 +16,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 9px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   color: var(--text-soft);
   background: transparent;
   border: 1px solid transparent;
@@ -250,7 +250,7 @@
   place-items: center;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   color: var(--text);
   background: color-mix(in srgb, var(--surface) 90%, var(--primary) 10%);
   font-size: var(--font-xs);
@@ -284,7 +284,7 @@
 .message {
   width: fit-content; max-width: 100%;
   margin: 0; padding: 11px 14px 12px;
-  border-radius: 12px; line-height: 1.72;
+  border-radius: var(--radius-md); line-height: 1.72;
   font-family: var(--font-chat);
   font-size: var(--font-body); white-space: pre-wrap; overflow-wrap: anywhere;
   animation: messageIn 200ms ease-out;
@@ -295,14 +295,14 @@
   color: var(--text);
   background: color-mix(in srgb, var(--info) 14%, var(--surface) 86%);
   border: 1px solid color-mix(in srgb, var(--info) 19%, var(--border) 81%);
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: var(--radius-sm);
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 .message.assistant {
   color: color-mix(in srgb, var(--text) 90%, var(--text-soft) 10%);
   background: color-mix(in srgb, var(--surface) 94%, var(--primary) 6%);
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: var(--radius-sm);
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 .message.system {
@@ -323,7 +323,7 @@
   margin: 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   box-shadow: var(--shadow-sm);
 }
@@ -426,7 +426,7 @@ html.theme-light .message-avatar {
   gap: 8px;
   padding: 3px 5px 3px 3px;
   border: 1px solid var(--border);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-muted) 84%, transparent);
   box-shadow: var(--shadow-sm);
 }
@@ -434,7 +434,7 @@ html.theme-light .message-avatar {
   width: 44px;
   height: 42px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 .attachment-preview-chip span {
   min-width: 0;
@@ -449,7 +449,7 @@ html.theme-light .message-avatar {
   height: 26px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
 }
 .attachment-preview-chip button:hover {

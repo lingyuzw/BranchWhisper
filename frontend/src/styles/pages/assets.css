@@ -18,7 +18,7 @@
   align-items: center;
   padding: 14px 16px;
   border: 1px dashed color-mix(in srgb, var(--border-strong) 74%, transparent);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, var(--primary) 10%), transparent 64%),
     var(--surface);
@@ -89,7 +89,7 @@
 .asset-detail-panel,
 .asset-gallery-panel {
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
@@ -304,7 +304,7 @@
 .asset-progress-track {
   height: 8px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--surface-muted);
 }
 

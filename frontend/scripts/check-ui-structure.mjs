@@ -87,5 +87,9 @@ assert(diagnosticCheckList.includes("checkMetadataRows"), "运行诊断检查项
 assert(diagnosticCheckList.includes("raw_target") && diagnosticCheckList.includes("resolved_target") && diagnosticCheckList.includes("resolution_base"), "运行诊断检查项组件需要读取后端 resolved target metadata");
 assert(diagnosticsCss.includes(".diagnostic-check-meta"), "运行诊断解析详情需要专用样式");
 assert(diagnosticsCss.includes("overflow-wrap: anywhere"), "运行诊断长路径需要允许换行，避免挤出卡片");
+assert(diagnosticsCss.includes("--diagnostic-label-col: 88px"), "运行诊断检查项需要使用稳定标签列，避免不同卡片标签错位");
+assert(diagnosticsCss.includes("grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr)"), "运行诊断检查项主行需要固定标签列并左对齐内容");
+assert(diagnosticsCss.includes("grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr)") && !diagnosticsCss.includes("minmax(72px, 0.4fr)"), "运行诊断检查项不能再使用比例标签列");
+assert(diagnosticsCss.includes("--trace-label-col: 74px"), "运行诊断 trace 详情需要使用稳定标签列，保持事件列表整齐");
 
 console.log("UI structure checks passed");
