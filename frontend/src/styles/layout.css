@@ -44,7 +44,7 @@ body[data-page="dashboard"] .page-view {
 .voice-console {
   height: calc(100vh - var(--topbar-h));
   min-height: 580px;
-  display: grid; grid-template-columns: 272px minmax(0, 1fr);
+  display: grid; grid-template-columns: 248px minmax(0, 1fr);
   gap: 0; overflow: hidden;
 }
 

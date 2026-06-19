@@ -136,5 +136,9 @@ assert(runtimeMetrics.includes('class="dashboard-runtime-strip"') && runtimeMetr
 assert(!runtimeMetrics.includes("runtime-chips") && !runtimeMetrics.includes("sidebar-chips"), "对话页不应常驻 ASR/LLM/TTS/TRACE 小指标卡");
 assert(dashboardCss.includes(".dashboard-runtime-strip") && dashboardCss.includes("grid-template-columns: repeat(4, minmax(0, 1fr))"), "对话页横向运行链路需要专用四段布局样式");
 assert(!layoutCss.includes("grid-template-rows: auto minmax(0, 1fr) auto auto auto"), "对话页左栏不应为多组运行指标预留多行高度");
+assert(layoutCss.includes("grid-template-columns: 248px minmax(0, 1fr)"), "对话页左栏需要收窄为会话导航，给聊天主区域让出视觉中心");
+assert(dashboardCss.includes("--dashboard-chat-width: min(840px, calc(100vw - 40px))"), "对话页需要使用统一聊天阅读宽度变量，避免大屏消息散开");
+assert(dashboardCss.includes("max-width: var(--dashboard-chat-width)") && dashboardCss.includes("max-width: var(--dashboard-composer-width)"), "对话页消息区、输入区和状态条需要共享稳定宽度规则");
+assert(dashboardCss.includes("padding: 22px clamp(16px, 4vw, 36px) 12px"), "对话页消息列表需要有响应式水平留白，避免文字贴边或过宽");
 
 console.log("UI structure checks passed");

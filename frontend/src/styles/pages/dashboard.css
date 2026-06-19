@@ -172,6 +172,8 @@
 
 /* chat area: quiet reading surface */
 .chat-area {
+  --dashboard-chat-width: min(840px, calc(100vw - 40px));
+  --dashboard-composer-width: min(820px, calc(100vw - 40px));
   min-height: 0; display: flex; flex-direction: column;
   align-items: center; overflow: hidden;
   background:
@@ -181,7 +183,7 @@
     var(--bg);
   transition: background 200ms;
 }
-.chat-area > * { max-width: 780px; width: 100%; }
+.chat-area > * { max-width: var(--dashboard-chat-width); width: 100%; }
 
 /* welcome (empty) state */
 .chat-welcome {
@@ -199,7 +201,7 @@
 }
 .welcome-brand h1 { font-size: 26px; font-weight: 700; color: var(--text); }
 .welcome-brand p { font-size: var(--font-body); color: var(--text-muted); line-height: 1.5; }
-.welcome-composer { width: 100%; max-width: 720px; }
+.welcome-composer { width: 100%; max-width: var(--dashboard-composer-width); }
 
 /* messages area */
 .chat-messages {
@@ -209,7 +211,7 @@
 
 .transcript {
   flex: 1; min-height: 0; overflow-y: auto;
-  padding: 18px 12px 10px;
+  padding: 22px clamp(16px, 4vw, 36px) 12px;
 }
 
 .message-row {
@@ -358,7 +360,7 @@ html.theme-light .message-avatar {
 
 /* runtime strip: status stays visible without turning the chat into a debug console */
 .dashboard-runtime-strip {
-  max-width: 780px;
+  max-width: var(--dashboard-composer-width);
   width: 100%;
   display: grid;
   grid-template-columns: minmax(168px, 0.7fr) minmax(0, 1.8fr);
@@ -517,7 +519,7 @@ html.theme-light .dashboard-pipeline-track {
   background: var(--surface-hover);
 }
 .attachment-preview-strip {
-  max-width: 780px;
+  max-width: var(--dashboard-composer-width);
   width: 100%;
   display: flex;
   flex-wrap: wrap;
