@@ -16,7 +16,7 @@ import {
 import type { IntegrationItem } from "@/api/integrations";
 import { formatApiError } from "@/api/client";
 import IntegrationLogsPanel from "@/components/integrations/IntegrationLogsPanel.vue";
-import InlineProbe from "@/components/layout/InlineProbe.vue";
+import IntegrationProbePanel from "@/components/integrations/IntegrationProbePanel.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
 import { useUiStore } from "@/stores/ui";
@@ -383,62 +383,26 @@ function downloadLogs() {
 
       <section class="integration-shell">
         <div class="integration-test-column">
-          <section class="integration-panel integration-tests-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Loop Checks</p>
-                <h2>链路测试</h2>
-              </div>
-              <span v-if="actionMessage" class="soft-badge integration-action-message">{{ actionMessage }}</span>
-            </div>
-            <section class="integration-probe-panel">
-              <div class="integration-probe-card">
-                <input v-model="integrations.testText" type="text" placeholder="你好，测试一下" @keydown.enter="runDialogProbe" />
-                <InlineProbe
-                  variant="compact"
-                  title="文本回复链路"
-                  summary="模拟微信入站消息，测试 dialog API、LLM 和回传结果。"
-                  :status="dialogProbeStatus"
-                  :status-text="dialogProbeStatus === 'ok' ? '回复正常' : dialogProbeStatus === 'failed' ? '回复失败' : dialogProbeStatus === 'running' ? '检测中' : '未检测'"
-                  :detail="integrations.testResult"
-                  action-text="运行"
-                  :disabled="!selected || integrations.actioning"
-                  @run="runDialogProbe"
-                  @copy="copyProbeResult('文本回复', integrations.testResult)"
-                />
-              </div>
-              <div class="integration-probe-card">
-                <input v-model="integrations.voiceText" type="text" placeholder="我在，听得到的话我们继续。" @keydown.enter="runVoiceProbe" />
-                <InlineProbe
-                  variant="compact"
-                  title="语音发送链路"
-                  summary="生成短音频并尝试发送微信原生语音；本地文件不算送达。"
-                  :status="voiceProbeStatus"
-                  :status-text="voiceProbeStatus === 'ok' ? '发送正常' : voiceProbeStatus === 'warning' ? (voiceProbeUnconfirmed ? '原生语音未送达' : '等待 TTS') : voiceProbeStatus === 'failed' ? '发送失败' : voiceProbeStatus === 'running' ? '检测中' : '未检测'"
-                  :detail="integrations.voiceResult"
-                  action-text="运行"
-                  :disabled="!selected || integrations.actioning"
-                  @run="runVoiceProbe"
-                  @copy="copyProbeResult('语音发送', integrations.voiceResult)"
-                />
-              </div>
-              <div class="integration-probe-card">
-                <input v-model="integrations.stickerText" type="text" placeholder="打一架" @keydown.enter="runStickerProbe" />
-                <InlineProbe
-                  variant="compact"
-                  title="素材发送链路"
-                  summary="按测试文本选择素材并发送到微信，验证素材策略和图片发送。"
-                  :status="stickerProbeStatus"
-                  :status-text="stickerProbeStatus === 'ok' ? '接口已接收' : stickerProbeStatus === 'failed' ? '发送失败' : stickerProbeStatus === 'running' ? '检测中' : '未检测'"
-                  :detail="integrations.stickerResult"
-                  action-text="运行"
-                  :disabled="!selected || integrations.actioning"
-                  @run="runStickerProbe"
-                  @copy="copyProbeResult('素材发送', integrations.stickerResult)"
-                />
-              </div>
-            </section>
-          </section>
+          <IntegrationProbePanel
+            v-model:test-text="integrations.testText"
+            v-model:voice-text="integrations.voiceText"
+            v-model:sticker-text="integrations.stickerText"
+            :action-message="actionMessage"
+            :dialog-status="dialogProbeStatus"
+            :voice-status="voiceProbeStatus"
+            :sticker-status="stickerProbeStatus"
+            :voice-unconfirmed="voiceProbeUnconfirmed"
+            :test-result="integrations.testResult"
+            :voice-result="integrations.voiceResult"
+            :sticker-result="integrations.stickerResult"
+            :disabled="!selected || integrations.actioning"
+            @run-dialog="runDialogProbe"
+            @run-voice="runVoiceProbe"
+            @run-sticker="runStickerProbe"
+            @copy-dialog="copyProbeResult('文本回复', integrations.testResult)"
+            @copy-voice="copyProbeResult('语音发送', integrations.voiceResult)"
+            @copy-sticker="copyProbeResult('素材发送', integrations.stickerResult)"
+          />
 
           <IntegrationLogsPanel
             v-model:scope="integrations.logScope"
