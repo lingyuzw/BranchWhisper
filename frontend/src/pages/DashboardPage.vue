@@ -529,7 +529,6 @@ function avatarUrl(role: string) {
           @archive-conversation="archiveConversation"
           @remove-conversation="removeConversation"
         />
-        <RuntimeMetrics :metrics="metrics" :level="level" />
     </aside>
 
       <section class="chat-area">
@@ -616,6 +615,7 @@ function avatarUrl(role: string) {
         </div>
         <input ref="imageInput" type="file" accept="image/*" multiple hidden @change="handleImageSelected" />
       </footer>
+      <RuntimeMetrics class="dashboard-runtime-strip" :metrics="metrics" :level="level" />
       </section>
     </div>
   </main>

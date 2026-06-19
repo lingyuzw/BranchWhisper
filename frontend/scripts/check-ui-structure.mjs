@@ -30,6 +30,10 @@ const servicesPage = read("src/pages/ServicesPage.vue");
 const servicesCss = read("src/styles/pages/services.css");
 const resourceSection = read("src/components/services/ResourceSection.vue");
 const baseCss = read("src/styles/base.css");
+const dashboardPage = read("src/pages/DashboardPage.vue");
+const dashboardCss = read("src/styles/pages/dashboard.css");
+const layoutCss = read("src/styles/layout.css");
+const runtimeMetrics = read("src/components/dashboard/RuntimeMetrics.vue");
 const diagnosticsPage = read("src/pages/DiagnosticsPage.vue");
 const diagnosticCheckList = read("src/components/diagnostics/DiagnosticCheckList.vue");
 const diagnosticsCss = read("src/styles/pages/diagnostics.css");
@@ -127,5 +131,10 @@ assert(servicesPage.includes('import TaskPanel from "@/components/ui/TaskPanel.v
 assert(memoryPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && memoryPage.includes("<PageHeader"), "记忆页需要先接入共享 PageHeader，统一顶部结构");
 assert(memoryPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && memoryPage.includes("<StatusSummary"), "记忆页需要使用共享 StatusSummary 展示记忆概况");
 assert(memoryPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && memoryPage.includes("<TaskPanel"), "记忆页主任务区域需要使用共享 TaskPanel");
+assert(dashboardPage.includes('class="dashboard-runtime-strip"'), "对话页运行状态需要放在聊天区底部横向链路，避免左栏像调试面板");
+assert(runtimeMetrics.includes('class="dashboard-runtime-strip"') && runtimeMetrics.includes('class="dashboard-pipeline-track"'), "对话页运行状态组件需要输出横向 pipeline");
+assert(!runtimeMetrics.includes("runtime-chips") && !runtimeMetrics.includes("sidebar-chips"), "对话页不应常驻 ASR/LLM/TTS/TRACE 小指标卡");
+assert(dashboardCss.includes(".dashboard-runtime-strip") && dashboardCss.includes("grid-template-columns: repeat(4, minmax(0, 1fr))"), "对话页横向运行链路需要专用四段布局样式");
+assert(!layoutCss.includes("grid-template-rows: auto minmax(0, 1fr) auto auto auto"), "对话页左栏不应为多组运行指标预留多行高度");
 
 console.log("UI structure checks passed");

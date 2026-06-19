@@ -89,23 +89,34 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="sidebar-scope">
-    <div class="scope-header"><span>{{ metrics.status }}</span><span>{{ Math.round(level * 100) }}%</span></div>
-    <canvas ref="canvas" aria-label="麦克风电平波形"></canvas>
-    <div class="level-track"><span class="level-bar" :style="{ width: `${Math.round(level * 100)}%` }"></span></div>
-  </section>
+  <section class="dashboard-runtime-strip" aria-label="当前对话运行链路">
+    <div class="dashboard-runtime-scope">
+      <div class="scope-header"><span>{{ metrics.status }}</span><span>{{ Math.round(level * 100) }}%</span></div>
+      <canvas ref="canvas" aria-label="麦克风电平波形"></canvas>
+      <div class="level-track"><span class="level-bar" :style="{ width: `${Math.round(level * 100)}%` }"></span></div>
+    </div>
 
-  <section class="pipeline-compact">
-    <div class="pipeline-row" :class="{ active: metrics.status === '收音' }"><span class="pdot"></span><strong>VAD</strong><small>{{ metrics.vad }}</small></div>
-    <div class="pipeline-row"><span class="pdot"></span><strong>ASR</strong><small>{{ metrics.asr }}</small></div>
-    <div class="pipeline-row"><span class="pdot"></span><strong>LLM</strong><small>{{ metrics.llm }}</small></div>
-    <div class="pipeline-row"><span class="pdot"></span><strong>TTS</strong><small>{{ metrics.tts }}</small></div>
-  </section>
-
-  <section class="runtime-chips sidebar-chips">
-    <span><b>ASR</b><strong>{{ metrics.asr }}</strong></span>
-    <span><b>LLM</b><strong>{{ metrics.llm }}</strong></span>
-    <span><b>TTS</b><strong>{{ metrics.tts }}</strong></span>
-    <span><b>TRACE</b><strong>{{ metrics.trace }}</strong></span>
+    <div class="dashboard-pipeline-track">
+      <div class="dashboard-pipeline-step" :class="{ active: metrics.status === '收音' || metrics.status === '监听中' }">
+        <span class="pdot"></span>
+        <strong>VAD</strong>
+        <small>{{ metrics.vad }}</small>
+      </div>
+      <div class="dashboard-pipeline-step" :class="{ active: metrics.status === '识别' }">
+        <span class="pdot"></span>
+        <strong>ASR</strong>
+        <small>{{ metrics.asr }}</small>
+      </div>
+      <div class="dashboard-pipeline-step" :class="{ active: metrics.status === '思考中' || metrics.status === '生成' || metrics.status === '输出中' }">
+        <span class="pdot"></span>
+        <strong>LLM</strong>
+        <small>{{ metrics.llm }}</small>
+      </div>
+      <div class="dashboard-pipeline-step" :class="{ active: metrics.status === '播放' }">
+        <span class="pdot"></span>
+        <strong>TTS</strong>
+        <small>{{ metrics.tts }}</small>
+      </div>
+    </div>
   </section>
 </template>

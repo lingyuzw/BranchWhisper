@@ -170,27 +170,6 @@
   color: var(--text-muted); font-size: var(--font-xs); font-weight: 500; opacity: 0.7;
 }
 
-/* sidebar scope (waveform) */
-.sidebar-scope {
-  padding: 8px 8px 6px; border: 1px solid var(--border);
-  border-radius: var(--radius-md); background: var(--surface-muted);
-  --scope-surface: color-mix(in srgb, var(--surface-muted) 94%, var(--info) 6%);
-  --scope-primary: color-mix(in srgb, var(--primary) 26%, transparent);
-  --scope-info: color-mix(in srgb, var(--info) 15%, transparent);
-  --scope-line: color-mix(in srgb, var(--info) 76%, var(--text-muted));
-  --scope-active-line: var(--primary);
-  --scope-midline: color-mix(in srgb, var(--text-muted) 18%, transparent);
-}
-.scope-header { display: flex; justify-content: space-between; color: var(--text-muted); font-size: var(--font-xs); font-weight: 700; margin-bottom: 4px; }
-.sidebar-scope canvas {
-  display: block; width: 100%; aspect-ratio: 4 / 1;
-  border-radius: var(--radius-sm);
-  background: var(--scope-surface);
-  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-}
-.sidebar-scope .level-track { height: 3px; margin-top: 4px; overflow: hidden; border-radius: 999px; background: var(--border); }
-.sidebar-scope .level-bar { display: block; width: 0%; height: 100%; background: var(--primary); transition: width 50ms linear; }
-
 /* chat area: quiet reading surface */
 .chat-area {
   min-height: 0; display: flex; flex-direction: column;
@@ -377,6 +356,138 @@ html.theme-light .message-avatar {
   background: #fffdfa;
 }
 
+/* runtime strip: status stays visible without turning the chat into a debug console */
+.dashboard-runtime-strip {
+  max-width: 780px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(168px, 0.7fr) minmax(0, 1.8fr);
+  gap: 8px;
+  padding: 0 0 10px;
+}
+
+.dashboard-runtime-scope,
+.dashboard-pipeline-track {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-runtime-scope {
+  padding: 8px;
+  --scope-surface: color-mix(in srgb, var(--surface-muted) 92%, var(--info) 8%);
+  --scope-primary: color-mix(in srgb, var(--primary) 24%, transparent);
+  --scope-info: color-mix(in srgb, var(--info) 12%, transparent);
+  --scope-line: color-mix(in srgb, var(--info) 72%, var(--text-muted));
+  --scope-active-line: var(--primary);
+  --scope-midline: color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+
+.dashboard-runtime-scope canvas {
+  display: block;
+  width: 100%;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--scope-surface);
+}
+
+.scope-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+}
+
+.level-track {
+  height: 3px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.level-bar {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 50ms linear;
+}
+
+.dashboard-pipeline-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  padding: 8px;
+}
+
+.dashboard-pipeline-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 7px;
+  row-gap: 1px;
+  align-content: center;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.dashboard-pipeline-step + .dashboard-pipeline-step {
+  border-left: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.dashboard-pipeline-step .pdot {
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transition: background 160ms, box-shadow 160ms;
+}
+
+.dashboard-pipeline-step strong {
+  min-width: 0;
+  color: inherit;
+  font-size: var(--font-xs);
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.dashboard-pipeline-step small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-pipeline-step.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.dashboard-pipeline-step.active .pdot {
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+html.theme-light .dashboard-runtime-scope,
+html.theme-light .dashboard-pipeline-track {
+  background: color-mix(in srgb, var(--surface) 94%, var(--info) 3%);
+}
+
 /* bottom composer */
 .chat-composer { padding: 8px 0 14px; }
 .composer {
@@ -474,6 +585,17 @@ html.theme-light .message-avatar {
     max-height: 220px;
   }
   .chat-area > * { max-width: 100%; }
+  .dashboard-runtime-strip {
+    grid-template-columns: 1fr;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .dashboard-pipeline-track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboard-pipeline-step:nth-child(3) {
+    border-left: 0;
+  }
   .composer {
     grid-template-columns: 36px 36px minmax(44px, 1fr) repeat(4, 36px);
     gap: 4px;
