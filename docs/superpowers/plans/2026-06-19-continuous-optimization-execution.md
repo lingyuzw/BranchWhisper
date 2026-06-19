@@ -10,6 +10,22 @@
 
 ---
 
+## Execution Status
+
+Status on 2026-06-19: this continuous optimization pass has been executed through Stage 8 and pushed to `origin/main`.
+
+Completed outcomes:
+
+- Diagnostics expose resolved path/command evidence and generic runtime tool checks.
+- Diagnostics UI shows aligned status, failure reason, metadata, and repair suggestions.
+- Service profile path resolution and dialog trace attribution are covered by backend tests.
+- Frontend diagnostics, services, integrations, memory, assets, dashboard, and settings routes passed browser/structure checks during the visual pass.
+- Runtime JSON writes for settings, service profiles, conversations, bot profiles, tool provider config, tool runtime config, integrations, Weixin account state, proactive config, sticker indexes, and OpenClaw bridge state use the shared atomic JSON writer.
+- Runtime write safety, log retention, `qwen3-asr` startup, and full regression commands are documented.
+- Full regression passed before the final runbook commit: backend `unittest` discovery, `compileall`, static import check, Node Weixin voice tests, frontend type check, frontend build, and UI structure check.
+
+---
+
 ## Global Execution Contract
 
 Every optimization point follows this loop:
@@ -548,4 +564,4 @@ When a stage fails:
 
 ## Current Next Action
 
-Start with Stage 0. After the plan is pushed, proceed to Stage 1 Task 1.1: resolved diagnostic target metadata. This directly follows the recent path-resolution fix and gives the diagnostics center better evidence for future model or binary changes.
+This plan is complete for the current optimization pass. Start a new plan for the next independent optimization wave.
