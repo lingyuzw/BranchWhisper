@@ -766,7 +766,7 @@
 }
 
 .diagnostic-check-message,
-.diagnostic-check-fix {
+.diagnostic-check-action {
   min-width: 0;
   color: var(--text-muted);
   font-size: var(--font-xs);
@@ -774,27 +774,73 @@
   overflow-wrap: anywhere;
 }
 
-.diagnostic-check-fix {
+.diagnostic-check-summary,
+.diagnostic-check-action {
   display: grid;
   grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr);
   gap: 7px;
   align-items: start;
   margin-top: 2px;
   padding: 6px 8px;
-  border: 1px solid color-mix(in srgb, var(--diag-yellow) 28%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
   border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface-muted) 12%);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+}
+
+.diagnostic-check-summary.warning {
+  border-color: color-mix(in srgb, var(--diag-yellow) 28%, var(--border));
+  background: color-mix(in srgb, var(--surface) 91%, var(--diag-yellow) 9%);
+}
+
+.diagnostic-check-summary.error {
+  border-color: color-mix(in srgb, var(--diag-red) 28%, var(--border));
+  background: color-mix(in srgb, var(--surface) 91%, var(--diag-red) 9%);
+}
+
+.diagnostic-check-action {
+  border-color: color-mix(in srgb, var(--diag-yellow) 28%, var(--border));
   background: color-mix(in srgb, var(--surface) 90%, var(--diag-yellow) 10%);
 }
 
-.diagnostic-check-fix span {
-  color: var(--diag-yellow);
+.diagnostic-check-summary span,
+.diagnostic-check-action span {
+  color: var(--text-muted);
   font-weight: 750;
 }
 
-.diagnostic-check-fix strong {
+.diagnostic-check-action span {
+  color: var(--diag-yellow);
+}
+
+.diagnostic-check-summary strong,
+.diagnostic-check-action strong {
   min-width: 0;
   color: var(--text-soft);
   font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.diagnostic-check-message summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.diagnostic-check-message pre {
+  max-height: 160px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--log-bg);
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
