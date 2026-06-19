@@ -49,9 +49,9 @@ function statusText(value?: string) {
             <small><span>{{ item.tag || item.emotion || "默认" }}</span>{{ statusText(item.review_status) }}</small>
           </div>
           <div class="asset-card-actions">
-            <button type="button" @click.stop="emit('select', item.id)">查看</button>
-            <button type="button" @click.stop="emit('select', item.id)">重命名</button>
-            <button type="button" class="danger" @click.stop="emit('remove', item.id)">删除</button>
+            <button type="button" class="secondary-action" @click.stop="emit('select', item.id)">查看</button>
+            <button type="button" class="secondary-action" @click.stop="emit('select', item.id)">重命名</button>
+            <button type="button" class="secondary-action danger" @click.stop="emit('remove', item.id)">删除</button>
           </div>
         </div>
       </article>

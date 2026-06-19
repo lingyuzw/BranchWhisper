@@ -19,6 +19,7 @@ const appearanceSettingsPanel = read("src/components/settings/AppearanceSettings
 const dialogModelPanel = read("src/components/settings/DialogModelPanel.vue");
 const settingsCss = read("src/styles/pages/settings.css");
 const assetsPage = read("src/pages/AssetsPage.vue");
+const assetGallery = read("src/components/assets/AssetGallery.vue");
 const assetsCss = read("src/styles/pages/assets.css");
 const memoryPage = read("src/pages/MemoryPage.vue");
 const memoryCss = read("src/styles/pages/memory.css");
@@ -173,6 +174,7 @@ assert(assetsPage.includes('import PageHeader from "@/components/ui/PageHeader.v
 assert(assetsPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && assetsPage.includes("<StatusSummary"), "素材库需要使用共享 StatusSummary 展示素材概况");
 assert(assetsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && assetsPage.includes('<AdvancedDisclosure title="高级配置与测试">'), "素材库配置和测试需要进入高级折叠区，避免挤占图库首屏");
 assert(assetsPage.indexOf("<AssetGallery") < assetsPage.indexOf("<AdvancedDisclosure"), "素材库应先展示图库，再展示高级配置与测试");
+assert(assetGallery.includes('class="secondary-action danger"'), "素材库图库删除按钮需要使用可读文字按钮样式，避免被压成窄按钮");
 assert(assetsCss.includes(".assets-page.workspace-page"), "素材库需要使用共享 workspace 页面宽度，而不是旧 ops-page 宽度");
 assert(!assetsCss.includes(".assets-head") && !assetsCss.includes(".asset-stats-grid"), "素材库应删除旧页头和旧统计卡样式，统一使用共享 PageHeader/StatusSummary");
 assert(!settingsCss.includes(".settings-hero"), "配置页应删除旧 hero 样式，统一使用共享 PageHeader");
