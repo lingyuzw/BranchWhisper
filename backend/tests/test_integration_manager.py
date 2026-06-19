@@ -22,6 +22,28 @@ from integration_runtime.weixin_protocol import select_recent_weixin_target, wei
 
 
 class IntegrationManagerProcessEnvTests(unittest.TestCase):
+    def test_save_config_uses_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path = root / "integrations.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("integration_runtime.manager.write_json_file", side_effect=fake_write):
+                manager = IntegrationManager(
+                    config_path=config_path,
+                    log_dir=root / "logs",
+                    media_dir=root / "media",
+                )
+                manager.save_config({"integrations": [{"id": "wx", "type": "weixin_oc", "enabled": True}]})
+
+            self.assertEqual(config_path, calls[0][0])
+            self.assertEqual(config_path, calls[-1][0])
+            self.assertTrue(calls[-1][1]["integrations"][0]["enabled"])
+
     def test_gateway_disabled_hint_detects_systemd_unavailable_output(self) -> None:
         hint = gateway_disabled_hint({"stdout": "", "stderr": "systemd user services are unavailable"})
         unrelated = gateway_disabled_hint({"stdout": "gateway started", "stderr": ""})

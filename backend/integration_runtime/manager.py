@@ -49,7 +49,7 @@ from media.assets import StickerStore
 from media.sticker_directives import extract_sticker_directives
 from media.sticker_vision import ChatImageAnalyzer
 from media.sticker_policy import StickerPolicy
-from core.io_utils import read_json_file
+from core.io_utils import read_json_file, write_json_file
 from core.text_utils import compact_text, extract_repeat_text, format_reply_paragraphs, is_story_request, split_reply_messages
 from core.time_utils import now_text, now_ts
 
@@ -304,10 +304,7 @@ class IntegrationManager:
             "sessions": data.get("sessions") if isinstance(data.get("sessions"), dict) else {},
             "my_weixin_session": data.get("my_weixin_session") if isinstance(data.get("my_weixin_session"), dict) else {},
         }
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(self.config_path)
+        write_json_file(self.config_path, payload)
         return payload
 
     def normalize_integration(self, item: dict) -> dict:
