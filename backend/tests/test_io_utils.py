@@ -18,6 +18,7 @@ from core.tool_config import ToolProviderConfig
 from data.conversations import ConversationStore
 from data.profiles import BotProfileStore
 from media.assets import StickerStore
+from media.sticker_library import StickerLibrary
 from service_runtime.profiles import write_profile_services
 
 
@@ -145,6 +146,30 @@ class JsonIoUtilsTests(unittest.TestCase):
             self.assertEqual(index_path, calls[0][0])
             self.assertEqual(index_path, calls[-1][0])
             self.assertEqual([{"id": "stk_1", "tag": "开心"}], calls[-1][1])
+
+    def test_sticker_library_uses_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            index_path = root / "library" / "index.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("media.sticker_library.write_json_file", side_effect=fake_write):
+                library = StickerLibrary(
+                    index_path=index_path,
+                    original_dir=root / "original",
+                    processed_dir=root / "processed",
+                    send_dir=root / "send",
+                    thumbnail_dir=root / "thumbnail",
+                )
+                library.save([{"id": "stk_1", "name": "开心"}])
+
+            self.assertEqual(index_path, calls[0][0])
+            self.assertEqual(index_path, calls[-1][0])
+            self.assertEqual("stk_1", calls[-1][1][0]["id"])
 
 
 if __name__ == "__main__":

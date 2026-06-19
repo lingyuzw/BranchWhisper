@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from core.io_utils import write_json_file
 from media.assets import normalize_channel, normalize_channels, safe_tag
 from media.sticker_processing import ProcessedStickerImage, save_sticker_image
 from media.sticker_vision import default_sticker_analysis, normalize_analysis
@@ -172,7 +173,7 @@ class StickerLibrary:
         return [self.normalize(item) for item in data if isinstance(item, dict)]
 
     def save(self, items: list[dict]) -> None:
-        self.index_path.write_text(json.dumps([self.normalize(item) for item in items], ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(self.index_path, [self.normalize(item) for item in items])
 
     def normalize(self, item: dict[str, Any]) -> dict:
         status = str(item.get("review_status") or (APPROVED_STATUS if item.get("legacy_approved") else PENDING_STATUS))
