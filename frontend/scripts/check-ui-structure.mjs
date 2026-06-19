@@ -23,6 +23,7 @@ const memoryCss = read("src/styles/pages/memory.css");
 const memoryStore = read("src/stores/memory.ts");
 const integrationsCss = read("src/styles/pages/integrations.css");
 const integrationsPage = read("src/pages/IntegrationsPage.vue");
+const integrationLogsPanel = read("src/components/integrations/IntegrationLogsPanel.vue");
 const servicesPage = read("src/pages/ServicesPage.vue");
 const servicesCss = read("src/styles/pages/services.css");
 const resourceSection = read("src/components/services/ResourceSection.vue");
@@ -53,7 +54,7 @@ assert(integrationsCss.includes("overscroll-behavior: contain"), "接入页侧�
 assert(!integrationsPage.includes('class="integration-probe-card">\n                <div class="probe-row"'), "接入页探测卡不能把输入行和 InlineProbe 分成错位两块");
 assert(!integrationsPage.includes('variant="strip"\n                  title="文本回复链路"'), "接入页三列探测卡应使用 compact 布局，避免状态按钮溢出");
 assert(integrationsCss.includes(".integration-status-card") && integrationsCss.includes("min-height: 96px"), "接入页登录控制里的桥接状态和当前账号需要统一紧凑高度规则");
-assert(integrationsPage.includes("integration-test-column") && integrationsPage.includes("integration-log-column"), "接入页模板需要把测试和日志放到左栏");
+assert(integrationsPage.includes("integration-test-column") && integrationsPage.includes("IntegrationLogsPanel") && integrationLogsPanel.includes("integration-log-column"), "接入页模板需要把测试和日志放到左栏");
 assert(integrationsPage.includes("integration-login-panel") && integrationsPage.includes("integration-sessions-panel"), "接入页右栏需要上方登录控制、下方微信聊天列表");
 assert(integrationsPage.includes("integration-step-track") && integrationsCss.includes(".integration-step-track"), "接入页登录状态需要使用紧凑状态轨道");
 assert(!integrationsPage.includes("Login & Logs"), "接入页不应再保留重复的登录与日志标题");

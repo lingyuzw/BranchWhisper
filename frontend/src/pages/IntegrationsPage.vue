@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
-  Copy,
-  Download,
   Edit3,
-  Eraser,
   Link2,
   PackagePlus,
   Play,
   Plus,
   QrCode,
   RefreshCw,
-  RotateCw,
   Save,
   Square,
   Trash2,
@@ -19,6 +15,7 @@ import {
 } from "@lucide/vue";
 import type { IntegrationItem } from "@/api/integrations";
 import { formatApiError } from "@/api/client";
+import IntegrationLogsPanel from "@/components/integrations/IntegrationLogsPanel.vue";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
@@ -443,25 +440,14 @@ function downloadLogs() {
             </section>
           </section>
 
-          <section class="integration-panel integration-log-panel integration-log-column">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Runtime Logs</p>
-                <h2>运行日志</h2>
-              </div>
-              <div class="integration-log-toolbar">
-                <select v-model="integrations.logScope" @change="refreshLogs">
-                  <option value="current">本次启动</option>
-                  <option value="all">全部日志</option>
-                </select>
-                <button class="icon-button" type="button" title="刷新日志" @click="refreshLogs"><RotateCw :size="16" /></button>
-                <button class="icon-button" type="button" title="复制日志" @click="copyLogs"><Copy :size="16" /></button>
-                <button class="icon-button" type="button" title="下载日志" @click="downloadLogs"><Download :size="16" /></button>
-                <button class="icon-button danger" type="button" title="清空日志" @click="clearLogs"><Eraser :size="16" /></button>
-              </div>
-            </div>
-            <div class="log-viewer integration-log" role="log" aria-live="polite">{{ integrations.logs || "暂无日志。" }}</div>
-          </section>
+          <IntegrationLogsPanel
+            v-model:scope="integrations.logScope"
+            :logs="integrations.logs"
+            @refresh="refreshLogs"
+            @copy="copyLogs"
+            @download="downloadLogs"
+            @clear="clearLogs"
+          />
         </div>
 
         <aside class="integration-workbench">
