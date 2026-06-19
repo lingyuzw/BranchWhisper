@@ -203,6 +203,24 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertIn("ai_cliche", text)
         self.assertIn("bad", text)
 
+    def test_format_text_report_includes_failure_context(self) -> None:
+        report = evaluate_cases(
+            [
+                {
+                    "id": "empty_short",
+                    "category": "emotional_chat",
+                    "user": "我也说不上来，就是想有人陪一下",
+                    "assistant": "好\n我在",
+                },
+            ]
+        )
+
+        text = format_text_report(report)
+
+        self.assertIn("empty_short_reply: 好我在", text)
+        self.assertIn("user: 我也说不上来，就是想有人陪一下", text)
+        self.assertIn("assistant: 好 / 我在", text)
+
     def test_replay_cases_uses_reply_function_and_evaluates_generated_reply(self) -> None:
         calls = []
 

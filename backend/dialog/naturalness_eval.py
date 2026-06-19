@@ -224,12 +224,31 @@ def format_text_report(report: dict[str, Any]) -> str:
     lines.append("Samples with issues:")
     if issue_results:
         for result in issue_results:
-            rules_text = ", ".join(str(issue.get("rule") or "unknown") for issue in result.get("issues") or [])
+            rules_text = ", ".join(format_issue(issue) for issue in result.get("issues") or [])
             marker = "expected" if result.get("expected_failure") else "unexpected"
             lines.append(f"- {result.get('id')} [{result.get('category')}, {marker}]: {rules_text}")
+            user = one_line_preview(result.get("user", ""))
+            assistant = one_line_preview(result.get("assistant", ""))
+            if user:
+                lines.append(f"  user: {user}")
+            if assistant:
+                lines.append(f"  assistant: {assistant}")
     else:
         lines.append("- none")
     return "\n".join(lines)
+
+
+def format_issue(issue: dict[str, Any]) -> str:
+    rule = str(issue.get("rule") or "unknown")
+    detail = str(issue.get("detail") or "").strip()
+    return f"{rule}: {detail}" if detail else rule
+
+
+def one_line_preview(value: Any, *, limit: int = 140) -> str:
+    text = re.sub(r"\s+", " / ", str(value or "")).strip(" /")
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "..."
 
 
 def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -287,6 +306,8 @@ def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(case.get("id") or ""),
         "category": str(case.get("category") or "uncategorized"),
+        "user": str(case.get("user") or ""),
+        "assistant": assistant,
         "passed": passed,
         "actual_passed": actual_passed,
         "expected_failure": expected_failure,
