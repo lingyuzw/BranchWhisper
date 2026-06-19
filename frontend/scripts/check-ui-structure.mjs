@@ -128,6 +128,8 @@ assert(baseCss.includes("html.theme-light") && baseCss.includes("--bg: #f6f4ef;"
 assert(servicesPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && servicesPage.includes("<PageHeader"), "服务页需要先接入共享 PageHeader，统一顶部结构");
 assert(servicesPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && servicesPage.includes("<StatusSummary"), "服务页需要使用共享 StatusSummary 展示 2-4 个关键状态");
 assert(servicesPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && servicesPage.includes("<TaskPanel"), "服务页主任务区域需要使用共享 TaskPanel");
+assert(servicesPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && servicesPage.includes("<AdvancedDisclosure"), "服务页运行日志需要进入高级折叠区，避免首屏被日志占据");
+assert(servicesPage.includes('<AdvancedDisclosure title="运行日志">') && servicesPage.indexOf("<AdvancedDisclosure") < servicesPage.indexOf("<ServiceLogsPanel"), "服务页日志面板需要包在运行日志高级折叠区内");
 assert(memoryPage.includes('import PageHeader from "@/components/ui/PageHeader.vue"') && memoryPage.includes("<PageHeader"), "记忆页需要先接入共享 PageHeader，统一顶部结构");
 assert(memoryPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && memoryPage.includes("<StatusSummary"), "记忆页需要使用共享 StatusSummary 展示记忆概况");
 assert(memoryPage.includes('import TaskPanel from "@/components/ui/TaskPanel.vue"') && memoryPage.includes("<TaskPanel"), "记忆页主任务区域需要使用共享 TaskPanel");

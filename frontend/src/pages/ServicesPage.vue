@@ -5,6 +5,7 @@ import ResourceSection from "@/components/services/ResourceSection.vue";
 import ServiceCard from "@/components/services/ServiceCard.vue";
 import ServiceLogsPanel from "@/components/services/ServiceLogsPanel.vue";
 import InlineProbe from "@/components/layout/InlineProbe.vue";
+import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
 import StatusSummary from "@/components/ui/StatusSummary.vue";
 import TaskPanel from "@/components/ui/TaskPanel.vue";
@@ -377,17 +378,19 @@ async function copyText(label: string, text: string) {
         </section>
       </div>
 
-      <ServiceLogsPanel
-        :services="services.services"
-        :selected-id="services.selectedId"
-        :logs="services.logs"
-        :live="services.live"
-        @select="services.select"
-        @refresh="handleRefreshLogs"
-        @clear="handleClearLogs"
-        @clear-all="handleClearAllLogs"
-        @update:live="services.live = $event"
-      />
+      <AdvancedDisclosure title="运行日志">
+        <ServiceLogsPanel
+          :services="services.services"
+          :selected-id="services.selectedId"
+          :logs="services.logs"
+          :live="services.live"
+          @select="services.select"
+          @refresh="handleRefreshLogs"
+          @clear="handleClearLogs"
+          @clear-all="handleClearAllLogs"
+          @update:live="services.live = $event"
+        />
+      </AdvancedDisclosure>
     </div>
   </main>
 </template>
