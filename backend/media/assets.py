@@ -8,6 +8,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from core.io_utils import write_json_file
+
 
 IMAGE_MIME_EXT = {
     "image/png": ".png",
@@ -137,7 +139,7 @@ class StickerStore:
         if self.library is not None:
             self.library.save(items)
             return
-        self.index_path.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(self.index_path, items)
 
     def add_data_url(self, data_url: str, tag: str = "默认", name: str = "", channels: str | list[str] = "all") -> dict:
         if self.library is not None:

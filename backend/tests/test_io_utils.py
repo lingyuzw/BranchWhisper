@@ -17,6 +17,7 @@ from core.io_utils import write_json_file
 from core.tool_config import ToolProviderConfig
 from data.conversations import ConversationStore
 from data.profiles import BotProfileStore
+from media.assets import StickerStore
 from service_runtime.profiles import write_profile_services
 
 
@@ -126,6 +127,24 @@ class JsonIoUtilsTests(unittest.TestCase):
             self.assertEqual(config_path, calls[0][0])
             self.assertEqual(config_path, calls[-1][0])
             self.assertEqual("secret-key", calls[-1][1]["weather"]["api_key"])
+
+    def test_sticker_store_uses_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            index_path = root / "stickers.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("media.assets.write_json_file", side_effect=fake_write):
+                store = StickerStore(root / "stickers", index_path)
+                store.save([{"id": "stk_1", "tag": "开心"}])
+
+            self.assertEqual(index_path, calls[0][0])
+            self.assertEqual(index_path, calls[-1][0])
+            self.assertEqual([{"id": "stk_1", "tag": "开心"}], calls[-1][1])
 
 
 if __name__ == "__main__":
