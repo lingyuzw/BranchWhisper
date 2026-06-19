@@ -568,7 +568,7 @@ Files：
 
 - [x] 改造 DashboardPage：聊天主视觉、左栏压缩、运行状态简化。
 - [x] 改造 ServicesPage：服务卡主任务化、日志折叠。
-- [ ] 改造 IntegrationsPage：4 步接入流程、日志折叠、测试卡简化。
+- [x] 改造 IntegrationsPage：4 步接入流程、日志折叠、测试卡简化。
 - [ ] 浏览器检查桌面与移动布局。
 - [ ] 运行前端检查和构建。
 
