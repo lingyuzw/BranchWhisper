@@ -336,6 +336,8 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
     def test_live_replay_sample_file_covers_real_dialog_pressure_cases(self) -> None:
         cases = load_cases(DEFAULT_LIVE_REPLAY_SAMPLE_PATH)
         categories = {case["category"] for case in cases}
+        ids = {str(case.get("id") or "") for case in cases}
+        multi_turn_cases = [case for case in cases if case.get("category") == "multi_turn"]
 
         self.assertGreaterEqual(len(cases), 20)
         self.assertIn("ordinary_chat", categories)
@@ -347,6 +349,10 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertTrue(any(case.get("history") for case in cases))
         self.assertTrue(any(case.get("seed_memories") for case in cases))
         self.assertTrue(any(case.get("expect_uncertainty") for case in cases))
+        self.assertGreaterEqual(len(multi_turn_cases), 8)
+        self.assertIn("multi_turn_recent_context_shift", ids)
+        self.assertIn("multi_turn_user_corrects_memory", ids)
+        self.assertIn("multi_turn_repeated_opening_pressure", ids)
 
     def test_default_samples_include_prompt_context_checks(self) -> None:
         report = evaluate_cases(load_cases(DEFAULT_SAMPLE_PATH))

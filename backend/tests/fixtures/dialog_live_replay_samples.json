@@ -134,6 +134,100 @@
     "assistant": "明白，是前端诊断页面，不是后端接口。"
   },
   {
+    "id": "multi_turn_recent_context_shift",
+    "category": "multi_turn",
+    "user": "不是那个，是刚才端口的问题",
+    "history": [
+      {
+        "role": "user",
+        "content": "今天脑子有点乱"
+      },
+      {
+        "role": "assistant",
+        "content": "先别急着理清，慢慢说。"
+      },
+      {
+        "role": "user",
+        "content": "8080 页面又打不开了"
+      },
+      {
+        "role": "assistant",
+        "content": "那先确认服务有没有监听 8080。"
+      }
+    ],
+    "assistant": "明白，你说的是 8080 端口连不上的问题。"
+  },
+  {
+    "id": "multi_turn_user_corrects_memory",
+    "category": "multi_turn",
+    "user": "不是，我现在不做那个了，在做 BranchWhisper",
+    "history": [
+      {
+        "role": "user",
+        "content": "你记得我最近主要在做什么吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "我这边记到的是你在整理旧项目。"
+      }
+    ],
+    "seed_memories": [
+      {
+        "key": "当前项目",
+        "value": "用户最近在整理旧项目"
+      }
+    ],
+    "assistant": "好，按你现在说的来：你现在在做 BranchWhisper。"
+  },
+  {
+    "id": "multi_turn_repeated_opening_pressure",
+    "category": "multi_turn",
+    "user": "还是有点烦",
+    "history": [
+      {
+        "role": "user",
+        "content": "我有点烦"
+      },
+      {
+        "role": "assistant",
+        "content": "先慢一点，别急着把它解决掉。"
+      },
+      {
+        "role": "user",
+        "content": "还是烦"
+      },
+      {
+        "role": "assistant",
+        "content": "先慢一点，烦的时候别逼自己立刻清醒。"
+      }
+    ],
+    "assistant": "那就先承认它还在，不急着把它压下去。"
+  },
+  {
+    "id": "multi_turn_no_followup_chain",
+    "category": "multi_turn",
+    "user": "嗯，就这样待一会儿吧",
+    "history": [
+      {
+        "role": "user",
+        "content": "今天什么都不想干"
+      },
+      {
+        "role": "assistant",
+        "content": "那就先把要求放低一点。"
+      },
+      {
+        "role": "user",
+        "content": "我也不太想解释"
+      },
+      {
+        "role": "assistant",
+        "content": "不用解释清楚，我陪你安静一会儿。"
+      }
+    ],
+    "assistant": "好，那就先这样待着，不用急着找话。"
+  },
+  {
     "id": "memory_lookup_preference",
     "category": "memory_lookup",
     "user": "你记得我的偏好吗？",
