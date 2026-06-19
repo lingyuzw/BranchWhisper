@@ -135,6 +135,38 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     return {"categories": categories, "rules": rules}
 
 
+def format_text_report(report: dict[str, Any]) -> str:
+    lines = [
+        f"Dialog naturalness: {report.get('passed', 0)}/{report.get('total', 0)} passed "
+        f"({report.get('pass_rate', 0):.0%})",
+        "",
+        "Categories:",
+    ]
+    for category, stats in sorted((report.get("summary") or {}).get("categories", {}).items()):
+        lines.append(f"- {category}: {stats.get('passed', 0)}/{stats.get('total', 0)} passed, {stats.get('failed', 0)} failed")
+
+    rules = (report.get("summary") or {}).get("rules", {})
+    lines.append("")
+    lines.append("Rule hits:")
+    if rules:
+        for rule, count in sorted(rules.items(), key=lambda item: (-item[1], item[0])):
+            lines.append(f"- {rule}: {count}")
+    else:
+        lines.append("- none")
+
+    issue_results = [result for result in report.get("results") or [] if result.get("issues")]
+    lines.append("")
+    lines.append("Samples with issues:")
+    if issue_results:
+        for result in issue_results:
+            rules_text = ", ".join(str(issue.get("rule") or "unknown") for issue in result.get("issues") or [])
+            marker = "expected" if result.get("expected_failure") else "unexpected"
+            lines.append(f"- {result.get('id')} [{result.get('category')}, {marker}]: {rules_text}")
+    else:
+        lines.append("- none")
+    return "\n".join(lines)
+
+
 def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     assistant = str(case.get("assistant") or "")
     issues: list[dict[str, str]] = []
@@ -262,11 +294,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate dialog naturalness samples.")
     parser.add_argument("--samples", default=str(DEFAULT_SAMPLE_PATH), help="Path to JSON sample cases.")
     parser.add_argument("--output", default="", help="Optional path for JSON report.")
+    parser.add_argument("--format", choices=["json", "text"], default="json", help="Report format.")
     parser.add_argument("--allow-failures", action="store_true", help="Return 0 even when samples fail.")
     args = parser.parse_args(argv)
 
     report = evaluate_cases(load_cases(args.samples))
-    text = json.dumps(report, ensure_ascii=False, indent=2)
+    text = format_text_report(report) if args.format == "text" else json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(text + "\n", encoding="utf-8")

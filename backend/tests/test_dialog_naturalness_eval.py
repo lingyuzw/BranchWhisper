@@ -16,6 +16,7 @@ from dialog.naturalness_eval import (
     build_case_messages,
     evaluate_case,
     evaluate_cases,
+    format_text_report,
     load_cases,
     main,
 )
@@ -140,6 +141,25 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertEqual(2, report["summary"]["categories"]["ordinary_chat"]["total"])
         self.assertEqual(1, report["summary"]["categories"]["ordinary_chat"]["failed"])
         self.assertGreaterEqual(report["summary"]["rules"]["ai_cliche"], 1)
+
+    def test_format_text_report_includes_summary_and_issue_samples(self) -> None:
+        report = evaluate_cases(
+            [
+                {
+                    "id": "bad",
+                    "category": "ordinary_chat",
+                    "user": "你好",
+                    "assistant": "作为一个AI语言模型，我无法拥有真实感受。",
+                },
+            ]
+        )
+
+        text = format_text_report(report)
+
+        self.assertIn("Dialog naturalness: 0/1 passed", text)
+        self.assertIn("ordinary_chat", text)
+        self.assertIn("ai_cliche", text)
+        self.assertIn("bad", text)
 
     def test_default_sample_file_loads_multiple_categories(self) -> None:
         cases = load_cases(DEFAULT_SAMPLE_PATH)

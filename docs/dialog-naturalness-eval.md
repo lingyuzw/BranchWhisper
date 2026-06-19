@@ -22,6 +22,12 @@ Write a JSON report:
 /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/evaluate_dialog_naturalness.py --output runtime/dialog-naturalness-report.json
 ```
 
+Print a human-readable triage report:
+
+```bash
+/home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/evaluate_dialog_naturalness.py --format text
+```
+
 The report includes a `summary` block with category totals and rule hit counts, so regressions can
 be triaged without reading every sample result.
 
