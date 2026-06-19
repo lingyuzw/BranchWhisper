@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { ImagePlus, Mic, MicOff, Send, SquarePen, Volume2, VolumeX, XOctagon } from "@lucide/vue";
+import { ImagePlus, Mic, MicOff, Send, Volume2, VolumeX, XOctagon } from "@lucide/vue";
 import { uploadChatImage } from "@/api/assets";
 import { conversationExportUrl, updateConversation, type ChatAttachment, type ChatMessage, type ConversationSummary } from "@/api/conversations";
 import ConversationSidebar from "@/components/dashboard/ConversationSidebar.vue";
@@ -560,7 +560,6 @@ function avatarUrl(role: string) {
             <component :is="ttsEnabled ? Volume2 : VolumeX" :size="18" />
           </button>
           <button class="icon-button" type="button" title="打断" @click="interruptAssistant('manual')"><XOctagon :size="16" /></button>
-          <button class="icon-button" type="button" title="新对话" @click="newConversation"><SquarePen :size="16" /></button>
         </div>
       </div>
 
@@ -611,7 +610,6 @@ function avatarUrl(role: string) {
             <component :is="ttsEnabled ? Volume2 : VolumeX" :size="18" />
           </button>
           <button class="icon-button" type="button" title="打断" @click="interruptAssistant('manual')"><XOctagon :size="16" /></button>
-          <button class="icon-button" type="button" title="新对话" @click="newConversation"><SquarePen :size="16" /></button>
         </div>
         <input ref="imageInput" type="file" accept="image/*" multiple hidden @change="handleImageSelected" />
       </footer>

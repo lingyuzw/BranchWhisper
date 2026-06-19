@@ -494,7 +494,7 @@ html.theme-light .dashboard-pipeline-track {
 .chat-composer { padding: 8px 0 14px; }
 .composer {
   display: grid;
-  grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px 44px 44px;
+  grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px 44px;
   align-items: end; gap: 6px;
   padding: 6px;
   border: 1px solid var(--border);
@@ -599,7 +599,7 @@ html.theme-light .dashboard-pipeline-track {
     border-left: 0;
   }
   .composer {
-    grid-template-columns: 36px 36px minmax(44px, 1fr) repeat(4, 36px);
+    grid-template-columns: 36px 36px minmax(44px, 1fr) repeat(3, 36px);
     gap: 4px;
     padding: 4px;
     overflow: hidden;
@@ -637,9 +637,5 @@ html.theme-light .dashboard-pipeline-track {
     grid-column: 3;
     grid-row: 2;
     justify-self: end;
-  }
-  .composer > button:nth-of-type(6) {
-    grid-column: 4;
-    grid-row: 2;
   }
 }
