@@ -620,6 +620,22 @@ def voice_fallback_text(result: dict, voice_error: str = "") -> str:
     return ""
 
 
+def reply_parts_for_delivery(result: dict, *, voice_sent: bool = False, include_voice_fallback: bool = True) -> list[str]:
+    reply = strip_internal_attachment_markers(str(result.get("reply_text") or "")).strip()
+    raw_parts = result.get("reply_parts") if isinstance(result.get("reply_parts"), list) else []
+    reply_parts = [
+        strip_internal_attachment_markers(str(part)).strip()
+        for part in raw_parts
+        if strip_internal_attachment_markers(str(part)).strip()
+    ]
+    if not reply_parts and reply:
+        reply_parts = split_reply_messages(reply)
+    voice_notice = "" if not include_voice_fallback or voice_sent else voice_fallback_text(result)
+    if voice_notice:
+        reply_parts.append(voice_notice)
+    return reply_parts
+
+
 def send_voice_reply(
     *,
     branchwhisper_url: str,
@@ -896,15 +912,8 @@ def handle_branchwhisper_result(
     branch_started: float,
 ) -> None:
     branch_ms = int((time.perf_counter() - branch_started) * 1000)
-    reply = strip_internal_attachment_markers(str(result.get("reply_text") or "")).strip()
-    reply_parts = [
-        strip_internal_attachment_markers(str(part)).strip()
-        for part in (result.get("reply_parts") or [])
-        if strip_internal_attachment_markers(str(part)).strip()
-    ]
-    if not reply_parts and reply:
-        reply_parts = split_reply_messages(reply)
     trace_id = str(result.get("trace_id") or "")
+    reply_parts = reply_parts_for_delivery(result, include_voice_fallback=False)
     if reply_parts:
         send_started = time.perf_counter()
         try:

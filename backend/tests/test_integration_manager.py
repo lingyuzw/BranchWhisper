@@ -16,6 +16,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import integration_runtime.manager as manager_module
 from integration_runtime.manager import IntegrationManager
+from integration_runtime.openclaw_bridge import reply_parts_for_delivery
 from integration_runtime.openclaw_runtime import gateway_disabled_hint
 from integration_runtime.weixin_protocol import select_recent_weixin_target, weixin_business_error
 
@@ -77,6 +78,33 @@ class IntegrationManagerWeixinSessionTests(unittest.TestCase):
         self.assertEqual({"ret": -2, "errmsg": "bad context"}, result["business_response"])
         self.assertIn("ret=-2", result["error"])
         self.assertIn("刷新会话 context_token", result["error"])
+
+
+class OpenClawBridgeDeliveryTests(unittest.TestCase):
+    def test_reply_parts_for_delivery_appends_voice_fallback_notice(self) -> None:
+        result = {
+            "voice_requested": True,
+            "send_voice": True,
+            "voice_file": "/tmp/reply.wav",
+            "voice_client_delivery": "unsupported_by_ilink",
+            "reply_parts": ["第一句 [已发送表情包: abc]", "第二句"],
+        }
+
+        parts = reply_parts_for_delivery(result)
+
+        self.assertEqual(
+            ["第一句", "第二句", "当前 iLink 通道会接收语音请求但不投递 bot 方向的原生语音气泡；先以文字为准。"],
+            parts,
+        )
+
+    def test_reply_parts_for_delivery_builds_text_parts_when_parts_are_empty(self) -> None:
+        result = {
+            "reply_text": "第一段。\n\n第二段。",
+            "reply_parts": [],
+            "voice_requested": False,
+        }
+
+        self.assertEqual(["第一段。第二段。"], reply_parts_for_delivery(result))
 
     def test_bound_session_uses_fresh_openclaw_context_file_for_reachability(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, patch.dict(
