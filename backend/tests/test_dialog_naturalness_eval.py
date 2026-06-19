@@ -124,6 +124,23 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertEqual(0, report["failed"])
         self.assertTrue(report["results"][0]["expected_failure"])
 
+    def test_evaluate_cases_summarizes_categories_and_rules(self) -> None:
+        report = evaluate_cases(
+            [
+                {"id": "ok", "category": "ordinary_chat", "user": "你好", "assistant": "来了。"},
+                {
+                    "id": "bad",
+                    "category": "ordinary_chat",
+                    "user": "你好",
+                    "assistant": "作为一个AI语言模型，我无法拥有真实感受。",
+                },
+            ]
+        )
+
+        self.assertEqual(2, report["summary"]["categories"]["ordinary_chat"]["total"])
+        self.assertEqual(1, report["summary"]["categories"]["ordinary_chat"]["failed"])
+        self.assertGreaterEqual(report["summary"]["rules"]["ai_cliche"], 1)
+
     def test_default_sample_file_loads_multiple_categories(self) -> None:
         cases = load_cases(DEFAULT_SAMPLE_PATH)
         categories = {case["category"] for case in cases}

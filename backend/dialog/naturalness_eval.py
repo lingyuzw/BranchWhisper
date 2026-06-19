@@ -113,8 +113,26 @@ def evaluate_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
         "passed": passed,
         "failed": len(results) - passed,
         "pass_rate": round(passed / len(results), 4) if results else 1.0,
+        "summary": summarize_results(results),
         "results": results,
     }
+
+
+def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
+    categories: dict[str, dict[str, int]] = {}
+    rules: dict[str, int] = {}
+    for result in results:
+        category = str(result.get("category") or "uncategorized")
+        bucket = categories.setdefault(category, {"total": 0, "passed": 0, "failed": 0})
+        bucket["total"] += 1
+        if result.get("passed"):
+            bucket["passed"] += 1
+        else:
+            bucket["failed"] += 1
+        for issue in result.get("issues") or []:
+            rule = str(issue.get("rule") or "unknown")
+            rules[rule] = rules.get(rule, 0) + 1
+    return {"categories": categories, "rules": rules}
 
 
 def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
