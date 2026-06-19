@@ -14,6 +14,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from core.config import save_persisted_settings
 from core.io_utils import write_json_file
+from core.tool_config import ToolProviderConfig
 from data.conversations import ConversationStore
 from data.profiles import BotProfileStore
 from service_runtime.profiles import write_profile_services
@@ -108,6 +109,23 @@ class JsonIoUtilsTests(unittest.TestCase):
             self.assertEqual(profiles_path, calls[0][0])
             self.assertEqual(profiles_path, calls[-1][0])
             self.assertTrue(any(item.get("name") == "小枝" for item in calls[-1][1]["profiles"]))
+
+    def test_tool_provider_config_uses_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "tool_providers.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("core.tool_config.write_json_file", side_effect=fake_write):
+                config = ToolProviderConfig(config_path)
+                config.update({"weather": {"api_key": "secret-key"}})
+
+            self.assertEqual(config_path, calls[0][0])
+            self.assertEqual(config_path, calls[-1][0])
+            self.assertEqual("secret-key", calls[-1][1]["weather"]["api_key"])
 
 
 if __name__ == "__main__":

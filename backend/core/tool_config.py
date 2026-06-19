@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from core.io_utils import write_json_file
+
 
 GAODE_BASE_URL = "https://restapi.amap.com/v3"
 DEFAULT_TOOL_PROVIDER_VERSION = 2
@@ -112,7 +114,7 @@ class ToolProviderConfig:
         return self.public()
 
     def save(self, data: dict) -> None:
-        self.path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(self.path, data)
 
     def _mask(self, value: Any) -> Any:
         if isinstance(value, dict):
