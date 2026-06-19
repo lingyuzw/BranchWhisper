@@ -20,6 +20,7 @@ from data.profiles import BotProfileStore
 from media.assets import StickerStore
 from media.sticker_library import StickerLibrary
 from service_runtime.profiles import write_profile_services
+from tools.runtime_brain import ToolManager
 
 
 class JsonIoUtilsTests(unittest.TestCase):
@@ -136,6 +137,29 @@ class JsonIoUtilsTests(unittest.TestCase):
             self.assertEqual(config_path, calls[0][0])
             self.assertEqual(config_path, calls[-1][0])
             self.assertEqual("secret-key", calls[-1][1]["weather"]["api_key"])
+
+    def test_tool_manager_uses_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "tools.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("tools.runtime_brain.write_json_file", side_effect=fake_write):
+                manager = ToolManager(config_path)
+                calls.clear()
+                manager.save_config(
+                    {
+                        "builtins": {"weather": {"enabled": False}},
+                        "custom_tools": [{"id": "lookup", "name": "查找", "url": "https://example.test"}],
+                    }
+                )
+
+            self.assertEqual(config_path, calls[0][0])
+            self.assertFalse(calls[0][1]["builtins"]["weather"]["enabled"])
+            self.assertEqual("lookup", calls[0][1]["custom_tools"][0]["id"])
 
     def test_sticker_store_uses_shared_json_writer(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

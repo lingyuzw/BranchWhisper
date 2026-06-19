@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import httpx
 
+from core.io_utils import write_json_file
 from core.http_client import httpx_client_for_url
 from core.tool_config import DEFAULT_TOOL_PROVIDER_CONFIG, deep_merge
 from memory.utils import SECONDS_PER_DAY, MEMORY_MODES, clamp, days_since, normalize_memory_mode, safe_float
@@ -1244,7 +1245,7 @@ class ToolManager:
             "builtins": builtins,
             "custom_tools": [self.normalize_custom_tool(tool) for tool in custom_tools if isinstance(tool, dict)],
         }
-        self.config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(self.config_path, payload)
         return self.get_config()
 
     def update_config(self, patch: dict) -> dict:
