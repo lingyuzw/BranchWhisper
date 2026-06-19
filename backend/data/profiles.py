@@ -6,6 +6,8 @@ import time
 import uuid
 from pathlib import Path
 
+from core.io_utils import write_json_file
+
 
 DEFAULT_PROFILE_ID = "default"
 
@@ -106,7 +108,7 @@ class BotProfileStore:
         }
 
     def save(self, data: dict) -> None:
-        self.path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_file(self.path, data)
 
     def _now(self) -> str:
         return time.strftime("%Y-%m-%d %H:%M:%S")

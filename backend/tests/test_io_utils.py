@@ -15,6 +15,7 @@ if str(BACKEND_ROOT) not in sys.path:
 from core.config import save_persisted_settings
 from core.io_utils import write_json_file
 from data.conversations import ConversationStore
+from data.profiles import BotProfileStore
 from service_runtime.profiles import write_profile_services
 
 
@@ -90,6 +91,23 @@ class JsonIoUtilsTests(unittest.TestCase):
             self.assertEqual(settings_path, calls[0][0])
             self.assertEqual({"name": "小枝", "enabled": True}, calls[0][1])
             self.assertEqual({"name": "小枝", "enabled": True}, json.loads(settings_path.read_text(encoding="utf-8")))
+
+    def test_bot_profiles_use_shared_json_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            profiles_path = Path(tmp) / "bot_profiles.json"
+            calls = []
+
+            def fake_write(path: Path, data) -> None:
+                calls.append((path, data))
+                path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with patch("data.profiles.write_json_file", side_effect=fake_write):
+                store = BotProfileStore(profiles_path, "default system")
+                store.create({"name": "小枝"})
+
+            self.assertEqual(profiles_path, calls[0][0])
+            self.assertEqual(profiles_path, calls[-1][0])
+            self.assertTrue(any(item.get("name") == "小枝" for item in calls[-1][1]["profiles"]))
 
 
 if __name__ == "__main__":
