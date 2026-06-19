@@ -59,7 +59,7 @@ The dialog core stays in the backend. External channels such as Weixin only adap
 Start the backend:
 
 ```bash
-python backend/main.py --host 127.0.0.1 --port 7860
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860
 ```
 
 Open the console:
@@ -116,7 +116,7 @@ runtime/service_profiles.json
 You can also start BranchWhisper with an explicit config:
 
 ```bash
-python backend/main.py --host 0.0.0.0 --port 7860 --service-config /path/to/service_profiles.json
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 0.0.0.0 --port 7860 --service-config /path/to/service_profiles.json
 ```
 
 Use portable path tokens in profiles:
@@ -175,8 +175,8 @@ BranchWhisper/
 Run these after structural changes:
 
 ```bash
-python -m compileall backend services
-python scripts/check_static_imports.py
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend services
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_static_imports.py
 node --check backend/integration_runtime/weixin_voice_sender.mjs
 cd frontend && npm run check && npm run build
 ```
@@ -211,8 +211,8 @@ BranchWhisper is still moving quickly. Keep changes small, verify runtime behavi
 Before opening a pull request:
 
 ```bash
-python -m compileall backend services
-python scripts/check_static_imports.py
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend services
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_static_imports.py
 cd frontend && npm run check && npm run build
 ```
 

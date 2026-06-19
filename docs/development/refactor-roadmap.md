@@ -14,6 +14,7 @@ BranchWhisper has finished the staged structural split:
 - Round 3: root `runtime/` is the data directory.
 - Round 4: `frontend/legacy-static/` carries the current UI; `frontend/src/` is reserved for Vue migration.
 - Round 5: long-term docs, README, project rules, and final architecture diagrams are in place.
+- Continuous optimization pass: runtime diagnostics expose resolved path evidence, frontend diagnostics use aligned repair rows, runtime JSON writes use the shared atomic writer, and this runbook records the full regression loop.
 
 ## Round 5 Cleanup Scope
 
@@ -36,5 +37,5 @@ Do these in small, independently verified steps:
 2. Split `backend/dialog/session.py` into transport, orchestration, memory tasks, tools, media, and voice helpers.
 3. Fold `backend/data/` into `backend/repositories/`.
 4. Split `backend/service_runtime/` into `modules/voice/` and `modules/service_control/`.
-5. Scaffold Vue 3 + Vite under `frontend/src/`.
-6. Migrate frontend pages one by one, leaving the dialog page last.
+5. Continue extracting large Vue pages into focused components only when a concrete page change needs that boundary.
+6. Keep diagnostics and service profile logic provider-agnostic: model names belong in profile data, not conditional code.

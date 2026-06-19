@@ -3,13 +3,13 @@
 ## Start Backend
 
 ```bash
-python backend/main.py --host 127.0.0.1 --port 7860
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860
 ```
 
 ## Start With Service Config
 
 ```bash
-python backend/main.py --host 0.0.0.0 --port 7860 --service-config runtime/service_profiles.json
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 0.0.0.0 --port 7860 --service-config runtime/service_profiles.json
 ```
 
 Service config paths support portable tokens:
@@ -23,7 +23,7 @@ By default `${WORKSPACE_ROOT}` is the parent directory of the BranchWhisper repo
 
 ```bash
 export BRANCHWHISPER_WORKSPACE_ROOT=/home/me/workspace
-python backend/main.py --host 0.0.0.0 --port 7860 --service-config runtime/service_profiles.json
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 0.0.0.0 --port 7860 --service-config runtime/service_profiles.json
 ```
 
 ## Open UI
