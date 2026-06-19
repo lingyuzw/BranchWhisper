@@ -531,6 +531,19 @@ function fixText(check: RuntimeDiagnosticCheck) {
   return "根据失败信息修正配置后重新检测。";
 }
 
+function failureReasonText(check: RuntimeDiagnosticCheck) {
+  return compactProblem(check.message || statusLabel(check.status));
+}
+
+function probableCauseText(check: RuntimeDiagnosticCheck) {
+  if (check.kind === "model_path") return "模型文件路径解析后不存在，常见原因是相对路径基准和服务工作目录不一致。";
+  if (check.kind === "binary") return "可执行文件没有出现在 PATH 中，或当前运行环境不是安装该命令的环境。";
+  if (check.kind === "port") return "服务未启动、启动失败，或端口配置和实际监听端口不一致。";
+  if (check.kind === "health_url") return "服务进程可能仍在加载、健康接口路径不对，或后端无法访问该地址。";
+  if (check.kind === "required_file") return "依赖文件缺失或路径配置指向了错误目录。";
+  return "配置、环境或服务状态与当前诊断项预期不一致。";
+}
+
 async function runProbeForCard(card: DiagnosticCard) {
   if (card.role === "asr") return runAsrApiDiagnostic();
   if (card.role === "llm") return runLlmApiDiagnostic();
@@ -785,14 +798,17 @@ async function copyText(label: string, text: string) {
                   <span>{{ checkKindLabel(check.kind) }}</span>
                   <strong>{{ check.target || "--" }}</strong>
                 </header>
-                <p>{{ compactProblem(check.message) }}</p>
+                <div>
+                  <span>当前异常</span>
+                  <strong>{{ failureReasonText(check) }}</strong>
+                </div>
                 <details v-if="hasDetail(check.message)">
                   <summary>展开详细信息</summary>
                   <pre>{{ check.message }}</pre>
                 </details>
                 <div>
                   <span>可能原因</span>
-                  <strong>{{ compactProblem(check.message) }}</strong>
+                  <strong>{{ probableCauseText(check) }}</strong>
                 </div>
                 <div>
                   <span>建议操作</span>

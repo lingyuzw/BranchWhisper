@@ -111,5 +111,7 @@ assert(diagnosticsCss.includes("width: var(--diagnostic-label-col)") && diagnost
 assert(diagnosticsCss.includes(".diagnostic-check-body"), "运行诊断检查项正文容器需要专用样式，保证详情层级连续不割裂");
 assert(diagnosticsCss.includes(".diagnostic-check-message"), "运行诊断失败原因需要专用样式，避免页面信息层级割裂");
 assert(diagnosticsCss.includes("align-content: start"), "运行诊断卡片内部需要从顶部紧凑排布，避免同一行卡片高度拉伸后内容被推散");
+assert(diagnosticsPage.includes("failureReasonText(check)") && diagnosticsPage.includes("probableCauseText(check)"), "运行诊断修复建议需要拆分当前异常和可能原因，避免重复展示同一段失败信息");
+assert(!diagnosticsPage.includes("<p>{{ compactProblem(check.message) }}</p>"), "运行诊断修复建议不应把失败摘要作为孤立段落重复堆叠");
 
 console.log("UI structure checks passed");
