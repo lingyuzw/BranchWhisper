@@ -32,6 +32,7 @@ from core.config import (
 )
 from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
+from dialog.message_flow import assistant_reply_messages
 from dialog.message_flow import build_contextual_request_messages as build_contextual_llm_request_messages
 from dialog.message_flow import build_llm_messages as build_conversation_llm_messages
 from dialog.message_flow import compose_user_request_text as build_user_request_text
@@ -58,7 +59,6 @@ from service_runtime.tts_clients import TtsServiceNotReady, build_tts_request, i
 from service_runtime.vad import MIC_SAMPLE_RATE, VadModelStore, VoiceVadSession
 from tools.direct_answers import direct_answer_from_tool
 from tools.runtime_brain import MemoryStore, ToolManager, parse_tool_call
-from core.text_utils import split_reply_messages
 from media.sticker_directives import StickerDirectiveStreamFilter, extract_sticker_directives
 
 END = object()
@@ -707,19 +707,9 @@ class DialogSession:
         )
 
     def persist_assistant_reply(self, text: str, *, attachments: list[dict] | None = None, source: str = "") -> None:
-        parts = split_reply_messages(text)
-        if not parts and not attachments:
+        items = assistant_reply_messages(text, attachments=attachments, source=source)
+        if not items:
             return
-        if not parts:
-            parts = [""]
-        items = []
-        for index, part in enumerate(parts):
-            item = {"role": "assistant", "content": part}
-            if source:
-                item["source"] = source
-            if attachments and index == len(parts) - 1:
-                item["attachments"] = attachments
-            items.append(item)
         self.persist_messages(items)
 
     def build_contextual_request_messages(self, user_text: str, request_user_text: str) -> list[dict[str, str]]:

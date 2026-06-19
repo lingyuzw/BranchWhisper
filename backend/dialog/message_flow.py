@@ -5,6 +5,7 @@ from datetime import datetime
 
 from dialog.text_helpers import attachment_text
 from dialog.text_helpers import compact_str
+from core.text_utils import split_reply_messages
 
 
 def compose_user_request_text(user_text: str, attachments: list[dict]) -> str:
@@ -99,3 +100,21 @@ def build_contextual_request_messages(
 
     request_messages.append({"role": "user", "content": request_user_text})
     return request_messages
+
+
+def assistant_reply_messages(text: str, *, attachments: list[dict] | None = None, source: str = "") -> list[dict]:
+    parts = split_reply_messages(text)
+    if not parts and not attachments:
+        return []
+    if not parts:
+        parts = [""]
+
+    items = []
+    for index, part in enumerate(parts):
+        item = {"role": "assistant", "content": part}
+        if source:
+            item["source"] = source
+        if attachments and index == len(parts) - 1:
+            item["attachments"] = attachments
+        items.append(item)
+    return items

@@ -9,6 +9,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from dialog.message_flow import (
+    assistant_reply_messages,
     build_contextual_request_messages,
     build_llm_messages,
     compose_user_request_text,
@@ -103,6 +104,36 @@ class DialogMessageFlowTests(unittest.TestCase):
         self.assertIn("完全一样的问题", system_content)
         self.assertIn("刚才说过要带伞", system_content)
         self.assertEqual({"role": "user", "content": "天气怎样\n请联网查询"}, request[-1])
+
+    def test_assistant_reply_messages_attach_metadata_to_final_part(self) -> None:
+        text = "第一段很长很长很长很长很长。第二段也很长很长很长很长。"
+
+        messages = assistant_reply_messages(
+            text,
+            attachments=[{"type": "sticker", "asset_id": "s1"}],
+            source="followup",
+        )
+
+        self.assertEqual(
+            [
+                {"role": "assistant", "content": "第一段很长很长很长很长很长。", "source": "followup"},
+                {
+                    "role": "assistant",
+                    "content": "第二段也很长很长很长很长。",
+                    "source": "followup",
+                    "attachments": [{"type": "sticker", "asset_id": "s1"}],
+                },
+            ],
+            messages,
+        )
+
+    def test_assistant_reply_messages_keep_attachment_only_reply(self) -> None:
+        messages = assistant_reply_messages("", attachments=[{"type": "sticker", "asset_id": "s1"}])
+
+        self.assertEqual(
+            [{"role": "assistant", "content": "", "attachments": [{"type": "sticker", "asset_id": "s1"}]}],
+            messages,
+        )
 
 
 if __name__ == "__main__":
