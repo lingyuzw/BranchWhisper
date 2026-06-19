@@ -19,6 +19,7 @@ from dialog.naturalness_eval import (
     format_text_report,
     load_cases,
     main,
+    replay_cases,
 )
 
 
@@ -161,6 +162,29 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertIn("ai_cliche", text)
         self.assertIn("bad", text)
 
+    def test_replay_cases_uses_reply_function_and_evaluates_generated_reply(self) -> None:
+        calls = []
+
+        def reply_fn(messages, case):
+            calls.append((messages, case))
+            return "那就先别硬撑，缓一会儿。"
+
+        report = replay_cases(
+            [
+                {
+                    "id": "ordinary",
+                    "category": "ordinary_chat",
+                    "user": "今天有点累，随便聊两句",
+                }
+            ],
+            reply_fn,
+        )
+
+        self.assertEqual(1, len(calls))
+        self.assertEqual("user", calls[0][0][-1]["role"])
+        self.assertEqual("那就先别硬撑，缓一会儿。", report["results"][0]["assistant"])
+        self.assertEqual(1, report["passed"])
+
     def test_default_sample_file_loads_multiple_categories(self) -> None:
         cases = load_cases(DEFAULT_SAMPLE_PATH)
         categories = {case["category"] for case in cases}
@@ -262,6 +286,16 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
             data = json.loads(output.read_text(encoding="utf-8"))
             self.assertIn("total", data)
             self.assertIn("results", data)
+
+    def test_cli_can_replay_fixture_replies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "report.json"
+
+            exit_code = main(["--replay-fixture-replies", "--output", str(output), "--allow-failures"])
+
+            self.assertEqual(0, exit_code)
+            data = json.loads(output.read_text(encoding="utf-8"))
+            self.assertIn("assistant", data["results"][0])
 
     def test_repository_script_runs_from_project_root(self) -> None:
         script = BACKEND_ROOT.parent / "scripts" / "evaluate_dialog_naturalness.py"

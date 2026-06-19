@@ -28,6 +28,12 @@ Print a human-readable triage report:
 /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/evaluate_dialog_naturalness.py --format text
 ```
 
+Replay the prompt-building path while still using fixture replies:
+
+```bash
+/home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/evaluate_dialog_naturalness.py --replay-fixture-replies --format text
+```
+
 The report includes a `summary` block with category totals and rule hit counts, so regressions can
 be triaged without reading every sample result.
 

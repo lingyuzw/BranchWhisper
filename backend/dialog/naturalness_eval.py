@@ -118,6 +118,19 @@ def evaluate_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def replay_cases(cases: list[dict[str, Any]], reply_fn) -> dict[str, Any]:
+    replayed: list[dict[str, Any]] = []
+    for case in cases:
+        replay_case = dict(case)
+        messages = build_case_messages(replay_case)
+        replay_case["assistant"] = str(reply_fn(messages, replay_case) or "")
+        replayed.append(replay_case)
+    report = evaluate_cases(replayed)
+    for result, replay_case in zip(report["results"], replayed):
+        result["assistant"] = replay_case.get("assistant", "")
+    return report
+
+
 def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     categories: dict[str, dict[str, int]] = {}
     rules: dict[str, int] = {}
@@ -295,10 +308,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--samples", default=str(DEFAULT_SAMPLE_PATH), help="Path to JSON sample cases.")
     parser.add_argument("--output", default="", help="Optional path for JSON report.")
     parser.add_argument("--format", choices=["json", "text"], default="json", help="Report format.")
+    parser.add_argument("--replay-fixture-replies", action="store_true", help="Build prompts and replay fixture assistant replies.")
     parser.add_argument("--allow-failures", action="store_true", help="Return 0 even when samples fail.")
     args = parser.parse_args(argv)
 
-    report = evaluate_cases(load_cases(args.samples))
+    cases = load_cases(args.samples)
+    if args.replay_fixture_replies:
+        report = replay_cases(cases, lambda _messages, case: case.get("assistant", ""))
+    else:
+        report = evaluate_cases(cases)
     text = format_text_report(report) if args.format == "text" else json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
