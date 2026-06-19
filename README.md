@@ -175,6 +175,7 @@ BranchWhisper/
 Run these after structural changes:
 
 ```bash
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_backend_quality.py
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend services
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_static_imports.py
 node --check backend/integration_runtime/weixin_voice_sender.mjs
@@ -211,6 +212,7 @@ BranchWhisper is still moving quickly. Keep changes small, verify runtime behavi
 Before opening a pull request:
 
 ```bash
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_backend_quality.py
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m compileall backend services
 wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_static_imports.py
 cd frontend && npm run check && npm run build

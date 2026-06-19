@@ -279,6 +279,20 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(output.exists())
 
+    def test_backend_quality_script_runs_dialog_checks(self) -> None:
+        script = BACKEND_ROOT.parent / "scripts" / "check_backend_quality.py"
+
+        result = subprocess.run(
+            [sys.executable, str(script), "--only-dialog-naturalness"],
+            cwd=BACKEND_ROOT.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("dialog naturalness", result.stdout.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
