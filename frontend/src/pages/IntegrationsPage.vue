@@ -2,11 +2,8 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   Edit3,
-  Link2,
-  PackagePlus,
   Play,
   Plus,
-  QrCode,
   RefreshCw,
   Save,
   Square,
@@ -15,6 +12,7 @@ import {
 } from "@lucide/vue";
 import type { IntegrationItem } from "@/api/integrations";
 import { formatApiError } from "@/api/client";
+import IntegrationLoginPanel from "@/components/integrations/IntegrationLoginPanel.vue";
 import IntegrationLogsPanel from "@/components/integrations/IntegrationLogsPanel.vue";
 import IntegrationProbePanel from "@/components/integrations/IntegrationProbePanel.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
@@ -415,83 +413,22 @@ function downloadLogs() {
         </div>
 
         <aside class="integration-workbench">
-          <section class="integration-panel integration-login-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Login</p>
-                <h2>设备扫码</h2>
-              </div>
-              <span class="soft-badge">{{ selected?.id || "--" }}</span>
-            </div>
-            <div class="integration-console-grid">
-              <div class="integration-status-grid">
-                <div class="integration-status-card integration-bridge-card" :class="statusClass(selected?.status)">
-                  <div class="integration-status-card-head">
-                    <span class="status-dot" :class="statusClass(selected?.status)"></span>
-                    <span>桥接状态</span>
-                  </div>
-                  <img v-if="qrImage(integrations.qrSession)" class="integration-qr-image" :src="qrImage(integrations.qrSession)" alt="微信扫码二维码" />
-                  <div v-else class="integration-status-copy">
-                    <strong>{{ selected?.status === "running" ? "桥接运行中" : selected ? "等待扫码" : "请选择实例" }}</strong>
-                    <small>{{ integrations.qrSession?.message || (selected?.runtime?.manual_stop ? "实例已手动停止。" : "扫码后会在这里显示登录状态。") }}</small>
-                  </div>
-                </div>
-                <div class="integration-status-card integration-selected-account-card" :class="{ active: selectedAccount }">
-                  <div class="integration-status-card-head">
-                    <span class="status-dot" :class="{ active: selectedAccount }"></span>
-                    <span>当前账号</span>
-                  </div>
-                  <div class="integration-status-copy">
-                    <strong>{{ selectedAccount?.nickname || selectedAccount?.name || selectedAccount?.account_id || selectedAccount?.id || "暂无账号" }}</strong>
-                    <small>{{ selectedAccount?.account_id || selectedAccount?.id || "扫码登录成功后显示" }}</small>
-                    <small v-if="selectedAccount?.base_url">Base URL: {{ selectedAccount.base_url }}</small>
-                  </div>
-                  <button
-                    v-if="selectedAccount?.diagnostic_hint || selectedAccount?.connectivity_error"
-                    class="small-button"
-                    type="button"
-                    @click="copyAccountDiagnostic(selectedAccount)"
-                  >
-                    <Copy :size="13" />复制诊断
-                  </button>
-                </div>
-              </div>
-              <div v-if="integrations.qrSession" class="integration-login-meta">
-                <strong>{{ integrations.qrSession.status || "login" }}</strong>
-                <span>{{ integrations.qrSession.message || integrations.qrSession.qrcode_url || "--" }}</span>
-                <small v-if="integrations.qrSession.expire_at">过期时间 {{ integrations.qrSession.expire_at }}</small>
-              </div>
-              <div class="integration-step-track">
-                <span v-for="step in integrationSteps" :key="step.label" :class="step.state">
-                  <b></b>
-                  <em>{{ step.label }}</em>
-                  <strong>{{ step.status }}</strong>
-                </span>
-              </div>
-            </div>
-            <div class="integration-login-actions">
-              <div class="inline-actions">
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startQrLogin">
-                  <QrCode :size="16" /> 用新设备扫码
-                </button>
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="selected && runIntegration(selected, 'install')">
-                  <PackagePlus :size="16" /> 安装适配器
-                </button>
-              </div>
-              <div class="integration-bridge-row">
-                <input v-model="integrations.bridgeUrl" type="text" placeholder="http://127.0.0.1:7860" />
-                <button class="secondary-action" type="button" :disabled="!selected || integrations.actioning" @click="startBridge">
-                  <Link2 :size="16" /> 启动桥接
-                </button>
-              </div>
-              <div class="integration-bridge-row wide">
-                <input v-model="integrations.verifyCode" type="text" placeholder="验证码 / verify_code" @keydown.enter="pollLogin" />
-                <button class="secondary-action" type="button" :disabled="!integrations.qrSession" @click="pollLogin">
-                  <RefreshCw :size="16" /> 轮询登录
-                </button>
-              </div>
-            </div>
-          </section>
+          <IntegrationLoginPanel
+            v-model:bridge-url="integrations.bridgeUrl"
+            v-model:verify-code="integrations.verifyCode"
+            :selected="selected"
+            :selected-account="selectedAccount"
+            :qr-session="integrations.qrSession"
+            :steps="integrationSteps"
+            :actioning="integrations.actioning"
+            :status-class="statusClass"
+            :qr-image="qrImage"
+            @copy-account-diagnostic="copyAccountDiagnostic"
+            @start-qr-login="startQrLogin"
+            @install="selected && runIntegration(selected, 'install')"
+            @start-bridge="startBridge"
+            @poll-login="pollLogin"
+          />
 
           <section class="integration-panel integration-sessions-panel">
             <div class="panel-head">
