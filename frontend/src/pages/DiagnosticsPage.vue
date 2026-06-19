@@ -42,6 +42,7 @@ import type {
 import type { ServiceSummary } from "@/api/services";
 import DiagnosticCheckList from "@/components/diagnostics/DiagnosticCheckList.vue";
 import DialogTracePanel from "@/components/diagnostics/DialogTracePanel.vue";
+import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
 import { useServicesStore } from "@/stores/services";
 import { useUiStore } from "@/stores/ui";
 import { findDiagnosticItemForRole, findServiceForDiagnosticRole } from "@/utils/diagnosticsMatching";
@@ -778,32 +779,36 @@ async function copyText(label: string, text: string) {
             </div>
           </section>
 
-          <section class="diagnostics-log-panel">
-            <div class="diagnostics-panel-head">
-              <div>
-                <p class="eyebrow">Log Evidence</p>
-                <h2>日志证据</h2>
-                <small>用于核对修复过程中的启动输出和错误堆栈。</small>
-              </div>
-              <span>{{ logLineCount }} 行</span>
-            </div>
-            <div class="diagnostics-log-controls">
-              <select :value="services.selectedId" @change="selectLogService(($event.target as HTMLSelectElement).value)">
-                <option v-for="service in services.services" :key="service.id" :value="service.id">{{ service.label || service.id }}</option>
-              </select>
-              <button class="icon-button" type="button" title="刷新日志" @click="services.refreshLogs()"><RotateCw :size="15" /></button>
-              <button class="icon-button" :class="{ active: onlyErrorLogs }" type="button" title="只看错误" @click="onlyErrorLogs = !onlyErrorLogs">
-                <AlertTriangle :size="15" />
-              </button>
-              <button class="icon-button" :class="{ active: pauseLogScroll }" type="button" title="暂停滚动" @click="pauseLogScroll = !pauseLogScroll">
-                <Pause :size="15" />
-              </button>
-              <button class="icon-button" type="button" title="复制日志" @click="copyCurrentLogs"><Copy :size="15" /></button>
-            </div>
-            <pre ref="logBox" class="diagnostics-log-viewer">{{ filteredLogs || "选择一个服务查看日志。" }}</pre>
-          </section>
+          <AdvancedDisclosure title="日志与链路证据" class="diagnostics-evidence-disclosure">
+            <div class="diagnostics-evidence-body">
+              <section class="diagnostics-log-panel">
+                <div class="diagnostics-panel-head">
+                  <div>
+                    <p class="eyebrow">Log Evidence</p>
+                    <h2>日志证据</h2>
+                    <small>用于核对修复过程中的启动输出和错误堆栈。</small>
+                  </div>
+                  <span>{{ logLineCount }} 行</span>
+                </div>
+                <div class="diagnostics-log-controls">
+                  <select :value="services.selectedId" @change="selectLogService(($event.target as HTMLSelectElement).value)">
+                    <option v-for="service in services.services" :key="service.id" :value="service.id">{{ service.label || service.id }}</option>
+                  </select>
+                  <button class="icon-button" type="button" title="刷新日志" @click="services.refreshLogs()"><RotateCw :size="15" /></button>
+                  <button class="icon-button" :class="{ active: onlyErrorLogs }" type="button" title="只看错误" @click="onlyErrorLogs = !onlyErrorLogs">
+                    <AlertTriangle :size="15" />
+                  </button>
+                  <button class="icon-button" :class="{ active: pauseLogScroll }" type="button" title="暂停滚动" @click="pauseLogScroll = !pauseLogScroll">
+                    <Pause :size="15" />
+                  </button>
+                  <button class="icon-button" type="button" title="复制日志" @click="copyCurrentLogs"><Copy :size="15" /></button>
+                </div>
+                <pre ref="logBox" class="diagnostics-log-viewer">{{ filteredLogs || "选择一个服务查看日志。" }}</pre>
+              </section>
 
-          <DialogTracePanel :traces="traces" />
+              <DialogTracePanel :traces="traces" />
+            </div>
+          </AdvancedDisclosure>
         </aside>
       </section>
 

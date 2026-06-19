@@ -416,6 +416,23 @@
   padding: 13px;
 }
 
+.diagnostics-insight-rail > .diagnostics-evidence-disclosure {
+  padding: 0;
+}
+
+.diagnostics-evidence-body {
+  display: grid;
+  gap: 12px;
+}
+
+.diagnostics-evidence-body .diagnostics-log-panel,
+.diagnostics-evidence-body .trace-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .diagnostics-log-panel,
 .diagnostics-fix-panel {
   display: grid;
