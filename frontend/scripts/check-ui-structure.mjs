@@ -138,6 +138,9 @@ assert(diagnosticsCss.includes(".diagnostic-check-summary") && diagnosticsCss.in
 assert(diagnosticsCss.includes("align-content: start"), "运行诊断卡片内部需要从顶部紧凑排布，避免同一行卡片高度拉伸后内容被推散");
 assert(diagnosticsPage.includes("failureReasonText(check)") && diagnosticsPage.includes("probableCauseText(check)"), "运行诊断修复建议需要拆分当前异常和可能原因，避免重复展示同一段失败信息");
 assert(!diagnosticsPage.includes("<p>{{ compactProblem(check.message) }}</p>"), "运行诊断修复建议不应把失败摘要作为孤立段落重复堆叠");
+assert(diagnosticsPage.includes("const firstProblem = cards.find((card) => card.status === \"error\" || card.status === \"warning\")"), "运行诊断有异常时需要自动选中第一个问题服务");
+assert(diagnosticsPage.includes("无需修复"), "运行诊断正常状态需要明确告诉用户当前无需修复");
+assert(diagnosticsPage.includes("RouterLink") && diagnosticsPage.includes('to="/services"') && diagnosticsPage.includes("diagnostics-empty-actions"), "运行诊断无数据状态需要提供前往服务页的明确动作");
 assert(diagnosticsPage.indexOf('class="diagnostics-fix-panel"') < diagnosticsPage.indexOf('class="diagnostics-log-panel"'), "运行诊断右侧栏需要先展示修复建议，再展示日志证据");
 assert(diagnosticsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && diagnosticsPage.includes('<AdvancedDisclosure title="日志与链路证据"'), "运行诊断日志和 Trace 需要进入默认折叠的证据详情区");
 assert(diagnosticsPage.indexOf('<AdvancedDisclosure title="日志与链路证据"') < diagnosticsPage.indexOf('class="diagnostics-log-panel"') && diagnosticsPage.indexOf('class="diagnostics-log-panel"') < diagnosticsPage.indexOf("<DialogTracePanel"), "运行诊断证据详情区需要包含日志和最近对话链路");

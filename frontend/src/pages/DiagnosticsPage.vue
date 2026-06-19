@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import {
   Activity,
   AlertTriangle,
@@ -774,8 +775,8 @@ async function copyText(label: string, text: string) {
             </div>
             <div v-else class="diagnostics-empty compact">
               <CheckCircle2 :size="22" />
-              <strong>当前选中服务没有异常</strong>
-              <span>如果语音链路仍不可用，可以先运行接口测试，再查看实时日志。</span>
+              <strong>当前选中服务无需修复</strong>
+              <span>配置、健康检查和接口状态没有发现阻断项；如果语音链路仍不可用，可以先运行接口测试，再展开日志与链路证据。</span>
             </div>
           </section>
 
@@ -816,6 +817,14 @@ async function copyText(label: string, text: string) {
         <Server :size="28" />
         <strong>{{ loading ? "正在读取运行诊断" : "暂无运行 profile" }}</strong>
         <span>{{ loading ? "请稍候。" : "配置 ASR、LLM 或 TTS 服务后，这里会显示路径、端口、命令和健康检查结果。" }}</span>
+        <div v-if="!loading" class="diagnostics-empty-actions">
+          <RouterLink class="primary-action" to="/services">
+            <Server :size="16" /> 去服务页配置服务
+          </RouterLink>
+          <button class="secondary-action" type="button" @click="refreshDiagnostics">
+            <RefreshCw :size="16" /> 重新检测
+          </button>
+        </div>
       </section>
     </div>
   </main>

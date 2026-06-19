@@ -921,6 +921,14 @@
   line-height: 1.5;
 }
 
+.diagnostics-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 .trace-panel {
   display: grid;
   gap: 10px;
