@@ -31,6 +31,8 @@ from core.config import (
 )
 from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
+from dialog.llm_flow import build_llm_completion_payload
+from dialog.llm_flow import build_llm_stream_payload
 from dialog.message_flow import assistant_reply_messages
 from dialog.message_flow import build_contextual_request_messages as build_contextual_llm_request_messages
 from dialog.message_flow import build_llm_messages as build_conversation_llm_messages
@@ -787,15 +789,13 @@ class DialogSession:
         max_tokens: int = 260,
         timeout: float | None = None,
     ) -> str:
-        payload = {
-            "model": active_llm_model(self.settings),
-            "messages": messages,
-            "stream": False,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        if getattr(self.settings, "thinking_enabled", False):
-            payload["enable_thinking"] = True
+        payload = build_llm_completion_payload(
+            messages,
+            model=active_llm_model(self.settings),
+            temperature=temperature,
+            max_tokens=max_tokens,
+            thinking_enabled=bool(getattr(self.settings, "thinking_enabled", False)),
+        )
         llm_url = active_llm_url(self.settings)
         async with httpx_client_for_url(llm_url, timeout=timeout or self.settings.tools_timeout) as client:
             resp = await client.post(llm_url, json=payload, headers=llm_headers(self.settings))
@@ -836,28 +836,16 @@ class DialogSession:
         # llama.cpp exposes an OpenAI-compatible SSE stream. We forward each
         # text delta to the page immediately, while buffering sentence-sized
         # pieces for TTS.
-        payload = {
-            "model": active_llm_model(self.settings),
-            "messages": request_messages,
-            "stream": True,
-            "temperature": active_temperature(self.settings),
-            "max_tokens": active_max_tokens(self.settings),
-        }
-        if active_dialog_mode(self.settings) == "local":
-            payload.update(
-                {
-                    "top_p": 0.95,
-                    "repeat_penalty": 1.18,
-                    # llama.cpp DRY sampling：检测重复短语并惩罚，比单纯的 repeat_penalty 更精准
-                    "dry_multiplier": 0.8,
-                    "dry_base": 1.75,
-                    "dry_allowed_length": 2,
-                    "dry_penalty_last_n": -1,
-                    "seed": int(time.time() * 1000) % 2147483647,
-                }
-            )
-        if allow_thinking and getattr(self.settings, "thinking_enabled", False):
-            payload["enable_thinking"] = True
+        payload = build_llm_stream_payload(
+            request_messages,
+            model=active_llm_model(self.settings),
+            temperature=active_temperature(self.settings),
+            max_tokens=active_max_tokens(self.settings),
+            dialog_mode=active_dialog_mode(self.settings),
+            thinking_enabled=bool(getattr(self.settings, "thinking_enabled", False)),
+            allow_thinking=allow_thinking,
+            seed=int(time.time() * 1000) % 2147483647,
+        )
         buffer = ""
         full_answer = ""
         reasoning_filter = ReasoningStreamFilter()
