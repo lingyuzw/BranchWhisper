@@ -84,6 +84,43 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertIn("scripted_explanation_tone", {issue["rule"] for issue in result["issues"]})
 
+    def test_evaluate_case_flags_empty_short_chat_reply(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "empty_short",
+                "category": "emotional_chat",
+                "user": "我也说不上来，就是想有人陪一下",
+                "assistant": "好\n我在",
+            }
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertIn("empty_short_reply", {issue["rule"] for issue in result["issues"]})
+
+    def test_evaluate_case_allows_specific_short_technical_reply(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "technical_short",
+                "category": "technical",
+                "user": "命令最后多了个点会有影响吗？",
+                "assistant": "会，会被当成参数的一部分。",
+            }
+        )
+
+        self.assertTrue(result["passed"])
+
+    def test_evaluate_case_allows_specific_short_emotional_reply(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "emotional_short_specific",
+                "category": "emotional_chat",
+                "user": "今天什么都不想干",
+                "assistant": "可以\n那就先歇着",
+            }
+        )
+
+        self.assertTrue(result["passed"])
+
     def test_evaluate_case_accepts_uncertain_answer_without_memory(self) -> None:
         result = evaluate_case(
             {

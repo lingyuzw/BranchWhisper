@@ -257,6 +257,11 @@ def evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
         if scripted_detail:
             issues.append({"rule": "scripted_explanation_tone", "detail": scripted_detail})
 
+    if case.get("category") in {"ordinary_chat", "emotional_chat", "multi_turn"}:
+        empty_short_detail = empty_short_reply_issue(assistant)
+        if empty_short_detail:
+            issues.append({"rule": "empty_short_reply", "detail": empty_short_detail})
+
     if case.get("expect_uncertainty") and not str(case.get("known_memory") or "").strip():
         if not any(phrase in assistant for phrase in UNCERTAINTY_PHRASES):
             issues.append({"rule": "missing_uncertainty", "detail": "unknown fact should be answered with uncertainty"})
@@ -323,6 +328,23 @@ def scripted_explanation_tone_issue(text: str) -> str:
         return "ordered_markers"
     if "我理解你的感受" in compact and ("你需要" in compact or "建议你" in compact):
         return "generic_empathy_advice"
+    return ""
+
+
+def empty_short_reply_issue(text: str) -> str:
+    normalized = re.sub(r"\s+", "", text)
+    if not normalized:
+        return "empty"
+    generic = {"好", "好的", "行", "可以", "嗯", "嗯嗯", "在", "我在", "我在这", "我在这里", "来了"}
+    if normalized in generic:
+        return normalized
+    if len(normalized) <= 8:
+        for prefix in ("好的", "好", "行", "可以", "嗯嗯", "嗯"):
+            if not normalized.startswith(prefix):
+                continue
+            remainder = normalized[len(prefix) :]
+            if not remainder or remainder in {"在", "我在", "我在这", "我在这里", "在这", "在这里"}:
+                return normalized
     return ""
 
 

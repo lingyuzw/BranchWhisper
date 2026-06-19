@@ -29,6 +29,10 @@ class ConfigDefaultPromptTests(unittest.TestCase):
         self.assertIn("只有用户明确问", DEFAULT_SYSTEM)
         self.assertIn("长期记忆", DEFAULT_SYSTEM)
 
+    def test_default_system_prompt_discourages_empty_short_confirmations(self) -> None:
+        self.assertIn("短句也要接住用户的具体意思", DEFAULT_SYSTEM)
+        self.assertIn("不要只回复好、行、我在这类空泛确认", DEFAULT_SYSTEM)
+
 
 if __name__ == "__main__":
     unittest.main()
