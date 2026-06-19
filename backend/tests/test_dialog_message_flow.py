@@ -8,7 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from dialog.message_flow import compose_user_request_text, memory_observation_text
+from dialog.message_flow import build_llm_messages, compose_user_request_text, draft_conversation, memory_observation_text
 
 
 class DialogMessageFlowTests(unittest.TestCase):
@@ -36,6 +36,34 @@ class DialogMessageFlowTests(unittest.TestCase):
         self.assertEqual("我在浇水", disabled)
         self.assertIn("图片摘要", enabled)
         self.assertIn("用户养了一盆薄荷", enabled)
+
+    def test_build_llm_messages_includes_attachment_notes(self) -> None:
+        conversation = {
+            "messages": [
+                {"role": "user", "content": "看看", "attachments": [{"type": "image", "summary": "一只杯子"}]},
+                {"role": "assistant", "content": "", "attachments": [{"type": "sticker", "name": "点头"}]},
+                {"role": "tool", "content": "ignored"},
+            ]
+        }
+
+        messages = build_llm_messages(conversation, system_prompt="system")
+
+        self.assertEqual("system", messages[0]["content"])
+        self.assertEqual("user", messages[1]["role"])
+        self.assertIn("看看", messages[1]["content"])
+        self.assertIn("[图片]", messages[1]["content"])
+        self.assertEqual("assistant", messages[2]["role"])
+        self.assertIn("点头", messages[2]["content"])
+        self.assertEqual(3, len(messages))
+
+    def test_draft_conversation_creates_unsaved_chat_shape(self) -> None:
+        draft = draft_conversation(now_text="2026-06-19 09:10:00")
+
+        self.assertEqual("", draft["id"])
+        self.assertTrue(draft["draft"])
+        self.assertEqual("新的对话", draft["title"])
+        self.assertEqual([], draft["messages"])
+        self.assertEqual("2026-06-19 09:10:00", draft["created_at"])
 
 
 if __name__ == "__main__":

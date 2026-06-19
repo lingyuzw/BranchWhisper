@@ -32,7 +32,9 @@ from core.config import (
 )
 from core.http_client import httpx_client_for_url
 from data.conversations import ConversationStore
+from dialog.message_flow import build_llm_messages as build_conversation_llm_messages
 from dialog.message_flow import compose_user_request_text as build_user_request_text
+from dialog.message_flow import draft_conversation as build_draft_conversation
 from dialog.message_flow import memory_observation_text as build_memory_observation_text
 from dialog.text_helpers import attachment_text, build_request_user_text, compact_str, extract_repeat_text, last_assistant_content
 from dialog.trace import DialogTraceStore
@@ -690,31 +692,10 @@ class DialogSession:
             print(f"[memory] turn update failed: {exc}", flush=True)
 
     def build_llm_messages(self, conversation: dict) -> list[dict[str, str]]:
-        messages = [{"role": "system", "content": self.settings.system}]
-        for item in conversation.get("messages") or []:
-            role = item.get("role")
-            content = item.get("content")
-            attachments_note = attachment_text(item.get("attachments") or [])
-            if role in {"user", "assistant"} and (content or attachments_note):
-                full_content = content or ""
-                if attachments_note:
-                    full_content += "\n" + attachments_note
-                messages.append({"role": role, "content": full_content.strip()})
-        return messages
+        return build_conversation_llm_messages(conversation, system_prompt=self.settings.system)
 
     def draft_conversation(self) -> dict:
-        now = time.strftime("%Y-%m-%d %H:%M:%S")
-        return {
-            "id": "",
-            "title": "新的对话",
-            "created_at": now,
-            "updated_at": now,
-            "archived": False,
-            "favorite": False,
-            "summary": "",
-            "messages": [],
-            "draft": True,
-        }
+        return build_draft_conversation()
 
     def persist_messages(self, messages: list[dict], title_hint: str | None = None) -> None:
         if not self.conversation.get("id"):
