@@ -151,6 +151,21 @@ class DialogNaturalnessEvalTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertEqual([], result["issues"])
 
+    def test_evaluate_case_accepts_not_remembering_uncertainty_synonym(self) -> None:
+        result = evaluate_case(
+            {
+                "id": "unknown_food_not_remembering",
+                "category": "anti_fabrication",
+                "user": "你记得我昨天吃了什么吗？",
+                "assistant": "我不记得，昨天没聊过吃的。",
+                "expect_uncertainty": True,
+                "known_memory": "",
+            }
+        )
+
+        self.assertTrue(result["passed"])
+        self.assertEqual([], result["issues"])
+
     def test_evaluate_cases_summarizes_pass_rate(self) -> None:
         report = evaluate_cases(
             [

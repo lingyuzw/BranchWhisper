@@ -40,9 +40,11 @@ FABRICATED_EXPERIENCE_PATTERNS = (
 UNCERTAINTY_PHRASES = (
     "不知道",
     "不确定",
+    "不记得",
     "没记着",
     "没记录",
     "没有记录",
+    "没聊过",
     "记录里没提",
     "当前记录里没有",
     "我看不到",

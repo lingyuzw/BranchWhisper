@@ -1382,6 +1382,43 @@ class MemoryRuntimeTests(unittest.TestCase):
 
         self.assertIn("用户正在优化 BranchWhisper", context)
 
+    def test_corrected_project_memory_replaces_stale_project_context(self) -> None:
+        settings = default_settings()
+        settings.dialog_mode = "api"
+        with tempfile.TemporaryDirectory() as tmp:
+            store = MemoryStore(Path(tmp) / "memory.sqlite3")
+            store.upsert_memory(
+                {
+                    "key": "当前项目",
+                    "value": "用户最近在整理旧项目",
+                    "layer": "long",
+                    "confidence": 0.9,
+                    "importance": 0.9,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+            store.upsert_memory(
+                {
+                    "key": "当前项目",
+                    "value": "用户现在在做 BranchWhisper",
+                    "layer": "long",
+                    "confidence": 0.9,
+                    "importance": 0.9,
+                    "memory_type": "semantic_fact",
+                },
+                source="chat",
+                mode="api",
+            )
+
+            context = store.format_context(settings, "你记得我现在主要在做哪个项目吗？", mode="api")
+            memories = store.list_memories(settings, mode="api")
+
+        self.assertEqual(1, len(memories))
+        self.assertIn("用户现在在做 BranchWhisper", context)
+        self.assertNotIn("用户最近在整理旧项目", context)
+
     def test_memory_context_keeps_key_value_relation_for_user_preferences(self) -> None:
         settings = default_settings()
         settings.dialog_mode = "api"
@@ -1445,6 +1482,14 @@ class MemoryRuntimeTests(unittest.TestCase):
 
         self.assertIsNotNone(admitted)
         self.assertEqual("semantic", reason)
+
+    def test_project_correction_extracts_canonical_current_project_key(self) -> None:
+        text = "不是旧项目，我现在在做 BranchWhisper"
+        candidates = extract_memory_candidates(text)
+
+        self.assertTrue(candidates)
+        self.assertEqual("当前项目", candidates[0]["key"])
+        self.assertEqual("用户现在在做 BranchWhisper", candidates[0]["value"])
 
     def test_external_dialog_answers_memory_lookup_directly(self) -> None:
         settings = default_settings()

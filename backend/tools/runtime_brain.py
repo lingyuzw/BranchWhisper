@@ -799,6 +799,24 @@ def _extract_memory_fallback(text: str) -> list[dict]:
             return candidates  # 事件提取成功即返回
 
     # ── 语义事实 (semantic_fact) ──
+    current_project = re.search(
+        r"(?:我(?:现在|最近|正在)?(?:主要)?(?:在)?(?:做|优化|开发|推进)|当前项目(?:是|叫)?)([^。！？!?，,\n]{2,80})",
+        text,
+    )
+    if current_project:
+        value = compact_text(current_project.group(1), 100).strip(" ，,。.!！?")
+        value = re.sub(r"^(?:的是|是|项目|这个|那个|在)+", "", value).strip(" ，,。.!！?")
+        if value and is_usable_fact_value(value, text):
+            candidates.append({
+                "key": "当前项目",
+                "value": f"用户现在在做 {value}",
+                "layer": "short",
+                "confidence": 0.55,
+                "importance": 0.72,
+                "source": "chat",
+                "memory_type": "semantic_fact",
+            })
+
     fact_patterns = [
         (r"(?:我叫|我的名字是|我是)([一-龥A-Za-z0-9_\- ]{1,24})", "用户身份", "用户名字或身份是{}", 0.82),
         (r"我(?:很|特别|超|最)?喜欢([^。！？!?，,]{1,40})", "用户偏好", "用户喜欢{}", 0.65),
