@@ -1,0 +1,424 @@
+/* ============================================================
+   setup.css — API quick start wizard
+   ============================================================ */
+
+.setup-page.workspace-page {
+  width: min(1180px, calc(100vw - 32px));
+  display: grid;
+  gap: 14px;
+  align-items: start;
+}
+
+.setup-workspace {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.setup-step-rail,
+.setup-panel {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.setup-step-rail {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  position: sticky;
+  top: calc(var(--topbar-h) + 14px);
+}
+
+.setup-step {
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 28px 22px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.setup-step:hover,
+.setup-step.active {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--surface-muted);
+}
+
+.setup-step.ok {
+  border-color: color-mix(in srgb, var(--success) 22%, transparent);
+}
+
+.setup-step.warning {
+  border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+}
+
+.setup-step.danger {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.setup-step.running {
+  border-color: color-mix(in srgb, var(--info) 30%, transparent);
+}
+
+.setup-step-index {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: var(--font-xs);
+  font-weight: 850;
+}
+
+.setup-step.active .setup-step-index {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: var(--primary-soft);
+}
+
+.setup-step strong,
+.setup-step small {
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup-step strong {
+  color: inherit;
+  font-size: var(--font-sm);
+  line-height: 1.25;
+}
+
+.setup-step small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.3;
+}
+
+.setup-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.setup-loading {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.setup-panel-head {
+  display: grid;
+  gap: 6px;
+}
+
+.setup-panel-head h2 {
+  color: var(--text);
+  font-size: calc(25px * var(--ui-font-scale));
+  line-height: 1.2;
+}
+
+.setup-panel-head p:not(.eyebrow) {
+  max-width: 720px;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.setup-choice-grid,
+.setup-preset-grid,
+.setup-review-grid {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.setup-choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.setup-preset-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.setup-review-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.setup-choice,
+.setup-preset,
+.setup-review-grid > div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  box-shadow: var(--shadow-sm);
+}
+
+.setup-choice {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  padding: 15px;
+}
+
+.setup-choice.recommended {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background:
+    linear-gradient(180deg, var(--success-soft), transparent 92px),
+    var(--surface-muted);
+}
+
+.setup-choice svg {
+  color: var(--primary);
+}
+
+.setup-choice strong,
+.setup-preset strong,
+.setup-review-grid strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-md);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.setup-choice span,
+.setup-preset span,
+.setup-review-grid span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.setup-preset {
+  min-height: 96px;
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  padding: 12px;
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.setup-preset:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.setup-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.setup-form-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.setup-form-grid label.wide {
+  grid-column: 1 / -1;
+}
+
+.setup-form-grid label span {
+  color: var(--text-soft);
+  font-size: var(--font-label);
+  font-weight: 750;
+}
+
+.setup-form-grid input {
+  min-width: 0;
+}
+
+.setup-probe {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.setup-probe strong {
+  color: var(--text);
+  font-size: var(--font-sm);
+  line-height: 1.3;
+}
+
+.setup-probe span {
+  min-width: 0;
+  grid-column: 1;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.setup-probe .secondary-action,
+.setup-probe .setup-inline-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.setup-probe.ok {
+  border-color: color-mix(in srgb, var(--success) 32%, var(--border));
+  background: color-mix(in srgb, var(--success-soft) 76%, var(--surface-muted));
+}
+
+.setup-probe.warning {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: color-mix(in srgb, var(--warning-soft) 76%, var(--surface-muted));
+}
+
+.setup-probe.danger {
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--border));
+  background: color-mix(in srgb, var(--danger-soft) 76%, var(--surface-muted));
+}
+
+.setup-probe.running {
+  border-color: color-mix(in srgb, var(--info) 34%, var(--border));
+  background: color-mix(in srgb, var(--info-soft) 76%, var(--surface-muted));
+}
+
+.setup-inline-actions,
+.setup-actions,
+.setup-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.setup-inline-actions {
+  justify-content: flex-end;
+}
+
+.setup-actions,
+.setup-footer-actions {
+  justify-content: flex-end;
+}
+
+.setup-footer-actions {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.setup-review-grid > div {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-height: 96px;
+  padding: 13px;
+}
+
+@media (max-width: 1080px) {
+  .setup-preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .setup-page.workspace-page {
+    width: min(100%, calc(100vw - 20px));
+    padding-top: 10px;
+  }
+
+  .setup-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-step-rail {
+    position: static;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow-x: auto;
+  }
+
+  .setup-step {
+    min-width: 128px;
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .setup-step svg {
+    display: none;
+  }
+
+  .setup-step-index {
+    width: 24px;
+    height: 24px;
+  }
+
+  .setup-panel {
+    padding: 14px;
+  }
+
+  .setup-choice-grid,
+  .setup-preset-grid,
+  .setup-review-grid,
+  .setup-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-probe {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-probe span,
+  .setup-probe .secondary-action,
+  .setup-probe .setup-inline-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .setup-inline-actions,
+  .setup-actions,
+  .setup-footer-actions {
+    justify-content: stretch;
+  }
+
+  .setup-inline-actions > button,
+  .setup-actions > button,
+  .setup-footer-actions > button {
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 560px) {
+  .setup-step-rail {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(138px, 1fr);
+  }
+
+  .setup-panel-head h2 {
+    font-size: calc(21px * var(--ui-font-scale));
+  }
+}

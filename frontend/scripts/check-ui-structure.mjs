@@ -15,6 +15,10 @@ function assert(condition, message) {
 }
 
 const settingsPage = read("src/pages/SettingsPage.vue");
+const router = read("src/router/index.ts");
+const appShell = read("src/components/layout/AppShell.vue");
+const setupPage = read("src/pages/SetupPage.vue");
+const setupCss = read("src/styles/pages/setup.css");
 const appearanceSettingsPanel = read("src/components/settings/AppearanceSettingsPanel.vue");
 const dialogModelPanel = read("src/components/settings/DialogModelPanel.vue");
 const settingsCss = read("src/styles/pages/settings.css");
@@ -42,6 +46,14 @@ const diagnosticCheckList = read("src/components/diagnostics/DiagnosticCheckList
 const diagnosticsCss = read("src/styles/pages/diagnostics.css");
 const mainCss = read("src/styles/main.css");
 
+assert(router.includes('path: "/setup"'), "应用需要提供 /app/setup API 快速开始路由");
+assert(appShell.includes('to: "/setup"') && appShell.includes('label: "快速开始"'), "顶部导航需要提供快速开始入口，方便零环境用户回到 API 配置");
+assert(setupPage.includes("快速开始：API 模式"), "快速开始页需要明确 API 模式是默认上手路径");
+assert(setupPage.includes("不需要安装 WSL、CUDA、conda 或本地模型"), "快速开始页需要说明零环境也能先使用 API");
+assert(setupPage.includes('dialog_mode: "api"') && setupPage.includes('asr_provider_mode: "api"') && setupPage.includes('tts_provider_mode: "api"'), "快速开始保存配置时需要切换 LLM/ASR/TTS 到 API 模式");
+assert(setupPage.includes("可以稍后配置本地模型"), "快速开始页需要把本地运行时作为后续增强，而不是阻塞项");
+assert(setupCss.includes(".setup-page.workspace-page"), "快速开始页需要使用共享 workspace 页面骨架");
+assert(setupCss.includes("grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr)"), "快速开始页桌面端需要使用步骤栏和配置区两栏布局");
 assert(!settingsPage.includes('"dialogFeatures"'), "配置页不应再保留独立的对话能力 section");
 assert(!settingsPage.includes("id=\"dialogFeatures\""), "配置页不应渲染对话能力页面");
 assert(!settingsPage.includes("title: \"对话能力\""), "配置页导航不应出现对话能力");

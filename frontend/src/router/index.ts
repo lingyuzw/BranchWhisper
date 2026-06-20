@@ -5,12 +5,14 @@ import DiagnosticsPage from "@/pages/DiagnosticsPage.vue";
 import IntegrationsPage from "@/pages/IntegrationsPage.vue";
 import MemoryPage from "@/pages/MemoryPage.vue";
 import ServicesPage from "@/pages/ServicesPage.vue";
+import SetupPage from "@/pages/SetupPage.vue";
 import SettingsPage from "@/pages/SettingsPage.vue";
 
 export const router = createRouter({
   history: createWebHistory("/app/"),
   routes: [
     { path: "/", name: "dashboard", component: DashboardPage },
+    { path: "/setup", name: "setup", component: SetupPage },
     { path: "/services", name: "services", component: ServicesPage },
     { path: "/diagnostics", name: "diagnostics", component: DiagnosticsPage },
     { path: "/integrations", name: "integrations", component: IntegrationsPage },
