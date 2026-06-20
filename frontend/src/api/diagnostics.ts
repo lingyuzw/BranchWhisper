@@ -23,6 +23,7 @@ export async function loadDiagnosticsSummary() {
 }
 
 export type RuntimeDiagnosticStatus = "ok" | "warning" | "error";
+export type DiagnosticRequirement = "required" | "optional";
 
 export interface RuntimeDiagnosticMetadata {
   raw_target?: string;
@@ -43,6 +44,7 @@ export interface RuntimeDiagnosticCheck {
   message: string;
   fix: string;
   metadata: RuntimeDiagnosticMetadata;
+  requirement: DiagnosticRequirement;
 }
 
 export interface RuntimeDiagnosticItem {
@@ -52,12 +54,19 @@ export interface RuntimeDiagnosticItem {
   status: RuntimeDiagnosticStatus;
   summary: string;
   capabilities: string[];
+  requirement: DiagnosticRequirement;
   checks: RuntimeDiagnosticCheck[];
 }
 
 export interface RuntimeDiagnostics {
   ok: boolean;
   status: RuntimeDiagnosticStatus;
+  mode: {
+    dialog: "local" | "api";
+    asr: "local" | "api";
+    tts: "local" | "api";
+    tts_enabled: boolean;
+  };
   summary: {
     total: number;
     ok: number;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from api.diagnostics import create_diagnostics_router
+from core.config import SessionSettings, add_settings_args
 from diagnostics.runtime import (
     RuntimeDiagnosticProfile,
     evaluate_profile,
@@ -21,6 +23,14 @@ from diagnostics.runtime import (
     runtime_tool_profiles,
     profiles_from_service_config,
 )
+
+
+def make_settings(**overrides) -> SessionSettings:
+    parser = argparse.ArgumentParser()
+    add_settings_args(parser)
+    settings = SessionSettings.from_args(parser.parse_args([]))
+    settings.update_from_dict(overrides)
+    return settings
 
 
 class RuntimeDiagnosticsTests(unittest.TestCase):
@@ -411,6 +421,103 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["ok"], 6)
         self.assertEqual({item["role"] for item in payload["items"]}, {"tool"})
         self.assertEqual({item["provider"] for item in payload["items"]}, {"python", "node", "npm", "ffmpeg", "cuda", "openclaw"})
+
+    def test_api_mode_marks_local_llm_profile_optional(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            payload = runtime_diagnostics_payload(
+                {
+                    "services": {
+                        "llm": {
+                            "label": "Local LLM",
+                            "command": "llama-server -m ${WORKSPACE_ROOT}/missing.gguf --port 8080",
+                        }
+                    }
+                },
+                workspace_root=workspace_root,
+                settings=make_settings(
+                    dialog_mode="api",
+                    api_llm_url="https://api.example.test/v1/chat/completions",
+                    api_llm_model="qwen-plus",
+                    api_llm_api_key="secret",
+                ),
+                command_resolver=lambda command: None,
+                port_checker=lambda port: True,
+            )
+
+        local_item = next(item for item in payload["items"] if item["role"] == "llm" and item["provider"] != "api")
+        api_item = next(item for item in payload["items"] if item["role"] == "llm" and item["provider"] == "api")
+        self.assertEqual(payload["mode"]["dialog"], "api")
+        self.assertEqual(local_item["requirement"], "optional")
+        self.assertEqual(local_item["status"], "warning")
+        self.assertEqual(local_item["checks"][0]["metadata"]["original_status"], "error")
+        self.assertEqual(api_item["requirement"], "required")
+        self.assertEqual(api_item["status"], "ok")
+        self.assertEqual(payload["status"], "warning")
+
+    def test_api_mode_missing_llm_api_config_is_required_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            payload = runtime_diagnostics_payload(
+                {"services": {}},
+                workspace_root=Path(temp_dir),
+                settings=make_settings(dialog_mode="api", api_llm_url="", api_llm_model="", api_llm_api_key=""),
+            )
+
+        api_item = next(item for item in payload["items"] if item["role"] == "llm" and item["provider"] == "api")
+        self.assertEqual(api_item["requirement"], "required")
+        self.assertEqual(api_item["status"], "error")
+        self.assertEqual([check["kind"] for check in api_item["checks"]], ["api_url", "api_model", "api_key"])
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["status"], "error")
+
+    def test_local_mode_keeps_local_llm_profile_required_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace_root = Path(temp_dir)
+            payload = runtime_diagnostics_payload(
+                {
+                    "services": {
+                        "llm": {
+                            "label": "Local LLM",
+                            "command": "llama-server -m ${WORKSPACE_ROOT}/missing.gguf --port 8080",
+                        }
+                    }
+                },
+                workspace_root=workspace_root,
+                settings=make_settings(dialog_mode="local"),
+                command_resolver=lambda command: None,
+                port_checker=lambda port: True,
+            )
+
+        local_item = next(item for item in payload["items"] if item["role"] == "llm")
+        self.assertEqual(local_item["requirement"], "required")
+        self.assertEqual(local_item["status"], "error")
+        self.assertEqual(payload["status"], "error")
+
+    def test_runtime_diagnostics_route_includes_mode_metadata(self) -> None:
+        class ServiceManagerStub:
+            services = {
+                "llm": {
+                    "label": "Local LLM",
+                    "command": "llama-server -m ./missing.gguf --port 8080",
+                }
+            }
+
+        app = FastAPI()
+        app.state.service_manager = ServiceManagerStub()
+        app.state.settings = make_settings(
+            dialog_mode="api",
+            api_llm_url="https://api.example.test/v1/chat/completions",
+            api_llm_model="qwen-plus",
+            api_llm_api_key="secret",
+        )
+        app.include_router(create_diagnostics_router())
+
+        response = TestClient(app).get("/api/diagnostics/runtime")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["mode"]["dialog"], "api")
+        self.assertTrue(any(item["provider"] == "api" and item["role"] == "llm" for item in payload["items"]))
 
     def test_runtime_diagnostics_route_returns_profile_payload(self) -> None:
         class ServiceManagerStub:

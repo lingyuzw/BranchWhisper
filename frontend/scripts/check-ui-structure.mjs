@@ -154,6 +154,10 @@ assert(diagnosticsPage.includes("failureReasonText(check)") && diagnosticsPage.i
 assert(!diagnosticsPage.includes("<p>{{ compactProblem(check.message) }}</p>"), "运行诊断修复建议不应把失败摘要作为孤立段落重复堆叠");
 assert(diagnosticsPage.includes("const firstProblem = cards.find((card) => card.status === \"error\" || card.status === \"warning\")"), "运行诊断有异常时需要自动选中第一个问题服务");
 assert(diagnosticsPage.includes("无需修复"), "运行诊断正常状态需要明确告诉用户当前无需修复");
+assert(diagnosticsPage.includes("modeSummaryItems"), "运行诊断页需要显示当前 API/local 模式总览");
+assert(diagnosticsPage.includes("requirementLabel") && diagnosticsPage.includes("API 模式下本地运行时为可选增强"), "运行诊断页需要解释必需项和可选本地增强");
+assert(diagnosticsPage.includes("requiredIssueChecks") && diagnosticsPage.includes("optionalIssueChecks"), "运行诊断页需要区分阻塞问题和可选增强问题");
+assert(diagnosticCheckList.includes("requirementLabel") && diagnosticCheckList.includes("diagnostic-check-requirement"), "运行诊断检查项需要显示必需/可选标签");
 assert(diagnosticsPage.includes("RouterLink") && diagnosticsPage.includes('to="/services"') && diagnosticsPage.includes("diagnostics-empty-actions"), "运行诊断无数据状态需要提供前往服务页的明确动作");
 assert(diagnosticsPage.indexOf('class="diagnostics-fix-panel"') < diagnosticsPage.indexOf('class="diagnostics-log-panel"'), "运行诊断右侧栏需要先展示修复建议，再展示日志证据");
 assert(diagnosticsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && diagnosticsPage.includes('<AdvancedDisclosure title="日志与链路证据"'), "运行诊断日志和 Trace 需要进入默认折叠的证据详情区");

@@ -11,10 +11,19 @@ from urllib.parse import urlsplit
 from service_runtime.profiles import expand_profile_paths
 
 DiagnosticStatus = Literal["ok", "warning", "error"]
+DiagnosticRequirement = Literal["required", "optional"]
 
 CommandResolver = Callable[[str], str | None]
 PortChecker = Callable[[int], bool]
 HealthChecker = Callable[[str], tuple[bool, str]]
+
+
+@dataclass(frozen=True)
+class RuntimeModeContext:
+    dialog: str = "local"
+    asr: str = "local"
+    tts: str = "local"
+    tts_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -42,6 +51,7 @@ class RuntimeDiagnosticCheck:
     message: str = ""
     fix: str = ""
     metadata: dict[str, object] = field(default_factory=dict)
+    requirement: DiagnosticRequirement = "required"
 
     def to_dict(self) -> dict:
         return {
@@ -51,6 +61,7 @@ class RuntimeDiagnosticCheck:
             "message": self.message,
             "fix": self.fix,
             "metadata": self.metadata,
+            "requirement": self.requirement,
         }
 
 
@@ -63,6 +74,7 @@ class RuntimeDiagnosticItem:
     summary: str
     checks: tuple[RuntimeDiagnosticCheck, ...]
     capabilities: tuple[str, ...] = ()
+    requirement: DiagnosticRequirement = "required"
 
     def to_dict(self) -> dict:
         return {
@@ -72,6 +84,7 @@ class RuntimeDiagnosticItem:
             "status": self.status,
             "summary": self.summary,
             "capabilities": list(self.capabilities),
+            "requirement": self.requirement,
             "checks": [check.to_dict() for check in self.checks],
         }
 
@@ -147,6 +160,7 @@ def runtime_diagnostics_payload(
     service_config: dict,
     *,
     workspace_root: Path,
+    settings: object | None = None,
     extra_profiles: list[RuntimeDiagnosticProfile] | tuple[RuntimeDiagnosticProfile, ...] = (),
     command_resolver: CommandResolver | None = None,
     port_checker: PortChecker | None = None,
@@ -154,14 +168,27 @@ def runtime_diagnostics_payload(
 ) -> dict:
     profiles = profiles_from_service_config(service_config)
     profiles.extend(extra_profiles)
-    payload = evaluate_profiles(
-        profiles,
-        workspace_root=workspace_root,
-        command_resolver=command_resolver,
-        port_checker=port_checker,
-        health_checker=health_checker,
-    )
-    items = payload["items"]
+    context = mode_context_from_settings(settings)
+    evaluated_items = [
+        evaluate_profile(
+            profile,
+            workspace_root=workspace_root,
+            command_resolver=command_resolver,
+            port_checker=port_checker,
+            health_checker=health_checker,
+        )
+        for profile in profiles
+    ]
+    evaluated_items.extend(api_config_items(context, settings))
+    adjusted_items = [apply_requirement(item, requirement_for_item(item, context)) for item in evaluated_items]
+    status = _overall_status([RuntimeDiagnosticCheck("profile", item.name, item.status) for item in adjusted_items])
+    items = [item.to_dict() for item in adjusted_items]
+    payload = {
+        "ok": status == "ok",
+        "status": status,
+        "mode": mode_context_to_dict(context),
+        "items": items,
+    }
     payload["summary"] = {
         "total": len(items),
         "ok": sum(1 for item in items if item.get("status") == "ok"),
@@ -169,6 +196,180 @@ def runtime_diagnostics_payload(
         "error": sum(1 for item in items if item.get("status") == "error"),
     }
     return payload
+
+
+def mode_context_from_settings(settings: object | None) -> RuntimeModeContext:
+    if settings is None:
+        return RuntimeModeContext()
+    return RuntimeModeContext(
+        dialog=_mode_value(getattr(settings, "dialog_mode", "local")),
+        asr=_mode_value(getattr(settings, "asr_provider_mode", "local")),
+        tts=_mode_value(getattr(settings, "tts_provider_mode", "local")),
+        tts_enabled=bool(getattr(settings, "tts_enabled", True)),
+    )
+
+
+def mode_context_to_dict(context: RuntimeModeContext) -> dict:
+    return {
+        "dialog": context.dialog,
+        "asr": context.asr,
+        "tts": context.tts,
+        "tts_enabled": context.tts_enabled,
+    }
+
+
+def _mode_value(value: object) -> str:
+    return "api" if str(value or "").strip().lower() == "api" else "local"
+
+
+def requirement_for_item(item: RuntimeDiagnosticItem, context: RuntimeModeContext) -> DiagnosticRequirement:
+    if item.provider == "api":
+        if item.role == "llm":
+            return "required" if context.dialog == "api" else "optional"
+        if item.role == "asr":
+            return "required" if context.asr == "api" else "optional"
+        if item.role == "tts":
+            return "required" if context.tts_enabled and context.tts == "api" else "optional"
+    if item.role == "llm":
+        return "required" if context.dialog == "local" else "optional"
+    if item.role == "asr":
+        return "required" if context.asr == "local" else "optional"
+    if item.role == "tts":
+        return "required" if context.tts_enabled and context.tts == "local" else "optional"
+    if item.role == "tool":
+        return "required" if item.provider == "python" else "optional"
+    return "optional"
+
+
+def apply_requirement(item: RuntimeDiagnosticItem, requirement: DiagnosticRequirement) -> RuntimeDiagnosticItem:
+    checks = tuple(apply_check_requirement(check, requirement) for check in item.checks)
+    status = _overall_status(list(checks))
+    return RuntimeDiagnosticItem(
+        role=item.role,
+        name=item.name,
+        provider=item.provider,
+        status=status,
+        summary=_summary_for(list(checks), status) if status != item.status else item.summary,
+        checks=checks,
+        capabilities=item.capabilities,
+        requirement=requirement,
+    )
+
+
+def apply_check_requirement(check: RuntimeDiagnosticCheck, requirement: DiagnosticRequirement) -> RuntimeDiagnosticCheck:
+    status = check.status
+    metadata = dict(check.metadata or {})
+    if requirement == "optional" and check.status == "error":
+        status = "warning"
+        metadata["original_status"] = "error"
+    return RuntimeDiagnosticCheck(
+        kind=check.kind,
+        target=check.target,
+        status=status,
+        message=check.message,
+        fix=check.fix,
+        metadata=metadata,
+        requirement=requirement,
+    )
+
+
+def api_config_items(context: RuntimeModeContext, settings: object | None) -> list[RuntimeDiagnosticItem]:
+    if settings is None:
+        return []
+    items = [
+        _api_config_item(
+            role="llm",
+            name="API LLM",
+            enabled=context.dialog == "api",
+            url=str(getattr(settings, "api_llm_url", "") or ""),
+            model=str(getattr(settings, "api_llm_model", "") or ""),
+            api_key=str(getattr(settings, "api_llm_api_key", "") or ""),
+            provider="api",
+        ),
+        _api_config_item(
+            role="asr",
+            name="API ASR",
+            enabled=context.asr == "api",
+            url=str(getattr(settings, "api_asr_url", "") or ""),
+            model=str(getattr(settings, "api_asr_model", "") or ""),
+            api_key=str(getattr(settings, "api_asr_api_key", "") or ""),
+            provider="api",
+            api_provider=str(getattr(settings, "api_asr_provider", "") or ""),
+        ),
+    ]
+    if context.tts_enabled:
+        items.append(
+            _api_config_item(
+                role="tts",
+                name="API TTS",
+                enabled=context.tts == "api",
+                url=str(getattr(settings, "api_tts_url", "") or ""),
+                model=str(getattr(settings, "api_tts_model", "") or ""),
+                api_key=str(getattr(settings, "api_tts_api_key", "") or ""),
+                provider="api",
+                api_provider=str(getattr(settings, "api_tts_provider", "") or ""),
+            )
+        )
+    return items
+
+
+def _api_config_item(
+    *,
+    role: str,
+    name: str,
+    enabled: bool,
+    url: str,
+    model: str,
+    api_key: str,
+    provider: str,
+    api_provider: str = "",
+) -> RuntimeDiagnosticItem:
+    requirement: DiagnosticRequirement = "required" if enabled else "optional"
+    checks = (
+        _api_config_check("api_url", url, "API URL is configured.", "API URL is missing.", "Fill in the API URL in Quick Start or Settings.", requirement),
+        _api_config_check("api_model", model, "API model is configured.", "API model is missing.", "Fill in the API model name in Quick Start or Settings.", requirement),
+        _api_config_check("api_key", api_key, "API key is configured.", "API key is missing.", "Fill in the API key, or choose a local runtime mode.", requirement),
+    )
+    status = _overall_status(list(checks))
+    capabilities = ("api", api_provider) if api_provider else ("api",)
+    return RuntimeDiagnosticItem(
+        role=role,
+        name=name,
+        provider=provider,
+        status=status,
+        summary="API configuration is ready" if status == "ok" else "API configuration is incomplete",
+        checks=checks,
+        capabilities=capabilities,
+        requirement=requirement,
+    )
+
+
+def _api_config_check(
+    kind: str,
+    value: str,
+    ok_message: str,
+    error_message: str,
+    fix: str,
+    requirement: DiagnosticRequirement,
+) -> RuntimeDiagnosticCheck:
+    configured = bool(str(value or "").strip())
+    status: DiagnosticStatus = "ok" if configured else "error"
+    metadata = {"configured": configured}
+    if kind == "api_key" and configured:
+        target = "configured"
+    else:
+        target = str(value or "")
+    return apply_check_requirement(
+        RuntimeDiagnosticCheck(
+            kind=kind,
+            target=target,
+            status=status,
+            message=ok_message if configured else error_message,
+            fix="" if configured else fix,
+            metadata=metadata,
+        ),
+        requirement,
+    )
 
 
 def runtime_tool_profiles(*, python_executable: str) -> list[RuntimeDiagnosticProfile]:

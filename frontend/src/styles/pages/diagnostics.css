@@ -103,6 +103,57 @@
   gap: 10px;
 }
 
+.diagnostics-mode-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.diagnostics-mode-summary > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--info) 24%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--info-soft) 72%, var(--surface-muted));
+  color: var(--text-soft);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+
+.diagnostics-mode-card {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.diagnostics-mode-card small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+}
+
+.diagnostics-mode-card strong {
+  color: var(--text);
+  font-size: calc(22px * var(--ui-font-scale));
+  line-height: 1.12;
+}
+
+.diagnostics-mode-card span {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .diagnostics-summary-card {
   min-width: 0;
   min-height: 104px;
@@ -572,6 +623,37 @@
   white-space: nowrap;
 }
 
+.diagnostics-requirement-badge,
+.diagnostic-check-requirement {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.diagnostics-requirement-badge.required,
+.diagnostic-check-requirement.required {
+  color: var(--diag-red);
+  border-color: color-mix(in srgb, var(--diag-red) 28%, var(--border));
+  background: var(--diag-red-soft);
+}
+
+.diagnostics-requirement-badge.optional,
+.diagnostic-check-requirement.optional {
+  color: var(--diag-blue);
+  border-color: color-mix(in srgb, var(--diag-blue) 28%, var(--border));
+  background: var(--diag-blue-soft);
+}
+
 .status-ok,
 .diagnostic-card.ok,
 .diagnostic-check.ok {
@@ -763,6 +845,14 @@
   text-align: left;
 }
 
+.diagnostic-check-title-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
 .diagnostic-check-state {
   justify-self: end;
   width: var(--diagnostic-status-col);
@@ -783,7 +873,8 @@
 }
 
 .diagnostic-check-message,
-.diagnostic-check-action {
+.diagnostic-check-action,
+.diagnostic-check-impact {
   min-width: 0;
   color: var(--text-muted);
   font-size: var(--font-xs);
@@ -792,7 +883,8 @@
 }
 
 .diagnostic-check-summary,
-.diagnostic-check-action {
+.diagnostic-check-action,
+.diagnostic-check-impact {
   display: grid;
   grid-template-columns: var(--diagnostic-label-col) minmax(0, 1fr);
   gap: 7px;
@@ -821,8 +913,14 @@
   background: color-mix(in srgb, var(--surface) 90%, var(--diag-yellow) 10%);
 }
 
+.diagnostic-check-impact {
+  border-color: color-mix(in srgb, var(--diag-blue) 24%, var(--border));
+  background: color-mix(in srgb, var(--surface) 91%, var(--diag-blue) 9%);
+}
+
 .diagnostic-check-summary span,
-.diagnostic-check-action span {
+.diagnostic-check-action span,
+.diagnostic-check-impact span {
   color: var(--text-muted);
   font-weight: 750;
 }
@@ -832,7 +930,8 @@
 }
 
 .diagnostic-check-summary strong,
-.diagnostic-check-action strong {
+.diagnostic-check-action strong,
+.diagnostic-check-impact strong {
   min-width: 0;
   color: var(--text-soft);
   font-weight: 650;
@@ -1134,6 +1233,7 @@
   }
 
   .diagnostics-summary-cards,
+  .diagnostics-mode-summary,
   .pipeline-flow,
   .diagnostics-service-rail,
   .diagnostics-detail-grid {

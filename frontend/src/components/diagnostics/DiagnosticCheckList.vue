@@ -58,6 +58,15 @@ function actionText(check: RuntimeDiagnosticCheck) {
   if (check.kind === "health_url") return "等待模型加载完成后重试，或检查健康检查地址配置。";
   return "修正配置或服务状态后重新检测。";
 }
+
+function requirementLabel(requirement: string | undefined) {
+  return requirement === "optional" ? "可选增强" : "必需项";
+}
+
+function requirementHint(check: RuntimeDiagnosticCheck) {
+  if (check.requirement === "optional") return "当前模式下不阻塞主流程，可在需要本地运行时再处理。";
+  return "当前模式依赖此项，异常时需要优先处理。";
+}
 </script>
 
 <template>
@@ -65,11 +74,18 @@ function actionText(check: RuntimeDiagnosticCheck) {
     <div v-for="check in checks" :key="`${check.kind}:${check.target}`" class="diagnostic-check" :class="check.status">
       <span class="diagnostic-check-kind">{{ kindLabel(check.kind) }}</span>
       <div class="diagnostic-check-body">
-        <strong class="diagnostic-check-target">{{ check.target || "--" }}</strong>
+        <div class="diagnostic-check-title-row">
+          <strong class="diagnostic-check-target">{{ check.target || "--" }}</strong>
+          <span class="diagnostic-check-requirement" :class="check.requirement">{{ requirementLabel(check.requirement) }}</span>
+        </div>
         <div class="diagnostic-check-summary" :class="check.status">
           <span>{{ check.status === "ok" ? "检查结果" : "当前异常" }}</span>
           <strong>{{ friendlyFailureText(check) }}</strong>
         </div>
+        <small v-if="check.status !== 'ok'" class="diagnostic-check-impact">
+          <span>影响范围</span>
+          <strong>{{ requirementHint(check) }}</strong>
+        </small>
         <details v-if="technicalDetailText(check)" class="diagnostic-check-message">
           <summary>技术详情</summary>
           <pre>{{ technicalDetailText(check) }}</pre>

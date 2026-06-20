@@ -100,6 +100,16 @@ const runningServices = computed(() => services.services.filter((service) => isS
 const interfaceChecks = computed(() => items.value.flatMap((item) => item.checks.filter((check) => ["health_url", "port"].includes(check.kind))));
 const interfaceOkCount = computed(() => interfaceChecks.value.filter((check) => check.status === "ok").length);
 const issueChecks = computed(() => items.value.flatMap((item) => item.checks.map((check) => ({ item, check }))).filter(({ check }) => check.status !== "ok"));
+const requiredIssueChecks = computed(() => issueChecks.value.filter(({ item, check }) => (check.requirement || item.requirement || "required") === "required"));
+const optionalIssueChecks = computed(() => issueChecks.value.filter(({ item, check }) => (check.requirement || item.requirement || "required") === "optional"));
+const modeSummaryItems = computed(() => {
+  const mode = diagnostics.value?.mode;
+  return [
+    { label: "对话模式", value: modeLabel(mode?.dialog), detail: mode?.dialog === "api" ? "本地 LLM 为可选增强" : "本地 LLM 为必需项" },
+    { label: "语音识别", value: modeLabel(mode?.asr), detail: mode?.asr === "api" ? "本地 ASR 为可选增强" : "本地 ASR 为必需项" },
+    { label: "语音合成", value: mode?.tts_enabled === false ? "关闭" : modeLabel(mode?.tts), detail: mode?.tts_enabled === false ? "TTS 不参与阻塞判断" : mode?.tts === "api" ? "本地 TTS 为可选增强" : "本地 TTS 为必需项" },
+  ];
+});
 
 const dashboardCards = computed<DiagnosticCard[]>(() => {
   const cards: DiagnosticCard[] = [];
@@ -399,6 +409,7 @@ function buildDetailRows(
   const modelCheck = firstCheck(item, ["model_path"]);
   const binaryCheck = firstCheck(item, ["binary"]);
   return [
+    { label: "当前要求", value: requirementLabel(item?.requirement), status: item?.requirement === "optional" ? "warning" : "ok" },
     { label: "地址", value: service?.health_url || healthCheck?.target || "--", mono: true, status: healthCheck?.status },
     { label: "端口", value: String(service?.port || portCheck?.target || portFromUrl(service?.health_url || healthCheck?.target || "") || "--"), status: portCheck?.status },
     { label: "PID", value: service?.external ? "external" : String(service?.pid || "--"), status: service?.pid || service?.external ? "ok" : "unknown" },
@@ -460,6 +471,24 @@ function statusIcon(status: DisplayStatus) {
 
 function statusClass(status: DisplayStatus | undefined) {
   return `status-${status || "unknown"}`;
+}
+
+function modeLabel(mode: string | undefined) {
+  if (mode === "api") return "API";
+  if (mode === "local") return "本地";
+  return "未检测";
+}
+
+function requirementLabel(requirement: string | undefined) {
+  return requirement === "optional" ? "可选增强" : "必需项";
+}
+
+function requirementHint(check: RuntimeDiagnosticCheck) {
+  const requirement = check.requirement || "required";
+  if (requirement === "optional") {
+    return "API 模式下本地运行时为可选增强，这个问题不会阻塞当前 API 快速模式。";
+  }
+  return "这是当前模式的必需项，需要修复后才能稳定使用对应链路。";
 }
 
 function roleLabel(role: string) {
@@ -604,7 +633,7 @@ async function copyText(label: string, text: string) {
           <div>
             <small>整体状态</small>
             <strong>{{ statusLabel(overall) }}</strong>
-            <span>{{ summary.total }} 个 profile，{{ issueChecks.length }} 个问题</span>
+            <span>{{ summary.total }} 个 profile，{{ requiredIssueChecks.length }} 个阻塞问题</span>
           </div>
         </article>
         <article class="diagnostics-summary-card status-running">
@@ -627,10 +656,19 @@ async function copyText(label: string, text: string) {
           <span class="summary-card-icon"><Wrench :size="20" /></span>
           <div>
             <small>当前问题数量</small>
-            <strong>{{ issueChecks.length }}</strong>
-            <span>{{ summary.error }} 个异常，{{ summary.warning }} 个警告</span>
+            <strong>{{ requiredIssueChecks.length }}/{{ optionalIssueChecks.length }}</strong>
+            <span>阻塞问题 / 可选增强问题</span>
           </div>
         </article>
+      </section>
+
+      <section class="diagnostics-mode-summary">
+        <article v-for="item in modeSummaryItems" :key="item.label" class="diagnostics-mode-card">
+          <small>{{ item.label }}</small>
+          <strong>{{ item.value }}</strong>
+          <span>{{ item.detail }}</span>
+        </article>
+        <p>API 模式下本地运行时为可选增强；只有当前模式的必需项会作为阻塞问题处理。</p>
       </section>
 
       <section class="diagnostics-pipeline" aria-label="语音链路状态">
@@ -673,7 +711,7 @@ async function copyText(label: string, text: string) {
             <span class="service-item-status"><component :is="statusIcon(card.status)" :size="16" /></span>
             <span class="service-item-main">
               <strong>{{ card.label }}</strong>
-              <small>{{ card.provider }}</small>
+              <small>{{ card.provider }} · {{ requirementLabel(card.item?.requirement) }}</small>
             </span>
             <span class="status-badge" :class="statusClass(card.status)">{{ statusLabel(card.status) }}</span>
           </button>
@@ -689,6 +727,9 @@ async function copyText(label: string, text: string) {
             <span class="status-badge" :class="statusClass(selectedCard?.status)">
               <component :is="statusIcon(selectedCard?.status || 'unknown')" :size="14" />
               {{ statusLabel(selectedCard?.status || "unknown") }}
+            </span>
+            <span class="diagnostics-requirement-badge" :class="selectedItem?.requirement || 'optional'">
+              {{ requirementLabel(selectedItem?.requirement) }}
             </span>
           </header>
 
@@ -758,6 +799,10 @@ async function copyText(label: string, text: string) {
                 <div>
                   <span>当前异常</span>
                   <strong>{{ failureReasonText(check) }}</strong>
+                </div>
+                <div>
+                  <span>影响范围</span>
+                  <strong>{{ requirementHint(check) }}</strong>
                 </div>
                 <details v-if="hasDetail(check.message)">
                   <summary>展开详细信息</summary>

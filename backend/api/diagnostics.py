@@ -158,6 +158,7 @@ def create_diagnostics_router() -> APIRouter:
         return runtime_diagnostics_payload(
             {"services": service_manager.services},
             workspace_root=PROJECT_ROOT.parent,
+            settings=getattr(request.app.state, "settings", None),
             extra_profiles=runtime_tool_profiles(python_executable=sys.executable),
             health_checker=health_probe,
         )
