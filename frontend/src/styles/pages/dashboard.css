@@ -358,14 +358,17 @@ html.theme-light .message-avatar {
   background: #fffdfa;
 }
 
-/* runtime strip: status stays visible without turning the chat into a debug console */
+/* runtime strip: status stays visible in the conversation rail */
 .dashboard-runtime-strip {
-  max-width: var(--dashboard-composer-width);
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(168px, 0.7fr) minmax(0, 1.8fr);
+  grid-template-columns: 1fr;
   gap: 8px;
-  padding: 0 0 10px;
+  padding: 8px 2px 0;
+}
+
+.sidebar .dashboard-runtime-strip {
+  align-self: end;
 }
 
 .dashboard-runtime-scope,
@@ -425,7 +428,7 @@ html.theme-light .message-avatar {
 
 .dashboard-pipeline-track {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   align-items: stretch;
   padding: 8px;
 }
@@ -444,7 +447,7 @@ html.theme-light .message-avatar {
 }
 
 .dashboard-pipeline-step + .dashboard-pipeline-step {
-  border-left: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
 }
 
 .dashboard-pipeline-step .pdot {
@@ -588,15 +591,10 @@ html.theme-light .dashboard-pipeline-track {
   }
   .chat-area > * { max-width: 100%; }
   .dashboard-runtime-strip {
-    grid-template-columns: 1fr;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 8px 0 0;
   }
   .dashboard-pipeline-track {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .dashboard-pipeline-step:nth-child(3) {
-    border-left: 0;
+    grid-template-columns: 1fr;
   }
   .composer {
     grid-template-columns: 36px 36px minmax(44px, 1fr) repeat(3, 36px);
