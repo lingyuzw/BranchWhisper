@@ -68,6 +68,12 @@ For visual changes, also inspect these routes in a browser:
 
 The diagnostics page should keep labels, target values, status tags, failure reasons, and repair suggestions aligned in one continuous layout.
 
+For desktop-app foundation work, confirm the backend can serve the production frontend after `npm run build`:
+
+```powershell
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_frontend_serving -v
+```
+
 ## Git Loop
 
 For each small optimization point:

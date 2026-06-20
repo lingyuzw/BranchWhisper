@@ -32,6 +32,22 @@ wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper /home/me/miniconda3/bi
 http://127.0.0.1:7860
 ```
 
+## Production Frontend
+
+For desktop-app style startup, build the Vue app first:
+
+```bash
+wsl -d Ubuntu-24.04 --cd /home/me/workspace/BranchWhisper/frontend npm run build
+```
+
+Then start the backend and open:
+
+```text
+http://127.0.0.1:7860/app/
+```
+
+This path does not require the Vite dev server. If `frontend/dist/index.html` is missing, the backend returns a clear 503 telling you to build the frontend.
+
 ## Notes
 
 The frontend is the Vue/Vite app in `frontend/`. Run `npm run build` in `frontend/` before serving production assets from `frontend/dist/`.
