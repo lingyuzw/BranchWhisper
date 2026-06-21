@@ -263,6 +263,20 @@ npm run desktop:test
 npm run desktop:preflight
 ```
 
+### Execution Notes: 2026-06-21 Backend Launcher Logic
+
+- Added `apps/desktop/src/backendLauncher.mjs` as a testable launcher boundary before wiring Rust/Tauri process management.
+- The launcher probes `/api/health`, reuses a healthy backend, or returns a structured start plan with command, working directory, log path, timeout, and repair hints.
+- It does not start local ASR, LLM, TTS, CUDA, WSL, llama.cpp, Qwen ASR, or CosyVoice services.
+- `npm run desktop:test` now runs all desktop Node tests through the built-in Node test runner.
+
+Verification commands run for this step:
+
+```bash
+npm run desktop:test
+npm run desktop:preflight
+```
+
 ## Phase 5: Local Runtime Wizard
 
 ### Goal

@@ -1,7 +1,7 @@
 {
   "scripts": {
     "desktop:preflight": "node apps/desktop/src/preflight.mjs",
-    "desktop:test": "node apps/desktop/src/backendLaunchContract.test.mjs"
+    "desktop:test": "node --test apps/desktop/src/*.test.mjs"
   },
   "dependencies": {
     "silk-sdk": "^0.2.2",
