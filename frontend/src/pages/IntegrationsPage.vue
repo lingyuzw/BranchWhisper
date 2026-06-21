@@ -9,6 +9,9 @@ import IntegrationLogsPanel from "@/components/integrations/IntegrationLogsPanel
 import IntegrationProbePanel from "@/components/integrations/IntegrationProbePanel.vue";
 import IntegrationSessionsPanel from "@/components/integrations/IntegrationSessionsPanel.vue";
 import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusSummary from "@/components/ui/StatusSummary.vue";
+import StepFlow from "@/components/ui/StepFlow.vue";
 import { useIntegrationsStore } from "@/stores/integrations";
 import { useProfilesStore } from "@/stores/profiles";
 import { useUiStore } from "@/stores/ui";
@@ -29,6 +32,8 @@ const textProbeReady = computed(() => integrations.testOk === true);
 const voiceProbeReady = computed(() => integrations.voiceOk === true);
 const voiceProbeUnconfirmed = computed(() => integrations.voiceResult.includes("微信端未渲染") || integrations.voiceResult.includes("未确认显示语音气泡"));
 type ProbeStatus = "idle" | "running" | "ok" | "failed" | "warning";
+type SummaryTone = "neutral" | "ok" | "warning" | "danger" | "info";
+type StepState = "idle" | "current" | "pending" | "ok" | "warning" | "failed" | "running" | "error" | "unknown";
 const dialogProbeRunning = ref(false);
 const voiceProbeRunning = ref(false);
 const stickerProbeRunning = ref(false);
@@ -54,27 +59,49 @@ const stickerProbeStatus = computed<ProbeStatus>(() => {
   if (integrations.stickerOk === false || integrations.stickerResult.includes("失败")) return "failed";
   return "idle";
 });
-const integrationSteps = computed(() => [
+const integrationSteps = computed<Array<{ key: string; label: string; status: string; state: StepState }>>(() => [
   {
+    key: "create",
     label: "新增机器人",
     status: selected.value ? selected.value.chat_name || selected.value.id || "已选择" : "先新增实例",
     state: selected.value ? "ok" : "idle",
   },
   {
+    key: "login",
     label: "扫码登录",
     status: loginReady.value ? "已登录" : integrations.qrSession ? "等待扫码" : "未开始",
     state: loginReady.value ? "ok" : integrations.qrSession ? "pending" : "idle",
   },
   {
+    key: "bridge",
     label: "启动桥接",
     status: bridgeRunning.value ? "运行中" : selected.value?.status === "failed" ? "失败" : "未启动",
     state: bridgeRunning.value ? "ok" : selected.value?.status === "failed" ? "failed" : "idle",
   },
   {
+    key: "probe",
     label: "测试收发",
     status: textProbeReady.value ? "文字正常" : integrations.testResult ? "测试失败" : "未测试",
     state: textProbeReady.value ? "ok" : integrations.testResult ? "failed" : "idle",
   },
+]);
+const integrationHeaderTone = computed(() => {
+  if (bridgeRunning.value && loginReady.value) return "ok";
+  if (selected.value?.status === "failed" || integrations.error) return "danger";
+  if (integrations.loading || integrations.actioning || integrations.qrSession) return "running";
+  return "idle";
+});
+const integrationHeaderStatus = computed(() => {
+  if (bridgeRunning.value && loginReady.value) return "接入运行中";
+  if (selected.value?.status === "failed") return "接入异常";
+  if (integrations.qrSession) return "等待扫码";
+  return integrations.summary || "未接入";
+});
+const integrationSummaryItems = computed<Array<{ label: string; value: string; detail: string; tone: SummaryTone }>>(() => [
+  { label: "登录状态", value: loginReady.value ? "已登录" : integrations.qrSession ? "待扫码" : "未登录", detail: selectedAccount.value?.nickname || selectedAccount.value?.account_id || "微信账号", tone: loginReady.value ? "ok" : integrations.qrSession ? "warning" : "neutral" },
+  { label: "桥接状态", value: bridgeRunning.value ? "运行中" : selected.value?.status === "failed" ? "失败" : "未启动", detail: selected.value?.id || "当前机器人", tone: bridgeRunning.value ? "ok" : selected.value?.status === "failed" ? "danger" : "neutral" },
+  { label: "文字测试", value: textProbeReady.value ? "正常" : integrations.testResult ? "失败" : "未测试", detail: "测试微信文字收发", tone: textProbeReady.value ? "ok" : integrations.testResult ? "danger" : "neutral" },
+  { label: "语音测试", value: voiceProbeReady.value ? "正常" : voiceProbeStatus.value === "warning" ? "待确认" : integrations.voiceResult ? "异常" : "未测试", detail: "测试原生语音回复", tone: voiceProbeReady.value ? "ok" : voiceProbeStatus.value === "warning" ? "warning" : integrations.voiceResult ? "danger" : "neutral" },
 ]);
 
 onMounted(async () => {
@@ -356,22 +383,27 @@ function downloadLogs() {
 
 <template>
   <main class="page-view">
-    <div class="ops-page integrations-page">
-      <section class="page-head">
-        <div>
-          <p class="eyebrow">Channel Bots</p>
-          <h1>接入管理</h1>
-          <small>微信机器人、扫码登录、人格绑定和运行日志。当前 {{ integrations.summary }}</small>
-        </div>
-        <div class="head-actions">
+    <div class="workspace-page integrations-page">
+      <PageHeader
+        eyebrow="Channel Bots"
+        title="接入管理"
+        description="连接微信机器人，并测试文字、语音和表情包回复。日志和诊断信息默认收起。"
+        :status-text="integrationHeaderStatus"
+        :status-tone="integrationHeaderTone"
+      >
+        <template #actions>
           <button class="primary-action" type="button" @click="openNew">
             <Plus :size="16" /> 新增机器人
           </button>
           <button class="secondary-action" type="button" :disabled="integrations.loading" @click="refreshIntegrations">
             <RefreshCw :size="16" /> {{ integrations.loading ? "刷新中" : "刷新" }}
           </button>
-        </div>
-      </section>
+        </template>
+      </PageHeader>
+
+      <StatusSummary :items="integrationSummaryItems" />
+
+      <StepFlow :items="integrationSteps" aria-label="接入流程" />
 
       <section class="integration-shell">
         <div class="integration-test-column">

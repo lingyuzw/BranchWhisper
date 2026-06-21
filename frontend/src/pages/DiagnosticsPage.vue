@@ -44,11 +44,16 @@ import type { ServiceSummary } from "@/api/services";
 import DiagnosticCheckList from "@/components/diagnostics/DiagnosticCheckList.vue";
 import DialogTracePanel from "@/components/diagnostics/DialogTracePanel.vue";
 import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusSummary from "@/components/ui/StatusSummary.vue";
+import StepFlow from "@/components/ui/StepFlow.vue";
 import { useServicesStore } from "@/stores/services";
 import { useUiStore } from "@/stores/ui";
 import { findDiagnosticItemForRole, findServiceForDiagnosticRole } from "@/utils/diagnosticsMatching";
 
 type DisplayStatus = RuntimeDiagnosticStatus | "unknown" | "running";
+type SummaryTone = "neutral" | "ok" | "warning" | "danger" | "info";
+type StepState = "idle" | "current" | "pending" | "ok" | "warning" | "failed" | "running" | "error" | "unknown";
 
 interface DiagnosticCard {
   id: string;
@@ -110,6 +115,25 @@ const modeSummaryItems = computed(() => {
     { label: "语音合成", value: mode?.tts_enabled === false ? "关闭" : modeLabel(mode?.tts), detail: mode?.tts_enabled === false ? "TTS 不参与阻塞判断" : mode?.tts === "api" ? "本地 TTS 为可选增强" : "本地 TTS 为必需项" },
   ];
 });
+const diagnosticsHeaderStatus = computed(() => {
+  if (loading.value) return "检测中";
+  if (requiredIssueChecks.value.length) return `${requiredIssueChecks.value.length} 个阻塞问题`;
+  if (optionalIssueChecks.value.length) return `${optionalIssueChecks.value.length} 个可选增强`;
+  return statusLabel(overall.value);
+});
+const diagnosticsHeaderTone = computed(() => {
+  if (loading.value) return "running";
+  if (requiredIssueChecks.value.length) return "danger";
+  if (optionalIssueChecks.value.length || overall.value === "warning") return "warning";
+  if (overall.value === "ok") return "ok";
+  return "idle";
+});
+const diagnosticsSummaryItems = computed<Array<{ label: string; value: string; detail: string; tone: SummaryTone }>>(() => [
+  { label: "整体状态", value: statusLabel(overall.value), detail: `${summary.value.total} 个 profile，${requiredIssueChecks.value.length} 个阻塞问题`, tone: requiredIssueChecks.value.length ? "danger" : overall.value === "ok" ? "ok" : overall.value === "warning" ? "warning" : "neutral" },
+  { label: "服务运行数量", value: `${runningServices.value}/${services.services.length || dashboardCards.value.length}`, detail: "来自服务编排状态", tone: runningServices.value ? "ok" : "neutral" },
+  { label: "接口可用数量", value: `${interfaceOkCount.value}/${interfaceChecks.value.length}`, detail: "健康检查与端口探测", tone: interfaceChecks.value.length && interfaceOkCount.value === interfaceChecks.value.length ? "ok" : "warning" },
+  { label: "当前问题数量", value: `${requiredIssueChecks.value.length}/${optionalIssueChecks.value.length}`, detail: "阻塞问题 / 可选增强问题", tone: requiredIssueChecks.value.length ? "danger" : optionalIssueChecks.value.length ? "warning" : "ok" },
+]);
 
 const dashboardCards = computed<DiagnosticCard[]>(() => {
   const cards: DiagnosticCard[] = [];
@@ -157,13 +181,13 @@ const selectedDetailRows = computed(() => buildDetailRows(selectedItem.value, se
 const filteredLogs = computed(() => filterLogs(services.logs || "", onlyErrorLogs.value));
 const logLineCount = computed(() => filteredLogs.value ? filteredLogs.value.split(/\r?\n/).length : 0);
 
-const pipelineNodes = computed(() => [
-  { key: "microphone", label: "麦克风", detail: "浏览器输入", status: inferAuxStatus("microphone"), icon: Mic },
-  { key: "vad", label: "VAD", detail: "语音活动检测", status: inferAuxStatus("vad"), icon: Activity },
-  { key: "asr", label: "ASR", detail: cardStatusText("asr"), status: roleStatus("asr"), icon: Wifi },
-  { key: "llm", label: "LLM", detail: cardStatusText("llm"), status: roleStatus("llm"), icon: Brain },
-  { key: "tts", label: "TTS", detail: cardStatusText("tts"), status: roleStatus("tts"), icon: Volume2 },
-  { key: "playback", label: "播放", detail: "输出音频", status: inferAuxStatus("playback"), icon: Play },
+const pipelineNodes = computed<Array<{ key: string; label: string; status: string; state: StepState }>>(() => [
+  { key: "microphone", label: "麦克风", status: "浏览器输入", state: inferAuxStatus("microphone") },
+  { key: "vad", label: "VAD", status: "语音活动检测", state: inferAuxStatus("vad") },
+  { key: "asr", label: "ASR", status: cardStatusText("asr"), state: roleStatus("asr") },
+  { key: "llm", label: "LLM", status: cardStatusText("llm"), state: roleStatus("llm") },
+  { key: "tts", label: "TTS", status: cardStatusText("tts"), state: roleStatus("tts") },
+  { key: "playback", label: "播放", status: "输出音频", state: inferAuxStatus("playback") },
 ]);
 
 watch(
@@ -603,18 +627,20 @@ async function copyText(label: string, text: string) {
 
 <template>
   <main class="page-view">
-    <div class="diagnostics-dashboard-shell diagnostics-page">
-      <section class="diagnostics-hero" :class="statusClass(overall)">
-        <div class="diagnostics-hero-copy">
-          <p class="eyebrow">Runtime Diagnostics</p>
-          <h1>运行诊断</h1>
-          <small>检查模型路径、端口、运行进程、健康接口、启动命令和最近日志，快速定位语音链路哪里异常。</small>
-        </div>
-        <div class="diagnostics-hero-meta">
-          <span>最后检测</span>
-          <strong>{{ loadedAtText() }}</strong>
-        </div>
-        <div class="head-actions diagnostics-hero-actions">
+    <div class="workspace-page wide diagnostics-dashboard-shell diagnostics-page">
+      <PageHeader
+        class="diagnostics-hero"
+        eyebrow="Runtime Diagnostics"
+        title="运行诊断"
+        description="检查语音链路和服务状态，定位需要修复的问题；日志和 Trace 作为证据默认收起。"
+        :status-text="diagnosticsHeaderStatus"
+        :status-tone="diagnosticsHeaderTone"
+      >
+        <template #actions>
+          <span class="diagnostics-hero-meta">
+            <span>最后检测</span>
+            <strong>{{ loadedAtText() }}</strong>
+          </span>
           <button class="secondary-action" type="button" :disabled="loading" @click="copyDiagnostics">
             <Copy :size="16" /> 复制结果
           </button>
@@ -624,43 +650,10 @@ async function copyText(label: string, text: string) {
           <button class="primary-action" type="button" :disabled="loading" @click="refreshDiagnostics">
             <RefreshCw :size="16" /> {{ loading ? "检测中..." : "重新检测" }}
           </button>
-        </div>
-      </section>
+        </template>
+      </PageHeader>
 
-      <section class="diagnostics-summary-cards">
-        <article class="diagnostics-summary-card" :class="statusClass(overall)">
-          <span class="summary-card-icon"><component :is="statusIcon(overall)" :size="20" /></span>
-          <div>
-            <small>整体状态</small>
-            <strong>{{ statusLabel(overall) }}</strong>
-            <span>{{ summary.total }} 个 profile，{{ requiredIssueChecks.length }} 个阻塞问题</span>
-          </div>
-        </article>
-        <article class="diagnostics-summary-card status-running">
-          <span class="summary-card-icon"><Server :size="20" /></span>
-          <div>
-            <small>服务运行数量</small>
-            <strong>{{ runningServices }}/{{ services.services.length || dashboardCards.length }}</strong>
-            <span>来自服务编排状态</span>
-          </div>
-        </article>
-        <article class="diagnostics-summary-card" :class="interfaceChecks.length && interfaceOkCount === interfaceChecks.length ? 'status-ok' : 'status-warning'">
-          <span class="summary-card-icon"><Wifi :size="20" /></span>
-          <div>
-            <small>接口可用数量</small>
-            <strong>{{ interfaceOkCount }}/{{ interfaceChecks.length }}</strong>
-            <span>健康检查与端口探测</span>
-          </div>
-        </article>
-        <article class="diagnostics-summary-card" :class="issueChecks.length ? 'status-error' : 'status-ok'">
-          <span class="summary-card-icon"><Wrench :size="20" /></span>
-          <div>
-            <small>当前问题数量</small>
-            <strong>{{ requiredIssueChecks.length }}/{{ optionalIssueChecks.length }}</strong>
-            <span>阻塞问题 / 可选增强问题</span>
-          </div>
-        </article>
-      </section>
+      <StatusSummary class="diagnostics-summary-cards" :items="diagnosticsSummaryItems" />
 
       <section class="diagnostics-mode-summary">
         <article v-for="item in modeSummaryItems" :key="item.label" class="diagnostics-mode-card">
@@ -682,13 +675,7 @@ async function copyText(label: string, text: string) {
             {{ statusLabel(overall) }}
           </span>
         </div>
-        <div class="pipeline-flow">
-          <article v-for="node in pipelineNodes" :key="node.key" class="pipeline-node" :class="statusClass(node.status)">
-            <span class="pipeline-node-icon"><component :is="node.icon" :size="18" /></span>
-            <strong>{{ node.label }}</strong>
-            <small>{{ node.detail }}</small>
-          </article>
-        </div>
+        <StepFlow :items="pipelineNodes" aria-label="语音链路状态" />
       </section>
 
       <section v-if="dashboardCards.length" class="diagnostics-workspace">

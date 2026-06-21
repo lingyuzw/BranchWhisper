@@ -86,8 +86,23 @@
   padding: 16px 12px;
 }
 
-.settings-nav h1 {
-  margin-bottom: 8px;
+.settings-nav-brand {
+  display: grid;
+  gap: 3px;
+  padding: 2px 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-nav-brand strong {
+  color: var(--text);
+  font-size: calc(16px * var(--ui-font-scale));
+  line-height: 1.25;
+}
+
+.settings-nav-brand small {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.45;
 }
 
 .settings-nav-group {
@@ -138,11 +153,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.settings-save-main {
-  margin-top: 10px;
-  min-height: 40px;
 }
 
 .settings-content {
@@ -198,9 +208,8 @@
 }
 
 .settings-command-actions .soft-badge {
-  flex-basis: 100%;
   margin-left: auto;
-  max-width: 270px;
+  max-width: 300px;
 }
 
 .settings-ops-board {
@@ -629,8 +638,7 @@
     padding: 12px;
   }
 
-  .settings-nav h1,
-  .settings-save-main {
+  .settings-nav-brand {
     grid-column: 1 / -1;
   }
 
@@ -658,7 +666,6 @@
   .settings-command-actions {
     justify-content: stretch;
   }
-  .settings-command-actions .primary-action,
   .settings-command-actions .secondary-action {
     flex: 1 1 100%;
   }

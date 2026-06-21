@@ -1327,8 +1327,11 @@ function formatTime(value?: string) {
   <main class="page-view">
     <div class="settings-page">
       <aside class="settings-nav">
-        <p class="eyebrow">BranchWhisper</p>
-        <h1>配置中心</h1>
+        <div class="settings-nav-brand">
+          <p class="eyebrow">BranchWhisper</p>
+          <strong>配置分区</strong>
+          <small>按任务选择要调整的模块</small>
+        </div>
         <div v-for="group in settingsNavGroups" :key="group.label" class="settings-nav-group">
           <span class="settings-nav-group-title">{{ group.label }}</span>
           <button
@@ -1343,9 +1346,6 @@ function formatTime(value?: string) {
             <span>{{ section.title }}</span>
           </button>
         </div>
-        <button class="primary-action full settings-save-main" type="button" :disabled="settingsSaving" @click="saveAll">
-          <Save :size="16" /> {{ settingsSaving ? "保存中..." : "应用全部配置" }}
-        </button>
       </aside>
 
       <section class="settings-content settings-workspace">
@@ -1371,9 +1371,7 @@ function formatTime(value?: string) {
           :form="form"
           :engagement-config="engagement.config"
           :settings-message="settingsMessage"
-          :settings-saving="settingsSaving"
           @open-section="openOverviewSection"
-          @save-all="saveAll"
         />
         <AppearanceSettingsPanel
           v-show="activeSettingsSection === 'appearance'"

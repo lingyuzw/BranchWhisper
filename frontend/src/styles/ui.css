@@ -234,6 +234,98 @@
   display: none;
 }
 
+.workspace-step-flow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-muted) 84%, transparent);
+}
+
+.workspace-step-item {
+  min-width: 0;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.workspace-step-index {
+  width: 23px;
+  height: 23px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  color: var(--surface);
+  background: var(--text-muted);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.workspace-step-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.workspace-step-copy strong,
+.workspace-step-copy em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-step-copy strong {
+  color: var(--text);
+  font-size: var(--font-xs);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.workspace-step-copy em {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.workspace-step-item.ok {
+  background: var(--success-soft);
+}
+
+.workspace-step-item.ok .workspace-step-index {
+  background: var(--success);
+}
+
+.workspace-step-item.current,
+.workspace-step-item.pending {
+  background: var(--warning-soft);
+}
+
+.workspace-step-item.current .workspace-step-index,
+.workspace-step-item.pending .workspace-step-index {
+  background: var(--warning);
+}
+
+.workspace-step-item.failed {
+  background: var(--danger-soft);
+}
+
+.workspace-step-item.failed .workspace-step-index {
+  background: var(--danger);
+}
+
 .workspace-empty-state {
   min-height: 180px;
   display: grid;
@@ -296,6 +388,10 @@
   }
 
   .workspace-status-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-step-flow {
     grid-template-columns: 1fr;
   }
 }

@@ -153,7 +153,7 @@ function inputValue(event: Event) {
             <input :value="previewText" :disabled="previewLoading" placeholder="你好，今天过得怎么样。" @input="emit('updatePreviewText', inputValue($event))" />
           </label>
           <div class="tts-preview-actions">
-            <button class="primary-action" type="button" :disabled="previewLoading" @click="emit('runPreview')">
+            <button class="secondary-action" type="button" :disabled="previewLoading" @click="emit('runPreview')">
               <Volume2 :size="15" />{{ previewLoading ? "生成中..." : "生成试听" }}
             </button>
             <span>{{ previewStatus || "会先保存当前语音配置，再用当前音色生成 WAV。" }}</span>

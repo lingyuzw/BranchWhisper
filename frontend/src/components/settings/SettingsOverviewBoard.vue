@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { Save } from "@lucide/vue";
 import type { PublicConfig } from "@/api/config";
 import type { ProactiveConfig } from "@/api/engagement";
 
@@ -27,12 +26,10 @@ const props = defineProps<{
   form: Partial<PublicConfig>;
   engagementConfig: ProactiveConfig;
   settingsMessage: string;
-  settingsSaving: boolean;
 }>();
 
 const emit = defineEmits<{
   openSection: [id: string];
-  saveAll: [];
 }>();
 
 const form = props.form;
@@ -47,9 +44,7 @@ const form = props.form;
     </div>
     <div class="settings-command-actions">
       <span v-if="settingsMessage" class="soft-badge">{{ settingsMessage }}</span>
-      <button class="primary-action" type="button" :disabled="settingsSaving" @click="emit('saveAll')">
-        <Save :size="16" />{{ settingsSaving ? "保存中..." : "保存配置" }}
-      </button>
+      <span v-else class="soft-badge">修改后使用页面顶部的应用按钮保存</span>
     </div>
   </section>
 

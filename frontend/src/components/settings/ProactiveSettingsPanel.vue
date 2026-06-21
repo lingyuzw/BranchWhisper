@@ -132,7 +132,7 @@ const emit = defineEmits<{
             <option value="web">Web</option>
             <option value="weixin">微信</option>
           </select>
-          <button class="primary-action" type="button" @click="emit('createReminder')"><AlarmPlus :size="15" />添加</button>
+          <button class="secondary-action" type="button" @click="emit('createReminder')"><AlarmPlus :size="15" />添加</button>
         </div>
         <div class="reminder-list">
           <article v-for="reminder in pendingReminders" :key="reminder.id" class="reminder-item">
