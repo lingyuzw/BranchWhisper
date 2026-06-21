@@ -1,4 +1,5 @@
 mod backend_contract;
+mod backend_launcher;
 
 fn main() {
     // Startup contract:
@@ -14,7 +15,12 @@ fn main() {
                 .unwrap_or_else(|_| ".".to_string());
             let startup_contract =
                 backend_contract::BackendLaunchContract::default_for_repo(&repo_root);
-            let _startup_command = startup_contract.command.command_line();
+            let startup_result =
+                backend_launcher::DesktopBackendLauncher::new(startup_contract).ensure_backend();
+            if let Some(start_plan) = startup_result.start_plan {
+                let _startup_command = start_plan.command_line;
+                let _startup_log_path = start_plan.log_path;
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

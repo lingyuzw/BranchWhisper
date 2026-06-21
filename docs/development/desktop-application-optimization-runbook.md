@@ -273,6 +273,13 @@ Commit and push, then enter Phase 5.
 - Added tests for the wrapper command shape and unsupported action handling.
 - Verified that `cd apps/desktop && npm run build` succeeds without manually exporting Cargo paths.
 
+### Execution Notes: 2026-06-21 Rust Backend Launcher Decision
+
+- Added the Rust-side desktop backend launcher decision layer.
+- The launcher now probes the configured host and port, reuses an already reachable backend, or returns a start plan with command, working directory, log path, and repair hints.
+- Tauri setup now calls the launcher so startup decisions are exercised by the real shell entrypoint.
+- This step intentionally stops before spawning the backend process; process lifecycle, health wait, and navigation are the next Phase 4 optimization.
+
 ### Execution Notes: 2026-06-21 Desktop Build Verification
 
 - After installing Rust/Cargo and Tauri Linux prerequisites, `node apps/desktop/src/preflight.mjs --format text` passes all checks.
