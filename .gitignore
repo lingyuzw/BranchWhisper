@@ -16,6 +16,8 @@ frontend/dist/
 frontend/.vite/
 frontend/.vite-dev.*.log
 dist/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/target/
 
 # Runtime data: conversations, logs, media, databases, local settings
 runtime/*

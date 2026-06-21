@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createBackendLaunchContract, validateBackendLaunchContract } from "./backendLaunchContract.mjs";
+import { createDesktopCommandEnv } from "./commandPath.mjs";
 import { checkLinuxDesktopDependencies, tauriUbuntuInstallCommand } from "./linuxPrerequisites.mjs";
 import { formatPreflightReport, parsePreflightArgs } from "./preflightReport.mjs";
 
@@ -33,6 +34,7 @@ function canRead(path) {
 function commandVersion(command, args = ["--version"], options = {}) {
   const result = spawnSync(command, args, {
     encoding: "utf8",
+    env: createDesktopCommandEnv(),
     shell: process.platform === "win32",
     ...options,
   });

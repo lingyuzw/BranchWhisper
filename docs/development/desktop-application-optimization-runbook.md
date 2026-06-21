@@ -259,6 +259,14 @@ Commit and push, then enter Phase 5.
 - Added `scripts/test_desktop_prereq_script.py` to keep the setup script aligned with the documented prerequisite flow.
 - The script requires the user to enter their sudo password for apt installation.
 
+### Execution Notes: 2026-06-21 Desktop Build Verification
+
+- After installing Rust/Cargo and Tauri Linux prerequisites, `node apps/desktop/src/preflight.mjs --format text` passes all checks.
+- Added `src-tauri/build.rs` and a minimal app icon so `tauri::generate_context!()` can compile.
+- `cargo check` passes in `apps/desktop/src-tauri`.
+- `env PATH=/home/me/.cargo/bin:$PATH npm run build` passes in `apps/desktop` and generates the release binary.
+- Tauri generated `src-tauri/gen/` and `src-tauri/target/`; these are build artifacts and are ignored by Git.
+
 ### Execution Notes: 2026-06-21
 
 - Added the first desktop shell scaffold under `apps/desktop/`.
