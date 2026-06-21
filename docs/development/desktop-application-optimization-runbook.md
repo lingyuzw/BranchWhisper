@@ -228,6 +228,27 @@ Commit and push, then enter Phase 5.
 - If port is occupied, choose another port or show conflict guidance.
 - If window is blank, load startup screen first, then navigate to backend.
 
+### Execution Notes: 2026-06-21
+
+- Added the first desktop shell scaffold under `apps/desktop/`.
+- Added `npm run desktop:preflight` at the repository root.
+- The preflight currently checks frontend dist, backend entry, Node, npm, Cargo, and Tauri CLI.
+- On the current WSL machine, preflight returns structured JSON with `ok: false` because Cargo and Tauri CLI are not installed.
+- This is an acceptable Phase 4 scaffold result because API quick mode and backend/frontend checks remain independent from local desktop packaging prerequisites.
+- The desktop shell startup screen shows a copyable backend command using the required `qwen3-asr` conda environment.
+
+Verification commands run for this scaffold:
+
+```bash
+npm run desktop:preflight
+/home/me/miniconda3/bin/conda run -n qwen3-asr python -m unittest backend.tests.test_frontend_serving -v
+cd frontend && npm run check:ui
+cd frontend && npm run check
+cd frontend && npm run build
+/home/me/miniconda3/bin/conda run -n qwen3-asr python scripts/check_static_imports.py
+git diff --check
+```
+
 ## Phase 5: Local Runtime Wizard
 
 ### Goal
