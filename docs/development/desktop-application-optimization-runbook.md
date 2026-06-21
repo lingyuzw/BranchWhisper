@@ -280,6 +280,13 @@ Commit and push, then enter Phase 5.
 - Tauri setup now calls the launcher so startup decisions are exercised by the real shell entrypoint.
 - This step intentionally stops before spawning the backend process; process lifecycle, health wait, and navigation are the next Phase 4 optimization.
 
+### Execution Notes: 2026-06-21 Rust Backend Process Startup
+
+- Added Rust process startup for the desktop backend using the existing `qwen3-asr` conda launch contract.
+- Startup creates the desktop runtime log directory and writes backend stdout/stderr to `runtime/desktop/backend.log`.
+- Tauri setup now starts the backend when the configured port is unreachable, waits for the port to become reachable, and navigates the main window to `/app/`.
+- If spawn or health waiting fails, the desktop shell keeps `startup.html` visible and prints the failure reason for the next UI error-surface step.
+
 ### Execution Notes: 2026-06-21 Desktop Build Verification
 
 - After installing Rust/Cargo and Tauri Linux prerequisites, `node apps/desktop/src/preflight.mjs --format text` passes all checks.
