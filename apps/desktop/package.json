@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "preflight": "node src/preflight.mjs",
-    "dev": "tauri dev",
-    "build": "tauri build"
+    "dev": "node src/tauriCommand.mjs dev",
+    "build": "node src/tauriCommand.mjs build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"

@@ -259,6 +259,20 @@ Commit and push, then enter Phase 5.
 - Added `scripts/test_desktop_prereq_script.py` to keep the setup script aligned with the documented prerequisite flow.
 - The script requires the user to enter their sudo password for apt installation.
 
+### Execution Notes: 2026-06-21 Rust Backend Launch Contract
+
+- Added the Rust-side backend launch contract used by the Tauri shell.
+- The default command uses `/home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860`.
+- The contract records the health URL, app URL, working directory, log path, and a copyable shell command.
+- Verified with Rust contract tests, `cargo check`, desktop preflight, desktop Node tests, frontend checks, static import checks, and whitespace checks.
+
+### Execution Notes: 2026-06-21 Tauri Command PATH Wrapper
+
+- `npm run build` initially failed when launched from the desktop/PowerShell flow because `cargo` was installed in `~/.cargo/bin` but the inherited PATH did not include it.
+- Added `apps/desktop/src/tauriCommand.mjs` so desktop `dev` and `build` commands reuse the same PATH repair logic as preflight.
+- Added tests for the wrapper command shape and unsupported action handling.
+- Verified that `cd apps/desktop && npm run build` succeeds without manually exporting Cargo paths.
+
 ### Execution Notes: 2026-06-21 Desktop Build Verification
 
 - After installing Rust/Cargo and Tauri Linux prerequisites, `node apps/desktop/src/preflight.mjs --format text` passes all checks.
