@@ -54,6 +54,8 @@ assert(setupPage.includes('dialog_mode: "api"') && setupPage.includes('asr_provi
 assert(setupPage.includes("可以稍后配置本地模型"), "快速开始页需要把本地运行时作为后续增强，而不是阻塞项");
 assert(setupCss.includes(".setup-page.workspace-page"), "快速开始页需要使用共享 workspace 页面骨架");
 assert(setupCss.includes("grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr)"), "快速开始页桌面端需要使用步骤栏和配置区两栏布局");
+assert(!setupPage.includes('class="primary-action" type="button" @click="activeStep = \'llm\'"'), "快速开始页内容区开始配置按钮应使用次级样式，页面只保留顶部保存为主操作");
+assert(!setupPage.includes('class="primary-action" type="button" @click="nextStep"'), "快速开始页下一步按钮应使用次级样式，避免和顶部保存主操作竞争");
 assert(!settingsPage.includes('"dialogFeatures"'), "配置页不应再保留独立的对话能力 section");
 assert(!settingsPage.includes("id=\"dialogFeatures\""), "配置页不应渲染对话能力页面");
 assert(!settingsPage.includes("title: \"对话能力\""), "配置页导航不应出现对话能力");
@@ -203,6 +205,7 @@ assert(assetsPage.includes('import PageHeader from "@/components/ui/PageHeader.v
 assert(assetsPage.includes('import StatusSummary from "@/components/ui/StatusSummary.vue"') && assetsPage.includes("<StatusSummary"), "素材库需要使用共享 StatusSummary 展示素材概况");
 assert(assetsPage.includes('import AdvancedDisclosure from "@/components/ui/AdvancedDisclosure.vue"') && assetsPage.includes('<AdvancedDisclosure title="高级配置与测试">'), "素材库配置和测试需要进入高级折叠区，避免挤占图库首屏");
 assert(assetsPage.indexOf("<AssetGallery") < assetsPage.indexOf("<AdvancedDisclosure"), "素材库应先展示图库，再展示高级配置与测试");
+assert(!assetsPage.includes('<button class="primary-action" type="button" @click="openUploadPicker"><ImagePlus :size="16" />选择文件</button>'), "素材库上传停靠区的选择文件应使用次级样式，页面只保留顶部上传素材为主操作");
 assert(assetGallery.includes('class="secondary-action danger"'), "素材库图库删除按钮需要使用可读文字按钮样式，避免被压成窄按钮");
 assert(assetsCss.includes(".assets-page.workspace-page"), "素材库需要使用共享 workspace 页面宽度，而不是旧 ops-page 宽度");
 assert(!assetsCss.includes(".assets-head") && !assetsCss.includes(".asset-stats-grid"), "素材库应删除旧页头和旧统计卡样式，统一使用共享 PageHeader/StatusSummary");

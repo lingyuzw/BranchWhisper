@@ -280,7 +280,7 @@ async function removeOne(id: string) {
           <small>上传后会进入素材库，可继续批量识别、审核和配置发送策略。</small>
         </div>
         <div class="asset-upload-actions">
-          <button class="primary-action" type="button" @click="openUploadPicker"><ImagePlus :size="16" />选择文件</button>
+          <button class="secondary-action" type="button" @click="openUploadPicker"><ImagePlus :size="16" />选择文件</button>
           <input ref="uploadInput" class="asset-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple @change="onUpload" />
         </div>
       </section>

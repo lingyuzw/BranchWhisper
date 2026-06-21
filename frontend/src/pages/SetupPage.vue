@@ -345,7 +345,7 @@ function nextStep() {
               </article>
             </div>
             <div class="setup-actions">
-              <button class="primary-action" type="button" @click="activeStep = 'llm'">开始配置 API</button>
+              <button class="secondary-action" type="button" @click="activeStep = 'llm'">开始配置 API</button>
             </div>
           </template>
 
@@ -454,7 +454,7 @@ function nextStep() {
 
           <footer v-if="activeStep !== 'review'" class="setup-footer-actions">
             <button class="secondary-action" type="button" :disabled="activeStepIndex <= 0" @click="activeStep = steps[Math.max(0, activeStepIndex - 1)].id">上一步</button>
-            <button class="primary-action" type="button" @click="nextStep">下一步</button>
+            <button class="secondary-action" type="button" @click="nextStep">下一步</button>
           </footer>
         </section>
       </div>
