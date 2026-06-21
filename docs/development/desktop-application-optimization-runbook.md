@@ -249,6 +249,20 @@ cd frontend && npm run build
 git diff --check
 ```
 
+### Execution Notes: 2026-06-21 Backend Launch Contract
+
+- Added a testable desktop backend launch contract in `apps/desktop/src/backendLaunchContract.mjs`.
+- The contract defines the backend health URL, app URL, log path, startup timeout, working directory, and `qwen3-asr` conda command.
+- `npm run desktop:test` verifies the contract without requiring Rust, Tauri, CUDA, WSL service startup, or local model services.
+- `npm run desktop:preflight` now validates this contract before checking optional desktop packaging prerequisites.
+
+Verification commands run for this step:
+
+```bash
+npm run desktop:test
+npm run desktop:preflight
+```
+
 ## Phase 5: Local Runtime Wizard
 
 ### Goal

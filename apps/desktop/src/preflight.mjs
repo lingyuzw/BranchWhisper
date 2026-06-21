@@ -2,6 +2,7 @@ import { accessSync, constants } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createBackendLaunchContract, validateBackendLaunchContract } from "./backendLaunchContract.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const desktopRoot = resolve(root, "apps/desktop");
@@ -53,6 +54,17 @@ check(
   "backend entry",
   () => canRead(resolve(root, "backend/main.py")),
   "Restore backend/main.py or run from the repository root.",
+);
+check(
+  "backend launch contract",
+  () => {
+    const errors = validateBackendLaunchContract(createBackendLaunchContract({ root }));
+    if (errors.length > 0) {
+      throw new Error(errors.join("; "));
+    }
+    return "health=/api/health app=/app/";
+  },
+  "Fix apps/desktop/src/backendLaunchContract.mjs before launching the desktop shell.",
 );
 check("node", () => commandVersion("node"), "Install Node.js and make it available on PATH.");
 check("npm", () => commandVersion("npm"), "Install npm and make it available on PATH.");
