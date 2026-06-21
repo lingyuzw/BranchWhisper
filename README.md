@@ -56,6 +56,12 @@ The dialog core stays in the backend. External channels such as Weixin only adap
 
 ## Quick Start
 
+For a fresh computer without local model environments, start with the API-first desktop path:
+
+```text
+docs/deployment/desktop-environment-guide.md
+```
+
 Start the backend:
 
 ```bash

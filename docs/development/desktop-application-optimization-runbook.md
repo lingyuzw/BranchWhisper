@@ -228,6 +228,12 @@ Commit and push, then enter Phase 5.
 - If port is occupied, choose another port or show conflict guidance.
 - If window is blank, load startup screen first, then navigate to backend.
 
+### Execution Notes: 2026-06-21 Environment Guide
+
+- Added `docs/deployment/desktop-environment-guide.md` for zero-environment users and desktop development prerequisites.
+- README Quick Start now points fresh-computer users to the API-first desktop guide before the local WSL backend command.
+- The guide makes API quick mode usable without WSL, CUDA, conda, Qwen ASR, CosyVoice, llama.cpp, OpenClaw, or local model files.
+
 ### Execution Notes: 2026-06-21
 
 - Added the first desktop shell scaffold under `apps/desktop/`.
