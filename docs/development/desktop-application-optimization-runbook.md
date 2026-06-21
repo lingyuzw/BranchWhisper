@@ -253,6 +253,12 @@ Commit and push, then enter Phase 5.
 - Current WSL is missing `libayatana-appindicator3-dev`, `librsvg2-dev`, `libwebkit2gtk-4.1-dev`, and `libxdo-dev`.
 - The preflight now prints the full apt install command before attempting `tauri dev`.
 
+### Execution Notes: 2026-06-21 Desktop Prereq Setup Script
+
+- Added `scripts/setup_desktop_prereqs.sh` to install Tauri Linux packages, install Rust through rustup when Cargo is missing, install desktop npm dependencies, and run text preflight.
+- Added `scripts/test_desktop_prereq_script.py` to keep the setup script aligned with the documented prerequisite flow.
+- The script requires the user to enter their sudo password for apt installation.
+
 ### Execution Notes: 2026-06-21
 
 - Added the first desktop shell scaffold under `apps/desktop/`.

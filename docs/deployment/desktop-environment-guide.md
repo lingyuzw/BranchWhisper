@@ -59,6 +59,12 @@ cd apps/desktop
 npm install
 ```
 
+Or run the guided setup script from WSL/Linux:
+
+```bash
+bash scripts/setup_desktop_prereqs.sh
+```
+
 Run the shell after Rust/Cargo and Tauri are available:
 
 ```bash
