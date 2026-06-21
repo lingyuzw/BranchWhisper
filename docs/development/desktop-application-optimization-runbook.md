@@ -228,6 +228,73 @@ Commit and push, then enter Phase 5.
 - If port is occupied, choose another port or show conflict guidance.
 - If window is blank, load startup screen first, then navigate to backend.
 
+## Phase 4W: Windows Desktop Package
+
+### Goal
+
+Produce a Windows desktop app that can be used on a clean Windows machine. The first usable Windows package must support API quick mode without requiring WSL, CUDA, conda, Qwen ASR, CosyVoice, llama.cpp, OpenClaw, or local model files.
+
+### Optimize
+
+- Windows build environment preflight.
+- Windows Tauri build command.
+- Clear missing-dependency repair instructions.
+- Windows artifact path documentation.
+- Runtime behavior that does not make local AI dependencies mandatory.
+
+### Execute
+
+1. Add Windows-specific desktop preflight checks:
+   - Node and npm.
+   - Rust/Cargo, including the default `%USERPROFILE%\.cargo\bin` rustup path.
+   - Visual Studio Build Tools with C++ toolchain.
+   - WebView2 Runtime.
+   - Tauri CLI.
+2. Add a Windows build command that reuses the same PATH repair logic as Linux.
+3. Run Windows preflight from PowerShell.
+4. If preflight fails, install or document the exact missing prerequisite and rerun.
+5. Run the Windows Tauri build from PowerShell.
+6. Record the `.exe` and installer paths.
+7. Verify the app opens to the startup/setup flow and does not require local model runtime before API mode is configured.
+8. Commit and push each working checkpoint.
+
+### Watch Points
+
+- Do not make WSL a Windows runtime dependency.
+- Do not bundle local model files in the first Windows package.
+- Do not require conda/CUDA/CosyVoice/Qwen ASR for API quick mode.
+- Keep local runtime checks visible as optional diagnostics.
+- Windows signing and auto-update can come after the unsigned package works.
+
+### Verify
+
+PowerShell:
+
+```powershell
+npm run desktop:preflight -- --format text
+cd apps/desktop
+npm run build
+```
+
+Expected artifacts:
+
+```text
+apps/desktop/src-tauri/target/release/branchwhisper-desktop.exe
+apps/desktop/src-tauri/target/release/bundle/
+```
+
+### Pass
+
+Commit and push, then enter Windows startup/onboarding polish.
+
+### Fail
+
+- If Cargo is missing, install Rust with `winget install Rustlang.Rustup` or from `https://rustup.rs/`, then reopen PowerShell.
+- If Visual Studio C++ tools are missing, install Visual Studio Build Tools with the Desktop development with C++ workload.
+- If WebView2 Runtime is missing, install Microsoft Edge WebView2 Runtime.
+- If Tauri CLI is missing, run `npm install` in `apps/desktop`.
+- If the app opens but cannot find a backend, keep startup/setup visible and route the user to API quick mode.
+
 ### Execution Notes: 2026-06-21 Environment Guide
 
 - Added `docs/deployment/desktop-environment-guide.md` for zero-environment users and desktop development prerequisites.
@@ -286,6 +353,16 @@ Commit and push, then enter Phase 5.
 - Startup creates the desktop runtime log directory and writes backend stdout/stderr to `runtime/desktop/backend.log`.
 - Tauri setup now starts the backend when the configured port is unreachable, waits for the port to become reachable, and navigates the main window to `/app/`.
 - If spawn or health waiting fails, the desktop shell keeps `startup.html` visible and prints the failure reason for the next UI error-surface step.
+
+### Execution Notes: 2026-06-21 Windows Build Preflight and EXE
+
+- Added Windows desktop preflight checks for Visual Studio Build Tools and Microsoft Edge WebView2 Runtime.
+- Fixed desktop PATH handling so Windows rustup installs at `%USERPROFILE%\.cargo\bin` are found without reopening the shell.
+- Added `scripts/build_windows_desktop.ps1`, which copies the WSL/UNC workspace into `%LOCALAPPDATA%\BranchWhisper\windows-build` before running Windows npm/Tauri commands. This avoids Windows `.cmd` shim problems inside `\\wsl.localhost\...` paths.
+- Fixed the Tauri command wrapper so `node src/tauriCommand.mjs build` actually runs on Windows paths.
+- Added `icons/icon.ico` and configured Tauri icons so Windows resource generation succeeds.
+- Verified Windows build output at `C:\Users\Me\AppData\Local\BranchWhisper\windows-build\apps\desktop\src-tauri\target\release\branchwhisper-desktop.exe`.
+- Bundle installers are not produced yet because `bundle.active` is still `false`; MSI/NSIS packaging is the next Windows packaging step.
 
 ### Execution Notes: 2026-06-21 Desktop Build Verification
 

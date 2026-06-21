@@ -1,7 +1,8 @@
 {
   "scripts": {
     "desktop:preflight": "node apps/desktop/src/preflight.mjs",
-    "desktop:test": "node --test apps/desktop/src/*.test.mjs"
+    "desktop:test": "node --test apps/desktop/src/*.test.mjs",
+    "desktop:build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_windows_desktop.ps1"
   },
   "dependencies": {
     "silk-sdk": "^0.2.2",

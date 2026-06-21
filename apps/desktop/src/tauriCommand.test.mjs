@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createTauriCommandPlan } from "./tauriCommand.mjs";
+import { createTauriCommandPlan, isMainModule } from "./tauriCommand.mjs";
 
 test("createTauriCommandPlan runs the local Tauri CLI with desktop PATH fixes", () => {
   const plan = createTauriCommandPlan(["build"], {
@@ -22,5 +22,15 @@ test("createTauriCommandPlan rejects unsupported Tauri actions", () => {
   assert.throws(
     () => createTauriCommandPlan(["doctor"]),
     /Unsupported Tauri action/,
+  );
+});
+
+test("isMainModule detects windows script paths", () => {
+  assert.equal(
+    isMainModule(
+      "file:///C:/Users/Me/AppData/Local/BranchWhisper/windows-build/apps/desktop/src/tauriCommand.mjs",
+      "C:\\Users\\Me\\AppData\\Local\\BranchWhisper\\windows-build\\apps\\desktop\\src\\tauriCommand.mjs",
+    ),
+    true,
   );
 });

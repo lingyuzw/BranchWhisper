@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { createDesktopCommandEnv } from "./commandPath.mjs";
 
 const supportedActions = new Set(["dev", "build"]);
@@ -32,7 +33,20 @@ export function runTauriCommand(args = process.argv.slice(2), options = {}) {
   return result.status ?? 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(moduleUrl = import.meta.url, scriptPath = process.argv[1]) {
+  if (moduleUrl === pathToFileURL(scriptPath).href) {
+    return true;
+  }
+
+  if (/^[a-zA-Z]:[\\/]/.test(scriptPath)) {
+    const windowsHref = `file:///${scriptPath.replace(/\\/g, "/")}`;
+    return moduleUrl === windowsHref;
+  }
+
+  return false;
+}
+
+if (isMainModule()) {
   try {
     process.exit(runTauriCommand());
   } catch (error) {

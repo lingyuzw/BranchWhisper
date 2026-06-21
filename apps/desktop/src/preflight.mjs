@@ -6,6 +6,12 @@ import { createBackendLaunchContract, validateBackendLaunchContract } from "./ba
 import { createDesktopCommandEnv } from "./commandPath.mjs";
 import { checkLinuxDesktopDependencies, tauriUbuntuInstallCommand } from "./linuxPrerequisites.mjs";
 import { formatPreflightReport, parsePreflightArgs } from "./preflightReport.mjs";
+import {
+  checkVisualStudioBuildTools,
+  checkWebView2Runtime,
+  visualStudioBuildToolsInstallUrl,
+  webView2DownloadUrl,
+} from "./windowsPrerequisites.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const desktopRoot = resolve(root, "apps/desktop");
@@ -32,12 +38,15 @@ function canRead(path) {
 }
 
 function commandVersion(command, args = ["--version"], options = {}) {
-  const result = spawnSync(command, args, {
+  const commandOptions = {
     encoding: "utf8",
     env: createDesktopCommandEnv(),
-    shell: process.platform === "win32",
     ...options,
-  });
+  };
+  const result =
+    process.platform === "win32"
+      ? runWindowsCommand(command, args, commandOptions)
+      : spawnSync(command, args, commandOptions);
 
   if (result.error) {
     throw result.error;
@@ -48,6 +57,35 @@ function commandVersion(command, args = ["--version"], options = {}) {
   }
 
   return (result.stdout || result.stderr || "").split(/\r?\n/)[0].trim();
+}
+
+function runWindowsCommand(command, args, options) {
+  const cwd = options.cwd || process.cwd();
+  const quotedCommand = [command, ...args].map(quotePowerShellArg).join(" ");
+  const script = [
+    `$exitCode = 1`,
+    `Push-Location ${quotePowerShellArg(cwd)}`,
+    `try {`,
+    `  & ${quotedCommand}`,
+    `  $exitCode = if ($LASTEXITCODE -is [int]) { $LASTEXITCODE } else { 0 }`,
+    `} finally {`,
+    `  Pop-Location`,
+    `}`,
+    `exit $exitCode`,
+  ].join("; ");
+
+  return spawnSync(
+    "powershell",
+    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+    {
+      encoding: options.encoding,
+      env: options.env,
+    },
+  );
+}
+
+function quotePowerShellArg(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 check(
@@ -85,6 +123,30 @@ check(
   },
   `Install Tauri Linux prerequisites: ${tauriUbuntuInstallCommand()}`,
 );
+if (process.platform === "win32") {
+  check(
+    "visual studio build tools",
+    () => {
+      const result = checkVisualStudioBuildTools();
+      if (!result.ok) {
+        throw new Error(result.detail);
+      }
+      return result.detail;
+    },
+    `Install Visual Studio Build Tools with the C++ workload: ${visualStudioBuildToolsInstallUrl}`,
+  );
+  check(
+    "webview2 runtime",
+    () => {
+      const result = checkWebView2Runtime();
+      if (!result.ok) {
+        throw new Error(result.detail);
+      }
+      return result.detail;
+    },
+    `Install Microsoft Edge WebView2 Runtime: ${webView2DownloadUrl}`,
+  );
+}
 check(
   "tauri cli",
   () => commandVersion("npx", ["--no-install", "tauri", "--version"], { cwd: desktopRoot }),
