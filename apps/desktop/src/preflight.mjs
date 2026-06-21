@@ -1,12 +1,14 @@
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createBackendLaunchContract, validateBackendLaunchContract } from "./backendLaunchContract.mjs";
+import { formatPreflightReport, parsePreflightArgs } from "./preflightReport.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const desktopRoot = resolve(root, "apps/desktop");
 const checks = [];
+const options = parsePreflightArgs(process.argv.slice(2));
 
 function check(name, fn, fix) {
   try {
@@ -76,5 +78,12 @@ check(
 );
 
 const ok = checks.every((item) => item.ok);
-console.log(JSON.stringify({ ok, checks }, null, 2));
+const report = { ok, checks };
+const output = formatPreflightReport(report, options.format);
+
+if (options.output) {
+  writeFileSync(resolve(root, options.output), `${output}\n`, "utf8");
+}
+
+console.log(output);
 process.exit(ok ? 0 : 1);

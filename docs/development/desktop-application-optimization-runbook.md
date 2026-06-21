@@ -234,6 +234,12 @@ Commit and push, then enter Phase 5.
 - README Quick Start now points fresh-computer users to the API-first desktop guide before the local WSL backend command.
 - The guide makes API quick mode usable without WSL, CUDA, conda, Qwen ASR, CosyVoice, llama.cpp, OpenClaw, or local model files.
 
+### Execution Notes: 2026-06-21 Preflight Reports
+
+- Added `--format text` and `--output` support to `apps/desktop/src/preflight.mjs`.
+- Added tests for report formatting and argument parsing.
+- The text report gives fresh-computer users a readable list of failed checks and repair suggestions.
+
 ### Execution Notes: 2026-06-21
 
 - Added the first desktop shell scaffold under `apps/desktop/`.

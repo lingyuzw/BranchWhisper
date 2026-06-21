@@ -69,6 +69,18 @@ npm run dev
 
 `npm run desktop:preflight` prints JSON.
 
+For a readable repair report:
+
+```bash
+node apps/desktop/src/preflight.mjs --format text
+```
+
+To save the report:
+
+```bash
+node apps/desktop/src/preflight.mjs --format text --output runtime/desktop-preflight.txt
+```
+
 Pass example:
 
 ```json
