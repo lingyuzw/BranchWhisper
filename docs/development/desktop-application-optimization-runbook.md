@@ -240,6 +240,13 @@ Commit and push, then enter Phase 5.
 - Added tests for report formatting and argument parsing.
 - The text report gives fresh-computer users a readable list of failed checks and repair suggestions.
 
+### Execution Notes: 2026-06-21 Desktop NPM Lock
+
+- Ran `npm install` in `apps/desktop` to lock the Tauri CLI dependency.
+- Added `apps/desktop/package-lock.json` so desktop npm installs are reproducible.
+- After install, `tauri cli` passes preflight with `tauri-cli 2.11.3`.
+- The current WSL machine still fails the Cargo check because Rust/Cargo is not installed.
+
 ### Execution Notes: 2026-06-21
 
 - Added the first desktop shell scaffold under `apps/desktop/`.
