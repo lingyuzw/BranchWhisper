@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createBackendLaunchContract, validateBackendLaunchContract } from "./backendLaunchContract.mjs";
+import { checkLinuxDesktopDependencies, tauriUbuntuInstallCommand } from "./linuxPrerequisites.mjs";
 import { formatPreflightReport, parsePreflightArgs } from "./preflightReport.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -71,6 +72,17 @@ check(
 check("node", () => commandVersion("node"), "Install Node.js and make it available on PATH.");
 check("npm", () => commandVersion("npm"), "Install npm and make it available on PATH.");
 check("cargo", () => commandVersion("cargo"), "Install Rust/Cargo before running the Tauri shell.");
+check(
+  "tauri linux packages",
+  () => {
+    const result = checkLinuxDesktopDependencies();
+    if (!result.ok) {
+      throw new Error(result.detail);
+    }
+    return result.detail;
+  },
+  `Install Tauri Linux prerequisites: ${tauriUbuntuInstallCommand()}`,
+);
 check(
   "tauri cli",
   () => commandVersion("npx", ["--no-install", "tauri", "--version"], { cwd: desktopRoot }),

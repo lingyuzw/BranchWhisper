@@ -247,6 +247,12 @@ Commit and push, then enter Phase 5.
 - After install, `tauri cli` passes preflight with `tauri-cli 2.11.3`.
 - The current WSL machine still fails the Cargo check because Rust/Cargo is not installed.
 
+### Execution Notes: 2026-06-21 Tauri Linux Package Preflight
+
+- Added a preflight check for Tauri Linux/WSL system packages.
+- Current WSL is missing `libayatana-appindicator3-dev`, `librsvg2-dev`, `libwebkit2gtk-4.1-dev`, and `libxdo-dev`.
+- The preflight now prints the full apt install command before attempting `tauri dev`.
+
 ### Execution Notes: 2026-06-21
 
 - Added the first desktop shell scaffold under `apps/desktop/`.

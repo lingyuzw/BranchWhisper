@@ -42,6 +42,7 @@ Required:
 - Node.js and npm.
 - Rust and Cargo.
 - Tauri CLI installed in `apps/desktop`.
+- Tauri Linux system packages when developing inside Linux or WSL.
 - Python backend environment for the current development machine.
 
 Current WSL development command:
@@ -63,6 +64,13 @@ Run the shell after Rust/Cargo and Tauri are available:
 ```bash
 cd apps/desktop
 npm run dev
+```
+
+Ubuntu/WSL Tauri system dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential curl file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev libxdo-dev
 ```
 
 ## Preflight Results
@@ -100,6 +108,11 @@ Failure is still useful. For example, on a machine without Rust and Tauri CLI:
       "name": "cargo",
       "ok": false,
       "fix": "Install Rust/Cargo before running the Tauri shell."
+    },
+    {
+      "name": "tauri linux packages",
+      "ok": false,
+      "fix": "Install Tauri Linux prerequisites."
     },
     {
       "name": "tauri cli",
