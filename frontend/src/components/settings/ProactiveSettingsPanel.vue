@@ -94,6 +94,20 @@ const emit = defineEmits<{
           <label><input v-model="engagement.config.greetings.good_morning.with_reminders" type="checkbox" />早安带提醒</label>
           <label><input v-model="engagement.config.greetings.noon.with_reminders" type="checkbox" />午间带提醒</label>
         </div>
+        <div class="morning-greeting-editor">
+          <div class="appearance-card-head"><strong>自定义早安问候</strong><small>早安文案留空时使用自然短句</small></div>
+          <label class="proactive-textarea-field">
+            <span>早安文案</span>
+            <textarea
+              v-model="engagement.config.greetings.good_morning.message"
+              rows="3"
+              placeholder="例如：早啊，醒了先缓一下。出门前看一眼手机、钥匙和耳机，别落东西。"
+            ></textarea>
+          </label>
+          <p class="proactive-rule-note">
+            早安规则会尽量像熟人随口提醒：必须基于已有天气数据判断带伞、防晒、外套、喝水和空气质量；天气数据缺失时不写具体数值，提醒列表为空时不提提醒，不要编造天气或提醒。
+          </p>
+        </div>
       </section>
 
       <section class="proactive-card">

@@ -218,6 +218,95 @@ def daily_choice(values: list[str], key: str, now: datetime | None = None) -> st
     return values[seed % len(values)]
 
 
+def number_value(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def format_number(value: Any) -> str:
+    number = number_value(value)
+    if number is None:
+        return ""
+    return str(int(number)) if number.is_integer() else f"{number:.1f}".rstrip("0").rstrip(".")
+
+
+def weather_contains(weather: str, words: tuple[str, ...]) -> bool:
+    return any(word in weather for word in words)
+
+
+def build_good_morning_greeting(data: dict[str, Any] | None) -> str:
+    data = data or {}
+    city = str(data.get("city") or "").strip()
+    weather = str(data.get("weather") or "").strip()
+    min_temp = number_value(data.get("min_temp"))
+    max_temp = number_value(data.get("max_temp"))
+    current_temp = number_value(data.get("current_temp"))
+    rain_probability = number_value(data.get("rain_probability"))
+    humidity = number_value(data.get("humidity"))
+    wind_level = str(data.get("wind_level") or "").strip()
+    uv_index = number_value(data.get("uv_index"))
+    aqi_desc = str(data.get("aqi_desc") or "").strip()
+
+    opener = "早安"
+    subject = city or "今天"
+    summary_parts: list[str] = []
+    if weather:
+        summary_parts.append(f"{subject}{weather}")
+    elif city:
+        summary_parts.append(city)
+    else:
+        summary_parts.append("今天")
+    if min_temp is not None and max_temp is not None:
+        summary_parts.append(f"气温大概{format_number(min_temp)}～{format_number(max_temp)}℃")
+    elif current_temp is not None:
+        summary_parts.append(f"现在大概{format_number(current_temp)}℃")
+    if humidity is not None and not weather_contains(weather, ("雨", "阵雨", "雷阵雨")):
+        summary_parts.append(f"湿度{format_number(humidity)}%")
+    if wind_level:
+        summary_parts.append(f"{wind_level}")
+
+    sentences = [f"{opener}，{'，'.join(summary_parts)}。"]
+    hints: list[str] = []
+    rainy = weather_contains(weather, ("雨", "阵雨", "雷阵雨", "小雨", "中雨", "大雨")) or (rain_probability is not None and rain_probability >= 50)
+    heavy_rain = weather_contains(weather, ("中雨", "大雨", "雷阵雨"))
+    sunny_or_uv = ("晴" in weather) or (uv_index is not None and uv_index >= 6)
+    temp_gap = min_temp is not None and max_temp is not None and max_temp - min_temp >= 8
+    hot = max_temp is not None and max_temp >= 30
+    cold_morning = min_temp is not None and min_temp <= 15
+    air_not_good = bool(aqi_desc and aqi_desc not in ("优", "良"))
+
+    if rainy:
+        hints.append("出门带把伞比较稳" + ("，路上慢点，鞋子别穿太滑" if heavy_rain else ""))
+    if sunny_or_uv and hot:
+        hints.append("白天注意防晒，衣服穿轻薄点，路上可以买瓶水")
+    elif sunny_or_uv:
+        hints.append("白天注意防晒")
+    elif hot:
+        hints.append("白天会热，衣服穿轻薄点，路上可以买瓶水")
+    if air_not_good:
+        hints.append("空气一般，户外待久可以戴口罩")
+    if temp_gap:
+        hints.append("早晚温差明显，可以带件薄外套")
+    elif cold_morning:
+        hints.append("早上偏凉，别穿太单薄")
+    if not hints and weather and not rainy and not hot and not cold_morning:
+        hints.append("今天出门应该还挺舒服")
+
+    if hints:
+        sentences.append("。".join(hints[:3]) + "。")
+    sentences.append("出门前看一眼手机、钥匙和耳机，别落东西。")
+    message = "".join(sentences)
+    if len(message) > 120:
+        message = message.replace("出门前看一眼手机、钥匙和耳机，别落东西。", "钥匙和手机别落。")
+    if len(message) > 120 and len(hints) > 2:
+        message = "".join([sentences[0], "。".join(hints[:2]) + "。", "钥匙和手机别落。"])
+    return message[:120].rstrip("，。") + ("。" if not message[:120].endswith("。") else "")
+
+
 class ProactiveStore:
     def __init__(self, config_path: Path, db_path: Path):
         self.config_path = config_path
@@ -400,12 +489,16 @@ class ProactiveStore:
     def default_greeting_message(self, key: str, now: datetime | None = None) -> str:
         return daily_choice(GREETING_MESSAGE_POOLS.get(key) or [], key, now) or "我来找你说句话。"
 
-    def greeting_note_message(self, spec: dict) -> str:
+    def greeting_note_message(self, spec: dict, context: dict | None = None) -> str:
+        context = context or {}
         notes = []
-        if spec.get("with_weather"):
-            notes.append("天气我会按已配置的默认地区一起参考。")
-        if spec.get("with_reminders"):
-            notes.append("有提醒的话，我也会一起看着。")
+        weather_data = context.get("weather")
+        if spec.get("with_weather") and isinstance(weather_data, dict) and weather_data:
+            notes.append(build_good_morning_greeting(weather_data) if spec.get("kind") == "good_morning" else "今天的天气我会一起参考。")
+        reminders = context.get("reminders")
+        if spec.get("with_reminders") and isinstance(reminders, list) and reminders:
+            count = len(reminders)
+            notes.append(f"今天还有 {count} 条提醒，我会按时间看着。")
         return "\n".join(notes)
 
     def maybe_create_greetings(self, now: datetime | None = None) -> list[dict]:
@@ -421,7 +514,8 @@ class ProactiveStore:
             ("good_night", "晚安"),
         ]
         for key, title in specs:
-            spec = greetings.get(key) or {}
+            spec = dict(greetings.get(key) or {})
+            spec["kind"] = key
             if not spec.get("enabled"):
                 continue
             if self.has_event_on_date(f"greeting:{key}", date_text(now)):

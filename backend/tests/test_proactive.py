@@ -12,7 +12,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from engagement.proactive import ProactiveStore
+from engagement.proactive import ProactiveStore, build_good_morning_greeting
 
 
 class ProactiveStoreTests(unittest.TestCase):
@@ -58,6 +58,70 @@ class ProactiveStoreTests(unittest.TestCase):
         second = store.default_greeting_message("good_morning", datetime(2026, 6, 18, 7, 30))
 
         self.assertNotEqual(first, second)
+
+    def test_greeting_does_not_claim_weather_or_reminders_without_data(self) -> None:
+        tmp, store = self.make_store()
+        self.addCleanup(tmp.cleanup)
+        store.save_config(
+            {
+                "enabled": True,
+                "quiet_hours_enabled": False,
+                "greetings": {
+                    "enabled": True,
+                    "good_morning": {
+                        "enabled": True,
+                        "window_start": "07:00",
+                        "window_end": "09:30",
+                        "with_weather": True,
+                        "with_reminders": True,
+                        "message": "早啊，还困吗？",
+                    },
+                },
+            }
+        )
+
+        created = store.maybe_create_greetings(now=datetime(2026, 6, 17, 7, 30))
+
+        self.assertEqual(len(created), 1)
+        self.assertEqual(created[0]["content"], "早啊，还困吗？")
+        self.assertNotIn("天气", created[0]["content"])
+        self.assertNotIn("提醒", created[0]["content"])
+
+    def test_good_morning_weather_greeting_uses_only_provided_weather_data(self) -> None:
+        message = build_good_morning_greeting(
+            {
+                "city": "漳州",
+                "weather": "阵雨",
+                "min_temp": 24,
+                "max_temp": 32,
+                "rain_probability": 70,
+                "uv_index": 7,
+                "aqi_desc": "轻度污染",
+            }
+        )
+
+        self.assertTrue(message.startswith(("早安", "早，", "早啊")))
+        self.assertIn("漳州", message)
+        self.assertIn("阵雨", message)
+        self.assertIn("24～32℃", message)
+        self.assertIn("伞", message)
+        self.assertIn("防晒", message)
+        self.assertIn("水", message)
+        self.assertIn("口罩", message)
+        self.assertNotIn("加油", message)
+        self.assertNotIn("愿你", message)
+        self.assertLessEqual(message.count("记得"), 1)
+        self.assertGreaterEqual(len(message), 20)
+        self.assertLessEqual(len(message), 120)
+
+    def test_good_morning_weather_greeting_does_not_fabricate_missing_values(self) -> None:
+        message = build_good_morning_greeting({"city": "漳州", "weather": "多云"})
+
+        self.assertIn("漳州", message)
+        self.assertIn("多云", message)
+        self.assertNotIn("℃", message)
+        self.assertNotIn("～", message)
+        self.assertNotIn("%", message)
 
     def test_long_absence_creates_topic_after_threshold(self) -> None:
         tmp, store = self.make_store()

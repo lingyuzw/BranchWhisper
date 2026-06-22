@@ -1811,6 +1811,34 @@
   font-weight: 700;
 }
 
+.morning-greeting-editor {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-muted) 88%, var(--primary) 4%);
+}
+
+.proactive-textarea-field {
+  display: grid;
+  gap: 6px;
+}
+
+.proactive-textarea-field span {
+  color: var(--text-muted);
+  font-size: var(--font-label);
+  font-weight: 750;
+}
+
+.proactive-rule-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .proactive-card input[type="time"],
 .proactive-card input[type="datetime-local"] {
   min-width: 136px;

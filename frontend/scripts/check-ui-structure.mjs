@@ -44,6 +44,7 @@ const runtimeMetrics = read("src/components/dashboard/RuntimeMetrics.vue");
 const diagnosticsPage = read("src/pages/DiagnosticsPage.vue");
 const diagnosticCheckList = read("src/components/diagnostics/DiagnosticCheckList.vue");
 const diagnosticsCss = read("src/styles/pages/diagnostics.css");
+const proactiveSettingsPanel = read("src/components/settings/ProactiveSettingsPanel.vue");
 const mainCss = read("src/styles/main.css");
 
 assert(router.includes('path: "/setup"'), "应用需要提供 /app/setup API 快速开始路由");
@@ -232,5 +233,8 @@ assert(dashboardCss.includes(".dashboard-app-actions") && dashboardCss.includes(
 assert(dashboardCss.includes("grid-template-columns: repeat(3, minmax(0, 1fr))") && dashboardCss.includes(".dashboard-app-action span"), "对话页应用入口需要使用三列紧凑网格并保证入口文字不溢出，不应挤压会话列表");
 assert(dashboardCss.includes("min-height: 34px") && dashboardCss.includes(".dashboard-app-action small {\n  display: none;"), "对话页应用入口需要优先显示图标和主标签，说明文案放到 title/隐藏文本中");
 assert(dashboardCss.includes(".dashboard-pipeline-track") && dashboardCss.includes("grid-template-columns: repeat(4, minmax(0, 1fr))"), "对话页侧栏运行链路需要使用一行四段紧凑布局，避免运行状态占据过多侧栏高度");
+assert(proactiveSettingsPanel.includes("自定义早安问候") && proactiveSettingsPanel.includes("早安文案"), "主动性配置需要提供自定义早安问候入口，避免只能使用默认随机短句");
+assert(proactiveSettingsPanel.includes("不要编造天气或提醒") && proactiveSettingsPanel.includes("天气数据缺失时不写具体数值"), "主动性配置需要明确早安问候不能编造天气、温度或提醒");
+assert(proactiveSettingsPanel.includes("greetings.good_morning.message") && proactiveSettingsPanel.includes("textarea"), "早安问候自定义文案需要绑定 good_morning.message 并使用多行输入");
 
 console.log("UI structure checks passed");
