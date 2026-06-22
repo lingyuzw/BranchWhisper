@@ -4,7 +4,8 @@ param(
   [switch]$BuildBackend,
   [string]$BackendExecutable = "",
   [switch]$UseLocalCopy = $true,
-  [string]$BuildRoot = (Join-Path $env:LOCALAPPDATA "BranchWhisper\windows-build")
+  [string]$BuildRoot = (Join-Path $env:LOCALAPPDATA "BranchWhisper\windows-build"),
+  [string]$DesktopExePath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper.exe")
 )
 
 $ErrorActionPreference = "Stop"
@@ -136,9 +137,22 @@ try {
   $ExePath = Join-Path $DesktopRoot "src-tauri\target\release\branchwhisper-desktop.exe"
   $BundlePath = Join-Path $DesktopRoot "src-tauri\target\release\bundle"
 
+  if (-not (Test-Path $ExePath)) {
+    throw "Desktop build finished but executable was not found: $ExePath"
+  }
+
+  $DesktopExeDirectory = Split-Path -Parent $DesktopExePath
+  if (-not $DesktopExeDirectory) {
+    throw "DesktopExePath must include a directory: $DesktopExePath"
+  }
+
+  New-Item -ItemType Directory -Force -Path $DesktopExeDirectory | Out-Null
+  Copy-Item -LiteralPath $ExePath -Destination $DesktopExePath -Force
+
   Write-Host ""
   Write-Host "Windows desktop build finished."
   Write-Host "EXE: $ExePath"
+  Write-Host "Desktop EXE: $DesktopExePath"
   Write-Host "Bundle: $BundlePath"
   if ($UseLocalCopy) {
     Write-Host "Build workspace: $WorkingRepoRoot"
