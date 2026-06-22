@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-BACKEND_DIR = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = BACKEND_DIR.parent
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    PROJECT_ROOT = Path(sys._MEIPASS)
+    BACKEND_DIR = PROJECT_ROOT / "backend"
+    RUNTIME_ROOT = Path.cwd()
+else:
+    BACKEND_DIR = Path(__file__).resolve().parents[1]
+    PROJECT_ROOT = BACKEND_DIR.parent
+    RUNTIME_ROOT = PROJECT_ROOT
+
 APP_DIR = BACKEND_DIR
 FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
-RUNTIME_DIR = PROJECT_ROOT / "runtime"
+RUNTIME_DIR = RUNTIME_ROOT / "runtime"
 LOG_DIR = RUNTIME_DIR / "logs"
 CONVERSATION_DIR = RUNTIME_DIR / "conversations"
 SETTINGS_CONFIG = RUNTIME_DIR / "settings.json"

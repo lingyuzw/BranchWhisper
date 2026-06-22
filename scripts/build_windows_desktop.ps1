@@ -83,24 +83,6 @@ if ($UseLocalCopy) {
 
 $DesktopRoot = Join-Path $WorkingRepoRoot "apps\desktop"
 
-if ($BuildBackend) {
-  $backendBuildScript = Join-Path $WorkingRepoRoot "scripts\build_windows_backend.ps1"
-  & $backendBuildScript
-  if ($LASTEXITCODE -ne 0) {
-    throw "build_windows_backend.ps1 failed with exit code $LASTEXITCODE"
-  }
-  $BackendExecutable = Join-Path $env:LOCALAPPDATA "BranchWhisper\backend-build\dist\branchwhisper-backend\branchwhisper-backend.exe"
-}
-
-if ($BackendExecutable) {
-  if (-not (Test-Path $BackendExecutable)) {
-    throw "Backend executable does not exist: $BackendExecutable"
-  }
-  $env:BRANCHWHISPER_BACKEND_EXECUTABLE = (Resolve-Path $BackendExecutable).ProviderPath
-  Write-Host "Using packaged backend executable:"
-  Write-Host "  $env:BRANCHWHISPER_BACKEND_EXECUTABLE"
-}
-
 Push-Location $WorkingRepoRoot
 try {
   Push-Location (Join-Path $WorkingRepoRoot "frontend")
@@ -109,6 +91,24 @@ try {
     npm run build
   } finally {
     Pop-Location
+  }
+
+  if ($BuildBackend) {
+    $backendBuildScript = Join-Path $WorkingRepoRoot "scripts\build_windows_backend.ps1"
+    & $backendBuildScript
+    if ($LASTEXITCODE -ne 0) {
+      throw "build_windows_backend.ps1 failed with exit code $LASTEXITCODE"
+    }
+    $BackendExecutable = Join-Path $env:LOCALAPPDATA "BranchWhisper\backend-build\dist\branchwhisper-backend\branchwhisper-backend.exe"
+  }
+
+  if ($BackendExecutable) {
+    if (-not (Test-Path $BackendExecutable)) {
+      throw "Backend executable does not exist: $BackendExecutable"
+    }
+    $env:BRANCHWHISPER_BACKEND_EXECUTABLE = (Resolve-Path $BackendExecutable).ProviderPath
+    Write-Host "Using packaged backend executable:"
+    Write-Host "  $env:BRANCHWHISPER_BACKEND_EXECUTABLE"
   }
 
   Push-Location $DesktopRoot

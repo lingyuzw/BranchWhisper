@@ -9,6 +9,7 @@ $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $SourceRepoRoot = $RepoRoot.ProviderPath
 # PyInstaller entrypoint: backend/main.py
 $BackendEntry = Join-Path $SourceRepoRoot "backend\main.py"
+$FrontendDist = Join-Path $SourceRepoRoot "frontend\dist"
 $DistRoot = Join-Path $OutputRoot "dist"
 $WorkRoot = Join-Path $OutputRoot "work"
 $SpecRoot = Join-Path $OutputRoot "spec"
@@ -32,7 +33,28 @@ if (-not (Test-Path $BackendEntry)) {
   throw "Backend entry was not found: $BackendEntry"
 }
 
+if (-not (Test-Path (Join-Path $FrontendDist "index.html"))) {
+  throw "Frontend dist was not found: $FrontendDist. Run npm install and npm run build in frontend before packaging the backend."
+}
+
 New-Item -ItemType Directory -Force -Path $OutputRoot, $DistRoot, $WorkRoot, $SpecRoot | Out-Null
+
+$ExcludedModules = @(
+  "PyQt5",
+  "PyQt6",
+  "PySide2",
+  "PySide6",
+  "matplotlib",
+  "IPython",
+  "pytest",
+  "sphinx",
+  "tkinter"
+)
+
+$ExcludeModuleArgs = @()
+foreach ($module in $ExcludedModules) {
+  $ExcludeModuleArgs += @("--exclude-module", $module)
+}
 
 Invoke-Checked `
   -FilePath $Python `
@@ -57,6 +79,8 @@ Invoke-Checked `
     "--workpath", $WorkRoot,
     "--specpath", $SpecRoot,
     "--paths", (Join-Path $SourceRepoRoot "backend"),
+    "--add-data", "$FrontendDist;frontend\dist",
+    $ExcludeModuleArgs,
     "--collect-submodules", "api",
     "--collect-submodules", "app",
     "--collect-submodules", "core",
