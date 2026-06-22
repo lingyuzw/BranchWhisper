@@ -45,6 +45,7 @@ class DesktopPrereqScriptTests(unittest.TestCase):
         self.assertIn("PyQt5", content)
         self.assertIn("PySide6", content)
         self.assertIn("matplotlib", content)
+        self.assertIn("$PyInstallerArgs += $ExcludeModuleArgs", content)
 
     def test_windows_backend_script_bundles_frontend_dist_for_desktop_app(self) -> None:
         content = WINDOWS_BACKEND_SCRIPT.read_text(encoding="utf-8")

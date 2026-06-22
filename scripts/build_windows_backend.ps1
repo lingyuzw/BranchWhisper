@@ -57,6 +57,36 @@ foreach ($module in $ExcludedModules) {
   $ExcludeModuleArgs += @("--exclude-module", $module)
 }
 
+$PyInstallerArgs = @(
+  "-m", "PyInstaller",
+  "--noconfirm",
+  "--clean",
+  "--name", "branchwhisper-backend",
+  "--distpath", $DistRoot,
+  "--workpath", $WorkRoot,
+  "--specpath", $SpecRoot,
+  "--paths", (Join-Path $SourceRepoRoot "backend"),
+  "--add-data", $FrontendDistForPyInstaller
+)
+$PyInstallerArgs += $ExcludeModuleArgs
+$PyInstallerArgs += @(
+  "--collect-submodules", "api",
+  "--collect-submodules", "app",
+  "--collect-submodules", "core",
+  "--collect-submodules", "data",
+  "--collect-submodules", "diagnostics",
+  "--collect-submodules", "dialog",
+  "--collect-submodules", "domain",
+  "--collect-submodules", "engagement",
+  "--collect-submodules", "integration_runtime",
+  "--collect-submodules", "media",
+  "--collect-submodules", "memory",
+  "--collect-submodules", "repositories",
+  "--collect-submodules", "service_runtime",
+  "--collect-submodules", "tools",
+  $BackendEntry
+)
+
 Invoke-Checked `
   -FilePath $Python `
   -Arguments @("--version") `
@@ -71,33 +101,7 @@ if (-not $SkipInstall) {
 
 Invoke-Checked `
   -FilePath $Python `
-  -Arguments @(
-    "-m", "PyInstaller",
-    "--noconfirm",
-    "--clean",
-    "--name", "branchwhisper-backend",
-    "--distpath", $DistRoot,
-    "--workpath", $WorkRoot,
-    "--specpath", $SpecRoot,
-    "--paths", (Join-Path $SourceRepoRoot "backend"),
-    "--add-data", $FrontendDistForPyInstaller,
-    $ExcludeModuleArgs,
-    "--collect-submodules", "api",
-    "--collect-submodules", "app",
-    "--collect-submodules", "core",
-    "--collect-submodules", "data",
-    "--collect-submodules", "diagnostics",
-    "--collect-submodules", "dialog",
-    "--collect-submodules", "domain",
-    "--collect-submodules", "engagement",
-    "--collect-submodules", "integration_runtime",
-    "--collect-submodules", "media",
-    "--collect-submodules", "memory",
-    "--collect-submodules", "repositories",
-    "--collect-submodules", "service_runtime",
-    "--collect-submodules", "tools",
-    $BackendEntry
-  ) `
+  -Arguments $PyInstallerArgs `
   -RepairHint "If imports are missing, install backend dependencies in this Python environment and rerun."
 
 if (-not (Test-Path $BackendExecutable)) {
