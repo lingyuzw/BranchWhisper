@@ -5,13 +5,17 @@ pub struct BackendCommand {
 }
 
 impl BackendCommand {
-    pub fn default() -> Self {
-        Self::for_platform(std::env::consts::OS, |key| std::env::var(key).ok())
-    }
-
     pub fn for_platform<F>(platform: &str, get_env: F) -> Self
     where
         F: Fn(&str) -> Option<String>,
+    {
+        Self::for_platform_with_paths(platform, get_env, |_| false)
+    }
+
+    pub fn for_platform_with_paths<F, P>(platform: &str, get_env: F, path_exists: P) -> Self
+    where
+        F: Fn(&str) -> Option<String>,
+        P: Fn(&str) -> bool,
     {
         let host = "127.0.0.1".to_string();
         let port = "7860".to_string();
@@ -20,6 +24,15 @@ impl BackendCommand {
                 program,
                 args: vec!["--host".to_string(), host, "--port".to_string(), port],
             };
+        }
+
+        if let Some(program) = default_packaged_backend_path(platform, &get_env) {
+            if path_exists(&program) {
+                return Self {
+                    program,
+                    args: vec!["--host".to_string(), host, "--port".to_string(), port],
+                };
+            }
         }
 
         let env = get_env("BRANCHWHISPER_BACKEND_ENV").unwrap_or_else(|| "qwen3-asr".to_string());
@@ -42,6 +55,10 @@ impl BackendCommand {
         }
     }
 
+    pub fn uses_repo_cwd(&self) -> bool {
+        self.args.iter().any(|arg| arg == "backend/main.py")
+    }
+
     pub fn command_line(&self) -> String {
         let mut parts = vec![quote_shell_arg(&self.program)];
         parts.extend(self.args.iter().map(|arg| quote_shell_arg(arg)));
@@ -62,17 +79,42 @@ pub struct BackendLaunchContract {
 
 impl BackendLaunchContract {
     pub fn default_for_repo(repo_root: &str) -> Self {
+        Self::for_platform_and_repo(
+            std::env::consts::OS,
+            repo_root,
+            |key| std::env::var(key).ok(),
+            |path| std::path::Path::new(path).exists(),
+        )
+    }
+
+    pub fn for_platform_and_repo<F, P>(
+        platform: &str,
+        repo_root: &str,
+        get_env: F,
+        path_exists: P,
+    ) -> Self
+    where
+        F: Fn(&str) -> Option<String>,
+        P: Fn(&str) -> bool,
+    {
         let host = "127.0.0.1".to_string();
         let port = 7860;
+        let runtime_root = desktop_runtime_root(platform, repo_root, &get_env);
+        let command = BackendCommand::for_platform_with_paths(platform, &get_env, path_exists);
+        let cwd = if command.uses_repo_cwd() {
+            repo_root.to_string()
+        } else {
+            runtime_root.clone()
+        };
 
         Self {
             host: host.clone(),
             port,
-            cwd: repo_root.to_string(),
+            cwd,
             health_url: format!("http://{}:{}/api/health", host, port),
             app_url: format!("http://{}:{}/app/", host, port),
-            log_path: format!("{}/runtime/desktop/backend.log", repo_root),
-            command: BackendCommand::default(),
+            log_path: join_path(platform, &runtime_root, &["backend.log"]),
+            command,
         }
     }
 }
@@ -82,6 +124,59 @@ fn default_conda_for_platform(platform: &str) -> &'static str {
         "windows" => "conda",
         _ => "/home/me/miniconda3/bin/conda",
     }
+}
+
+fn desktop_runtime_root<F>(platform: &str, repo_root: &str, get_env: &F) -> String
+where
+    F: Fn(&str) -> Option<String>,
+{
+    if let Some(root) = get_env("BRANCHWHISPER_DESKTOP_RUNTIME_ROOT") {
+        return root;
+    }
+
+    if platform == "windows" {
+        if let Some(local_app_data) = get_env("LOCALAPPDATA") {
+            return join_path(platform, &local_app_data, &["BranchWhisper", "desktop-runtime"]);
+        }
+    }
+
+    join_path(platform, repo_root, &["runtime", "desktop"])
+}
+
+fn default_packaged_backend_path<F>(platform: &str, get_env: &F) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    if platform != "windows" {
+        return None;
+    }
+
+    let local_app_data = get_env("LOCALAPPDATA")?;
+    Some(join_path(
+        platform,
+        &local_app_data,
+        &[
+            "BranchWhisper",
+            "backend-build",
+            "dist",
+            "branchwhisper-backend",
+            "branchwhisper-backend.exe",
+        ],
+    ))
+}
+
+fn join_path(platform: &str, root: &str, parts: &[&str]) -> String {
+    let separator = if platform == "windows" { "\\" } else { "/" };
+    let mut path = root.trim_end_matches(['/', '\\']).to_string();
+
+    for part in parts {
+        if !path.is_empty() {
+            path.push_str(separator);
+        }
+        path.push_str(part.trim_matches(['/', '\\']));
+    }
+
+    path
 }
 
 fn quote_shell_arg(value: &str) -> String {
@@ -178,6 +273,67 @@ mod tests {
             "C:\\Program Files\\BranchWhisper\\backend\\branchwhisper-backend.exe"
         );
         assert_eq!(command.args, vec!["--host", "127.0.0.1", "--port", "7860"]);
+    }
+
+    #[test]
+    fn backend_command_finds_default_packaged_backend_on_windows() {
+        let expected =
+            "C:\\Users\\Me\\AppData\\Local\\BranchWhisper\\backend-build\\dist\\branchwhisper-backend\\branchwhisper-backend.exe";
+        let command = BackendCommand::for_platform_with_paths(
+            "windows",
+            |key| match key {
+                "LOCALAPPDATA" => Some("C:\\Users\\Me\\AppData\\Local".to_string()),
+                _ => None,
+            },
+            |path| path == expected,
+        );
+
+        assert_eq!(command.program, expected);
+        assert_eq!(command.args, vec!["--host", "127.0.0.1", "--port", "7860"]);
+    }
+
+    #[test]
+    fn windows_contract_uses_local_appdata_runtime_for_packaged_backend() {
+        let expected_backend =
+            "C:\\Users\\Me\\AppData\\Local\\BranchWhisper\\backend-build\\dist\\branchwhisper-backend\\branchwhisper-backend.exe";
+
+        let contract = BackendLaunchContract::for_platform_and_repo(
+            "windows",
+            "C:\\Users\\Me\\Desktop",
+            |key| match key {
+                "LOCALAPPDATA" => Some("C:\\Users\\Me\\AppData\\Local".to_string()),
+                _ => None,
+            },
+            |path| path == expected_backend,
+        );
+
+        assert_eq!(
+            contract.cwd,
+            "C:\\Users\\Me\\AppData\\Local\\BranchWhisper\\desktop-runtime"
+        );
+        assert_eq!(
+            contract.log_path,
+            "C:\\Users\\Me\\AppData\\Local\\BranchWhisper\\desktop-runtime\\backend.log"
+        );
+        assert_eq!(contract.command.program, expected_backend);
+    }
+
+    #[test]
+    fn runtime_root_override_is_used_for_logs_and_packaged_backend_cwd() {
+        let contract = BackendLaunchContract::for_platform_and_repo(
+            "windows",
+            "C:\\Users\\Me\\Desktop",
+            |key| match key {
+                "BRANCHWHISPER_DESKTOP_RUNTIME_ROOT" => Some("D:\\BranchWhisperRuntime".to_string()),
+                "BRANCHWHISPER_BACKEND_EXECUTABLE" => Some("D:\\BranchWhisper\\backend.exe".to_string()),
+                _ => None,
+            },
+            |_| false,
+        );
+
+        assert_eq!(contract.cwd, "D:\\BranchWhisperRuntime");
+        assert_eq!(contract.log_path, "D:\\BranchWhisperRuntime\\backend.log");
+        assert_eq!(contract.command.program, "D:\\BranchWhisper\\backend.exe");
     }
 
     #[test]
