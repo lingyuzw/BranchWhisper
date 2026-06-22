@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { ImagePlus, Mic, MicOff, Send, Volume2, VolumeX, XOctagon } from "@lucide/vue";
+import { Activity, Bot, Brain, ImagePlus, Rocket, Settings2, Stethoscope, Mic, MicOff, Send, Volume2, VolumeX, XOctagon } from "@lucide/vue";
+import { RouterLink } from "vue-router";
 import { uploadChatImage } from "@/api/assets";
 import { conversationExportUrl, updateConversation, type ChatAttachment, type ChatMessage, type ConversationSummary } from "@/api/conversations";
 import ConversationSidebar from "@/components/dashboard/ConversationSidebar.vue";
@@ -41,6 +42,14 @@ const metrics = reactive({
   llm: "--",
   tts: "--",
 });
+const dashboardQuickActions = [
+  { label: "添加微信", description: "扫码登录和桥接", to: "/integrations", icon: Bot },
+  { label: "人格设定", description: "名字、语气、主动性", to: "/settings", icon: Settings2 },
+  { label: "对话数据", description: "记忆和历史记录", to: "/memory", icon: Brain },
+  { label: "未来任务", description: "问候、提醒、日程", to: "/settings", icon: Rocket },
+  { label: "数据统计", description: "链路和接口状态", to: "/diagnostics", icon: Activity },
+  { label: "平台日志", description: "服务日志和命令", to: "/services", icon: Stethoscope },
+];
 
 const visibleConversations = computed(() => (activeScope.value === "weixin" ? conversations.weixinChats : conversations.webChats));
 const hasMessages = computed(() => liveMessages.value.length > 0);
@@ -529,6 +538,19 @@ function avatarUrl(role: string) {
           @archive-conversation="archiveConversation"
           @remove-conversation="removeConversation"
         />
+        <section class="dashboard-app-actions" aria-label="应用入口">
+          <div class="dashboard-app-actions-head">
+            <p class="eyebrow">应用入口</p>
+            <span>6</span>
+          </div>
+          <div class="dashboard-app-action-grid">
+            <RouterLink v-for="item in dashboardQuickActions" :key="item.label" class="dashboard-app-action" :to="item.to" :title="`${item.label}：${item.description}`">
+              <component :is="item.icon" :size="15" />
+              <span>{{ item.label }}</span>
+              <small>{{ item.description }}</small>
+            </RouterLink>
+          </div>
+        </section>
         <RuntimeMetrics class="dashboard-runtime-strip" :metrics="metrics" :level="level" />
       </aside>
 
