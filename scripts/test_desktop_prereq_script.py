@@ -50,8 +50,9 @@ class DesktopPrereqScriptTests(unittest.TestCase):
         content = WINDOWS_BACKEND_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("$FrontendDist", content)
+        self.assertIn("$FrontendDistForPyInstaller", content)
         self.assertIn("--add-data", content)
-        self.assertIn("frontend\\dist", content)
+        self.assertIn("frontend/dist", content)
 
     def test_windows_desktop_build_can_wire_packaged_backend(self) -> None:
         content = WINDOWS_DESKTOP_SCRIPT.read_text(encoding="utf-8")

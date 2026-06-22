@@ -14,6 +14,7 @@ $DistRoot = Join-Path $OutputRoot "dist"
 $WorkRoot = Join-Path $OutputRoot "work"
 $SpecRoot = Join-Path $OutputRoot "spec"
 $BackendExecutable = Join-Path $DistRoot "branchwhisper-backend\branchwhisper-backend.exe"
+$FrontendDistForPyInstaller = "$FrontendDist`:frontend/dist"
 
 function Invoke-Checked {
   param(
@@ -79,7 +80,7 @@ Invoke-Checked `
     "--workpath", $WorkRoot,
     "--specpath", $SpecRoot,
     "--paths", (Join-Path $SourceRepoRoot "backend"),
-    "--add-data", "$FrontendDist;frontend\dist",
+    "--add-data", $FrontendDistForPyInstaller,
     $ExcludeModuleArgs,
     "--collect-submodules", "api",
     "--collect-submodules", "app",
