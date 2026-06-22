@@ -5,6 +5,7 @@ pub struct BackendCommand {
 }
 
 impl BackendCommand {
+    #[cfg(test)]
     pub fn for_platform<F>(platform: &str, get_env: F) -> Self
     where
         F: Fn(&str) -> Option<String>,
