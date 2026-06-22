@@ -74,9 +74,8 @@ impl DesktopBackendLauncher {
 
 pub fn is_tcp_port_reachable(host: &str, port: u16) -> bool {
     match (host, port).to_socket_addrs() {
-        Ok(mut addresses) => addresses.any(|address| {
-            TcpStream::connect_timeout(&address, HEALTH_PROBE_TIMEOUT).is_ok()
-        }),
+        Ok(mut addresses) => addresses
+            .any(|address| TcpStream::connect_timeout(&address, HEALTH_PROBE_TIMEOUT).is_ok()),
         Err(_) => false,
     }
 }
@@ -98,7 +97,12 @@ pub fn start_backend_process(
         .create(true)
         .append(true)
         .open(&contract.log_path)
-        .map_err(|error| format!("Failed to open backend log {}: {}", contract.log_path, error))?;
+        .map_err(|error| {
+            format!(
+                "Failed to open backend log {}: {}",
+                contract.log_path, error
+            )
+        })?;
     let stderr = stdout
         .try_clone()
         .map_err(|error| format!("Failed to clone backend log handle: {}", error))?;
@@ -209,7 +213,10 @@ mod tests {
             let _ = listener.accept();
         });
 
-        assert!(is_tcp_port_reachable(&address.ip().to_string(), address.port()));
+        assert!(is_tcp_port_reachable(
+            &address.ip().to_string(),
+            address.port()
+        ));
         let _ = TcpStream::connect(address);
     }
 
@@ -220,9 +227,8 @@ mod tests {
             std::process::id()
         ));
         let log_path = temp_dir.join("runtime/desktop/backend.log");
-        let mut contract = BackendLaunchContract::default_for_repo(
-            temp_dir.to_str().expect("temp dir path"),
-        );
+        let mut contract =
+            BackendLaunchContract::default_for_repo(temp_dir.to_str().expect("temp dir path"));
         contract.command.program = "/bin/sh".to_string();
         contract.command.args = vec![
             "-c".to_string(),

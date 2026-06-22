@@ -1,6 +1,8 @@
 mod backend_contract;
 mod backend_launcher;
+mod startup_status;
 
+use startup_status::DesktopStartupStatus;
 use std::time::Duration;
 use tauri::{Manager, Url};
 
@@ -20,16 +22,30 @@ fn main() {
                 .unwrap_or_else(|_| ".".to_string());
             let startup_contract =
                 backend_contract::BackendLaunchContract::default_for_repo(&repo_root);
+            send_startup_status(
+                &window,
+                &DesktopStartupStatus::checking(&startup_contract.app_url),
+            );
             let startup_result =
                 backend_launcher::DesktopBackendLauncher::new(startup_contract.clone())
                     .ensure_backend();
-            if let Some(start_plan) = startup_result.start_plan {
-                let _startup_command = start_plan.command_line;
-                let _startup_log_path = start_plan.log_path;
-                if let Err(error) = backend_launcher::start_backend_process(&startup_contract) {
-                    eprintln!("{}", error);
-                    return Ok(());
-                }
+            if let Some(ref start_plan) = startup_result.start_plan {
+                let _startup_command = &start_plan.command_line;
+                let _startup_log_path = &start_plan.log_path;
+                send_startup_status(&window, &DesktopStartupStatus::starting(&startup_result));
+
+                let started_process =
+                    match backend_launcher::start_backend_process(&startup_contract) {
+                        Ok(process) => Some(process),
+                        Err(error) => {
+                            send_startup_status(
+                                &window,
+                                &DesktopStartupStatus::failed(&startup_result, None, &error),
+                            );
+                            eprintln!("{}", error);
+                            return Ok(());
+                        }
+                    };
 
                 if let Err(error) = backend_launcher::wait_for_backend_ready(
                     &startup_contract.host,
@@ -37,9 +53,24 @@ fn main() {
                     Duration::from_secs(30),
                     Duration::from_millis(250),
                 ) {
+                    send_startup_status(
+                        &window,
+                        &DesktopStartupStatus::failed(
+                            &startup_result,
+                            started_process.as_ref(),
+                            &error,
+                        ),
+                    );
                     eprintln!("{}", error);
                     return Ok(());
                 }
+
+                send_startup_status(
+                    &window,
+                    &DesktopStartupStatus::ready(&startup_result, started_process.as_ref()),
+                );
+            } else {
+                send_startup_status(&window, &DesktopStartupStatus::reusing(&startup_result));
             }
 
             if let Ok(url) = Url::parse(&startup_result.app_url) {
@@ -51,4 +82,15 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running BranchWhisper desktop shell");
+}
+
+fn send_startup_status(window: &tauri::WebviewWindow, status: &DesktopStartupStatus) {
+    let script = format!(
+        "window.__BRANCHWHISPER_STARTUP_STATUS__ = {}; window.dispatchEvent(new CustomEvent('branchwhisper:startup-status', {{ detail: window.__BRANCHWHISPER_STARTUP_STATUS__ }}));",
+        status.to_json()
+    );
+
+    if let Err(error) = window.eval(&script) {
+        eprintln!("Failed to update startup status: {}", error);
+    }
 }

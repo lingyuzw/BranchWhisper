@@ -5,51 +5,674 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BranchWhisper 启动中</title>
     <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef2f0;
+        --panel: #ffffff;
+        --panel-soft: #f7f9f8;
+        --line: #d8e0dc;
+        --line-strong: #b9c8c1;
+        --text: #1e2925;
+        --muted: #65736e;
+        --soft: #889791;
+        --green: #15803d;
+        --green-bg: #e8f6ed;
+        --yellow: #a16207;
+        --yellow-bg: #fff7d6;
+        --red: #b42318;
+        --red-bg: #fff0ed;
+        --blue: #2563eb;
+        --blue-bg: #edf4ff;
+        --ink: #111816;
+        --shadow: 0 18px 48px rgba(42, 57, 51, 0.13);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: #171912;
-        color: #f4f1e8;
-        font-family: "Microsoft YaHei UI", system-ui, sans-serif;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(238, 242, 240, 0.9)),
+          #eef2f0;
+        color: var(--text);
+        font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+        letter-spacing: 0;
       }
 
-      main {
-        width: min(720px, calc(100vw - 32px));
+      button,
+      a.button {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+        line-height: 1;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      button:hover,
+      a.button:hover {
+        border-color: var(--line-strong);
+        background: #f9fbfa;
+      }
+
+      button.primary,
+      a.button.primary {
+        border-color: #14532d;
+        background: #14532d;
+        color: #ffffff;
+      }
+
+      button.primary:hover,
+      a.button.primary:hover {
+        background: #166534;
+      }
+
+      button.ghost {
+        background: transparent;
+      }
+
+      .app-frame {
+        width: min(1180px, calc(100vw - 40px));
+        min-height: calc(100vh - 48px);
+        margin: 24px auto;
         display: grid;
-        gap: 14px;
-        padding: 24px;
-        border: 1px solid #3a392f;
+        grid-template-rows: auto 1fr;
+        gap: 18px;
+      }
+
+      .startup-header,
+      .startup-panel,
+      .side-panel,
+      .status-card {
+        border: 1px solid var(--line);
         border-radius: 8px;
-        background: #28281f;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: var(--shadow);
+      }
+
+      .startup-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        padding: 22px 24px;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: #19362b;
+        color: #f8faf9;
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
       }
 
       h1 {
-        margin: 0;
         font-size: 24px;
+        line-height: 1.25;
       }
 
-      p {
-        margin: 0;
-        color: #cfc8b9;
+      .subtitle {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 14px;
         line-height: 1.6;
       }
 
-      code {
-        padding: 10px;
-        border-radius: 6px;
-        background: #14160f;
-        color: #ead08a;
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .startup-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .startup-panel {
+        padding: 22px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .status-card {
+        box-shadow: none;
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .status-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .status-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .status-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        background: var(--soft);
+        box-shadow: 0 0 0 5px rgba(136, 151, 145, 0.14);
+        flex: 0 0 auto;
+      }
+
+      .status-pill {
+        min-width: 76px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #edf0ef;
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      [data-state="checking"] .status-dot,
+      [data-state="starting"] .status-dot {
+        background: var(--blue);
+        box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.14);
+      }
+
+      [data-state="checking"] .status-pill,
+      [data-state="starting"] .status-pill {
+        background: var(--blue-bg);
+        color: var(--blue);
+      }
+
+      [data-state="ready"] .status-dot,
+      [data-state="reusing"] .status-dot {
+        background: var(--green);
+        box-shadow: 0 0 0 5px rgba(21, 128, 61, 0.13);
+      }
+
+      [data-state="ready"] .status-pill,
+      [data-state="reusing"] .status-pill {
+        background: var(--green-bg);
+        color: var(--green);
+      }
+
+      [data-state="failed"] .status-dot {
+        background: var(--red);
+        box-shadow: 0 0 0 5px rgba(180, 35, 24, 0.13);
+      }
+
+      [data-state="failed"] .status-pill {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+
+      .status-detail {
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.7;
+      }
+
+      .progress-track {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5ebe8;
+      }
+
+      .progress-bar {
+        width: 42%;
+        height: 100%;
+        border-radius: inherit;
+        background: #2563eb;
+        animation: travel 1.55s ease-in-out infinite;
+      }
+
+      [data-state="failed"] .progress-bar {
+        width: 100%;
+        background: var(--red);
+        animation: none;
+      }
+
+      [data-state="ready"] .progress-bar,
+      [data-state="reusing"] .progress-bar {
+        width: 100%;
+        background: var(--green);
+        animation: none;
+      }
+
+      @keyframes travel {
+        0% {
+          transform: translateX(-78%);
+        }
+        50% {
+          transform: translateX(82%);
+        }
+        100% {
+          transform: translateX(230%);
+        }
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .recovery-stack,
+      .info-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .section-heading h2,
+      .side-panel h2 {
+        font-size: 16px;
+        line-height: 1.35;
+      }
+
+      .section-heading small,
+      .side-panel small {
+        color: var(--soft);
+        font-size: 12px;
+      }
+
+      .hint-list {
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 9px;
+        list-style: none;
+      }
+
+      .hint-list li {
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel-soft);
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .hint-list li:first-child {
+        border-color: #b7dec5;
+        background: var(--green-bg);
+        color: #14532d;
+      }
+
+      .side-panel {
+        padding: 18px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .code-block {
+        min-height: 72px;
+        padding: 13px;
+        border: 1px solid #d9ded9;
+        border-radius: 7px;
+        background: #111816;
+        color: #d8f3dc;
+        font-family: "Cascadia Mono", "Consolas", monospace;
+        font-size: 12.5px;
+        line-height: 1.55;
+        white-space: pre-wrap;
         overflow-wrap: anywhere;
+      }
+
+      .detail-box {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel-soft);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .meta-item {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel-soft);
+      }
+
+      .meta-item span {
+        display: block;
+        color: var(--soft);
+        font-size: 12px;
+      }
+
+      .meta-item strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .toast {
+        min-height: 20px;
+        color: var(--green);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .app-frame {
+          width: min(100vw - 24px, 680px);
+          margin: 12px auto;
+        }
+
+        .startup-header,
+        .startup-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .header-actions,
+        .quick-actions {
+          grid-template-columns: 1fr;
+          justify-content: stretch;
+        }
+
+        .header-actions,
+        .quick-actions,
+        .startup-header button,
+        .startup-header a,
+        .quick-actions button,
+        .quick-actions a {
+          width: 100%;
+        }
+
+        h1 {
+          font-size: 21px;
+        }
+
+        .meta-grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1>BranchWhisper 正在启动</h1>
-      <p>桌面壳会先启动或连接后端，然后打开 /app/。如果长时间停留在这里，请复制下面命令在终端运行。</p>
-      <code>/home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860</code>
+    <main class="app-frame" data-startup-status data-state="checking">
+      <header class="startup-header">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">BW</div>
+          <div>
+            <h1>BranchWhisper 正在启动</h1>
+            <p class="subtitle">正在连接应用后端。普通用户可以优先进入 API 模式，本机模型环境可以稍后再配置。</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="ghost" data-action="retry">重新检测</button>
+          <button type="button" data-action="export">导出诊断报告</button>
+          <a class="button primary" data-action="api-mode" href="#">进入 API 模式</a>
+        </div>
+      </header>
+
+      <section class="startup-grid">
+        <section class="startup-panel">
+          <article class="status-card" data-status-card>
+            <div class="status-line">
+              <div class="status-title">
+                <span class="status-dot" aria-hidden="true"></span>
+                <div>
+                  <h2 data-status-summary>正在检查后端</h2>
+                  <p class="status-detail" data-startup-detail>正在确认本机是否已有 BranchWhisper 后端运行。</p>
+                </div>
+              </div>
+              <span class="status-pill" data-status-label>检查中</span>
+            </div>
+            <div class="progress-track" aria-hidden="true"><div class="progress-bar"></div></div>
+          </article>
+
+          <div class="quick-actions">
+            <button type="button" data-action="retry">重新检测</button>
+            <button type="button" data-copy-target="command">复制启动命令</button>
+            <button type="button" data-copy-target="log-path">复制日志路径</button>
+            <button type="button" data-action="export">导出诊断报告</button>
+          </div>
+
+          <section class="recovery-stack">
+            <div class="section-heading">
+              <h2>修复建议</h2>
+              <small>按当前状态自动更新</small>
+            </div>
+            <ul class="hint-list" data-repair-hints>
+              <li>如果本机环境还没准备好，可以先进入 API 模式完成基础配置。</li>
+            </ul>
+          </section>
+        </section>
+
+        <aside class="side-panel">
+          <div class="section-heading">
+            <h2>启动信息</h2>
+            <small data-updated-at>等待状态</small>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span>应用地址</span>
+              <strong data-app-url>http://127.0.0.1:7860/app/</strong>
+            </div>
+            <div class="meta-item">
+              <span>日志路径</span>
+              <strong data-log-path>等待后端启动</strong>
+            </div>
+          </div>
+
+          <div class="info-list">
+            <div class="section-heading">
+              <h3>启动命令</h3>
+              <small>本机模式使用</small>
+            </div>
+            <pre class="code-block" data-command-line>/home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860</pre>
+          </div>
+
+          <div class="info-list">
+            <div class="section-heading">
+              <h3>错误详情</h3>
+              <small>失败时显示</small>
+            </div>
+            <div class="detail-box" data-error-detail>暂未发现错误。</div>
+          </div>
+
+          <div class="toast" role="status" aria-live="polite" data-toast></div>
+        </aside>
+      </section>
     </main>
+
+    <script>
+      const defaultStatus = {
+        state: "checking",
+        summary: "正在检查后端",
+        detail: "正在确认本机是否已有 BranchWhisper 后端运行。",
+        command_line:
+          "/home/me/miniconda3/bin/conda run -n qwen3-asr python backend/main.py --host 127.0.0.1 --port 7860",
+        log_path: "",
+        repair_hints: ["如果本机环境还没准备好，可以先进入 API 模式完成基础配置。"],
+        app_url: "http://127.0.0.1:7860/app/",
+      };
+
+      const labels = {
+        checking: "检查中",
+        reusing: "已连接",
+        starting: "运行中",
+        ready: "已就绪",
+        failed: "需处理",
+      };
+
+      let currentStatus = { ...defaultStatus };
+
+      const frame = document.querySelector("[data-startup-status]");
+      const summary = document.querySelector("[data-status-summary]");
+      const detail = document.querySelector("[data-startup-detail]");
+      const label = document.querySelector("[data-status-label]");
+      const commandLine = document.querySelector("[data-command-line]");
+      const logPath = document.querySelector("[data-log-path]");
+      const appUrl = document.querySelector("[data-app-url]");
+      const errorDetail = document.querySelector("[data-error-detail]");
+      const repairHints = document.querySelector("[data-repair-hints]");
+      const updatedAt = document.querySelector("[data-updated-at]");
+      const toast = document.querySelector("[data-toast]");
+      const apiModeLink = document.querySelector("[data-action='api-mode']");
+
+      function setupUrl(status) {
+        const url = status.app_url || defaultStatus.app_url;
+        return url.replace(/\/$/, "") + "/setup";
+      }
+
+      function renderStatus(status) {
+        currentStatus = { ...defaultStatus, ...status };
+        frame.dataset.state = currentStatus.state || "checking";
+        summary.textContent = currentStatus.summary || defaultStatus.summary;
+        detail.textContent = currentStatus.detail || defaultStatus.detail;
+        label.textContent = labels[currentStatus.state] || "未检测";
+        commandLine.textContent = currentStatus.command_line || "当前状态不需要本地启动命令。";
+        logPath.textContent = currentStatus.log_path || "暂无日志路径";
+        appUrl.textContent = currentStatus.app_url || defaultStatus.app_url;
+        errorDetail.textContent =
+          currentStatus.state === "failed" ? currentStatus.detail || "未知错误" : "暂未发现错误。";
+        apiModeLink.href = setupUrl(currentStatus);
+        updatedAt.textContent = new Date().toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
+        const hints = currentStatus.repair_hints?.length
+          ? currentStatus.repair_hints
+          : defaultStatus.repair_hints;
+        repairHints.replaceChildren(
+          ...hints.map((hint) => {
+            const item = document.createElement("li");
+            item.textContent = hint;
+            return item;
+          }),
+        );
+      }
+
+      async function copyText(value, message) {
+        if (!value) {
+          toast.textContent = "当前没有可复制的内容";
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          const input = document.createElement("textarea");
+          input.value = value;
+          input.setAttribute("readonly", "");
+          input.style.position = "fixed";
+          input.style.opacity = "0";
+          document.body.append(input);
+          input.select();
+          document.execCommand("copy");
+          input.remove();
+        }
+
+        toast.textContent = message;
+        window.setTimeout(() => {
+          toast.textContent = "";
+        }, 2600);
+      }
+
+      function exportReport() {
+        const report = {
+          exported_at: new Date().toISOString(),
+          startup: currentStatus,
+          user_action: "desktop_startup_recovery",
+        };
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "branchwhisper-startup-diagnostics.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.textContent = "诊断报告已导出";
+      }
+
+      document.addEventListener("click", (event) => {
+        const copyButton = event.target.closest("[data-copy-target]");
+        if (copyButton) {
+          const target = copyButton.dataset.copyTarget;
+          if (target === "command") {
+            copyText(currentStatus.command_line, "启动命令已复制");
+          }
+          if (target === "log-path") {
+            copyText(currentStatus.log_path, "日志路径已复制");
+          }
+          return;
+        }
+
+        const action = event.target.closest("[data-action]")?.dataset.action;
+        if (action === "retry") {
+          window.location.reload();
+        }
+        if (action === "export") {
+          exportReport();
+        }
+      });
+
+      window.addEventListener("branchwhisper:startup-status", (event) => {
+        renderStatus(event.detail || {});
+      });
+
+      renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
+    </script>
   </body>
 </html>
