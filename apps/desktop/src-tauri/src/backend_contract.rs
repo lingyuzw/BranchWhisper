@@ -15,6 +15,13 @@ impl BackendCommand {
     {
         let host = "127.0.0.1".to_string();
         let port = "7860".to_string();
+        if let Some(program) = get_env("BRANCHWHISPER_BACKEND_EXECUTABLE") {
+            return Self {
+                program,
+                args: vec!["--host".to_string(), host, "--port".to_string(), port],
+            };
+        }
+
         let env = get_env("BRANCHWHISPER_BACKEND_ENV").unwrap_or_else(|| "qwen3-asr".to_string());
         let program = get_env("BRANCHWHISPER_BACKEND_CONDA")
             .unwrap_or_else(|| default_conda_for_platform(platform).to_string());
@@ -155,6 +162,22 @@ mod tests {
 
         assert_eq!(command.program, "C:\\Tools\\miniconda3\\Scripts\\conda.exe");
         assert_eq!(command.args[2], "branchwhisper-api");
+    }
+
+    #[test]
+    fn backend_command_uses_packaged_executable_before_conda() {
+        let command = BackendCommand::for_platform("windows", |key| match key {
+            "BRANCHWHISPER_BACKEND_EXECUTABLE" => Some(
+                "C:\\Program Files\\BranchWhisper\\backend\\branchwhisper-backend.exe".to_string(),
+            ),
+            _ => None,
+        });
+
+        assert_eq!(
+            command.program,
+            "C:\\Program Files\\BranchWhisper\\backend\\branchwhisper-backend.exe"
+        );
+        assert_eq!(command.args, vec!["--host", "127.0.0.1", "--port", "7860"]);
     }
 
     #[test]

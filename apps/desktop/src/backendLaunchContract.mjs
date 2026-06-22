@@ -17,6 +17,29 @@ export function createBackendLaunchContract(options = {}) {
     envVars.BRANCHWHISPER_BACKEND_CONDA ||
     defaultCondaForPlatform(platform);
   const env = options.env || envVars.BRANCHWHISPER_BACKEND_ENV || DEFAULT_ENV;
+  const backendExecutable =
+    options.backendExecutable || envVars.BRANCHWHISPER_BACKEND_EXECUTABLE || "";
+  const command = backendExecutable
+    ? {
+        kind: "executable",
+        program: backendExecutable,
+        args: ["--host", host, "--port", String(port)],
+      }
+    : {
+        kind: "conda",
+        program: conda,
+        args: [
+          "run",
+          "-n",
+          env,
+          "python",
+          "backend/main.py",
+          "--host",
+          host,
+          "--port",
+          String(port),
+        ],
+      };
 
   return {
     host,
@@ -26,20 +49,7 @@ export function createBackendLaunchContract(options = {}) {
     appUrl: `http://${host}:${port}/app/`,
     logPath: resolve(root, "runtime/desktop/backend.log"),
     startupReadyTimeoutMs: Number(options.startupReadyTimeoutMs || 45000),
-    command: {
-      program: conda,
-      args: [
-        "run",
-        "-n",
-        env,
-        "python",
-        "backend/main.py",
-        "--host",
-        host,
-        "--port",
-        String(port),
-      ],
-    },
+    command,
   };
 }
 
@@ -66,7 +76,7 @@ export function validateBackendLaunchContract(contract) {
     errors.push("command.program is required");
   }
 
-  if (!contract.command?.args?.includes("backend/main.py")) {
+  if (contract.command?.kind !== "executable" && !contract.command?.args?.includes("backend/main.py")) {
     errors.push("command.args must include backend/main.py");
   }
 

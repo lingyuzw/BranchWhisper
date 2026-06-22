@@ -21,6 +21,7 @@ test("creates the default qwen3-asr backend startup contract", () => {
   assert.equal(contract.logPath, resolve(root, "runtime/desktop/backend.log"));
   assert.equal(contract.startupReadyTimeoutMs, 45000);
   assert.deepEqual(contract.command, {
+    kind: "conda",
     program: "/home/me/miniconda3/bin/conda",
     args: [
       "run",
@@ -40,6 +41,7 @@ test("uses a Windows-safe conda command instead of a WSL path on win32", () => {
   const contract = createBackendLaunchContract({ root, platform: "win32" });
 
   assert.equal(contract.command.program, "conda");
+  assert.equal(contract.command.kind, "conda");
   assert.deepEqual(contract.command.args.slice(0, 4), ["run", "-n", "qwen3-asr", "python"]);
 });
 
@@ -54,7 +56,22 @@ test("supports environment overrides for conda executable and backend env", () =
   });
 
   assert.equal(contract.command.program, "C:\\Tools\\miniconda3\\Scripts\\conda.exe");
+  assert.equal(contract.command.kind, "conda");
   assert.deepEqual(contract.command.args.slice(0, 4), ["run", "-n", "branchwhisper-api", "python"]);
+});
+
+test("uses packaged backend executable before conda when configured", () => {
+  const contract = createBackendLaunchContract({
+    root,
+    platform: "win32",
+    envVars: {
+      BRANCHWHISPER_BACKEND_EXECUTABLE: "C:\\Program Files\\BranchWhisper\\backend\\branchwhisper-backend.exe",
+    },
+  });
+
+  assert.equal(contract.command.program, "C:\\Program Files\\BranchWhisper\\backend\\branchwhisper-backend.exe");
+  assert.equal(contract.command.kind, "executable");
+  assert.deepEqual(contract.command.args, ["--host", "127.0.0.1", "--port", "7860"]);
 });
 
 test("supports host and port overrides without changing the command shape", () => {
@@ -92,4 +109,16 @@ test("rejects invalid launch contracts", () => {
     "command.program is required",
     "command.args must include backend/main.py",
   ]);
+});
+
+test("accepts packaged backend launch contracts without backend/main.py", () => {
+  const contract = createBackendLaunchContract({
+    root,
+    envVars: {
+      BRANCHWHISPER_BACKEND_EXECUTABLE: "/opt/BranchWhisper/backend/branchwhisper-backend",
+    },
+  });
+
+  assert.equal(contract.command.kind, "executable");
+  assert.deepEqual(validateBackendLaunchContract(contract), []);
 });
