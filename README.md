@@ -62,6 +62,18 @@ For a fresh computer without local model environments, start with the API-first 
 docs/deployment/desktop-environment-guide.md
 ```
 
+On Windows, the local desktop build can be copied to:
+
+```text
+C:\Users\Me\Desktop\BranchWhisper.exe
+```
+
+To build a desktop app that starts a packaged backend instead of relying on a manually opened terminal:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_windows_desktop.ps1 -BuildBackend
+```
+
 Start the backend:
 
 ```bash

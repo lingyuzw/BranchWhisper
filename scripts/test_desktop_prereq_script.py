@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "setup_desktop_prereqs.sh"
 WINDOWS_BACKEND_SCRIPT = ROOT / "scripts" / "build_windows_backend.ps1"
 WINDOWS_DESKTOP_SCRIPT = ROOT / "scripts" / "build_windows_desktop.ps1"
+DESKTOP_GUIDE = ROOT / "docs" / "deployment" / "desktop-environment-guide.md"
 
 
 class DesktopPrereqScriptTests(unittest.TestCase):
@@ -43,6 +44,14 @@ class DesktopPrereqScriptTests(unittest.TestCase):
         self.assertIn("$BackendExecutable", content)
         self.assertIn("BRANCHWHISPER_BACKEND_EXECUTABLE", content)
         self.assertIn("build_windows_backend.ps1", content)
+
+    def test_desktop_guide_documents_windows_app_and_packaged_backend_flow(self) -> None:
+        content = DESKTOP_GUIDE.read_text(encoding="utf-8")
+
+        self.assertIn("BranchWhisper.exe", content)
+        self.assertIn("build_windows_backend.ps1", content)
+        self.assertIn("build_windows_desktop.ps1 -BuildBackend", content)
+        self.assertIn("API Quick Mode", content)
 
 
 if __name__ == "__main__":

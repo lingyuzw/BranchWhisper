@@ -2,6 +2,22 @@
 
 BranchWhisper Desktop has two startup paths.
 
+## Where The App Is
+
+During local Windows packaging, the desktop executable is:
+
+```text
+C:\Users\Me\Desktop\BranchWhisper.exe
+```
+
+The build script also prints the generated release executable path:
+
+```text
+%LOCALAPPDATA%\BranchWhisper\windows-build\apps\desktop\src-tauri\target\release\branchwhisper-desktop.exe
+```
+
+For a normal user, the desired experience is to double-click `BranchWhisper.exe`, wait for the startup screen, and then enter API Quick Mode if no local model environment exists.
+
 ## Path 1: API Quick Mode
 
 Use this path on a new computer without WSL, CUDA, conda, Qwen ASR, CosyVoice, llama.cpp, or model files.
@@ -32,6 +48,36 @@ open app
 ```
 
 If local runtime checks fail in API mode, treat them as optional warnings unless the active feature needs that local service.
+
+## Path 1A: Windows App With Packaged Backend
+
+This is the target path for a clean Windows computer. It avoids asking the user to open a terminal just to start the web console.
+
+Build the backend executable:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_windows_backend.ps1
+```
+
+Build the desktop app and wire the packaged backend into the desktop launch contract:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_windows_desktop.ps1 -BuildBackend
+```
+
+If the backend has already been built, pass it explicitly:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_windows_desktop.ps1 -BackendExecutable "$env:LOCALAPPDATA\BranchWhisper\backend-build\dist\branchwhisper-backend\branchwhisper-backend.exe"
+```
+
+The desktop build sets `BRANCHWHISPER_BACKEND_EXECUTABLE` so the Tauri shell starts the packaged backend before falling back to conda. If backend packaging fails, install Python dependencies in the selected Python environment and rerun:
+
+```powershell
+python -m pip install pyinstaller
+```
+
+Current limitation: the first packaged backend still depends on the Python environment having BranchWhisper backend dependencies available at build time. Local model runtimes remain optional for API Quick Mode.
 
 ## Path 2: Desktop Development Mode
 
