@@ -12,7 +12,7 @@ import {
 const root = resolve("/tmp/BranchWhisper");
 
 test("probeBackendHealth reports ready when backend health is reachable", async () => {
-  const contract = createBackendLaunchContract({ root });
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
   const result = await probeBackendHealth(contract, {
     fetch: async (url) => ({
       ok: true,
@@ -29,7 +29,7 @@ test("probeBackendHealth reports ready when backend health is reachable", async 
 });
 
 test("probeBackendHealth reports unreachable connection failures", async () => {
-  const contract = createBackendLaunchContract({ root });
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
   const result = await probeBackendHealth(contract, {
     fetch: async () => {
       throw new Error("connect ECONNREFUSED 127.0.0.1:7860");
@@ -44,7 +44,7 @@ test("probeBackendHealth reports unreachable connection failures", async () => {
 });
 
 test("createBackendStartPlan returns copyable command and log guidance", () => {
-  const contract = createBackendLaunchContract({ root });
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
   const plan = createBackendStartPlan(contract);
 
   assert.equal(plan.action, "start");
@@ -59,7 +59,7 @@ test("createBackendStartPlan returns copyable command and log guidance", () => {
 });
 
 test("launcher reuses a healthy backend without creating a start plan", async () => {
-  const contract = createBackendLaunchContract({ root });
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
   const launcher = createDesktopBackendLauncher(contract, {
     fetch: async () => ({
       ok: true,
@@ -80,7 +80,7 @@ test("launcher reuses a healthy backend without creating a start plan", async ()
 });
 
 test("launcher returns a start plan when backend is not reachable", async () => {
-  const contract = createBackendLaunchContract({ root });
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
   const launcher = createDesktopBackendLauncher(contract, {
     fetch: async () => {
       throw new Error("All connection attempts failed");

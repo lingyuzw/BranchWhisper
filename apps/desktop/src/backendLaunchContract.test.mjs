@@ -11,7 +11,7 @@ import {
 const root = resolve("/tmp/BranchWhisper");
 
 test("creates the default qwen3-asr backend startup contract", () => {
-  const contract = createBackendLaunchContract({ root });
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
 
   assert.equal(contract.host, "127.0.0.1");
   assert.equal(contract.port, 7860);
@@ -34,6 +34,27 @@ test("creates the default qwen3-asr backend startup contract", () => {
       "7860",
     ],
   });
+});
+
+test("uses a Windows-safe conda command instead of a WSL path on win32", () => {
+  const contract = createBackendLaunchContract({ root, platform: "win32" });
+
+  assert.equal(contract.command.program, "conda");
+  assert.deepEqual(contract.command.args.slice(0, 4), ["run", "-n", "qwen3-asr", "python"]);
+});
+
+test("supports environment overrides for conda executable and backend env", () => {
+  const contract = createBackendLaunchContract({
+    root,
+    platform: "win32",
+    envVars: {
+      BRANCHWHISPER_BACKEND_CONDA: "C:\\Tools\\miniconda3\\Scripts\\conda.exe",
+      BRANCHWHISPER_BACKEND_ENV: "branchwhisper-api",
+    },
+  });
+
+  assert.equal(contract.command.program, "C:\\Tools\\miniconda3\\Scripts\\conda.exe");
+  assert.deepEqual(contract.command.args.slice(0, 4), ["run", "-n", "branchwhisper-api", "python"]);
 });
 
 test("supports host and port overrides without changing the command shape", () => {
