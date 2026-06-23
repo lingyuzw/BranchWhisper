@@ -12,7 +12,7 @@ fn main() {
     // Startup contract:
     // 1. If http://127.0.0.1:7860/api/health is alive, reuse that backend.
     // 2. Otherwise start the configured backend command and capture logs.
-    // 3. Keep startup.html visible as the desktop control hub after health responds.
+    // 3. Keep studio.html visible as the standalone desktop Studio after health responds.
     // 4. If startup fails, keep the hub visible with the copied command and log path.
     tauri::Builder::default()
         .setup(|app| {
