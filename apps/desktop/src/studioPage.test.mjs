@@ -767,3 +767,19 @@ test("studio platform logs ignore stale refresh responses and explain app source
   assert.match(html, /App 来源当前展示桌面启动状态和日志路径/);
   assert.match(loadSource, /platformLogEntriesFromText\("app", "desktop-status"/);
 });
+
+test("studio controls use consistent desktop sizing and header alignment", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /--control-height:\s*38px/);
+  assert.match(html, /--control-radius:\s*7px/);
+  assert.match(html, /--control-gap:\s*8px/);
+  assert.match(html, /\.icon-button,\s*\.action-button,\s*\.primary-action,\s*\.secondary-action\s*\{[\s\S]*min-height:\s*var\(--control-height\)/);
+  assert.match(html, /\.icon-button,\s*\.action-button,\s*\.primary-action,\s*\.secondary-action\s*\{[\s\S]*border-radius:\s*var\(--control-radius\)/);
+  assert.match(html, /\.text-input\s*\{[\s\S]*min-height:\s*var\(--control-height\)/);
+  assert.match(html, /\.input-preview\s*\{[\s\S]*min-height:\s*var\(--control-height\)/);
+  assert.match(html, /\.checkbox-field\s*\{[\s\S]*min-height:\s*var\(--control-height\)/);
+  assert.match(html, /\.panel-head,\s*\.table-head\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto;[\s\S]*align-items:\s*start/);
+  assert.match(html, /\.panel-actions\s*\{[\s\S]*align-items:\s*center;[\s\S]*gap:\s*var\(--control-gap\)/);
+  assert.match(html, /\.topbar-actions\s*\{[\s\S]*align-items:\s*center;[\s\S]*flex-wrap:\s*wrap;[\s\S]*gap:\s*var\(--control-gap\)/);
+});

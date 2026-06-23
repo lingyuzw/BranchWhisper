@@ -38,6 +38,9 @@
         --dark-primary: #d6b56d;
         --radius-sm: 5px;
         --radius-md: 8px;
+        --control-height: 38px;
+        --control-radius: 7px;
+        --control-gap: 8px;
         --font-ui: "Microsoft YaHei UI", "Segoe UI", "PingFang SC", system-ui, sans-serif;
         --font-mono: "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
       }
@@ -328,8 +331,10 @@
 
       .topbar-actions {
         display: flex;
+        align-items: center;
+        flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 8px;
+        gap: var(--control-gap);
         min-width: 0;
         max-width: 100%;
       }
@@ -338,13 +343,13 @@
       .action-button,
       .primary-action,
       .secondary-action {
-        min-height: 36px;
+        min-height: var(--control-height);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
+        gap: var(--control-gap);
         border: 1px solid var(--border);
-        border-radius: 7px;
+        border-radius: var(--control-radius);
         background: color-mix(in srgb, var(--surface) 90%, transparent);
         color: var(--text-soft);
         font-size: 13px;
@@ -354,7 +359,7 @@
       }
 
       .icon-button {
-        width: 38px;
+        width: var(--control-height);
         padding: 0;
       }
 
@@ -726,17 +731,18 @@
 
       .panel-head,
       .table-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
         gap: 12px;
       }
 
       .panel-actions {
         display: flex;
+        align-items: center;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 8px;
+        gap: var(--control-gap);
       }
 
       .form-grid {
@@ -757,13 +763,13 @@
       }
 
       .input-preview {
-        min-height: 38px;
+        min-height: var(--control-height);
         display: flex;
         align-items: center;
         overflow: hidden;
         padding: 0 10px;
         border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
+        border-radius: var(--control-radius);
         background: var(--surface-muted);
         color: var(--text-soft);
         font-size: 13px;
@@ -773,10 +779,10 @@
 
       .text-input {
         width: 100%;
-        min-height: 38px;
+        min-height: var(--control-height);
         padding: 0 10px;
         border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
+        border-radius: var(--control-radius);
         outline: none;
         background: var(--surface-muted);
         color: var(--text);
@@ -800,10 +806,10 @@
       }
 
       .checkbox-field {
-        min-height: 38px;
+        min-height: var(--control-height);
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--control-gap);
         color: var(--text-soft);
         font-size: 13px;
         font-weight: 700;
