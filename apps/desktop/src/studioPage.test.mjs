@@ -315,6 +315,31 @@ test("studio Bot save synchronizes the integration runtime binding", async () =>
   assert.match(html, /await syncBotBridgeIntegration\(result\.profile\?\.id \|\| selectedBotProfileId\)/);
 });
 
+test("studio Bot page edits auto reply guard settings for safer weixin rollout", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-bot-auto-reply-enabled",
+    "data-bot-group-replies-enabled",
+    "data-bot-allowlist-input",
+    "data-bot-blocklist-input",
+    "data-bot-reply-guard-summary",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+  assert.match(html, /const botAutoReplyEnabledInput = document\.querySelector\("\[data-bot-auto-reply-enabled\]"\)/);
+  assert.match(html, /const botGroupRepliesEnabledInput = document\.querySelector\("\[data-bot-group-replies-enabled\]"\)/);
+  assert.match(html, /function splitBotReplyList\(value\)/);
+  assert.match(html, /function formatBotReplyList\(items\)/);
+  assert.match(html, /auto_reply_enabled:\s*Boolean\(botAutoReplyEnabledInput\?\.checked\)/);
+  assert.match(html, /allow_group_chats:\s*Boolean\(botGroupRepliesEnabledInput\?\.checked\)/);
+  assert.match(html, /reply_allowlist:\s*splitBotReplyList\(botAllowlistInput\?\.value\)/);
+  assert.match(html, /reply_blocklist:\s*splitBotReplyList\(botBlocklistInput\?\.value\)/);
+  assert.match(html, /botAutoReplyEnabledInput\.checked = current\.auto_reply_enabled !== false/);
+  assert.match(html, /botGroupRepliesEnabledInput\.checked = current\.allow_group_chats === true/);
+  assert.match(html, /botReplyGuardSummary\.textContent = replyGuardSummary\(current\)/);
+});
+
 test("studio Bot bridge detection does not mark disabled integrations as usable", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 

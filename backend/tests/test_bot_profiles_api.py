@@ -59,6 +59,10 @@ class BotProfilesApiTests(unittest.TestCase):
         self.assertEqual(payload["profiles"][0]["bridge_integration_id"], "weixin_personal")
         self.assertEqual(payload["profiles"][0]["bridge_url"], "")
         self.assertFalse(payload["profiles"][0]["bridge_enabled"])
+        self.assertTrue(payload["profiles"][0]["auto_reply_enabled"])
+        self.assertFalse(payload["profiles"][0]["allow_group_chats"])
+        self.assertEqual(payload["profiles"][0]["reply_allowlist"], [])
+        self.assertEqual(payload["profiles"][0]["reply_blocklist"], [])
 
     def test_create_profile_persists_bot_persona(self) -> None:
         response = self.client.post(
@@ -105,6 +109,29 @@ class BotProfilesApiTests(unittest.TestCase):
 
         reloaded = BotProfileStore(self.profile_path, "默认模型人格")
         self.assertEqual(reloaded.get("wx-bot")["bridge_integration_id"], "weixin_work")
+
+    def test_create_profile_persists_reply_guard_config(self) -> None:
+        response = self.client.post(
+            "/api/bot-profiles",
+            json={
+                "id": "safe-wx-bot",
+                "name": "安全微信 Bot",
+                "auto_reply_enabled": False,
+                "allow_group_chats": True,
+                "reply_allowlist": ["friend-im-wechat", "family-room@chatroom", ""],
+                "reply_blocklist": "spam-user\nannoying-room@chatroom",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        profile = response.json()["profile"]
+        self.assertFalse(profile["auto_reply_enabled"])
+        self.assertTrue(profile["allow_group_chats"])
+        self.assertEqual(profile["reply_allowlist"], ["friend-im-wechat", "family-room@chatroom"])
+        self.assertEqual(profile["reply_blocklist"], ["spam-user", "annoying-room@chatroom"])
+
+        reloaded = BotProfileStore(self.profile_path, "默认模型人格")
+        self.assertEqual(reloaded.get("safe-wx-bot")["reply_blocklist"], ["spam-user", "annoying-room@chatroom"])
 
     def test_create_duplicate_profile_returns_conflict(self) -> None:
         self.client.post("/api/bot-profiles", json={"id": "wechat-bot", "name": "微信 Bot"})

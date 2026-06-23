@@ -815,6 +815,32 @@
         accent-color: var(--primary);
       }
 
+      .guard-panel {
+        display: grid;
+        gap: 12px;
+        margin: 14px 0;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
+      }
+
+      .guard-switches {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .guard-list-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .guard-list-grid .text-area {
+        min-height: 96px;
+      }
+
       .bot-workspace-layout,
       .config-layout {
         display: grid;
@@ -1524,6 +1550,30 @@
                     <label class="field"><span>桥接地址</span><input class="text-input" data-bot-bridge-url-input placeholder="可选，例如 http://127.0.0.1:18080" autocomplete="off" /></label>
                     <label class="checkbox-field"><input type="checkbox" data-bot-bridge-enabled />启用这个微信桥接</label>
                   </div>
+                  <div class="guard-panel">
+                    <div class="panel-head">
+                      <div>
+                        <h3>自动回复控制</h3>
+                        <p class="muted">先把回复范围管住，避免测试时误回群聊或陌生人。</p>
+                      </div>
+                      <span class="badge" data-bot-reply-guard-summary>自动回复开启</span>
+                    </div>
+                    <div class="guard-switches">
+                      <label class="checkbox-field"><input type="checkbox" data-bot-auto-reply-enabled checked />启用自动回复</label>
+                      <label class="checkbox-field"><input type="checkbox" data-bot-group-replies-enabled />允许群聊自动回复</label>
+                    </div>
+                    <div class="guard-list-grid">
+                      <label class="field">
+                        <span>允许名单</span>
+                        <textarea class="text-input text-area" data-bot-allowlist-input placeholder="可选，每行一个 sender_id 或群 ID。填写后只回复名单内对象。"></textarea>
+                      </label>
+                      <label class="field">
+                        <span>屏蔽名单</span>
+                        <textarea class="text-input text-area" data-bot-blocklist-input placeholder="可选，每行一个 sender_id 或群 ID。命中后永不自动回复。"></textarea>
+                      </label>
+                    </div>
+                    <p class="muted">默认开启自动回复、关闭群聊回复。先用允许名单试一个联系人，确认稳定后再扩大范围。</p>
+                  </div>
                   <div class="panel-actions">
                     <button class="primary-action" type="button" data-bot-bridge-test>检测桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-start>启动桥接</button>
@@ -1856,6 +1906,11 @@ backend: checking packaged runtime</pre>
       const botBridgeIntegrationInput = document.querySelector("[data-bot-bridge-integration-input]");
       const botBridgeUrlInput = document.querySelector("[data-bot-bridge-url-input]");
       const botBridgeEnabledInput = document.querySelector("[data-bot-bridge-enabled]");
+      const botAutoReplyEnabledInput = document.querySelector("[data-bot-auto-reply-enabled]");
+      const botGroupRepliesEnabledInput = document.querySelector("[data-bot-group-replies-enabled]");
+      const botAllowlistInput = document.querySelector("[data-bot-allowlist-input]");
+      const botBlocklistInput = document.querySelector("[data-bot-blocklist-input]");
+      const botReplyGuardSummary = document.querySelector("[data-bot-reply-guard-summary]");
       const botBridgeStatus = document.querySelector("[data-bot-bridge-status]");
       const botBridgeSummary = document.querySelector("[data-bot-bridge-summary]");
       const botBridgeLogShell = document.querySelector("[data-bot-bridge-log-collapsed]");
@@ -2150,6 +2205,30 @@ backend: checking packaged runtime</pre>
         return candidate;
       }
 
+      function splitBotReplyList(value) {
+        return String(value || "")
+          .split(/[\n,;，；\s]+/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .filter((item, index, items) => items.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index)
+          .slice(0, 80);
+      }
+
+      function formatBotReplyList(items) {
+        return (Array.isArray(items) ? items : []).filter(Boolean).join("\n");
+      }
+
+      function replyGuardSummary(profile) {
+        if (profile.auto_reply_enabled === false) {
+          return "自动回复暂停";
+        }
+        const allowCount = Array.isArray(profile.reply_allowlist) ? profile.reply_allowlist.length : 0;
+        const blockCount = Array.isArray(profile.reply_blocklist) ? profile.reply_blocklist.length : 0;
+        const groupText = profile.allow_group_chats === true ? "群聊允许" : "群聊关闭";
+        const scopeText = allowCount ? `允许 ${allowCount}` : "全部私聊";
+        return `${groupText} · ${scopeText}${blockCount ? ` · 屏蔽 ${blockCount}` : ""}`;
+      }
+
       function renderSelectedBotProfile(profile) {
         const current = profile || selectedBotProfile();
         if (!current) {
@@ -2184,6 +2263,21 @@ backend: checking packaged runtime</pre>
         }
         if (botBridgeEnabledInput) {
           botBridgeEnabledInput.checked = current.bridge_enabled === true;
+        }
+        if (botAutoReplyEnabledInput) {
+          botAutoReplyEnabledInput.checked = current.auto_reply_enabled !== false;
+        }
+        if (botGroupRepliesEnabledInput) {
+          botGroupRepliesEnabledInput.checked = current.allow_group_chats === true;
+        }
+        if (botAllowlistInput) {
+          botAllowlistInput.value = formatBotReplyList(current.reply_allowlist);
+        }
+        if (botBlocklistInput) {
+          botBlocklistInput.value = formatBotReplyList(current.reply_blocklist);
+        }
+        if (botReplyGuardSummary) {
+          botReplyGuardSummary.textContent = replyGuardSummary(current);
         }
         setBotBridgeStatus(current.bridge_enabled ? "待检测" : "未启用", current.bridge_enabled ? "warn" : "run");
         setBotBridgeLog(`等待检测当前 Bot：${current.name || current.id || "当前 Bot"}\n集成实例：${current.bridge_integration_id || "weixin_personal"}`);
@@ -2248,6 +2342,10 @@ backend: checking packaged runtime</pre>
           bridge_integration_id: selectedBotBridgeIntegrationId(),
           bridge_url: botBridgeUrlInput?.value.trim() || "",
           bridge_enabled: Boolean(botBridgeEnabledInput?.checked),
+          auto_reply_enabled: Boolean(botAutoReplyEnabledInput?.checked),
+          allow_group_chats: Boolean(botGroupRepliesEnabledInput?.checked),
+          reply_allowlist: splitBotReplyList(botAllowlistInput?.value),
+          reply_blocklist: splitBotReplyList(botBlocklistInput?.value),
         };
       }
 

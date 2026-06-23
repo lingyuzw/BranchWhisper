@@ -20,6 +20,28 @@ def safe_id(value: str, fallback: str = DEFAULT_PROFILE_ID) -> str:
     return text[:64] or fallback
 
 
+def normalize_reply_list(value) -> list[str]:
+    if isinstance(value, str):
+        raw_items = re.split(r"[\n,;，；\s]+", value)
+    elif isinstance(value, list):
+        raw_items = value
+    else:
+        raw_items = []
+    items: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_items:
+        text = str(raw or "").strip()
+        if not text:
+            continue
+        text = re.sub(r"\s+", "", text)[:120]
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(text)
+    return items[:80]
+
+
 class BotProfileStore:
     def __init__(self, path: Path, default_system: str):
         self.path = path
@@ -41,6 +63,10 @@ class BotProfileStore:
             "bridge_integration_id": DEFAULT_BRIDGE_INTEGRATION_ID,
             "bridge_url": "",
             "bridge_enabled": False,
+            "auto_reply_enabled": True,
+            "allow_group_chats": False,
+            "reply_allowlist": [],
+            "reply_blocklist": [],
             "created_at": now,
             "updated_at": now,
         }
@@ -120,6 +146,10 @@ class BotProfileStore:
             ),
             "bridge_url": str(item.get("bridge_url") or "").strip()[:300],
             "bridge_enabled": bool(item.get("bridge_enabled", False)),
+            "auto_reply_enabled": bool(item.get("auto_reply_enabled", True)),
+            "allow_group_chats": bool(item.get("allow_group_chats", False)),
+            "reply_allowlist": normalize_reply_list(item.get("reply_allowlist")),
+            "reply_blocklist": normalize_reply_list(item.get("reply_blocklist")),
             "created_at": str(item.get("created_at") or now),
             "updated_at": str(item.get("updated_at") or now),
         }

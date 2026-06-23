@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import base64
 import json
 import sys
@@ -1631,6 +1632,89 @@ class ExternalDialogHistoryTests(unittest.TestCase):
 
         self.assertEqual(strip_internal_attachment_markers(leaked), "嗯嗯好歌都是需要时间品的")
         self.assertEqual(clean_reply_text(leaked), "嗯嗯好歌都是需要时间品的")
+
+
+class ExternalDialogAutoReplyControlTests(unittest.TestCase):
+    def make_engine(self, profile: dict) -> tuple[ExternalDialogEngine, object]:
+        class FakeIntegrationManager:
+            def __init__(self):
+                self.logs = []
+                self.runtime = {}
+
+            def get_integration(self, platform_id):
+                return {"id": platform_id, "bot_profile_id": "safe-wx-bot", "voice_trigger_keywords": []}
+
+            def append_log(self, platform_id, text):
+                self.logs.append((platform_id, text))
+
+        class FakeProfiles:
+            def get(self, profile_id):
+                return {"id": profile_id, "system": "不要编造", "tools_enabled": False, **profile}
+
+        manager = FakeIntegrationManager()
+        engine = ExternalDialogEngine(
+            integration_manager=manager,
+            conversation_store=None,
+            memory_store=None,
+            tool_manager=None,
+            bot_profiles=FakeProfiles(),
+            media_dir=Path(tempfile.gettempdir()),
+        )
+        return engine, manager
+
+    def test_paused_profile_returns_empty_reply_without_calling_model(self) -> None:
+        engine, manager = self.make_engine({"auto_reply_enabled": False})
+
+        async def fail_reply_text(*_args, **_kwargs):
+            raise AssertionError("paused Bot must not call the model")
+
+        engine.reply_text = fail_reply_text
+
+        result = asyncio.run(
+            engine.handle(
+                {
+                    "platform_id": "weixin_personal",
+                    "session_id": "friend-im-wechat",
+                    "sender_id": "friend-im-wechat",
+                    "text": "在吗",
+                    "metadata": {"message_id": "msg-1"},
+                },
+                default_settings(),
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["skipped"])
+        self.assertEqual(result["skip_reason"], "auto_reply_paused")
+        self.assertEqual(result["reply_text"], "")
+        self.assertEqual(result["reply_parts"], [])
+        self.assertTrue(any("auto_reply_paused" in text for _platform, text in manager.logs))
+
+    def test_auto_reply_decision_blocks_groups_blocklist_and_non_allowlisted_senders(self) -> None:
+        engine, _manager = self.make_engine({})
+        profile = {
+            "auto_reply_enabled": True,
+            "allow_group_chats": False,
+            "reply_allowlist": ["friend-im-wechat"],
+            "reply_blocklist": ["blocked-im-wechat"],
+        }
+
+        self.assertEqual(
+            engine.auto_reply_decision(profile, sender_id="friend-im-wechat", session_id="friend-im-wechat", metadata={})["reason"],
+            "allowed",
+        )
+        self.assertEqual(
+            engine.auto_reply_decision(profile, sender_id="blocked-im-wechat", session_id="blocked-im-wechat", metadata={})["reason"],
+            "blocked_sender",
+        )
+        self.assertEqual(
+            engine.auto_reply_decision(profile, sender_id="stranger-im-wechat", session_id="stranger-im-wechat", metadata={})["reason"],
+            "not_allowlisted",
+        )
+        self.assertEqual(
+            engine.auto_reply_decision(profile, sender_id="friend-im-wechat", session_id="family-room@chatroom", metadata={"group_id": "family-room@chatroom"})["reason"],
+            "group_disabled",
+        )
 
 
 class StickerPolicyTests(unittest.TestCase):

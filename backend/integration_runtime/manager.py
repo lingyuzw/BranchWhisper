@@ -1396,6 +1396,36 @@ class ExternalDialogEngine:
         keywords = (integration or {}).get("voice_trigger_keywords") or DEFAULT_VOICE_TRIGGERS
         bot_profile = self.bot_profiles.get((integration or {}).get("bot_profile_id") or "default")
         runtime_settings = self.settings_for_profile(settings, bot_profile)
+        metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+        decision = self.auto_reply_decision(bot_profile, sender_id=sender_id, session_id=session_id, metadata=metadata)
+        if not decision["allowed"]:
+            trace_id = f"ext_{uuid.uuid4().hex[:10]}"
+            self.integration_manager.runtime.setdefault(platform_id, {})["last_message_at"] = now_text()
+            self.integration_manager.append_log(
+                platform_id,
+                f"[dialog:{trace_id}] auto reply skipped reason={decision['reason']} sender={sender_id} session={session_id} text={compact_text(text, 120)}",
+            )
+            return {
+                "ok": True,
+                "skipped": True,
+                "skip_reason": decision["reason"],
+                "trace_id": trace_id,
+                "platform_id": platform_id,
+                "session_id": session_id,
+                "sender_id": sender_id,
+                "conversation_id": "",
+                "reply_text": "",
+                "reply_parts": [],
+                "attachments": [],
+                "voice_requested": False,
+                "send_voice": False,
+                "voice_file": "",
+                "voice_format": "",
+                "voice_error": "",
+                "tool_used": "",
+                "direct_answer": False,
+                "timings": {"receive_ms": 0, "tool_ms": 0, "llm_ms": 0, "tts_ms": 0, "memory_ms": 0, "send_ms": 0, "total_ms": 0},
+            }
         conversation_id = self.integration_manager.session_conversation_id(platform_id, session_id, sender_id, self.conversation_store)
         conversation = self.conversation_store.load(conversation_id)
         if not conversation:
@@ -1404,7 +1434,6 @@ class ExternalDialogEngine:
                 metadata={"source": platform_id, "platform_id": platform_id, "sender_id": sender_id},
             )
             conversation_id = conversation["id"]
-        metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
         if platform_id and sender_id and metadata.get("account_id"):
             self.integration_manager.bind_my_weixin_session(
                 platform_id,
@@ -1560,6 +1589,26 @@ class ExternalDialogEngine:
             "direct_answer": bool(direct_answer),
             "timings": timings,
         }
+
+    def auto_reply_decision(self, profile: dict, *, sender_id: str, session_id: str, metadata: dict) -> dict:
+        if profile.get("auto_reply_enabled") is False:
+            return {"allowed": False, "reason": "auto_reply_paused"}
+        sender = str(sender_id or "").strip()
+        session = str(session_id or "").strip()
+        group_id = str((metadata or {}).get("group_id") or "").strip()
+        is_group = bool(group_id or session.endswith("@chatroom") or sender.endswith("@chatroom"))
+        if is_group and profile.get("allow_group_chats") is not True:
+            return {"allowed": False, "reason": "group_disabled"}
+
+        candidates = {item.lower() for item in (sender, session, group_id) if item}
+        blocklist = {str(item or "").strip().lower() for item in profile.get("reply_blocklist") or [] if str(item or "").strip()}
+        if candidates & blocklist:
+            return {"allowed": False, "reason": "blocked_sender"}
+
+        allowlist = {str(item or "").strip().lower() for item in profile.get("reply_allowlist") or [] if str(item or "").strip()}
+        if allowlist and not (candidates & allowlist):
+            return {"allowed": False, "reason": "not_allowlisted"}
+        return {"allowed": True, "reason": "allowed"}
 
     def choose_reply_sticker(
         self,
