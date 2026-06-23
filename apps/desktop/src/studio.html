@@ -7,25 +7,67 @@
     <style>
       :root {
         color-scheme: light;
-        --bg: #f5f6f2;
-        --surface: #ffffff;
-        --surface-soft: #f8faf6;
-        --ink: #1b211d;
-        --muted: #626d65;
-        --soft: #879189;
-        --line: #dfe6dd;
-        --line-strong: #c6d0c8;
-        --green: #17803b;
-        --green-bg: #e9f7ee;
-        --yellow: #a66f00;
-        --yellow-bg: #fff6d8;
-        --red: #ba2c20;
-        --red-bg: #fff0ec;
-        --blue: #255fd7;
-        --blue-bg: #edf3ff;
-        --dark: #20251f;
-        --gold: #bf8a2a;
-        --shadow: 0 16px 42px rgba(34, 44, 38, 0.1);
+        --bg: #f6f4ef;
+        --bg-elevated: #eeebe3;
+        --surface: #fffdf8;
+        --surface-hover: #eeeae1;
+        --surface-muted: #f0eee7;
+        --text: #242620;
+        --text-soft: #57594f;
+        --text-muted: #858579;
+        --border: #d8d0c2;
+        --border-strong: #b8ac9b;
+        --primary: #9a6b34;
+        --primary-hover: #b37b3b;
+        --primary-soft: rgba(154, 107, 52, 0.11);
+        --primary-glow: rgba(154, 107, 52, 0.17);
+        --info: #2f7f7b;
+        --info-soft: rgba(47, 127, 123, 0.1);
+        --success: #4e7f53;
+        --success-soft: rgba(78, 127, 83, 0.1);
+        --warning: #a86c32;
+        --warning-soft: rgba(168, 108, 50, 0.11);
+        --danger: #ad514b;
+        --danger-soft: rgba(173, 81, 75, 0.1);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.08);
+        --dark-bg: #171912;
+        --dark-bg-elevated: #202118;
+        --dark-surface: #28281f;
+        --dark-surface-muted: #1f2119;
+        --dark-primary: #d6b56d;
+        --radius-sm: 5px;
+        --radius-md: 8px;
+        --font-ui: "Microsoft YaHei UI", "Segoe UI", "PingFang SC", system-ui, sans-serif;
+        --font-mono: "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+      }
+
+      html.theme-dark {
+        color-scheme: dark;
+        --bg: var(--dark-bg);
+        --bg-elevated: var(--dark-bg-elevated);
+        --surface: var(--dark-surface);
+        --surface-hover: #333229;
+        --surface-muted: var(--dark-surface-muted);
+        --text: #f4f1e8;
+        --text-soft: #cfc8b9;
+        --text-muted: #9a9a8e;
+        --border: #3a392f;
+        --border-strong: #5b5749;
+        --primary: var(--dark-primary);
+        --primary-hover: #ead08a;
+        --primary-soft: rgba(214, 181, 109, 0.13);
+        --primary-glow: rgba(214, 181, 109, 0.2);
+        --info: #75c8bd;
+        --info-soft: rgba(117, 200, 189, 0.12);
+        --success: #8dc58f;
+        --success-soft: rgba(141, 197, 143, 0.12);
+        --warning: #d79a55;
+        --warning-soft: rgba(215, 154, 85, 0.13);
+        --danger: #e97872;
+        --danger-soft: rgba(233, 120, 114, 0.12);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.025);
+        --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.34);
       }
 
       * {
@@ -33,143 +75,28 @@
       }
 
       body {
-        margin: 0;
         min-height: 100vh;
-        background: var(--bg);
-        color: var(--ink);
-        font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+        margin: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 10% -10%, var(--primary-soft), transparent 28vw),
+          radial-gradient(circle at 95% 8%, var(--info-soft), transparent 28vw),
+          var(--bg);
+        color: var(--text);
+        font-family: var(--font-ui);
         letter-spacing: 0;
       }
 
-      button {
-        min-height: 38px;
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        background: var(--surface);
-        color: var(--ink);
+      button,
+      input,
+      select,
+      textarea {
         font: inherit;
-        font-size: 14px;
+      }
+
+      button {
+        border: 0;
         cursor: pointer;
-      }
-
-      button:hover {
-        border-color: var(--line-strong);
-        background: #fbfcfa;
-      }
-
-      .studio-shell {
-        width: min(1440px, calc(100vw - 32px));
-        min-height: calc(100vh - 32px);
-        margin: 16px auto;
-        display: grid;
-        grid-template-columns: 260px minmax(0, 1fr);
-        overflow: hidden;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.74);
-        box-shadow: var(--shadow);
-      }
-
-      .studio-nav {
-        display: grid;
-        grid-template-rows: auto 1fr auto;
-        gap: 18px;
-        padding: 20px;
-        background: var(--dark);
-        color: #f8f2df;
-      }
-
-      .brand {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-      }
-
-      .brand-mark {
-        width: 42px;
-        height: 42px;
-        display: grid;
-        place-items: center;
-        border-radius: 8px;
-        background: #f0c78c;
-        color: #24170c;
-        font-weight: 800;
-      }
-
-      .brand strong {
-        display: block;
-        font-size: 17px;
-        line-height: 1.2;
-      }
-
-      .brand span {
-        display: block;
-        margin-top: 3px;
-        color: rgba(248, 242, 223, 0.66);
-        font-size: 12px;
-      }
-
-      .nav-items {
-        display: grid;
-        align-content: start;
-        gap: 8px;
-      }
-
-      .nav-items button {
-        width: 100%;
-        justify-content: flex-start;
-        padding: 0 12px;
-        border-color: rgba(248, 242, 223, 0.1);
-        background: rgba(248, 242, 223, 0.06);
-        color: #f8f2df;
-        text-align: left;
-      }
-
-      .nav-items button[aria-current="page"] {
-        border-color: rgba(248, 242, 223, 0.34);
-        background: rgba(248, 242, 223, 0.15);
-        box-shadow: inset 3px 0 0 #f0c78c;
-      }
-
-      .nav-status {
-        display: grid;
-        gap: 10px;
-        padding: 14px;
-        border: 1px solid rgba(248, 242, 223, 0.12);
-        border-radius: 8px;
-        background: rgba(248, 242, 223, 0.06);
-      }
-
-      .nav-status small {
-        color: rgba(248, 242, 223, 0.64);
-        font-size: 12px;
-      }
-
-      .nav-status strong {
-        font-size: 15px;
-      }
-
-      .studio-main {
-        min-width: 0;
-        display: grid;
-        grid-template-rows: auto auto 1fr auto;
-        gap: 16px;
-        padding: 22px;
-      }
-
-      .studio-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 18px;
-      }
-
-      .eyebrow {
-        margin: 0 0 7px;
-        color: var(--gold);
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
       }
 
       h1,
@@ -179,578 +106,1323 @@
         margin: 0;
       }
 
-      h1 {
-        font-size: 28px;
-        line-height: 1.18;
+      .studio-shell {
+        width: min(1440px, calc(100vw - 28px));
+        height: calc(100vh - 28px);
+        min-height: 720px;
+        display: grid;
+        grid-template-columns: 244px minmax(0, 1fr);
+        margin: 14px auto;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+        box-shadow: var(--shadow-md);
       }
 
-      .studio-header p:not(.eyebrow) {
-        max-width: 760px;
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.65;
+      .studio-nav {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 14px;
+        padding: 14px 12px;
+        border-right: 1px solid var(--border);
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--primary) 6%), var(--surface) 240px),
+          var(--surface);
       }
 
-      .header-actions,
-      .panel-actions,
-      .status-row {
+      .brand {
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        padding: 4px 6px 10px;
+      }
+
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, var(--primary), var(--info));
+        color: #17120a;
+        font-size: 12px;
+        font-weight: 800;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      }
+
+      .brand strong {
+        display: block;
+        overflow: hidden;
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 750;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .brand span {
+        display: block;
+        margin-top: 2px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .nav-items {
+        min-height: 0;
+        display: grid;
+        align-content: start;
+        gap: 4px;
+        overflow: auto;
+        padding-right: 3px;
+      }
+
+      .nav-section-label {
+        margin: 12px 8px 4px;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .nav-item {
+        width: 100%;
+        min-height: 36px;
         display: flex;
-        flex-wrap: wrap;
+        align-items: center;
+        gap: 9px;
+        padding: 0 9px;
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-soft);
+        font-size: 14px;
+        font-weight: 650;
+        text-align: left;
+        transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+      }
+
+      .nav-item:hover {
+        border-color: var(--border);
+        background: var(--surface-muted);
+        color: var(--text);
+      }
+
+      .nav-item[aria-current="page"] {
+        border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+        background: var(--primary-soft);
+        color: var(--primary);
+        box-shadow: inset 3px 0 0 var(--primary);
+      }
+
+      .nav-icon {
+        width: 24px;
+        height: 24px;
+        display: grid;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--surface-muted) 78%, transparent);
+        color: inherit;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .nav-status {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 76%, transparent);
+      }
+
+      .nav-status small {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .nav-status strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .main-shell {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: 58px minmax(0, 1fr);
+      }
+
+      .topbar {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: auto minmax(180px, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .workspace-toggle,
+      .segmented {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        width: fit-content;
+        padding: 3px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-muted);
+      }
+
+      .workspace-tab,
+      .segmented button {
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+
+      .workspace-tab.active,
+      .segmented button.active {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: inset 0 0 0 1px var(--border);
+      }
+
+      .topbar-title {
+        min-width: 0;
+        text-align: left;
+      }
+
+      .topbar-title strong {
+        display: block;
+        overflow: hidden;
+        color: var(--text);
+        font-size: 15px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .topbar-title span {
+        display: block;
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .topbar-actions {
+        display: flex;
         justify-content: flex-end;
+        gap: 8px;
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      .icon-button,
+      .action-button,
+      .primary-action,
+      .secondary-action {
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: color-mix(in srgb, var(--surface) 90%, transparent);
+        color: var(--text-soft);
+        font-size: 13px;
+        font-weight: 700;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
+        white-space: nowrap;
+      }
+
+      .icon-button {
+        width: 38px;
+        padding: 0;
+      }
+
+      .action-button,
+      .secondary-action {
+        padding: 0 12px;
+      }
+
+      .primary-action {
+        padding: 0 14px;
+        border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
+        background: linear-gradient(180deg, var(--primary-hover), var(--primary));
+        color: #17120a;
+      }
+
+      .icon-button:hover,
+      .action-button:hover,
+      .secondary-action:hover {
+        border-color: var(--border-strong);
+        background: var(--surface-hover);
+        color: var(--text);
+        transform: translateY(-1px);
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 336px;
+        gap: 14px;
+        padding: 16px;
+        overflow: auto;
+      }
+
+      .studio-shell[data-rail="hidden"] .workspace {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .studio-shell[data-rail="hidden"] .right-rail {
+        display: none;
+      }
+
+      .content-stack,
+      .right-rail {
+        min-width: 0;
+        display: grid;
+        align-content: start;
+        gap: 14px;
+      }
+
+      .page {
+        display: none;
+        min-width: 0;
+        gap: 14px;
+      }
+
+      .page.active {
+        display: grid;
+      }
+
+      .page-hero,
+      .panel,
+      .metric,
+      .rail-card,
+      .table-panel {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface) 96%, transparent);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .page-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        gap: 14px;
+        padding: 16px;
+        overflow: hidden;
+      }
+
+      .hero-copy {
+        min-width: 0;
+        display: grid;
+        align-content: start;
         gap: 10px;
       }
 
-      .primary {
-        border-color: #173b2a;
-        background: #173b2a;
-        color: #ffffff;
+      .eyebrow {
+        color: var(--primary);
+        font-size: 11px;
+        font-weight: 800;
       }
 
-      .ghost {
-        background: transparent;
+      h1 {
+        color: var(--text);
+        font-size: 25px;
+        line-height: 1.18;
+      }
+
+      h2 {
+        color: var(--text);
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      h3 {
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      .lead,
+      .muted {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.65;
       }
 
       .mode-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 10px;
       }
 
       .mode-card {
-        min-height: 172px;
+        min-height: 132px;
         display: grid;
         align-content: space-between;
-        gap: 16px;
-        padding: 20px;
-        text-align: left;
-        border-radius: 8px;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
         background: var(--surface);
+        color: var(--text);
+        text-align: left;
       }
 
-      .mode-card span {
+      .mode-card span,
+      .badge {
         width: fit-content;
-        padding: 5px 9px;
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0 9px;
+        border: 1px solid var(--border);
         border-radius: 999px;
-        background: #eef2ec;
-        color: var(--muted);
+        background: var(--surface-muted);
+        color: var(--text-muted);
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
+        white-space: nowrap;
       }
 
       .mode-card strong {
         display: block;
-        font-size: 24px;
+        font-size: 20px;
       }
 
       .mode-card small {
         display: block;
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.6;
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .mode-card.recommended {
+        border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+        background:
+          linear-gradient(135deg, var(--primary-soft), transparent 68%),
+          var(--surface);
       }
 
       .mode-card.recommended span {
-        background: var(--green-bg);
-        color: var(--green);
+        border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+        background: var(--success-soft);
+        color: var(--success);
       }
 
       .mode-card.active {
-        border-color: #173b2a;
-        box-shadow: inset 0 -3px 0 #173b2a;
+        box-shadow: inset 0 -3px 0 var(--primary);
       }
 
-      .workspace-grid {
-        min-height: 0;
-        display: grid;
-        grid-template-columns: minmax(0, 1.2fr) 360px;
-        gap: 16px;
-      }
-
-      .panel-stack,
-      .side-stack {
+      .guide-card {
         min-width: 0;
         display: grid;
-        gap: 14px;
-        align-content: start;
-      }
-
-      .panel,
-      .card {
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--surface);
-        box-shadow: 0 10px 24px rgba(38, 49, 43, 0.06);
-      }
-
-      .panel {
-        display: none;
-        padding: 18px;
-      }
-
-      .panel.active {
-        display: grid;
-        gap: 16px;
-      }
-
-      .panel-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 14px;
-      }
-
-      .panel-head h2 {
-        font-size: 20px;
-      }
-
-      .panel-head p {
-        margin-top: 6px;
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.6;
-      }
-
-      .pill {
-        min-width: 78px;
-        height: 28px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 10px;
-        border-radius: 999px;
-        background: var(--blue-bg);
-        color: var(--blue);
-        font-size: 12px;
-        font-weight: 700;
-        white-space: nowrap;
-      }
-
-      .field-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
       }
 
-      .field-card {
-        min-height: 92px;
-        padding: 13px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--surface-soft);
+      .guide-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
       }
 
-      .field-card span,
-      .card small {
-        display: block;
-        color: var(--soft);
+      .guide-track {
+        display: grid;
+        gap: 6px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+      }
+
+      .guide-track.active {
+        border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
+        background:
+          linear-gradient(135deg, var(--primary-soft), transparent 68%),
+          var(--surface);
+      }
+
+      .guide-track strong {
+        font-size: 14px;
+      }
+
+      .guide-track span {
+        color: var(--text-muted);
         font-size: 12px;
+        line-height: 1.45;
       }
 
-      .field-card strong {
-        display: block;
-        margin-top: 6px;
-        font-size: 15px;
-        line-height: 1.4;
-      }
-
-      .check-list {
+      .step-list {
         display: grid;
         gap: 8px;
       }
 
-      .check-row {
+      .step-row {
         display: grid;
-        grid-template-columns: 92px minmax(0, 1fr) auto;
+        grid-template-columns: 28px minmax(0, 1fr) auto;
         gap: 10px;
         align-items: center;
         padding: 10px;
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        background: var(--surface-soft);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface) 90%, transparent);
       }
 
-      .state {
+      .step-num {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .step-main {
+        min-width: 0;
+      }
+
+      .step-main strong {
+        display: block;
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .step-main span {
+        display: block;
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .status-chip {
+        min-height: 26px;
         display: inline-flex;
         align-items: center;
-        gap: 7px;
-        color: var(--muted);
+        gap: 6px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-muted);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--border-strong);
+      }
+
+      .status-dot.ok {
+        background: var(--success);
+      }
+
+      .status-dot.warn {
+        background: var(--warning);
+      }
+
+      .status-dot.run {
+        background: var(--info);
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        min-height: 92px;
+        display: grid;
+        align-content: space-between;
+        gap: 10px;
+        padding: 13px;
+      }
+
+      .metric span {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .metric strong {
+        color: var(--text);
+        font-size: 22px;
+        line-height: 1;
+      }
+
+      .panel {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .panel-head,
+      .table-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .panel-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        gap: 5px;
+      }
+
+      .field span {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .input-preview {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        padding: 0 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .table-panel {
+        overflow: hidden;
+      }
+
+      .table-head {
+        padding: 14px 14px 10px;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in srgb, var(--surface) 92%, var(--primary) 4%);
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
         font-size: 13px;
       }
 
-      .dot {
-        width: 9px;
-        height: 9px;
-        border-radius: 999px;
-        background: var(--soft);
+      .table th,
+      .table td {
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
       }
 
-      .dot.ok {
-        background: var(--green);
+      .table th {
+        color: var(--text-muted);
+        font-size: 12px;
       }
 
-      .dot.warn {
-        background: var(--yellow);
+      .table td {
+        color: var(--text-soft);
       }
 
-      .dot.run {
-        background: var(--blue);
+      .rail-card {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
       }
 
-      .card {
-        padding: 16px;
-      }
-
-      .card h3 {
-        font-size: 16px;
-      }
-
-      .card p {
-        margin-top: 8px;
-        color: var(--muted);
+      .rail-card p,
+      .rail-card li {
+        color: var(--text-muted);
         font-size: 13px;
         line-height: 1.6;
       }
 
-      .status-card {
+      .rail-card ul {
         display: grid;
-        gap: 12px;
+        gap: 7px;
+        margin: 0;
+        padding-left: 18px;
       }
 
       .log-box {
-        min-height: 134px;
+        min-height: 150px;
         margin: 0;
-        padding: 13px;
-        overflow-wrap: anywhere;
-        white-space: pre-wrap;
-        border: 1px solid #28342d;
-        border-radius: 7px;
-        background: #101712;
-        color: #dcefe0;
-        font-family: "Cascadia Mono", "Consolas", monospace;
+        overflow: auto;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-family: var(--font-mono);
         font-size: 12px;
         line-height: 1.55;
+        white-space: pre-wrap;
       }
 
-      .studio-statusbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 12px 14px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
+      .chat-layout {
+        min-height: 580px;
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
         background: var(--surface);
       }
 
-      .studio-statusbar span {
-        color: var(--muted);
+      .chat-list {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        padding: 12px;
+        border-right: 1px solid var(--border);
+        background: var(--surface-muted);
+      }
+
+      .chat-item {
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+
+      .chat-item strong {
+        display: block;
         font-size: 13px;
       }
 
-      @media (max-width: 1020px) {
+      .chat-item span {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .chat-thread {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+
+      .chat-thread-head,
+      .composer {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .messages {
+        display: grid;
+        align-content: start;
+        gap: 12px;
+        overflow: auto;
+        padding: 18px;
+      }
+
+      .message {
+        max-width: 720px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        color: var(--text-soft);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .message.user {
+        justify-self: end;
+        background: var(--primary-soft);
+      }
+
+      .message.assistant {
+        background: var(--surface-muted);
+      }
+
+      .composer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        border-top: 1px solid var(--border);
+        border-bottom: 0;
+      }
+
+      .composer-box {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+        color: var(--text-muted);
+      }
+
+      @media (max-width: 1180px) {
+        body {
+          overflow: auto;
+        }
+
         .studio-shell {
-          width: min(100vw - 20px, 760px);
+          height: auto;
+          min-height: calc(100vh - 20px);
+          grid-template-columns: 1fr;
+          margin: 10px auto;
+        }
+
+        .studio-nav {
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .nav-items {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          overflow: visible;
+        }
+
+        .nav-section-label {
+          grid-column: 1 / -1;
+        }
+
+        .topbar,
+        .workspace,
+        .page-hero,
+        .chat-layout {
           grid-template-columns: 1fr;
         }
+      }
 
-        .studio-header,
-        .panel-head,
-        .studio-statusbar {
-          display: grid;
+      @media (max-width: 780px) {
+        .topbar {
+          grid-template-columns: 1fr;
+          min-height: 132px;
+          padding: 10px;
         }
 
+        .workspace-toggle,
+        .segmented,
+        .topbar-actions {
+          width: 100%;
+          justify-content: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .workspace,
+        .metric-grid,
         .mode-grid,
-        .workspace-grid,
-        .field-grid {
+        .guide-tabs,
+        .form-grid {
           grid-template-columns: 1fr;
         }
 
-        .check-row {
-          grid-template-columns: 1fr;
+        .step-row {
+          grid-template-columns: 28px minmax(0, 1fr);
+        }
+
+        .step-row .status-chip {
+          grid-column: 2;
+          width: fit-content;
         }
       }
     </style>
   </head>
   <body>
-    <main class="studio-shell" data-studio-root data-active-section="home" data-active-mode="api">
+    <main
+      class="studio-shell"
+      data-studio-root
+      data-layout="management-app"
+      data-workspace="bot"
+      data-active-section="guide"
+      data-active-mode="api"
+      data-rail="guide"
+    >
       <aside class="studio-nav">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">BW</div>
           <div>
-            <strong>BranchWhisper Studio</strong>
-            <span>Desktop App</span>
+            <strong>BranchWhisper</strong>
+            <span>桌面管理应用</span>
           </div>
         </div>
 
-        <nav class="nav-items" aria-label="Studio sections">
-          <button type="button" data-section="home" aria-current="page">Home</button>
-          <button type="button" data-section="api">API Setup</button>
-          <button type="button" data-section="local">Local Setup</button>
-          <button type="button" data-section="wechat">WeChat</button>
-          <button type="button" data-section="persona">Persona</button>
-          <button type="button" data-section="conversations">Conversations</button>
-          <button type="button" data-section="tasks">Tasks</button>
-          <button type="button" data-section="logs">Logs</button>
-          <button type="button" data-section="diagnostics">Diagnostics</button>
+        <nav class="nav-items" aria-label="BranchWhisper 页面">
+          <div class="nav-section-label">开始</div>
+          <button class="nav-item" type="button" data-section="guide" aria-current="page"><span class="nav-icon">导</span>引导</button>
+          <button class="nav-item" type="button" data-section="api"><span class="nav-icon">API</span>API</button>
+          <button class="nav-item" type="button" data-section="bot"><span class="nav-icon">Bot</span>Bot</button>
+
+          <div class="nav-section-label">配置</div>
+          <button class="nav-item" type="button" data-section="config"><span class="nav-icon">设</span>配置文件</button>
+          <button class="nav-item" type="button" data-section="conversations"><span class="nav-icon">话</span>对话数据</button>
+          <button class="nav-item" type="button" data-section="assets"><span class="nav-icon">素</span>素材库</button>
+          <button class="nav-item" type="button" data-section="rules"><span class="nav-icon">规</span>自定义规则</button>
+          <button class="nav-item" type="button" data-section="tasks"><span class="nav-icon">任</span>未来任务</button>
+
+          <div class="nav-section-label">运行</div>
+          <button class="nav-item" type="button" data-section="statistics"><span class="nav-icon">数</span>数据统计</button>
+          <button class="nav-item" type="button" data-section="logs"><span class="nav-icon">志</span>平台日志</button>
+          <button class="nav-item" type="button" data-section="diagnostics"><span class="nav-icon">诊</span>诊断中心</button>
+          <button class="nav-item" type="button" data-section="settings"><span class="nav-icon">系</span>系统设置</button>
         </nav>
 
         <div class="nav-status">
-          <small>Backend</small>
-          <strong data-backend-summary>Checking packaged backend</strong>
-          <small data-backend-detail>Studio is preparing the runtime status.</small>
+          <small>当前状态</small>
+          <strong data-backend-summary>正在检查桌面后端</strong>
+          <small data-backend-detail>API 模式可先配置，本地环境可以稍后再做。</small>
         </div>
       </aside>
 
-      <section class="studio-main">
-        <header class="studio-header">
-          <div>
-            <p class="eyebrow">BranchWhisper Studio</p>
-            <h1>Choose how BranchWhisper should run</h1>
-            <p>Use API immediately, or configure a local model runtime with guided checks. The old web console is available only as an explicit advanced entry.</p>
+      <section class="main-shell">
+        <header class="topbar">
+          <div class="workspace-toggle" aria-label="工作区切换">
+            <button class="workspace-tab active" type="button" data-workspace-tab="bot">Bot 工作台</button>
+            <button class="workspace-tab" type="button" data-workspace-tab="chat">Chat</button>
           </div>
-          <div class="header-actions">
-            <button type="button" class="ghost" data-action="retry">Recheck</button>
-            <button type="button" data-action="export">Export Report</button>
-            <button type="button" class="primary" data-advanced-route="/app/">Advanced Web Console</button>
+
+          <div class="topbar-title">
+            <strong data-page-title>BranchWhisper Studio</strong>
+            <span data-page-subtitle>先用 API 跑通，再按需要接入微信和本地环境</span>
+          </div>
+
+          <div class="topbar-actions">
+            <div class="segmented" data-language-toggle aria-label="语言切换">
+              <button class="active" type="button" data-language="zh">中文</button>
+              <button type="button" data-language="en">EN</button>
+            </div>
+            <div class="segmented" data-theme-toggle aria-label="主题切换">
+              <button class="active" type="button" data-theme="light">浅色</button>
+              <button type="button" data-theme="dark">深色</button>
+            </div>
+            <button class="icon-button" type="button" data-system-settings data-section="settings" title="系统设置">设</button>
+            <button class="action-button" type="button" data-action="export">导出报告</button>
+            <button class="primary-action" type="button" data-advanced-route="/app/">Advanced Web Console</button>
           </div>
         </header>
 
-        <section class="mode-grid" aria-label="Runtime mode">
-          <button class="mode-card recommended active" type="button" data-mode="api">
-            <span>Recommended</span>
-            <strong>Use API</strong>
-            <small>Works without WSL, CUDA, conda, local models, llama.cpp, CosyVoice, Qwen ASR, or OpenClaw.</small>
-          </button>
-          <button class="mode-card" type="button" data-mode="local">
-            <span>Advanced</span>
-            <strong>Configure Local Runtime</strong>
-            <small>Guides WSL, qwen3-asr, Python, Node, ffmpeg, CUDA, model paths, and local services.</small>
-          </button>
-        </section>
-
-        <section class="workspace-grid">
-          <div class="panel-stack">
-            <section class="panel active" data-panel="home">
-              <div class="panel-head">
-                <div>
-                  <h2>Home</h2>
-                  <p>Start with the recommended API path, then add WeChat, persona rules, reminders, and local runtime only when needed.</p>
+        <section class="workspace">
+          <div class="content-stack">
+            <section class="page active" data-panel="guide">
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">欢迎引导</p>
+                  <h1>从零开始配置 BranchWhisper</h1>
+                  <p class="lead">这版先做成小白也能看懂的桌面应用：不装本地环境也能先跑通 API，再创建微信 Bot、设置人格、保存对话数据，最后按需要进入本地完整部署。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-section="api">开始新增 API</button>
+                    <button class="secondary-action" type="button" data-section="bot">创建微信 Bot</button>
+                    <button class="secondary-action" type="button" data-advanced-route="/app/">打开旧网页控制台</button>
+                  </div>
                 </div>
-                <span class="pill" data-current-mode>API mode</span>
+
+                <div class="guide-card">
+                  <div class="guide-tabs">
+                    <div class="guide-track active">
+                      <strong>API 轻量部署</strong>
+                      <span>推荐新手先走这条，不需要 WSL、CUDA、conda、本地模型。</span>
+                    </div>
+                    <div class="guide-track">
+                      <strong>本地完整部署</strong>
+                      <span>适合已经准备本地模型、语音链路和微信桥接的人。</span>
+                    </div>
+                  </div>
+
+                  <div class="mode-grid" aria-label="运行方式">
+                    <button class="mode-card recommended active" type="button" data-mode="api">
+                      <span>推荐</span>
+                      <strong>Use API</strong>
+                      <small>不装本地环境也能先跑通。配置 API URL、模型名和密钥后即可测试对话。</small>
+                    </button>
+                    <button class="mode-card" type="button" data-mode="local">
+                      <span>进阶</span>
+                      <strong>Configure Local Runtime</strong>
+                      <small>检查 WSL、conda、CUDA、Python、Node、ffmpeg、llama.cpp、CosyVoice、Qwen ASR、OpenClaw。</small>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div class="field-grid">
-                <div class="field-card"><span>First action</span><strong>Configure chat API and test the connection</strong></div>
-                <div class="field-card"><span>Optional next</span><strong>Add ASR/TTS API for voice input and output</strong></div>
-                <div class="field-card"><span>Advanced</span><strong>Run local model checks only when choosing local mode</strong></div>
-              </div>
-              <div class="panel-actions">
-                <button type="button" class="primary" data-section="api">Open API Setup</button>
-                <button type="button" data-section="local">Open Local Setup</button>
+
+              <div class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>API 新手路径</h2>
+                    <p class="muted">每一步都给出要填什么、为什么要填、成功后会看到什么。</p>
+                  </div>
+                  <span class="badge">当前推荐</span>
+                </div>
+                <div class="step-list">
+                  <div class="step-row">
+                    <span class="step-num">1</span>
+                    <div class="step-main"><strong>选择使用方式</strong><span>默认选择 API 轻量部署，先不处理本地环境。</span></div>
+                    <span class="status-chip"><i class="status-dot ok"></i>可开始</span>
+                  </div>
+                  <div class="step-row">
+                    <span class="step-num">2</span>
+                    <div class="step-main"><strong>新增 API</strong><span>内置 Qwen、DeepSeek、OpenAI 兼容和自定义预设。</span></div>
+                    <button class="secondary-action" type="button" data-section="api">去配置</button>
+                  </div>
+                  <div class="step-row">
+                    <span class="step-num">3</span>
+                    <div class="step-main"><strong>创建微信 Bot</strong><span>配置 Bot 名称、微信桥接、Bot 人格和模型人格。</span></div>
+                    <button class="secondary-action" type="button" data-section="bot">去创建</button>
+                  </div>
+                  <div class="step-row">
+                    <span class="step-num">4</span>
+                    <div class="step-main"><strong>测试对话</strong><span>发送一条测试消息，确认对话数据、平台日志和调用统计都会记录。</span></div>
+                    <button class="secondary-action" type="button" data-workspace-tab="chat">打开 Chat</button>
+                  </div>
+                </div>
               </div>
             </section>
 
-            <section class="panel" data-panel="api">
-              <div class="panel-head">
-                <div>
-                  <h2>API Setup</h2>
-                  <p>API mode is the normal first-run path. It only requires a compatible chat API; speech recognition and speech synthesis can be added later.</p>
+            <section class="page" data-panel="api">
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">API</p>
+                  <h1>新增和管理 API</h1>
+                  <p class="lead">这里不叫模型提供商，统一叫 API。新用户只需要知道：选预设、填密钥、点测试、保存启用。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button">新增 API</button>
+                    <button class="secondary-action" type="button">测试当前 API</button>
+                  </div>
                 </div>
-                <span class="pill">No local environment required</span>
+                <div class="panel">
+                  <h3>默认预设</h3>
+                  <div class="form-grid">
+                    <div class="input-preview">Qwen</div>
+                    <div class="input-preview">DeepSeek</div>
+                    <div class="input-preview">OpenAI 兼容</div>
+                    <div class="input-preview">自定义 API</div>
+                  </div>
+                </div>
               </div>
-              <div class="field-grid">
-                <div class="field-card"><span>Step 1</span><strong>Choose provider preset</strong></div>
-                <div class="field-card"><span>Step 2</span><strong>Enter API URL, model, and key</strong></div>
-                <div class="field-card"><span>Step 3</span><strong>Test, save, and start using BranchWhisper</strong></div>
-              </div>
-              <div class="panel-actions">
-                <button type="button" class="primary" data-advanced-route="/app/setup">Open Advanced API Settings</button>
-                <button type="button" data-section="wechat">Next: WeChat</button>
+              <div class="table-panel">
+                <div class="table-head">
+                  <div><h2>API 列表</h2><p class="muted">第一版先展示结构，后续接后端配置保存。</p></div>
+                  <span class="badge">API mode</span>
+                </div>
+                <table class="table">
+                  <thead><tr><th>名称</th><th>模型</th><th>状态</th><th>用途</th></tr></thead>
+                  <tbody>
+                    <tr><td>Qwen 默认</td><td>qwen-plus / openai-compatible</td><td>未配置</td><td>聊天模型</td></tr>
+                    <tr><td>DeepSeek 默认</td><td>deepseek-chat</td><td>未配置</td><td>备用模型</td></tr>
+                  </tbody>
+                </table>
               </div>
             </section>
 
-            <section class="panel" data-panel="local">
-              <div class="panel-head">
-                <div>
-                  <h2>Local Runtime Setup</h2>
-                  <p>Local mode checks the machine step by step before starting ASR, LLM, TTS, and bridge services.</p>
+            <section class="page" data-panel="bot">
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">Bot</p>
+                  <h1>创建微信 Bot</h1>
+                  <p class="lead">Bot 页面用于创建微信 Bot，绑定 API、微信桥接、Bot 人格、规则、素材库和任务提醒。</p>
                 </div>
-                <span class="pill">Guided checks</span>
+                <div class="panel">
+                  <h3>创建表单</h3>
+                  <div class="form-grid">
+                    <label class="field"><span>Bot 名称</span><div class="input-preview">例如：早安助手</div></label>
+                    <label class="field"><span>微信桥接</span><div class="input-preview">OpenClaw / 兼容桥接地址</div></label>
+                    <label class="field"><span>API</span><div class="input-preview">选择已启用 API</div></label>
+                    <label class="field"><span>状态</span><div class="input-preview">未启动</div></label>
+                  </div>
+                </div>
               </div>
-              <div class="check-list">
-                <div class="check-row"><span class="state"><i class="dot warn"></i> WSL</span><strong>Ubuntu runtime</strong><button type="button">Check</button></div>
-                <div class="check-row"><span class="state"><i class="dot"></i> conda</span><strong>qwen3-asr environment</strong><button type="button">Check</button></div>
-                <div class="check-row"><span class="state"><i class="dot"></i> models</span><strong>llama.cpp, CosyVoice, Qwen ASR paths</strong><button type="button">Select</button></div>
-              </div>
-              <div class="panel-actions">
-                <button type="button" class="primary" data-section="diagnostics">Run Diagnostics</button>
-                <button type="button" data-mode="api">Switch back to API</button>
+              <div class="metric-grid">
+                <div class="metric"><span>Bot 数量</span><strong>0</strong><small class="muted">等待创建</small></div>
+                <div class="metric"><span>在线状态</span><strong>未连接</strong><small class="muted">微信桥接未测试</small></div>
+                <div class="metric"><span>人格</span><strong>分离</strong><small class="muted">API 模型人格和 Bot 人格分开</small></div>
+                <div class="metric"><span>测试</span><strong>待执行</strong><small class="muted">发送微信测试消息</small></div>
               </div>
             </section>
 
-            <section class="panel" data-panel="wechat">
-              <div class="panel-head">
-                <div>
-                  <h2>WeChat</h2>
-                  <p>Connect the bridge, verify login state, and send a test message after API or local mode is ready.</p>
+            <section class="page" data-panel="config">
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">配置文件</p>
+                  <h1>分开管理模型人格和 Bot 人格</h1>
+                  <p class="lead">配置页会把 API 模型设置、Bot 设置、人格、记忆、问候和存储路径拆开，避免所有配置混在一起。</p>
                 </div>
-                <span class="pill">Bridge setup</span>
-              </div>
-              <div class="field-grid">
-                <div class="field-card"><span>Bridge</span><strong>OpenClaw or compatible bridge URL</strong></div>
-                <div class="field-card"><span>Login</span><strong>Account online and polling healthy</strong></div>
-                <div class="field-card"><span>Test</span><strong>Send and receive a message through BranchWhisper</strong></div>
-              </div>
-              <div class="panel-actions">
-                <button type="button" class="primary" data-advanced-route="/app/integrations">Open Advanced WeChat Console</button>
+                <div class="panel">
+                  <h3>配置分组</h3>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">A</span><div class="step-main"><strong>API 模型人格</strong><span>回答风格、事实边界、模型默认行为。</span></div><span class="status-chip">独立</span></div>
+                    <div class="step-row"><span class="step-num">B</span><div class="step-main"><strong>微信 Bot 人格</strong><span>面向具体 Bot 的语气、关系和场景设定。</span></div><span class="status-chip">独立</span></div>
+                  </div>
+                </div>
               </div>
             </section>
 
-            <section class="panel" data-panel="persona">
-              <div class="panel-head">
-                <div>
-                  <h2>Persona</h2>
-                  <p>Set speaking style, memory behavior, fabrication boundaries, morning greeting rules, weather city, and reminder policy.</p>
+            <section class="page" data-panel="conversations">
+              <div class="table-panel">
+                <div class="table-head">
+                  <div><h2>对话数据</h2><p class="muted">这里只放 Bot 的对话数据，支持查看、筛选、删除和导出。</p></div>
+                  <button class="secondary-action" type="button">打开数据文件夹</button>
                 </div>
-                <span class="pill">Behavior</span>
-              </div>
-              <div class="field-grid">
-                <div class="field-card"><span>Style</span><strong>Natural speech without robotic filler</strong></div>
-                <div class="field-card"><span>Memory</span><strong>Use saved facts without inventing missing context</strong></div>
-                <div class="field-card"><span>Greeting</span><strong>Mention reminders only when reminders exist</strong></div>
+                <table class="table">
+                  <thead><tr><th>Bot</th><th>会话</th><th>消息数</th><th>最后更新</th></tr></thead>
+                  <tbody><tr><td>暂无</td><td>创建 Bot 后开始记录</td><td>0</td><td>-</td></tr></tbody>
+                </table>
               </div>
             </section>
 
-            <section class="panel" data-panel="conversations">
-              <div class="panel-head">
-                <div>
-                  <h2>Conversations</h2>
-                  <p>Recent chats, WeChat conversations, memory references, and export actions will move here as Studio-native pages.</p>
+            <section class="page" data-panel="assets">
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">素材库</p>
+                  <h1>管理图片、语音、视频、文件和回复模板</h1>
+                  <p class="lead">素材可以是全局素材，也可以绑定到某个 Bot、人格、自定义规则或未来任务。</p>
                 </div>
-                <span class="pill">Data</span>
-              </div>
-              <div class="panel-actions">
-                <button type="button" class="primary" data-advanced-route="/app/">Open Advanced Chat Console</button>
+                <div class="metric-grid">
+                  <div class="metric"><span>图片</span><strong>0</strong></div>
+                  <div class="metric"><span>语音</span><strong>0</strong></div>
+                  <div class="metric"><span>文件</span><strong>0</strong></div>
+                  <div class="metric"><span>模板</span><strong>0</strong></div>
+                </div>
               </div>
             </section>
 
-            <section class="panel" data-panel="tasks">
-              <div class="panel-head">
-                <div>
-                  <h2>Tasks</h2>
-                  <p>Manage morning greetings, reminders, future tasks, and proactive messages without editing configuration files.</p>
+            <section class="page" data-panel="rules">
+              <div class="panel">
+                <div class="panel-head">
+                  <div><h2>自定义规则</h2><p class="muted">规则需要明确触发条件、目标 Bot、优先级和动作；缺数据时不能编造。</p></div>
+                  <button class="primary-action" type="button">新增规则</button>
                 </div>
-                <span class="pill">Automation</span>
-              </div>
-              <div class="field-grid">
-                <div class="field-card"><span>Morning</span><strong>Weather-aware greeting</strong></div>
-                <div class="field-card"><span>Reminders</span><strong>Only speak when active reminders exist</strong></div>
-                <div class="field-card"><span>Future</span><strong>Pending tasks and follow-ups</strong></div>
+                <div class="step-list">
+                  <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>触发条件</strong><span>关键词、时间、联系人或上下文。</span></div><span class="status-chip">待配置</span></div>
+                  <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>响应动作</strong><span>回复文本、调用素材、创建任务或记录日志。</span></div><span class="status-chip">待配置</span></div>
+                </div>
               </div>
             </section>
 
-            <section class="panel" data-panel="logs">
-              <div class="panel-head">
-                <div>
-                  <h2>Logs</h2>
-                  <p>Backend, service, and bridge logs appear here with copy and export actions.</p>
+            <section class="page" data-panel="tasks">
+              <div class="panel">
+                <div class="panel-head">
+                  <div><h2>未来任务</h2><p class="muted">管理提醒、早安问候和未来任务；没有提醒时，助手不要多说“我会看提醒”。</p></div>
+                  <button class="primary-action" type="button">新增任务</button>
                 </div>
-                <span class="pill">Runtime</span>
+                <div class="metric-grid">
+                  <div class="metric"><span>提醒</span><strong>0</strong></div>
+                  <div class="metric"><span>早安问候</span><strong>未启用</strong></div>
+                  <div class="metric"><span>未来任务</span><strong>0</strong></div>
+                  <div class="metric"><span>下次执行</span><strong>-</strong></div>
+                </div>
               </div>
-              <pre class="log-box" data-log-preview>Waiting for backend status...</pre>
             </section>
 
-            <section class="panel" data-panel="diagnostics">
-              <div class="panel-head">
-                <div>
-                  <h2>Diagnostics</h2>
-                  <p>Mode-aware checks separate required API settings from optional local enhancements.</p>
+            <section class="page" data-panel="statistics">
+              <div class="metric-grid">
+                <div class="metric"><span>Bot 数量</span><strong>0</strong></div>
+                <div class="metric"><span>消息数量</span><strong>0</strong></div>
+                <div class="metric"><span>模型调用</span><strong>0</strong></div>
+                <div class="metric"><span>Token 使用</span><strong>0</strong></div>
+              </div>
+              <div class="panel">
+                <h2>数据统计</h2>
+                <p class="muted">后续接入后端后，这里展示 Bot、消息、API 调用、Token、素材和任务执行统计。</p>
+              </div>
+            </section>
+
+            <section class="page" data-panel="logs">
+              <div class="panel">
+                <div class="panel-head">
+                  <div><h2>平台日志</h2><p class="muted">按 app、backend、API、Bot、微信桥接、任务、诊断分源展示。</p></div>
+                  <div class="panel-actions"><button class="secondary-action" type="button">只看错误</button><button class="secondary-action" type="button">复制日志</button></div>
                 </div>
-                <span class="pill">Repair guide</span>
+                <pre class="log-box" data-log-preview>等待后端状态...
+app: Studio shell loaded
+backend: checking packaged runtime</pre>
               </div>
-              <div class="field-grid">
-                <div class="field-card"><span>API mode</span><strong>LLM required; ASR and TTS optional</strong></div>
-                <div class="field-card"><span>Local mode</span><strong>WSL, conda, services, models, ports</strong></div>
-                <div class="field-card"><span>Report</span><strong>Export status, logs, commands, and failures</strong></div>
+            </section>
+
+            <section class="page" data-panel="diagnostics">
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">诊断中心</p>
+                  <h1>检查 API、本地环境和微信桥接</h1>
+                  <p class="lead">诊断页会检查模型路径、端口、Python、Node、ffmpeg、CUDA、llama.cpp、CosyVoice、Qwen ASR、OpenClaw、API 健康和后端健康。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button">重新检测</button>
+                    <button class="secondary-action" type="button" data-advanced-route="/app/diagnostics">打开高级诊断</button>
+                  </div>
+                </div>
+                <div class="step-list">
+                  <div class="step-row"><span class="step-num">API</span><div class="step-main"><strong>聊天 API</strong><span>未配置时给出新增 API 建议。</span></div><span class="status-chip"><i class="status-dot warn"></i>未检测</span></div>
+                  <div class="step-row"><span class="step-num">本地</span><div class="step-main"><strong>WSL / conda / CUDA</strong><span>本地模式才作为必需检查。</span></div><span class="status-chip"><i class="status-dot"></i>可跳过</span></div>
+                  <div class="step-row"><span class="step-num">桥接</span><div class="step-main"><strong>OpenClaw</strong><span>按当前配置名称和路径显示，不硬编码模型。</span></div><span class="status-chip"><i class="status-dot"></i>未配置</span></div>
+                </div>
               </div>
-              <div class="panel-actions">
-                <button type="button" class="primary" data-advanced-route="/app/diagnostics">Open Advanced Diagnostics</button>
+            </section>
+
+            <section class="page" data-panel="settings">
+              <div class="panel">
+                <div class="panel-head">
+                  <div><h2>系统设置</h2><p class="muted">管理语言、主题、运行目录、备份恢复、更新和诊断导出。</p></div>
+                  <span class="badge">Desktop</span>
+                </div>
+                <div class="form-grid">
+                  <label class="field"><span>运行数据目录</span><div class="input-preview">%APPDATA%\BranchWhisper\runtime</div></label>
+                  <label class="field"><span>主题</span><div class="input-preview">浅色 / 深色，沿用网页端配色</div></label>
+                  <label class="field"><span>语言</span><div class="input-preview">中文 / English</div></label>
+                  <label class="field"><span>高级入口</span><div class="input-preview">保留旧网页控制台</div></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="page" data-panel="chat">
+              <div class="chat-layout">
+                <aside class="chat-list">
+                  <button class="primary-action" type="button">创建对话</button>
+                  <div class="chat-item"><strong>新的对话</strong><span>选择 API 后开始聊天</span></div>
+                  <div class="chat-item"><strong>Bot 测试</strong><span>用于测试人格和规则</span></div>
+                </aside>
+                <div class="chat-thread">
+                  <div class="chat-thread-head">
+                    <h2>Chat</h2>
+                    <p class="muted">这里是独立的正常对话页面，布局接近 ChatGPT，不混在 Bot 管理页里。</p>
+                  </div>
+                  <div class="messages">
+                    <div class="message assistant">先选择 API 或本地模型，然后创建对话。这里会显示模型配置、当前人格、Token 使用和对话内容。</div>
+                    <div class="message user">我想测试一下 BranchWhisper 的聊天效果。</div>
+                  </div>
+                  <div class="composer">
+                    <div class="composer-box">输入消息...</div>
+                    <button class="primary-action" type="button">发送</button>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
 
-          <aside class="side-stack">
-            <article class="card status-card">
-              <div class="status-row">
-                <span class="state"><i class="dot run" data-backend-dot></i><strong data-status-label>Checking</strong></span>
-                <small data-updated-at>Waiting</small>
+          <aside class="right-rail">
+            <article class="rail-card">
+              <div class="panel-head">
+                <h3>运行状态</h3>
+                <span class="status-chip"><i class="status-dot run" data-backend-dot></i><span data-status-label>检查中</span></span>
               </div>
-              <h3 data-status-summary>Preparing backend</h3>
-              <p data-status-detail>Studio is checking whether the packaged backend is ready.</p>
+              <p data-status-summary>正在准备桌面后端</p>
+              <p data-status-detail>如果后端未启动，应用仍会显示这个桌面管理页，并给出修复建议。</p>
             </article>
 
-            <article class="card">
-              <h3>Why this is different</h3>
-              <p>This window is the desktop Studio. It does not automatically enter the old web console; web pages are opened only through explicit advanced actions.</p>
+            <article class="rail-card">
+              <h3>新手提示</h3>
+              <ul>
+                <li>没有环境的电脑，先走 API。</li>
+                <li>本地模型、CUDA、CosyVoice 可以以后再配。</li>
+                <li>对话数据、素材库和日志都会放到运行目录。</li>
+              </ul>
             </article>
 
-            <article class="card">
-              <h3>Recovery</h3>
-              <p data-repair-summary>If the backend cannot start, Studio will keep this page visible and show the command, log path, and repair hints.</p>
+            <article class="rail-card">
+              <h3>本地部署检查</h3>
+              <div class="step-list">
+                <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>WSL</strong><span>Ubuntu 是否可用</span></div><span class="status-chip">未测</span></div>
+                <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>conda</strong><span>qwen3-asr 环境</span></div><span class="status-chip">未测</span></div>
+                <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>CUDA</strong><span>可选，本地加速</span></div><span class="status-chip">可选</span></div>
+              </div>
             </article>
 
-            <article class="card">
-              <h3>Startup command</h3>
-              <pre class="log-box" data-command-line>Current state does not require a local command.</pre>
+            <article class="rail-card">
+              <h3>启动命令</h3>
+              <pre class="log-box" data-command-line>当前无需手动命令。</pre>
             </article>
           </aside>
         </section>
-
-        <footer class="studio-statusbar">
-          <span data-mode-summary>Mode: API recommended</span>
-          <span data-app-url>Backend app: http://127.0.0.1:7860/app/</span>
-          <span data-issue-count>Issues: 0</span>
-        </footer>
       </section>
     </main>
 
     <script>
       const defaultStatus = {
         state: "checking",
-        summary: "Preparing backend",
-        detail: "Studio is checking whether the packaged backend is ready.",
+        summary: "正在准备桌面后端",
+        detail: "API 模式可先配置，本地环境可以稍后再做。",
         command_line: "",
         log_path: "",
-        repair_hints: ["API mode can be configured before local model dependencies are installed."],
+        repair_hints: ["没有环境的电脑，先使用 API 轻量部署。"],
         app_url: "http://127.0.0.1:7860/app/",
       };
 
       const statusLabels = {
-        checking: "Checking",
-        starting: "Starting",
-        ready: "Ready",
-        reusing: "Connected",
-        failed: "Needs attention",
+        checking: "检查中",
+        starting: "启动中",
+        ready: "正常",
+        reusing: "已连接",
+        failed: "需处理",
       };
 
+      const pageTitles = {
+        guide: ["BranchWhisper Studio", "先用 API 跑通，再按需要接入微信和本地环境"],
+        api: ["API", "新增、测试和启用模型 API"],
+        bot: ["Bot 工作台", "创建微信 Bot 并绑定 API、人格和规则"],
+        config: ["配置文件", "分开管理模型人格、Bot 人格和运行配置"],
+        conversations: ["对话数据", "查看、删除和导出 Bot 对话数据"],
+        assets: ["素材库", "管理图片、语音、视频、文件和回复模板"],
+        rules: ["自定义规则", "配置触发条件、动作和素材引用"],
+        tasks: ["未来任务", "管理提醒、早安问候和未来任务"],
+        statistics: ["数据统计", "查看 Bot、消息、调用和 Token 使用"],
+        logs: ["平台日志", "查看 app、backend、API、Bot 和桥接日志"],
+        diagnostics: ["诊断中心", "检查 API、本地环境、模型路径、端口和桥接"],
+        settings: ["系统设置", "管理主题、语言、运行目录和备份"],
+        chat: ["Chat", "独立的模型对话页面"],
+      };
+
+      const defaultAppUrl = defaultStatus.app_url;
+      const railPages = new Set(["guide", "diagnostics"]);
       let currentStatus = { ...defaultStatus };
 
       const root = document.querySelector("[data-studio-root]");
+      const title = document.querySelector("[data-page-title]");
+      const subtitle = document.querySelector("[data-page-subtitle]");
       const statusSummary = document.querySelector("[data-status-summary]");
       const statusDetail = document.querySelector("[data-status-detail]");
       const statusLabel = document.querySelector("[data-status-label]");
       const backendSummary = document.querySelector("[data-backend-summary]");
       const backendDetail = document.querySelector("[data-backend-detail]");
       const backendDot = document.querySelector("[data-backend-dot]");
-      const updatedAt = document.querySelector("[data-updated-at]");
       const commandLine = document.querySelector("[data-command-line]");
       const logPreview = document.querySelector("[data-log-preview]");
-      const appUrl = document.querySelector("[data-app-url]");
-      const issueCount = document.querySelector("[data-issue-count]");
-      const modeSummary = document.querySelector("[data-mode-summary]");
-      const currentMode = document.querySelector("[data-current-mode]");
 
       function resolveAdvancedRoute(route) {
-        const base = currentStatus.app_url || defaultStatus.app_url;
+        const base = currentStatus.app_url || defaultAppUrl;
         const url = new URL(base);
         url.pathname = route || "/app/";
         url.search = "";
@@ -759,7 +1431,7 @@
       }
 
       function activateSection(section) {
-        const next = document.querySelector(`[data-panel="${section}"]`) ? section : "home";
+        const next = document.querySelector(`[data-panel="${section}"]`) ? section : "guide";
         root.dataset.activeSection = next;
         document.querySelectorAll("[data-panel]").forEach((panel) => {
           panel.classList.toggle("active", panel.dataset.panel === next);
@@ -771,6 +1443,23 @@
             button.removeAttribute("aria-current");
           }
         });
+        const [nextTitle, nextSubtitle] = pageTitles[next] || pageTitles.guide;
+        title.textContent = nextTitle;
+        subtitle.textContent = nextSubtitle;
+        root.dataset.rail = railPages.has(next) ? next : "hidden";
+      }
+
+      function activateWorkspace(workspace) {
+        const next = workspace === "chat" ? "chat" : "bot";
+        root.dataset.workspace = next;
+        document.querySelectorAll("[data-workspace-tab]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.workspaceTab === next);
+        });
+        if (next === "chat") {
+          activateSection("chat");
+        } else if (root.dataset.activeSection === "chat") {
+          activateSection("guide");
+        }
       }
 
       function activateMode(mode) {
@@ -779,14 +1468,28 @@
         document.querySelectorAll("[data-mode]").forEach((button) => {
           button.classList.toggle("active", button.dataset.mode === next);
         });
-        modeSummary.textContent = next === "local" ? "Mode: Local runtime setup" : "Mode: API recommended";
-        currentMode.textContent = next === "local" ? "Local mode" : "API mode";
-        activateSection(next);
+      }
+
+      function applyTheme(theme) {
+        const next = theme === "dark" ? "dark" : "light";
+        document.documentElement.classList.toggle("theme-dark", next === "dark");
+        document.querySelectorAll("[data-theme]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.theme === next);
+        });
+        localStorage.setItem("branchwhisper:desktop-theme", next);
+      }
+
+      function applyLanguage(language) {
+        const next = language === "en" ? "en" : "zh";
+        document.querySelectorAll("[data-language]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.language === next);
+        });
+        localStorage.setItem("branchwhisper:desktop-language", next);
       }
 
       function renderStatus(status) {
         currentStatus = { ...defaultStatus, ...status };
-        const label = statusLabels[currentStatus.state] || "Unchecked";
+        const label = statusLabels[currentStatus.state] || "未检测";
         const failed = currentStatus.state === "failed";
         const ready = currentStatus.state === "ready" || currentStatus.state === "reusing";
         statusLabel.textContent = label;
@@ -794,16 +1497,11 @@
         statusDetail.textContent = currentStatus.detail || defaultStatus.detail;
         backendSummary.textContent = label;
         backendDetail.textContent = currentStatus.detail || defaultStatus.detail;
-        commandLine.textContent = currentStatus.command_line || "Current state does not require a local command.";
-        appUrl.textContent = `Backend app: ${currentStatus.app_url || defaultStatus.app_url}`;
-        issueCount.textContent = failed ? "Issues: 1" : "Issues: 0";
-        logPreview.textContent = currentStatus.log_path ? `Log path:\n${currentStatus.log_path}` : "Waiting for backend status...";
-        backendDot.className = `dot ${failed ? "warn" : ready ? "ok" : "run"}`;
-        updatedAt.textContent = new Date().toLocaleTimeString("zh-CN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
+        commandLine.textContent = currentStatus.command_line || "当前无需手动命令。";
+        if (logPreview) {
+          logPreview.textContent = currentStatus.log_path ? `日志路径:\n${currentStatus.log_path}` : "等待后端状态...\napp: Studio shell loaded\nbackend: checking packaged runtime";
+        }
+        backendDot.className = `status-dot ${failed ? "warn" : ready ? "ok" : "run"}`;
       }
 
       function exportReport() {
@@ -811,8 +1509,9 @@
           exported_at: new Date().toISOString(),
           screen: "BranchWhisper Studio",
           startup: currentStatus,
-          active_mode: root.dataset.activeMode,
+          workspace: root.dataset.workspace,
           active_section: root.dataset.activeSection,
+          active_mode: root.dataset.activeMode,
         };
         const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -824,6 +1523,12 @@
       }
 
       document.addEventListener("click", (event) => {
+        const workspaceTarget = event.target.closest("[data-workspace-tab]");
+        if (workspaceTarget) {
+          activateWorkspace(workspaceTarget.dataset.workspaceTab);
+          return;
+        }
+
         const modeTarget = event.target.closest("[data-mode]");
         if (modeTarget) {
           activateMode(modeTarget.dataset.mode);
@@ -832,22 +1537,30 @@
 
         const sectionTarget = event.target.closest("[data-section]");
         if (sectionTarget) {
+          activateWorkspace("bot");
           activateSection(sectionTarget.dataset.section);
+          return;
+        }
+
+        const languageTarget = event.target.closest("[data-language]");
+        if (languageTarget) {
+          applyLanguage(languageTarget.dataset.language);
+          return;
+        }
+
+        const themeTarget = event.target.closest("[data-theme]");
+        if (themeTarget) {
+          applyTheme(themeTarget.dataset.theme);
           return;
         }
 
         const advancedTarget = event.target.closest("[data-advanced-route]");
         if (advancedTarget) {
-          const destination = resolveAdvancedRoute(advancedTarget.dataset.advancedRoute);
-          window.location.assign(destination);
+          window.location.assign(resolveAdvancedRoute(advancedTarget.dataset.advancedRoute));
           return;
         }
 
-        const action = event.target.closest("[data-action]")?.dataset.action;
-        if (action === "retry") {
-          window.location.reload();
-        }
-        if (action === "export") {
+        if (event.target.closest('[data-action="export"]')) {
           exportReport();
         }
       });
@@ -856,8 +1569,10 @@
         renderStatus(event.detail || {});
       });
 
+      applyTheme(localStorage.getItem("branchwhisper:desktop-theme") || "light");
+      applyLanguage(localStorage.getItem("branchwhisper:desktop-language") || "zh");
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
-      activateSection("home");
+      activateSection("guide");
     </script>
   </body>
 </html>
