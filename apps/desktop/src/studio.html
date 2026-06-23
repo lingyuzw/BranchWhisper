@@ -1443,7 +1443,15 @@
                   </div>
                   <div class="panel-actions">
                     <button class="primary-action" type="button" data-bot-bridge-test>检测桥接</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-start>启动桥接</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-stop>停止桥接</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-restart>重启桥接</button>
                     <button class="secondary-action" type="button" data-advanced-route="/app/integrations">打开高级桥接页</button>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="secondary-action" type="button" data-bot-bridge-logs-refresh>刷新日志</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-logs-copy>复制日志</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-logs-clear>清空日志</button>
                   </div>
                   <pre class="log-box bridge-log" data-bot-bridge-log>检测前不会连接微信。先保存 Bot 档案，再点检测桥接，页面会读取本机 integrations 状态。</pre>
                   <div class="step-list">
@@ -2138,6 +2146,23 @@ backend: checking packaged runtime</pre>
         }
       }
 
+      async function persistBotProfileForBridgeRun() {
+        try {
+          const payload = currentBotProfileUpdatePayload();
+          const result = await backendRequest({ method: "PATCH", path: `/api/bot-profiles/${encodeURIComponent(selectedBotProfileId)}`, body: payload });
+          botProfiles = Array.isArray(result.profiles) ? result.profiles : botProfiles;
+          selectedBotProfileId = result.profile?.id || selectedBotProfileId;
+          renderBotProfiles();
+          setBotStatus(`已保存 Bot：${result.profile?.name || payload.name}。`, "ok");
+          return result.profile?.id || selectedBotProfileId;
+        } catch (error) {
+          setBotStatus(`保存失败：${error.message}`, "error");
+          setBotBridgeStatus("保存失败", "error");
+          setBotBridgeLog(`启动前保存 Bot 失败：${error.message}\n建议：确认桌面后端已启动，并先保存当前 Bot 后再启动桥接。`);
+          return null;
+        }
+      }
+
       async function syncBotBridgeIntegration(profileId) {
         const integrationId = selectedBotBridgeIntegrationId();
         try {
@@ -2156,6 +2181,81 @@ backend: checking packaged runtime</pre>
           setBotBridgeStatus("同步失败", "error");
           setBotBridgeLog(`桥接绑定同步失败：${error.message}\n建议：确认集成实例 ${integrationId} 已在高级桥接页创建；Bot 档案本身已经保存。`);
           return null;
+        }
+      }
+
+      async function controlBotBridge(action) {
+        const integrationId = selectedBotBridgeIntegrationId();
+        const runtimePaths = {
+          start: `/api/integrations/${encodeURIComponent(integrationId)}/bridge/start`,
+          stop: `/api/integrations/${encodeURIComponent(integrationId)}/stop`,
+          restart: `/api/integrations/${encodeURIComponent(integrationId)}/restart`,
+        };
+        const path = runtimePaths[action];
+        if (!path) {
+          return null;
+        }
+        const labels = { start: "启动", stop: "停止", restart: "重启" };
+        try {
+          setBotBridgeStatus(`${labels[action] || "操作"}中`, "run");
+          if (action === "start" || action === "restart") {
+            if (botBridgeEnabledInput) {
+              botBridgeEnabledInput.checked = true;
+            }
+            const persistedProfileId = await persistBotProfileForBridgeRun();
+            if (!persistedProfileId) {
+              return null;
+            }
+            const synced = await syncBotBridgeIntegration(persistedProfileId);
+            if (!synced) {
+              return null;
+            }
+          }
+          const result = await backendRequest({ method: "POST", path });
+          const actionResult = result.result || {};
+          setBotBridgeStatus(action === "stop" ? "已停止" : actionResult.ok === false ? "操作失败" : "运行中", actionResult.ok === false ? "error" : action === "stop" ? "warn" : "ok");
+          setBotBridgeLog(`${labels[action] || "操作"}桥接：${actionResult.status || (actionResult.ok === false ? "failed" : "ok")}\n实例：${integrationId}\nPID：${actionResult.pid || "-"}\n日志：${actionResult.log_file || "-"}`);
+          await loadBotBridgeLogs();
+          return result;
+        } catch (error) {
+          setBotBridgeStatus(`${labels[action] || "操作"}失败`, "error");
+          setBotBridgeLog(`${labels[action] || "操作"}桥接失败：${error.message}\n建议：确认 OpenClaw、Python 环境和桌面后端可用，再重新检测桥接。`);
+          return null;
+        }
+      }
+
+      async function loadBotBridgeLogs() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        try {
+          const payload = await backendRequest({ path: `/api/integrations/${encodeURIComponent(integrationId)}/logs?max_bytes=64000&scope=current` });
+          const logs = payload.logs || "";
+          setBotBridgeLog(logs.trim() || `实例 ${integrationId} 暂无桥接日志。`);
+          return logs;
+        } catch (error) {
+          setBotBridgeStatus("日志失败", "error");
+          setBotBridgeLog(`读取桥接日志失败：${error.message}\n建议：确认集成实例 ${integrationId} 存在，且桌面后端正在运行。`);
+          return "";
+        }
+      }
+
+      async function clearBotBridgeLogs() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        try {
+          await backendRequest({ method: "DELETE", path: `/api/integrations/${encodeURIComponent(integrationId)}/logs` });
+          setBotBridgeLog(`已清空桥接日志：${integrationId}`);
+          setBotBridgeStatus("日志已清空", "warn");
+        } catch (error) {
+          setBotBridgeStatus("清空失败", "error");
+          setBotBridgeLog(`清空桥接日志失败：${error.message}`);
+        }
+      }
+
+      async function copyBotBridgeLogs() {
+        try {
+          await navigator.clipboard.writeText(botBridgeLog?.textContent || "");
+          setBotBridgeStatus("日志已复制", "ok");
+        } catch (error) {
+          setBotBridgeStatus("复制失败", "error");
         }
       }
 
@@ -2426,6 +2526,36 @@ backend: checking packaged runtime</pre>
 
         if (event.target.closest("[data-bot-bridge-test]")) {
           testBotBridge();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-start]")) {
+          controlBotBridge("start");
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-stop]")) {
+          controlBotBridge("stop");
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-restart]")) {
+          controlBotBridge("restart");
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-logs-refresh]")) {
+          loadBotBridgeLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-logs-clear]")) {
+          clearBotBridgeLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-logs-copy]")) {
+          copyBotBridgeLogs();
           return;
         }
 

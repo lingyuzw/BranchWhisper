@@ -229,6 +229,12 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
     "data-bot-bridge-enabled",
     "data-bot-bridge-status",
     "data-bot-bridge-test",
+    "data-bot-bridge-start",
+    "data-bot-bridge-stop",
+    "data-bot-bridge-restart",
+    "data-bot-bridge-logs-refresh",
+    "data-bot-bridge-logs-clear",
+    "data-bot-bridge-logs-copy",
     "data-bot-bridge-log",
   ]) {
     assert.match(html, new RegExp(selector));
@@ -295,6 +301,51 @@ test("studio Bot selection resets bridge logs for the selected profile", async (
   const html = await readFile(studioHtmlPath, "utf8");
 
   assert.match(html, /setBotBridgeLog\(`等待检测当前 Bot：\$\{current\.name \|\| current\.id \|\| "当前 Bot"\}\\n集成实例：\$\{current\.bridge_integration_id \|\| "weixin_personal"\}`\)/);
+});
+
+test("studio Bot page controls bridge runtime and logs through integration APIs", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /async function controlBotBridge\(action\)/);
+  assert.match(html, /const runtimePaths = \{\s*start:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/bridge\/start`,\s*stop:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/stop`,\s*restart:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/restart`/s);
+  assert.match(html, /await loadBotBridgeLogs\(\)/);
+  assert.match(html, /async function loadBotBridgeLogs\(\)/);
+  assert.match(html, /path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/logs\?max_bytes=64000&scope=current`/);
+  assert.match(html, /async function clearBotBridgeLogs\(\)/);
+  assert.match(html, /method:\s*"DELETE",\s*path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/logs`/s);
+  assert.match(html, /async function copyBotBridgeLogs\(\)/);
+  assert.match(html, /navigator\.clipboard\.writeText\(botBridgeLog\?\.textContent \|\| ""\)/);
+  for (const action of ["start", "stop", "restart", "logs-refresh", "logs-clear", "logs-copy"]) {
+    assert.match(html, new RegExp(`data-bot-bridge-${action}`));
+  }
+});
+
+test("studio Bot bridge start persists the selected Bot before launching", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /async function persistBotProfileForBridgeRun\(\)/);
+  assert.match(html, /const payload = currentBotProfileUpdatePayload\(\);/);
+  assert.match(html, /method:\s*"PATCH",\s*path:\s*`\/api\/bot-profiles\/\$\{encodeURIComponent\(selectedBotProfileId\)\}`,\s*body:\s*payload/s);
+  assert.match(
+    html,
+    /const persistedProfileId = await persistBotProfileForBridgeRun\(\);[\s\S]*if \(!persistedProfileId\) \{[\s\S]*return null;[\s\S]*\}[\s\S]*const synced = await syncBotBridgeIntegration\(persistedProfileId\);/s,
+  );
+});
+
+test("studio Bot bridge start lets backend resolve the BranchWhisper callback URL", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /const result = await backendRequest\(\{\s*method:\s*"POST",\s*path\s*\}\)/);
+  assert.doesNotMatch(html, /branchwhisper_url:\s*botBridgeUrlInput\.value\.trim\(\)/);
+});
+
+test("studio Bot log copy failure preserves the current log text", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const copyFunction = html.match(/async function copyBotBridgeLogs\(\) \{[\s\S]*?\n      \}/)?.[0] || "";
+
+  assert.match(copyFunction, /async function copyBotBridgeLogs\(\)/);
+  assert.match(copyFunction, /setBotBridgeStatus\("复制失败", "error"\)/);
+  assert.doesNotMatch(copyFunction, /setBotBridgeLog\(/);
 });
 
 test("studio config page persists model personality separately from bot personality", async () => {
