@@ -46,3 +46,20 @@ test("desktop shell keeps the hub visible after backend readiness", async () => 
   assert.match(main, /DesktopStartupStatus::ready/);
   assert.match(main, /DesktopStartupStatus::reusing/);
 });
+
+test("desktop shell hides to background and exposes tray restore and quit actions", async () => {
+  const main = await readFile(desktopMainPath, "utf8");
+
+  assert.match(main, /use tauri::menu::MenuBuilder/);
+  assert.match(main, /use tauri::tray::\{TrayIconBuilder,\s*TrayIconEvent\}/);
+  assert.match(main, /setup_tray\(app\)/);
+  assert.match(main, /WindowEvent::CloseRequested\s*\{\s*api,\s*\.\.\s*\}/);
+  assert.match(main, /api\.prevent_close\(\)/);
+  assert.match(main, /window\.hide\(\)/);
+  assert.match(main, /const TRAY_SHOW_ID:\s*&str\s*=\s*"show"/);
+  assert.match(main, /const TRAY_QUIT_ID:\s*&str\s*=\s*"quit"/);
+  assert.match(main, /event\.id\(\)\.as_ref\(\)\s*==\s*TRAY_SHOW_ID/);
+  assert.match(main, /event\.id\(\)\.as_ref\(\)\s*==\s*TRAY_QUIT_ID/);
+  assert.match(main, /app\.exit\(0\)/);
+  assert.match(main, /show_main_window\(app\)/);
+});

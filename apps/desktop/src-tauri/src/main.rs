@@ -6,7 +6,12 @@ mod startup_status;
 
 use startup_status::DesktopStartupStatus;
 use std::time::Duration;
-use tauri::Manager;
+use tauri::menu::MenuBuilder;
+use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::{App, AppHandle, Manager, WindowEvent};
+
+const TRAY_SHOW_ID: &str = "show";
+const TRAY_QUIT_ID: &str = "quit";
 
 fn main() {
     // Startup contract:
@@ -16,6 +21,7 @@ fn main() {
     // 4. If startup fails, keep the hub visible with the copied command and log path.
     tauri::Builder::default()
         .setup(|app| {
+            setup_tray(app)?;
             let window = app
                 .get_webview_window("main")
                 .expect("main window should exist");
@@ -77,8 +83,63 @@ fn main() {
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                if let Err(error) = window.hide() {
+                    eprintln!("Failed to hide BranchWhisper window: {}", error);
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running BranchWhisper desktop shell");
+}
+
+fn setup_tray(app: &App) -> tauri::Result<()> {
+    let menu = MenuBuilder::new(app)
+        .text(TRAY_SHOW_ID, "显示 BranchWhisper")
+        .separator()
+        .text(TRAY_QUIT_ID, "退出")
+        .build()?;
+
+    let mut tray = TrayIconBuilder::with_id("branchwhisper-main")
+        .menu(&menu)
+        .tooltip("BranchWhisper 正在后台运行")
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == TRAY_SHOW_ID {
+                show_main_window(app);
+            } else if event.id().as_ref() == TRAY_QUIT_ID {
+                app.exit(0);
+            }
+        })
+        .on_tray_icon_event(|tray, event| match event {
+            TrayIconEvent::Click { .. } | TrayIconEvent::DoubleClick { .. } => {
+                show_main_window(tray.app_handle());
+            }
+            _ => {}
+        });
+
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+
+    tray.build(app)?;
+    Ok(())
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(error) = window.show() {
+            eprintln!("Failed to show BranchWhisper window: {}", error);
+        }
+        if let Err(error) = window.unminimize() {
+            eprintln!("Failed to unminimize BranchWhisper window: {}", error);
+        }
+        if let Err(error) = window.set_focus() {
+            eprintln!("Failed to focus BranchWhisper window: {}", error);
+        }
+    }
 }
 
 fn send_startup_status(window: &tauri::WebviewWindow, status: &DesktopStartupStatus) {
