@@ -1123,6 +1123,84 @@
         display: none;
       }
 
+      .platform-log-panel {
+        min-height: 640px;
+        grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+      }
+
+      .platform-log-metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .platform-log-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+      }
+
+      .platform-log-toolbar .secondary-action.active {
+        border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+
+      .platform-log-shell {
+        min-height: 360px;
+        display: grid;
+        grid-template-rows: minmax(150px, auto) auto;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+      }
+
+      .platform-log-summary {
+        margin: 0;
+        max-height: 320px;
+        overflow: auto;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text-soft);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .platform-log-output {
+        display: none;
+        max-height: 520px;
+        min-height: 220px;
+        margin: 0;
+        overflow: auto;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text-soft);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .platform-log-shell.expanded {
+        grid-template-rows: auto minmax(220px, 1fr) auto;
+      }
+
+      .platform-log-shell.expanded .platform-log-output {
+        display: block;
+      }
+
       .bridge-login-box {
         display: grid;
         grid-template-columns: 140px minmax(0, 1fr);
@@ -1899,14 +1977,39 @@
             </section>
 
             <section class="page" data-panel="logs">
-              <div class="panel">
+              <div class="panel platform-log-panel">
                 <div class="panel-head">
-                  <div><h2>平台日志</h2><p class="muted">按 app、backend、API、Bot、微信桥接、任务、诊断分源展示。</p></div>
-                  <div class="panel-actions"><button class="secondary-action" type="button">只看错误</button><button class="secondary-action" type="button">复制日志</button></div>
+                  <div>
+                    <h2>平台日志</h2>
+                    <p class="muted">集中查看 app、backend、API、Bot 和微信桥接日志，长内容默认折叠。</p>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="secondary-action" type="button" data-platform-log-refresh>刷新日志</button>
+                    <button class="secondary-action" type="button" data-platform-log-copy>复制日志</button>
+                    <button class="secondary-action" type="button" data-platform-log-errors-only>只看错误</button>
+                    <button class="secondary-action" type="button" data-platform-log-pause>暂停滚动</button>
+                  </div>
                 </div>
-                <pre class="log-box" data-log-preview>等待后端状态...
-app: Studio shell loaded
-backend: checking packaged runtime</pre>
+                <div class="metric-grid platform-log-metrics">
+                  <div class="metric"><span>当前来源</span><strong data-platform-log-source-label>全部</strong></div>
+                  <div class="metric"><span>日志行数</span><strong data-platform-log-count>0</strong></div>
+                  <div class="metric"><span>错误数量</span><strong data-platform-log-error-count>0</strong></div>
+                  <div class="metric"><span>加载状态</span><strong data-platform-log-state>待加载</strong></div>
+                </div>
+                <div class="platform-log-toolbar" aria-label="日志来源筛选">
+                  <button class="secondary-action active" type="button" data-platform-log-source="all">全部</button>
+                  <button class="secondary-action" type="button" data-platform-log-source="app">App</button>
+                  <button class="secondary-action" type="button" data-platform-log-source="backend">Backend</button>
+                  <button class="secondary-action" type="button" data-platform-log-source="api">API</button>
+                  <button class="secondary-action" type="button" data-platform-log-source="bot">Bot</button>
+                  <button class="secondary-action" type="button" data-platform-log-source="bridge">微信桥接</button>
+                </div>
+                <div class="platform-log-shell">
+                  <pre class="platform-log-summary" data-platform-log-summary>等待加载平台日志。点击刷新日志后会读取后端服务和微信桥接日志。</pre>
+                  <pre class="platform-log-output" data-platform-log-output>等待加载平台日志。</pre>
+                  <button class="secondary-action" type="button" data-platform-log-toggle aria-expanded="false">展开完整日志</button>
+                </div>
+                <div class="status-line warn" data-platform-log-status>等待后端状态。后端可用后可读取服务和桥接日志。</div>
               </div>
             </section>
 
@@ -2112,6 +2215,15 @@ backend: checking packaged runtime</pre>
       const conversationSource = document.querySelector("[data-conversation-source]");
       const conversationPlatform = document.querySelector("[data-conversation-platform]");
       const conversationSender = document.querySelector("[data-conversation-sender]");
+      const platformLogShell = document.querySelector(".platform-log-shell");
+      const platformLogSummary = document.querySelector("[data-platform-log-summary]");
+      const platformLogOutput = document.querySelector("[data-platform-log-output]");
+      const platformLogStatus = document.querySelector("[data-platform-log-status]");
+      const platformLogCount = document.querySelector("[data-platform-log-count]");
+      const platformLogErrorCount = document.querySelector("[data-platform-log-error-count]");
+      const platformLogState = document.querySelector("[data-platform-log-state]");
+      const platformLogSourceLabel = document.querySelector("[data-platform-log-source-label]");
+      const platformLogToggle = document.querySelector("[data-platform-log-toggle]");
       let botProfiles = [];
       let selectedBotProfileId = "default";
       let botConversations = [];
@@ -2121,6 +2233,11 @@ backend: checking packaged runtime</pre>
       let botBridgeLoginPollInFlight = false;
       let botBridgeLogExpanded = false;
       let botBridgeLogFullText = botBridgeLog?.textContent || "";
+      let platformLogs = [];
+      let activePlatformLogSource = "all";
+      let platformLogErrorsOnly = false;
+      let platformLogPaused = false;
+      let platformLogExpanded = false;
 
       const apiPresets = {
         qwen: {
@@ -2204,6 +2321,161 @@ backend: checking packaged runtime</pre>
         if (botBridgeSummary) {
           botBridgeSummary.textContent = message;
         }
+      }
+
+      function setPlatformLogStatus(message, tone = "warn") {
+        if (!platformLogStatus) {
+          return;
+        }
+        platformLogStatus.textContent = message;
+        platformLogStatus.className = `status-line ${tone}`;
+      }
+
+      function platformLogEntriesFromText(source, label, text) {
+        const lines = String(text || "").replace(/\r\n/g, "\n").split("\n").filter((line) => line.trim());
+        return lines.map((line, index) => {
+          const lower = line.toLowerCase();
+          const status = lower.includes("error") || lower.includes("failed") || lower.includes("exception") || lower.includes("traceback") || lower.includes("panic") ? "error" : lower.includes("warn") ? "warn" : "info";
+          return {
+            source,
+            label,
+            line,
+            status,
+            index,
+          };
+        });
+      }
+
+      function summarizePlatformLogText(text) {
+        const lines = String(text || "").trim().split(/\r?\n/).filter(Boolean);
+        if (lines.length <= 18) {
+          return lines.join("\n") || "暂无平台日志。";
+        }
+        const head = lines.slice(0, 6);
+        const tail = lines.slice(-8);
+        return [...head, "... 已折叠 " + (lines.length - head.length - tail.length) + " 行日志，展开查看完整内容 ...", ...tail].join("\n");
+      }
+
+      function platformLogSourceName(source) {
+        const names = {
+          all: "全部",
+          app: "App",
+          backend: "Backend",
+          api: "API",
+          bot: "Bot",
+          bridge: "微信桥接",
+        };
+        return names[source] || source || "全部";
+      }
+
+      function formatPlatformLogEntry(entry) {
+        return "[" + (entry.source || "app") + ":" + (entry.label || "-") + "] " + (entry.line || "");
+      }
+
+      function filteredPlatformLogs() {
+        return platformLogs.filter((entry) => {
+          const sourceMatches = activePlatformLogSource === "all" || entry.source === activePlatformLogSource;
+          const statusMatches = !platformLogErrorsOnly || entry.status === "error";
+          return sourceMatches && statusMatches;
+        });
+      }
+
+      function renderPlatformLogs() {
+        const entries = filteredPlatformLogs();
+        const text = entries.map(formatPlatformLogEntry).join("\n") || "暂无匹配的日志。";
+        const allErrors = platformLogs.filter((entry) => entry.status === "error").length;
+        if (platformLogSummary) {
+          platformLogSummary.textContent = summarizePlatformLogText(text);
+        }
+        if (platformLogOutput) {
+          platformLogOutput.textContent = text;
+          if (!platformLogPaused) {
+            platformLogOutput.scrollTop = platformLogOutput.scrollHeight;
+          }
+        }
+        if (platformLogCount) {
+          platformLogCount.textContent = String(entries.length);
+        }
+        if (platformLogErrorCount) {
+          platformLogErrorCount.textContent = String(allErrors);
+        }
+        if (platformLogSourceLabel) {
+          platformLogSourceLabel.textContent = platformLogSourceName(activePlatformLogSource);
+        }
+        if (platformLogState) {
+          platformLogState.textContent = platformLogPaused ? "已暂停" : platformLogs.length ? "已加载" : "待加载";
+        }
+        if (platformLogShell) {
+          platformLogShell.classList.toggle("expanded", platformLogExpanded);
+        }
+        if (platformLogToggle) {
+          platformLogToggle.textContent = platformLogExpanded ? "收起日志" : "展开完整日志";
+          platformLogToggle.setAttribute("aria-expanded", String(platformLogExpanded));
+        }
+        document.querySelectorAll("[data-platform-log-source]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.platformLogSource === activePlatformLogSource);
+        });
+        document.querySelectorAll("[data-platform-log-errors-only]").forEach((button) => {
+          button.classList.toggle("active", platformLogErrorsOnly);
+        });
+        document.querySelectorAll("[data-platform-log-pause]").forEach((button) => {
+          button.classList.toggle("active", platformLogPaused);
+          button.textContent = platformLogPaused ? "继续滚动" : "暂停滚动";
+        });
+      }
+
+      async function loadPlatformLogs() {
+        const nextLogs = platformLogEntriesFromText("app", "startup", [
+          "state: " + (currentStatus.state || "checking"),
+          "summary: " + (currentStatus.summary || defaultStatus.summary),
+          "detail: " + (currentStatus.detail || defaultStatus.detail),
+          currentStatus.log_path ? "log_path: " + currentStatus.log_path : "",
+        ].filter(Boolean).join("\n"));
+        setPlatformLogStatus("正在读取平台日志...", "run");
+        const serviceIds = ["asr", "llm", "tts"];
+        for (const serviceId of serviceIds) {
+          const source = serviceId === "llm" ? "api" : "backend";
+          try {
+            const payload = await backendRequest({ path: `/api/services/${serviceId}/logs?max_bytes=24000` });
+            nextLogs.push(...platformLogEntriesFromText(source, serviceId.toUpperCase(), payload.logs || payload.log || ""));
+          } catch (error) {
+            nextLogs.push(...platformLogEntriesFromText(source, serviceId.toUpperCase(), "ERROR 读取服务日志失败：" + error.message));
+          }
+        }
+        try {
+          const payload = await backendRequest({ path: "/api/integrations" });
+          const integrations = Array.isArray(payload.integrations) ? payload.integrations : [];
+          for (const integration of integrations) {
+            nextLogs.push(...platformLogEntriesFromText("bot", integration.id || "integration", [
+              "状态：" + (integration.status || "unknown"),
+              "启用：" + (integration.enabled ? "是" : "否"),
+              "Bot profile：" + (integration.bot_profile_id || "default"),
+              integration.last_error ? "ERROR " + integration.last_error : "",
+            ].filter(Boolean).join("\n")));
+            try {
+              const logPayload = await backendRequest({ path: `/api/integrations/${encodeURIComponent(integration.id)}/logs?max_bytes=64000&scope=current` });
+              nextLogs.push(...platformLogEntriesFromText("bridge", integration.id || "integration", logPayload.logs || logPayload.log || ""));
+            } catch (error) {
+              nextLogs.push(...platformLogEntriesFromText("bridge", integration.id || "integration", "ERROR 读取桥接日志失败：" + error.message));
+            }
+          }
+          if (!integrations.length) {
+            nextLogs.push(...platformLogEntriesFromText("bridge", "integrations", "未发现微信桥接实例。"));
+          }
+        } catch (error) {
+          nextLogs.push(...platformLogEntriesFromText("bridge", "integrations", "ERROR 读取集成列表失败：" + error.message));
+        }
+        platformLogs = nextLogs;
+        renderPlatformLogs();
+        const errors = platformLogs.filter((entry) => entry.status === "error").length;
+        setPlatformLogStatus(errors ? "已加载日志，发现 " + errors + " 条异常。建议先查看错误筛选结果。" : "已加载日志，暂未发现明显异常。", errors ? "warn" : "ok");
+        return platformLogs;
+      }
+
+      async function copyPlatformLogs() {
+        const text = filteredPlatformLogs().map(formatPlatformLogEntry).join("\n") || "";
+        await navigator.clipboard?.writeText?.call(navigator.clipboard, text).catch(() => {});
+        setPlatformLogStatus(text ? "已尝试复制当前筛选日志。" : "当前没有可复制的日志。", text ? "ok" : "warn");
       }
 
       function summarizeBotBridgeLog(text) {
@@ -3296,6 +3568,9 @@ backend: checking packaged runtime</pre>
         if (next === "conversations") {
           loadBotConversations();
         }
+        if (next === "logs") {
+          loadPlatformLogs();
+        }
       }
 
       function activateWorkspace(workspace) {
@@ -3427,6 +3702,41 @@ backend: checking packaged runtime</pre>
 
         if (event.target.closest("[data-api-test]")) {
           testApiConfig();
+          return;
+        }
+
+        const platformLogSourceTarget = event.target.closest("[data-platform-log-source]");
+        if (platformLogSourceTarget) {
+          activePlatformLogSource = platformLogSourceTarget.dataset.platformLogSource || "all";
+          renderPlatformLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-platform-log-refresh]")) {
+          loadPlatformLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-platform-log-copy]")) {
+          copyPlatformLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-platform-log-errors-only]")) {
+          platformLogErrorsOnly = !platformLogErrorsOnly;
+          renderPlatformLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-platform-log-pause]")) {
+          platformLogPaused = !platformLogPaused;
+          renderPlatformLogs();
+          return;
+        }
+
+        if (event.target.closest("[data-platform-log-toggle]")) {
+          platformLogExpanded = !platformLogExpanded;
+          renderPlatformLogs();
           return;
         }
 

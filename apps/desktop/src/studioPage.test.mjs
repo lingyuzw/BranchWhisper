@@ -673,3 +673,84 @@ test("studio conversation export tolerates missing clipboard API", async () => {
   assert.match(exportSource, /navigator\.clipboard\?\.writeText\?\.call\(navigator\.clipboard,\s*url\)\.catch\(\(\) => \{\}\)/);
   assert.doesNotMatch(exportSource, /navigator\.clipboard\.writeText\(url\)/);
 });
+
+test("studio platform logs page exposes filters actions and compact log display", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-platform-log-refresh",
+    "data-platform-log-copy",
+    "data-platform-log-errors-only",
+    "data-platform-log-pause",
+    "data-platform-log-toggle",
+    "data-platform-log-summary",
+    "data-platform-log-output",
+    "data-platform-log-status",
+    "data-platform-log-count",
+    "data-platform-log-source-label",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  for (const source of ["all", "app", "backend", "api", "bot", "bridge"]) {
+    assert.match(html, new RegExp(`data-platform-log-source="${source}"`));
+  }
+
+  assert.match(html, /class="platform-log-shell"/);
+  assert.match(html, /\.platform-log-shell\.expanded \.platform-log-output/);
+  assert.match(html, /\.platform-log-output\s*\{[\s\S]*max-height:/s);
+  assert.match(html, /\.platform-log-summary\s*\{[\s\S]*overflow-wrap:\s*anywhere/s);
+});
+
+test("studio platform logs page loads service and bridge logs through existing backend APIs", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /let platformLogs = \[\]/);
+  assert.match(html, /let activePlatformLogSource = "all"/);
+  assert.match(html, /let platformLogErrorsOnly = false/);
+  assert.match(html, /let platformLogPaused = false/);
+  assert.match(html, /async function loadPlatformLogs\(\)/);
+  assert.match(html, /const serviceIds = \["asr", "llm", "tts"\]/);
+  assert.match(html, /path:\s*`\/api\/services\/\$\{serviceId\}\/logs\?max_bytes=24000`/);
+  assert.match(html, /backendRequest\(\{\s*path:\s*"\/api\/integrations"\s*\}\)/s);
+  assert.match(html, /path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integration\.id\)\}\/logs\?max_bytes=64000&scope=current`/);
+  assert.match(html, /if \(next === "logs"\) \{\s*loadPlatformLogs\(\);/s);
+  assert.match(html, /event\.target\.closest\("\[data-platform-log-refresh\]"\)[\s\S]*loadPlatformLogs\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-platform-log-copy\]"\)[\s\S]*copyPlatformLogs\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-platform-log-errors-only\]"\)[\s\S]*platformLogErrorsOnly = !platformLogErrorsOnly/s);
+  assert.match(html, /event\.target\.closest\("\[data-platform-log-pause\]"\)[\s\S]*platformLogPaused = !platformLogPaused/s);
+});
+
+test("studio platform logs parser classifies filters and summarizes noisy output", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const entriesSource = extractScriptFunction(script, "platformLogEntriesFromText");
+  const summarySource = extractScriptFunction(script, "summarizePlatformLogText");
+  const { platformLogEntriesFromText, summarizePlatformLogText } = Function(
+    `${entriesSource}; ${summarySource}; return { platformLogEntriesFromText, summarizePlatformLogText };`,
+  )();
+
+  const entries = platformLogEntriesFromText("bridge", "weixin_personal", "ok\nERROR failed to connect\nTraceback line");
+  assert.equal(entries.length, 3);
+  assert.equal(entries[0].status, "info");
+  assert.equal(entries[1].status, "error");
+  assert.equal(entries[2].status, "error");
+  assert.equal(entries[1].source, "bridge");
+  assert.equal(entries[1].label, "weixin_personal");
+
+  const longText = Array.from({ length: 40 }, (_, index) => `line-${index}`).join("\n");
+  const summary = summarizePlatformLogText(longText);
+  assert.match(summary, /已折叠/);
+  assert.match(summary, /line-0/);
+  assert.match(summary, /line-39/);
+});
+
+test("studio platform log copy handles missing clipboard without clearing logs", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const copySource = extractScriptFunction(script, "copyPlatformLogs");
+
+  assert.match(copySource, /navigator\.clipboard\?\.writeText\?\.call\(navigator\.clipboard,\s*text\)\.catch\(\(\) => \{\}\)/);
+  assert.doesNotMatch(copySource, /platformLogs = \[\]/);
+  assert.doesNotMatch(copySource, /platformLogOutput\.textContent = ""/);
+});
