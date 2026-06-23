@@ -238,6 +238,7 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
     "data-bot-bridge-verify-input",
     "data-bot-bridge-qr-image",
     "data-bot-bridge-login-status",
+    "data-bot-bridge-account",
     "data-bot-bridge-logs-refresh",
     "data-bot-bridge-logs-clear",
     "data-bot-bridge-logs-copy",
@@ -376,9 +377,43 @@ test("studio Bot QR login renders non-image QR payloads as scannable QR codes", 
 
   assert.match(html, /function normalizeQrImageSource\(imageContent\)/);
   assert.match(html, /value\.startsWith\("data:"\)/);
-  assert.match(html, /api\.qrserver\.com\/v1\/create-qr-code/);
-  assert.match(html, /encodeURIComponent\(value\)/);
+  assert.match(html, /function renderLocalQrSvgDataUrl\(text\)/);
+  assert.match(html, /QRCode\.create\(text/);
+  assert.match(html, /data:image\/svg\+xml;charset=utf-8,/);
+  assert.doesNotMatch(html, /api\.qrserver\.com\/v1\/create-qr-code/);
   assert.doesNotMatch(html, /return `data:image\/png;base64,\$\{value\}`/);
+});
+
+test("studio Bot QR login starts polling and displays account details", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /let botBridgeLoginPollTimer = null/);
+  assert.match(html, /function startBotBridgeLoginPolling\(\)/);
+  assert.match(html, /botBridgeLoginPollTimer = window\.setInterval\(\(\) => \{\s*pollBotBridgeLogin\(\{ silent: true \}\);/s);
+  assert.match(html, /function stopBotBridgeLoginPolling\(\)/);
+  assert.match(html, /startBotBridgeLoginPolling\(integrationId\);/);
+  assert.match(html, /if \(status === "created"\) \{[\s\S]*stopBotBridgeLoginPolling\(\);/s);
+  assert.match(html, /const accountText = \[/);
+  assert.match(html, /state\.account_id/);
+  assert.match(html, /state\.base_url/);
+  assert.match(html, /state\.user_id/);
+  assert.match(html, /botBridgeAccount\.textContent = accountText/);
+});
+
+test("studio Bot QR login polling is bound to one active session", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /let botBridgeLoginPollIntegrationId = ""/);
+  assert.match(html, /let botBridgeLoginPollInFlight = false/);
+  assert.match(html, /botBridgeLoginPollIntegrationId = ""/);
+  assert.match(html, /const integrationId = arguments\[0\] \|\| selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /botBridgeLoginPollIntegrationId = integrationId/);
+  assert.match(html, /const integrationId = options\.integrationId \|\| botBridgeLoginPollIntegrationId \|\| selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /if \(options\.silent && botBridgeLoginPollInFlight\) \{\s*return null;\s*\}/s);
+  assert.match(html, /botBridgeLoginPollInFlight = true/);
+  assert.match(html, /finally \{\s*botBridgeLoginPollInFlight = false;\s*\}/s);
+  assert.match(html, /if \(login && login\.qrcode_img_content && !\["created", "expired", "cancel", "canceled", "denied", "verify_code_blocked", "error"\]\.includes\(String\(login\.status \|\| ""\)\)\) \{\s*startBotBridgeLoginPolling\(integrationId\);/s);
+  assert.doesNotMatch(html, /const login = renderBotBridgeLogin\(payload\.result\?\.login\);\s*startBotBridgeLoginPolling\(\);/s);
 });
 
 test("studio Bot log copy failure preserves the current log text", async () => {
