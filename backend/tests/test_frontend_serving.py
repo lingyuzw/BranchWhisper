@@ -27,18 +27,49 @@ class FrontendServingTests(unittest.TestCase):
     def test_api_allows_desktop_shell_origin(self) -> None:
         client = TestClient(create_app(args()))
 
-        preflight = client.options(
-            "/api/config",
-            headers={
-                "Origin": "tauri://localhost",
-                "Access-Control-Request-Method": "GET",
-            },
-        )
-        response = client.get("/api/config", headers={"Origin": "tauri://localhost"})
+        for origin in ["tauri://localhost", "http://tauri.localhost"]:
+            with self.subTest(origin=origin):
+                preflight = client.options(
+                    "/api/config",
+                    headers={
+                        "Origin": origin,
+                        "Access-Control-Request-Method": "GET",
+                    },
+                )
+                response = client.get("/api/config", headers={"Origin": origin})
 
-        self.assertEqual(preflight.status_code, 200)
-        self.assertEqual(preflight.headers["access-control-allow-origin"], "tauri://localhost")
-        self.assertEqual(response.headers["access-control-allow-origin"], "tauri://localhost")
+                self.assertEqual(preflight.status_code, 200)
+                self.assertEqual(preflight.headers["access-control-allow-origin"], origin)
+                self.assertEqual(response.headers["access-control-allow-origin"], origin)
+
+    def test_api_allows_desktop_json_write_preflights(self) -> None:
+        client = TestClient(create_app(args()))
+        origin = "http://tauri.localhost"
+
+        for path, method in [
+            ("/api/config", "PATCH"),
+            ("/api/diagnostics/llm-api-test", "POST"),
+        ]:
+            with self.subTest(path=path, method=method):
+                response = client.options(
+                    path,
+                    headers={
+                        "Origin": origin,
+                        "Access-Control-Request-Method": method,
+                        "Access-Control-Request-Headers": "content-type",
+                    },
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["access-control-allow-origin"], origin)
+                self.assertIn(
+                    method,
+                    response.headers["access-control-allow-methods"],
+                )
+                self.assertIn(
+                    "content-type",
+                    response.headers["access-control-allow-headers"].lower(),
+                )
 
     def test_root_redirects_to_app_when_dist_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

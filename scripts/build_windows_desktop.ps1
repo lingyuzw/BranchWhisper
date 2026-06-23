@@ -148,6 +148,7 @@ try {
 
   New-Item -ItemType Directory -Force -Path $DesktopExeDirectory | Out-Null
   Get-Process BranchWhisper -ErrorAction SilentlyContinue | Stop-Process -Force
+  Get-Process branchwhisper-backend -ErrorAction SilentlyContinue | Stop-Process -Force
   Start-Sleep -Milliseconds 500
   Copy-Item -LiteralPath $ExePath -Destination $DesktopExePath -Force
 

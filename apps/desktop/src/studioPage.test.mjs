@@ -28,6 +28,16 @@ test("studio keeps advanced web console explicit", async () => {
   assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
 });
 
+test("studio opens advanced web console without replacing the Studio window", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /function openAdvancedRoute\(route\)/);
+  assert.match(html, /window\.open\(url,\s*"_blank"/);
+  assert.match(html, /window\.navigator\.clipboard\.writeText\(url\)/);
+  assert.doesNotMatch(html, /window\.location\.assign\(resolveAdvancedRoute/);
+  assert.doesNotMatch(html, /if \(!opened\)/);
+});
+
 test("recommended mode card does not reuse primary button styling", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 

@@ -1586,6 +1586,13 @@ backend: checking packaged runtime</pre>
         return url.toString();
       }
 
+      function openAdvancedRoute(route) {
+        const url = resolveAdvancedRoute(route);
+        window.open(url, "_blank", "noopener,noreferrer");
+        window.navigator.clipboard.writeText(url).catch(() => {});
+        setApiStatus("已在新窗口打开高级页面，Studio 页面会保留。链接已尝试复制到剪贴板。", "warn");
+      }
+
       function backendOrigin() {
         const base = currentStatus.app_url || defaultAppUrl;
         const url = new URL(base);
@@ -1844,7 +1851,7 @@ backend: checking packaged runtime</pre>
 
         const advancedTarget = event.target.closest("[data-advanced-route]");
         if (advancedTarget) {
-          window.location.assign(resolveAdvancedRoute(advancedTarget.dataset.advancedRoute));
+          openAdvancedRoute(advancedTarget.dataset.advancedRoute);
           return;
         }
 

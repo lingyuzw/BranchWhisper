@@ -1,5 +1,6 @@
 use crate::backend_contract::BackendLaunchContract;
 use std::fs::{create_dir_all, OpenOptions};
+use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -7,6 +8,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 const HEALTH_PROBE_TIMEOUT: Duration = Duration::from_millis(350);
+const DESKTOP_PROBE_ORIGIN: &str = "http://tauri.localhost";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackendLaunchAction {
@@ -35,6 +37,13 @@ pub struct StartedBackendProcess {
     pub log_path: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DesktopBackendPortState {
+    Reusable,
+    Incompatible,
+    Unreachable,
+}
+
 pub struct DesktopBackendLauncher {
     contract: BackendLaunchContract,
 }
@@ -45,7 +54,9 @@ impl DesktopBackendLauncher {
     }
 
     pub fn ensure_backend(&self) -> BackendLaunchResult {
-        if is_tcp_port_reachable(&self.contract.host, self.contract.port) {
+        if desktop_backend_port_state(&self.contract.host, self.contract.port)
+            == DesktopBackendPortState::Reusable
+        {
             return BackendLaunchResult {
                 action: BackendLaunchAction::Reuse,
                 app_url: self.contract.app_url.clone(),
@@ -80,9 +91,90 @@ pub fn is_tcp_port_reachable(host: &str, port: u16) -> bool {
     }
 }
 
+pub fn is_desktop_backend_reusable(host: &str, port: u16) -> bool {
+    let addresses = match (host, port).to_socket_addrs() {
+        Ok(addresses) => addresses.collect::<Vec<_>>(),
+        Err(_) => return false,
+    };
+
+    for address in addresses {
+        let Ok(mut stream) = TcpStream::connect_timeout(&address, HEALTH_PROBE_TIMEOUT) else {
+            continue;
+        };
+        let _ = stream.set_read_timeout(Some(HEALTH_PROBE_TIMEOUT));
+        let _ = stream.set_write_timeout(Some(HEALTH_PROBE_TIMEOUT));
+
+        let request = format!(
+            "GET /api/config HTTP/1.1\r\nHost: {}:{}\r\nOrigin: {}\r\nConnection: close\r\n\r\n",
+            host, port, DESKTOP_PROBE_ORIGIN
+        );
+
+        if stream.write_all(request.as_bytes()).is_err() {
+            continue;
+        }
+
+        let mut response = String::new();
+        if stream.read_to_string(&mut response).is_err() {
+            continue;
+        }
+
+        if desktop_probe_response_is_branchwhisper_config(&response, DESKTOP_PROBE_ORIGIN) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn desktop_backend_port_state(host: &str, port: u16) -> DesktopBackendPortState {
+    if is_desktop_backend_reusable(host, port) {
+        return DesktopBackendPortState::Reusable;
+    }
+
+    if is_tcp_port_reachable(host, port) {
+        return DesktopBackendPortState::Incompatible;
+    }
+
+    DesktopBackendPortState::Unreachable
+}
+
+fn desktop_probe_response_is_branchwhisper_config(response: &str, origin: &str) -> bool {
+    let Some((headers, body)) = response.split_once("\r\n\r\n") else {
+        return false;
+    };
+    desktop_probe_headers_allow_origin(headers, origin)
+        && (body.contains("\"asr_provider_mode\"") || body.contains("\"api_llm_url\""))
+}
+
+fn desktop_probe_headers_allow_origin(headers: &str, origin: &str) -> bool {
+    let mut lines = headers.lines();
+    let Some(status_line) = lines.next() else {
+        return false;
+    };
+    let status_ok = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|code| code.parse::<u16>().ok())
+        .is_some_and(|code| (200..400).contains(&code));
+    if !status_ok {
+        return false;
+    }
+
+    lines.any(|line| {
+        let Some((name, value)) = line.split_once(':') else {
+            return false;
+        };
+        let header_value = value.trim();
+        name.trim().eq_ignore_ascii_case("access-control-allow-origin")
+            && (header_value == "*" || header_value == origin)
+    })
+}
+
 pub fn start_backend_process(
     contract: &BackendLaunchContract,
 ) -> Result<StartedBackendProcess, String> {
+    release_incompatible_backend_port(contract)?;
+
     if let Some(parent) = Path::new(&contract.log_path).parent() {
         create_dir_all(parent).map_err(|error| {
             format!(
@@ -130,6 +222,83 @@ pub fn start_backend_process(
     })
 }
 
+fn release_incompatible_backend_port(contract: &BackendLaunchContract) -> Result<(), String> {
+    release_incompatible_backend_port_with(
+        &contract.host,
+        contract.port,
+        Duration::from_secs(3),
+        Duration::from_millis(100),
+        is_tcp_port_reachable,
+        is_desktop_backend_reusable,
+        stop_stale_backend_processes,
+    )
+}
+
+fn release_incompatible_backend_port_with<TcpReachable, DesktopReusable, StopStale>(
+    host: &str,
+    port: u16,
+    timeout: Duration,
+    interval: Duration,
+    mut tcp_reachable: TcpReachable,
+    mut desktop_reusable: DesktopReusable,
+    mut stop_stale: StopStale,
+) -> Result<(), String>
+where
+    TcpReachable: FnMut(&str, u16) -> bool,
+    DesktopReusable: FnMut(&str, u16) -> bool,
+    StopStale: FnMut() -> Result<(), String>,
+{
+    if desktop_reusable(host, port) || !tcp_reachable(host, port) {
+        return Ok(());
+    }
+
+    stop_stale()?;
+    let deadline = Instant::now() + timeout;
+
+    loop {
+        if desktop_reusable(host, port) || !tcp_reachable(host, port) {
+            return Ok(());
+        }
+
+        if Instant::now() >= deadline {
+            return Err(format!(
+                "Existing process on {}:{} is reachable but not compatible with BranchWhisper desktop. Stop old branchwhisper-backend.exe and reopen BranchWhisper.",
+                host, port
+            ));
+        }
+
+        sleep(interval);
+    }
+}
+
+#[cfg(windows)]
+fn stop_stale_backend_processes() -> Result<(), String> {
+    let mut command = Command::new("taskkill");
+    configure_backend_command(&mut command);
+    let output = command
+        .args(["/IM", "branchwhisper-backend.exe", "/F", "/T"])
+        .output()
+        .map_err(|error| format!("Failed to stop stale branchwhisper-backend.exe: {}", error))?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let combined = format!("{}{}", stdout, stderr).to_lowercase();
+    if combined.contains("not found") || combined.contains("no tasks") {
+        return Ok(());
+    }
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn stop_stale_backend_processes() -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg(windows)]
 fn configure_backend_command(command: &mut Command) {
     use std::os::windows::process::CommandExt;
@@ -150,13 +319,13 @@ pub fn wait_for_backend_ready(
     let deadline = Instant::now() + timeout;
 
     loop {
-        if is_tcp_port_reachable(host, port) {
+        if is_desktop_backend_reusable(host, port) {
             return Ok(());
         }
 
         if Instant::now() >= deadline {
             return Err(format!(
-                "Backend health probe timed out after {} ms for {}:{}",
+                "Backend desktop probe timed out after {} ms for {}:{}",
                 timeout.as_millis(),
                 host,
                 port
@@ -175,11 +344,15 @@ mod tests {
     use std::thread;
 
     #[test]
-    fn launcher_reuses_backend_when_port_is_reachable() {
+    fn launcher_reuses_backend_when_desktop_probe_succeeds() {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
         let port = listener.local_addr().expect("test listener address").port();
         thread::spawn(move || {
-            let _ = listener.accept();
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buffer = [0_u8; 1024];
+                let _ = stream.read(&mut buffer);
+                let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 27\r\nConnection: close\r\n\r\n{\"asr_provider_mode\":\"api\"}");
+            }
         });
 
         let mut contract = BackendLaunchContract::default_for_repo("/tmp/BranchWhisper");
@@ -192,6 +365,86 @@ mod tests {
         assert_eq!(result.action, BackendLaunchAction::Reuse);
         assert_eq!(result.app_url, format!("http://127.0.0.1:{}/app/", port));
         assert_eq!(result.start_plan, None);
+    }
+
+    #[test]
+    fn launcher_starts_when_existing_port_lacks_desktop_cors() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
+        let port = listener.local_addr().expect("test listener address").port();
+        thread::spawn(move || {
+            for _ in 0..2 {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    return;
+                };
+                let mut buffer = [0_u8; 1024];
+                let _ = stream.read(&mut buffer);
+                let _ = stream.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
+                );
+            }
+        });
+
+        let mut contract = BackendLaunchContract::default_for_repo("/tmp/BranchWhisper");
+        contract.port = port;
+        contract.health_url = format!("http://127.0.0.1:{}/api/health", port);
+        contract.app_url = format!("http://127.0.0.1:{}/app/", port);
+
+        let result = DesktopBackendLauncher::new(contract).ensure_backend();
+
+        assert_eq!(result.action, BackendLaunchAction::Start);
+        assert!(result.start_plan.is_some());
+    }
+
+    #[test]
+    fn desktop_probe_rejects_non_branchwhisper_service_even_with_cors() {
+        let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 2\r\n\r\n{}";
+
+        assert!(!desktop_probe_response_is_branchwhisper_config(
+            response,
+            DESKTOP_PROBE_ORIGIN
+        ));
+    }
+
+    #[test]
+    fn release_incompatible_backend_port_stops_stale_process_before_starting() {
+        let mut stop_count = 0;
+        let mut tcp_checks = 0;
+
+        let result = release_incompatible_backend_port_with(
+            "127.0.0.1",
+            7860,
+            Duration::ZERO,
+            Duration::ZERO,
+            |_, _| {
+                tcp_checks += 1;
+                tcp_checks == 1
+            },
+            |_, _| false,
+            || {
+                stop_count += 1;
+                Ok(())
+            },
+        );
+
+        assert_eq!(result, Ok(()));
+        assert_eq!(stop_count, 1);
+    }
+
+    #[test]
+    fn release_incompatible_backend_port_reports_still_blocked_port() {
+        let result = release_incompatible_backend_port_with(
+            "127.0.0.1",
+            7860,
+            Duration::ZERO,
+            Duration::ZERO,
+            |_, _| true,
+            |_, _| false,
+            || Ok(()),
+        );
+
+        assert!(result
+            .expect_err("blocked port should report error")
+            .contains("not compatible"));
     }
 
     #[test]
@@ -289,7 +542,11 @@ mod tests {
         thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(50));
             let listener = TcpListener::bind(("127.0.0.1", port)).expect("bind delayed listener");
-            let _ = listener.accept();
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buffer = [0_u8; 1024];
+                let _ = stream.read(&mut buffer);
+                let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 27\r\nConnection: close\r\n\r\n{\"asr_provider_mode\":\"api\"}");
+            }
         });
 
         let result = wait_for_backend_ready(

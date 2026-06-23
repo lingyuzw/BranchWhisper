@@ -433,7 +433,7 @@ def create_app(args) -> FastAPI:
     app = FastAPI(title="BranchWhisper")
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r"^(tauri://localhost|https?://(localhost|127\.0\.0\.1)(:\d+)?)$",
+        allow_origin_regex=r"^(tauri://localhost|https?://(localhost|127\.0\.0\.1|tauri\.localhost)(:\d+)?)$",
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
