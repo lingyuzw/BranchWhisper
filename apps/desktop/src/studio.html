@@ -737,6 +737,102 @@
         white-space: nowrap;
       }
 
+      .text-input {
+        width: 100%;
+        min-height: 38px;
+        padding: 0 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        outline: none;
+        background: var(--surface-muted);
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .text-input:focus {
+        border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+        box-shadow: 0 0 0 3px var(--primary-soft);
+      }
+
+      .text-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .api-provider-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .api-provider-card {
+        min-height: 88px;
+        display: grid;
+        align-content: start;
+        gap: 6px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        text-align: left;
+      }
+
+      .api-provider-card:hover,
+      .api-provider-card.active {
+        border-color: color-mix(in srgb, var(--primary) 46%, var(--border));
+        background: var(--primary-soft);
+        color: var(--text);
+      }
+
+      .api-provider-card strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .api-provider-card span {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .api-config-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+        gap: 14px;
+      }
+
+      .status-line {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .status-line.ok {
+        border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+        background: var(--success-soft);
+        color: var(--success);
+      }
+
+      .status-line.warn {
+        border-color: color-mix(in srgb, var(--warning) 42%, var(--border));
+        background: var(--warning-soft);
+        color: var(--warning);
+      }
+
+      .status-line.error {
+        border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
       .table-panel {
         overflow: hidden;
       }
@@ -1121,32 +1217,61 @@
                   <h1>新增和管理 API</h1>
                   <p class="lead">这里不叫模型提供商，统一叫 API。新用户只需要知道：选预设、填密钥、点测试、保存启用。</p>
                   <div class="panel-actions">
-                    <button class="primary-action" type="button">新增 API</button>
-                    <button class="secondary-action" type="button">测试当前 API</button>
+                    <button class="primary-action" type="button" data-api-save>保存启用</button>
+                    <button class="secondary-action" type="button" data-api-test>测试当前 API</button>
+                    <button class="secondary-action" type="button" data-api-load>重新加载</button>
                   </div>
                 </div>
-                <div class="panel">
+                <div class="panel" data-api-provider-modal>
                   <h3>默认预设</h3>
-                  <div class="form-grid">
-                    <div class="input-preview">Qwen</div>
-                    <div class="input-preview">DeepSeek</div>
-                    <div class="input-preview">OpenAI 兼容</div>
-                    <div class="input-preview">自定义 API</div>
+                  <div class="api-provider-grid">
+                    <button class="api-provider-card active" type="button" data-api-provider="qwen">
+                      <strong>Qwen</strong>
+                      <span>DashScope 兼容接口，适合作为默认 API。</span>
+                    </button>
+                    <button class="api-provider-card" type="button" data-api-provider="deepseek">
+                      <strong>DeepSeek</strong>
+                      <span>DeepSeek Chat，适合备用文本模型。</span>
+                    </button>
+                    <button class="api-provider-card" type="button" data-api-provider="openai">
+                      <strong>OpenAI 兼容</strong>
+                      <span>填入任意 OpenAI-compatible 服务地址。</span>
+                    </button>
+                    <button class="api-provider-card" type="button" data-api-provider="custom">
+                      <strong>自定义 API</strong>
+                      <span>保留当前 URL 和模型，自行调整。</span>
+                    </button>
                   </div>
                 </div>
               </div>
-              <div class="table-panel">
-                <div class="table-head">
-                  <div><h2>API 列表</h2><p class="muted">第一版先展示结构，后续接后端配置保存。</p></div>
-                  <span class="badge">API mode</span>
+              <div class="api-config-layout">
+                <div class="panel">
+                  <div class="panel-head">
+                    <div>
+                      <h2>API 配置</h2>
+                      <p class="muted">没有本地环境的电脑，先填这里就能测试模型连通性。</p>
+                    </div>
+                    <span class="badge" data-api-secret-state>Key 未检测</span>
+                  </div>
+                  <div class="form-grid">
+                    <label class="field"><span>名称</span><input class="text-input" data-api-name-input value="Qwen 默认" autocomplete="off" /></label>
+                    <label class="field"><span>模型</span><input class="text-input" data-api-model-input value="qwen-plus" autocomplete="off" /></label>
+                    <label class="field"><span>API URL</span><input class="text-input" data-api-url-input value="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions" autocomplete="off" /></label>
+                    <label class="field"><span>API Key</span><input class="text-input" data-api-key-input type="password" placeholder="保存后会显示已配置状态" autocomplete="off" /></label>
+                    <label class="field"><span>Temperature</span><input class="text-input" data-api-temperature-input type="number" min="0" max="2" step="0.1" value="0.7" /></label>
+                    <label class="field"><span>Max Tokens</span><input class="text-input" data-api-max-tokens-input type="number" min="64" max="8192" step="64" value="1024" /></label>
+                  </div>
+                  <div class="status-line warn" data-api-status>等待加载后端配置。后端未启动时，可以先填写，启动后再测试和保存。</div>
                 </div>
-                <table class="table">
-                  <thead><tr><th>名称</th><th>模型</th><th>状态</th><th>用途</th></tr></thead>
-                  <tbody>
-                    <tr><td>Qwen 默认</td><td>qwen-plus / openai-compatible</td><td>未配置</td><td>聊天模型</td></tr>
-                    <tr><td>DeepSeek 默认</td><td>deepseek-chat</td><td>未配置</td><td>备用模型</td></tr>
-                  </tbody>
-                </table>
+                <div class="panel">
+                  <h2>配置顺序</h2>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>选 API 预设</strong><span>只会填 URL、模型和名称，不会覆盖密钥。</span></div><span class="status-chip">可改</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>填 API Key</strong><span>密钥只提交给本机后端，页面不会回显原文。</span></div><span class="status-chip">必填</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>先测试再保存</strong><span>测试会用当前表单值，不需要先写入配置。</span></div><span class="status-chip">推荐</span></div>
+                    <div class="step-row"><span class="step-num">4</span><div class="step-main"><strong>保存启用 API 模式</strong><span>保存后 Chat 和 Bot 默认使用这个聊天 API。</span></div><span class="status-chip">完成</span></div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1420,6 +1545,37 @@ backend: checking packaged runtime</pre>
       const backendDot = document.querySelector("[data-backend-dot]");
       const commandLine = document.querySelector("[data-command-line]");
       const logPreview = document.querySelector("[data-log-preview]");
+      const apiNameInput = document.querySelector("[data-api-name-input]");
+      const apiUrlInput = document.querySelector("[data-api-url-input]");
+      const apiModelInput = document.querySelector("[data-api-model-input]");
+      const apiKeyInput = document.querySelector("[data-api-key-input]");
+      const apiTemperatureInput = document.querySelector("[data-api-temperature-input]");
+      const apiMaxTokensInput = document.querySelector("[data-api-max-tokens-input]");
+      const apiStatus = document.querySelector("[data-api-status]");
+      const apiSecretState = document.querySelector("[data-api-secret-state]");
+
+      const apiPresets = {
+        qwen: {
+          name: "Qwen 默认",
+          url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+          model: "qwen-plus",
+        },
+        deepseek: {
+          name: "DeepSeek 默认",
+          url: "https://api.deepseek.com/v1/chat/completions",
+          model: "deepseek-chat",
+        },
+        openai: {
+          name: "OpenAI 兼容",
+          url: "https://api.openai.com/v1/chat/completions",
+          model: "gpt-4.1-mini",
+        },
+        custom: {
+          name: "自定义 API",
+          url: "",
+          model: "",
+        },
+      };
 
       function resolveAdvancedRoute(route) {
         const base = currentStatus.app_url || defaultAppUrl;
@@ -1428,6 +1584,135 @@ backend: checking packaged runtime</pre>
         url.search = "";
         url.hash = "";
         return url.toString();
+      }
+
+      function backendOrigin() {
+        const base = currentStatus.app_url || defaultAppUrl;
+        const url = new URL(base);
+        return url.origin;
+      }
+
+      async function backendRequest({ method = "GET", path, body }) {
+        const response = await fetch(`${backendOrigin()}${path}`, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.detail || payload.error || `HTTP ${response.status}`);
+        }
+        return payload;
+      }
+
+      function setApiStatus(message, tone = "warn") {
+        if (!apiStatus) {
+          return;
+        }
+        apiStatus.textContent = message;
+        apiStatus.className = `status-line ${tone}`;
+      }
+
+      function setActiveApiProvider(provider) {
+        document.querySelectorAll("[data-api-provider]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.apiProvider === provider);
+        });
+      }
+
+      function applyApiPreset(provider) {
+        const preset = apiPresets[provider] || apiPresets.custom;
+        setActiveApiProvider(provider);
+        if (apiNameInput && preset.name) {
+          apiNameInput.value = preset.name;
+        }
+        if (apiUrlInput && preset.url) {
+          apiUrlInput.value = preset.url;
+        }
+        if (apiModelInput && preset.model) {
+          apiModelInput.value = preset.model;
+        }
+        setApiStatus(`${preset.name} 预设已填入，API Key 不会被覆盖。`, "warn");
+      }
+
+      function currentApiPayload() {
+        return {
+          dialog_mode: "api",
+          api_llm_url: apiUrlInput?.value.trim() || "",
+          api_llm_model: apiModelInput?.value.trim() || "",
+          api_llm_api_key: apiKeyInput?.value.trim() || "",
+          api_temperature: Number(apiTemperatureInput?.value || 0.7),
+          api_max_tokens: Number(apiMaxTokensInput?.value || 1024),
+        };
+      }
+
+      function renderApiConfig(config) {
+        if (!config) {
+          return;
+        }
+        if (apiNameInput) {
+          apiNameInput.value = config.api_name || apiNameInput.value || "当前 API";
+        }
+        if (apiUrlInput) {
+          apiUrlInput.value = config.api_llm_url || "";
+        }
+        if (apiModelInput) {
+          apiModelInput.value = config.api_llm_model || "";
+        }
+        if (apiTemperatureInput && config.api_temperature !== undefined) {
+          apiTemperatureInput.value = String(config.api_temperature);
+        }
+        if (apiMaxTokensInput && config.api_max_tokens !== undefined) {
+          apiMaxTokensInput.value = String(config.api_max_tokens);
+        }
+        const apiKeySet = Boolean(config.api_llm_api_key_set);
+        const apiKeyMasked = config.api_llm_api_key_masked || "";
+        if (apiKeyInput) {
+          apiKeyInput.value = "";
+          apiKeyInput.placeholder = apiKeyMasked || "未保存 API Key";
+        }
+        if (apiSecretState) {
+          apiSecretState.textContent = apiKeySet ? `Key 已配置 ${apiKeyMasked}` : "Key 未配置";
+        }
+      }
+
+      async function loadApiConfig() {
+        try {
+          const config = await backendRequest({ path: "/api/config" });
+          renderApiConfig(config);
+          setApiStatus("已加载本机后端配置。可以直接测试当前表单，或填入新 Key 后保存。", "ok");
+          return config;
+        } catch (error) {
+          setApiStatus(`无法加载后端配置：${error.message}。确认桌面后端已启动后再点重新加载。`, "error");
+          return null;
+        }
+      }
+
+      async function saveApiConfig() {
+        try {
+          const payload = currentApiPayload();
+          const config = await backendRequest({ method: "PATCH", path: "/api/config", body: payload });
+          renderApiConfig(config);
+          setApiStatus("API 配置已保存并启用 API 模式。下一步可以创建 Bot 或打开 Chat 测试。", "ok");
+        } catch (error) {
+          setApiStatus(`保存失败：${error.message}`, "error");
+        }
+      }
+
+      async function testApiConfig() {
+        try {
+          const payload = currentApiPayload();
+          if (!apiKeyInput.value.trim()) {
+            payload.api_llm_api_key = "";
+          }
+          const result = await backendRequest({ method: "POST", path: "/api/diagnostics/llm-api-test", body: payload });
+          if (result.ok) {
+            setApiStatus(`测试通过：${result.model || payload.api_llm_model}，延迟 ${result.latency_ms ?? "-"} ms。`, "ok");
+          } else {
+            setApiStatus(`测试未通过：${result.error || "接口没有返回有效 choices"}`, "error");
+          }
+        } catch (error) {
+          setApiStatus(`测试失败：${error.message}`, "error");
+        }
       }
 
       function activateSection(section) {
@@ -1447,6 +1732,9 @@ backend: checking packaged runtime</pre>
         title.textContent = nextTitle;
         subtitle.textContent = nextSubtitle;
         root.dataset.rail = railPages.has(next) ? next : "hidden";
+        if (next === "api") {
+          loadApiConfig();
+        }
       }
 
       function activateWorkspace(workspace) {
@@ -1557,6 +1845,27 @@ backend: checking packaged runtime</pre>
         const advancedTarget = event.target.closest("[data-advanced-route]");
         if (advancedTarget) {
           window.location.assign(resolveAdvancedRoute(advancedTarget.dataset.advancedRoute));
+          return;
+        }
+
+        const providerTarget = event.target.closest("[data-api-provider]");
+        if (providerTarget) {
+          applyApiPreset(providerTarget.dataset.apiProvider);
+          return;
+        }
+
+        if (event.target.closest("[data-api-load]")) {
+          loadApiConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-api-save]")) {
+          saveApiConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-api-test]")) {
+          testApiConfig();
           return;
         }
 

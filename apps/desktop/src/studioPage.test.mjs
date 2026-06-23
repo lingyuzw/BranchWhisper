@@ -110,3 +110,89 @@ test("studio right rail is contextual instead of appearing on every page", async
   assert.match(html, /const railPages = new Set\(\["guide", "diagnostics"\]\)/);
   assert.match(html, /root\.dataset\.rail = railPages\.has\(next\) \? next : "hidden"/);
 });
+
+test("studio api page is wired to backend config instead of static placeholders", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /data-api-provider-modal/);
+  assert.match(html, /data-api-provider="qwen"/);
+  assert.match(html, /data-api-provider="deepseek"/);
+  assert.match(html, /data-api-provider="openai"/);
+  assert.match(html, /data-api-provider="custom"/);
+  assert.match(html, /data-api-name-input/);
+  assert.match(html, /data-api-url-input/);
+  assert.match(html, /data-api-model-input/);
+  assert.match(html, /data-api-key-input/);
+  assert.match(html, /data-api-temperature-input/);
+  assert.match(html, /data-api-max-tokens-input/);
+  assert.match(html, /data-api-load/);
+  assert.match(html, /data-api-save/);
+  assert.match(html, /data-api-test/);
+  assert.match(html, /data-api-status/);
+  assert.match(html, /api_llm_api_key_set/);
+  assert.match(html, /api_llm_api_key_masked/);
+  assert.match(html, /backendRequest\(\{\s*path:\s*"\/api\/config"\s*\}\)/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*"\/api\/config"/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/diagnostics\/llm-api-test"/s);
+  assert.match(html, /dialog_mode:\s*"api"/);
+  assert.doesNotMatch(html, /后续接后端配置保存/);
+});
+
+test("studio API page exposes real provider configuration controls", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /data-api-provider-modal/);
+  for (const provider of ["qwen", "deepseek", "openai", "custom"]) {
+    assert.match(html, new RegExp(`data-api-provider="${provider}"`));
+  }
+
+  for (const selector of [
+    "data-api-name-input",
+    "data-api-url-input",
+    "data-api-model-input",
+    "data-api-key-input",
+    "data-api-temperature-input",
+    "data-api-max-tokens-input",
+    "data-api-load",
+    "data-api-save",
+    "data-api-test",
+    "data-api-status",
+    "data-api-secret-state",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /api_llm_api_key_set/);
+  assert.match(html, /api_llm_api_key_masked/);
+  assert.doesNotMatch(html, /后续接后端配置保存/);
+});
+
+test("studio API page wires backend config load save and live test without exposing masked keys", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /function backendOrigin\(\)/);
+  assert.match(html, /currentStatus\.app_url \|\| defaultAppUrl/);
+  assert.match(html, /return url\.origin/);
+  assert.match(html, /function backendRequest\(\{\s*method = "GET",\s*path,\s*body\s*\}\)/);
+  assert.match(html, /fetch\(`\$\{backendOrigin\(\)\}\$\{path\}`/);
+  assert.match(html, /"Content-Type": "application\/json"/);
+  assert.match(html, /if \(!response\.ok\)/);
+
+  assert.match(html, /async function loadApiConfig\(\)/);
+  assert.match(html, /backendRequest\(\{\s*path: "\/api\/config"\s*\}\)/);
+  assert.match(html, /apiKeyInput\.placeholder = apiKeyMasked/);
+  assert.doesNotMatch(html, /apiKeyInput\.value\s*=\s*[^;]*api_llm_api_key_masked/);
+
+  assert.match(html, /async function saveApiConfig\(\)/);
+  assert.match(html, /method: "PATCH"/);
+  assert.match(html, /path: "\/api\/config"/);
+  for (const key of ["dialog_mode", "api_llm_url", "api_llm_model", "api_llm_api_key", "api_temperature", "api_max_tokens"]) {
+    assert.match(html, new RegExp(`${key}:`));
+  }
+
+  assert.match(html, /async function testApiConfig\(\)/);
+  assert.match(html, /method: "POST"/);
+  assert.match(html, /path: "\/api\/diagnostics\/llm-api-test"/);
+  assert.match(html, /if \(!apiKeyInput\.value\.trim\(\)\)/);
+  assert.match(html, /if \(next === "api"\) \{\s*loadApiConfig\(\);/s);
+});
