@@ -70,6 +70,16 @@ class DesktopPrereqScriptTests(unittest.TestCase):
 
         self.assertLess(frontend_build_index, backend_build_index)
 
+    def test_windows_desktop_build_stops_running_desktop_before_copy(self) -> None:
+        content = WINDOWS_DESKTOP_SCRIPT.read_text(encoding="utf-8")
+
+        stop_index = content.index("Get-Process BranchWhisper")
+        copy_index = content.index("Copy-Item -LiteralPath $ExePath")
+
+        self.assertLess(stop_index, copy_index)
+        self.assertIn("Stop-Process -Force", content)
+        self.assertIn("Start-Sleep -Milliseconds 500", content)
+
     def test_desktop_guide_documents_windows_app_and_packaged_backend_flow(self) -> None:
         content = DESKTOP_GUIDE.read_text(encoding="utf-8")
 
