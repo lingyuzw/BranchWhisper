@@ -6,6 +6,26 @@ import test from "node:test";
 const studioHtmlPath = resolve("apps/desktop/src/studio.html");
 const tauriConfigPath = resolve("apps/desktop/src-tauri/tauri.conf.json");
 
+function extractScriptFunction(script, functionName) {
+  const start = script.indexOf(`function ${functionName}(`);
+  assert.notEqual(start, -1, `${functionName} should exist`);
+  const bodyStart = script.indexOf("{", start);
+  assert.notEqual(bodyStart, -1, `${functionName} should have a body`);
+  let depth = 0;
+  for (let index = bodyStart; index < script.length; index += 1) {
+    const char = script[index];
+    if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return script.slice(start, index + 1);
+      }
+    }
+  }
+  throw new Error(`${functionName} body was not closed`);
+}
+
 test("desktop app opens to BranchWhisper Studio instead of legacy web console", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
   const config = JSON.parse(await readFile(tauriConfigPath, "utf8"));
@@ -375,13 +395,34 @@ test("studio Bot page supports QR login and polling for the selected bridge", as
 test("studio Bot QR login renders non-image QR payloads as scannable QR codes", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
+  assert.match(html, /<script src="qrcode-generator\.js"><\/script>/);
   assert.match(html, /function normalizeQrImageSource\(imageContent\)/);
   assert.match(html, /value\.startsWith\("data:"\)/);
   assert.match(html, /function renderLocalQrSvgDataUrl\(text\)/);
   assert.match(html, /QRCode\.create\(text/);
+  assert.match(html, /qrcode\(0,\s*"M"\)/);
+  assert.match(html, /localQr\.addData\(String\(text\),\s*"Byte"\)/);
   assert.match(html, /data:image\/svg\+xml;charset=utf-8,/);
   assert.doesNotMatch(html, /api\.qrserver\.com\/v1\/create-qr-code/);
   assert.doesNotMatch(html, /return `data:image\/png;base64,\$\{value\}`/);
+});
+
+test("studio Bot QR login displays raw base64 QR images without re-encoding them", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const detectSource = extractScriptFunction(script, "detectBase64ImageMime");
+  const normalizeSource = extractScriptFunction(script, "normalizeQrImageSource");
+  const normalizeQrImageSource = Function(
+    "renderLocalQrSvgDataUrl",
+    `${detectSource}; ${normalizeSource}; return normalizeQrImageSource;`,
+  )(() => "data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C/svg%3E");
+
+  const tinyPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+
+  assert.equal(
+    normalizeQrImageSource(tinyPngBase64),
+    `data:image/png;base64,${tinyPngBase64}`,
+  );
 });
 
 test("studio Bot QR login starts polling and displays account details", async () => {
