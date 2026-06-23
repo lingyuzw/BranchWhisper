@@ -223,6 +223,13 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
     "data-bot-status",
     "data-bot-count",
     "data-bot-selected-name",
+    "data-bot-bridge-provider-input",
+    "data-bot-bridge-integration-input",
+    "data-bot-bridge-url-input",
+    "data-bot-bridge-enabled",
+    "data-bot-bridge-status",
+    "data-bot-bridge-test",
+    "data-bot-bridge-log",
   ]) {
     assert.match(html, new RegExp(selector));
   }
@@ -238,6 +245,56 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
   assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/bot-profiles"/s);
   assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*`\/api\/bot-profiles\/\$\{encodeURIComponent\(selectedBotProfileId\)\}`/s);
   assert.doesNotMatch(html, /等待创建/);
+});
+
+test("studio Bot page persists and detects the selected weixin bridge", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /function setBotBridgeStatus\(message,\s*tone = "warn"\)/);
+  assert.match(html, /\.badge\.ok/);
+  assert.match(html, /\.badge\.warn/);
+  assert.match(html, /\.badge\.error/);
+  assert.match(html, /\.badge\.run/);
+  assert.match(html, /function selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /bridge_provider:\s*botBridgeProviderInput\?\.value\.trim\(\) \|\| "openclaw"/);
+  assert.match(html, /bridge_integration_id:\s*selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /bridge_url:\s*botBridgeUrlInput\?\.value\.trim\(\) \|\| ""/);
+  assert.match(html, /bridge_enabled:\s*Boolean\(botBridgeEnabledInput\?\.checked\)/);
+  assert.match(html, /botBridgeProviderInput\.value = current\.bridge_provider \|\| "openclaw"/);
+  assert.match(html, /botBridgeIntegrationInput\.value = current\.bridge_integration_id \|\| "weixin_personal"/);
+  assert.match(html, /botBridgeUrlInput\.value = current\.bridge_url \|\| ""/);
+  assert.match(html, /botBridgeEnabledInput\.checked = current\.bridge_enabled === true/);
+  assert.match(html, /async function testBotBridge\(\)/);
+  assert.match(html, /backendRequest\(\{\s*path:\s*"\/api\/integrations"\s*\}\)/s);
+  assert.match(html, /integrations\.find\(\(item\) => item\.id === integrationId\)/);
+  assert.match(html, /setBotBridgeLog\(detail\)/);
+  assert.match(html, /data-bot-bridge-test/);
+});
+
+test("studio Bot save synchronizes the integration runtime binding", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /async function syncBotBridgeIntegration\(profileId\)/);
+  assert.match(html, /const integrationId = selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}`/);
+  assert.match(html, /bot_profile_id:\s*profileId \|\| selectedBotProfileId/);
+  assert.match(html, /enabled:\s*Boolean\(botBridgeEnabledInput\?\.checked\)/);
+  assert.match(html, /await syncBotBridgeIntegration\(result\.profile\?\.id \|\| selectedBotProfileId\)/);
+});
+
+test("studio Bot bridge detection does not mark disabled integrations as usable", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(
+    html,
+    /if \(!integration\.enabled\) \{\s*setBotBridgeStatus\("未启用", "warn"\);[\s\S]*\} else if \(\["running", "login", "logged_in"\]\.includes\(status\) \|\| accounts > 0\) \{/,
+  );
+});
+
+test("studio Bot selection resets bridge logs for the selected profile", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /setBotBridgeLog\(`等待检测当前 Bot：\$\{current\.name \|\| current\.id \|\| "当前 Bot"\}\\n集成实例：\$\{current\.bridge_integration_id \|\| "weixin_personal"\}`\)/);
 });
 
 test("studio config page persists model personality separately from bot personality", async () => {

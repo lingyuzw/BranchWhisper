@@ -10,6 +10,9 @@ from core.io_utils import write_json_file
 
 
 DEFAULT_PROFILE_ID = "default"
+DEFAULT_BRIDGE_PROVIDER = "openclaw"
+DEFAULT_BRIDGE_INTEGRATION_ID = "weixin_personal"
+BRIDGE_PROVIDERS = {"openclaw", "compatible"}
 
 
 def safe_id(value: str, fallback: str = DEFAULT_PROFILE_ID) -> str:
@@ -34,6 +37,10 @@ class BotProfileStore:
             "system": self.default_system,
             "tools_enabled": True,
             "reply_style": "natural",
+            "bridge_provider": DEFAULT_BRIDGE_PROVIDER,
+            "bridge_integration_id": DEFAULT_BRIDGE_INTEGRATION_ID,
+            "bridge_url": "",
+            "bridge_enabled": False,
             "created_at": now,
             "updated_at": now,
         }
@@ -96,6 +103,9 @@ class BotProfileStore:
 
     def normalize(self, item: dict) -> dict:
         now = self._now()
+        bridge_provider = str(item.get("bridge_provider") or DEFAULT_BRIDGE_PROVIDER).strip().lower()
+        if bridge_provider not in BRIDGE_PROVIDERS:
+            bridge_provider = DEFAULT_BRIDGE_PROVIDER
         return {
             "id": safe_id(str(item.get("id") or DEFAULT_PROFILE_ID)),
             "name": str(item.get("name") or "枝语")[:80],
@@ -103,6 +113,13 @@ class BotProfileStore:
             "system": str(item.get("system") or self.default_system),
             "tools_enabled": bool(item.get("tools_enabled", True)),
             "reply_style": str(item.get("reply_style") or "natural")[:40],
+            "bridge_provider": bridge_provider,
+            "bridge_integration_id": safe_id(
+                str(item.get("bridge_integration_id") or DEFAULT_BRIDGE_INTEGRATION_ID),
+                fallback=DEFAULT_BRIDGE_INTEGRATION_ID,
+            ),
+            "bridge_url": str(item.get("bridge_url") or "").strip()[:300],
+            "bridge_enabled": bool(item.get("bridge_enabled", False)),
             "created_at": str(item.get("created_at") or now),
             "updated_at": str(item.get("updated_at") or now),
         }

@@ -506,6 +506,30 @@
         white-space: nowrap;
       }
 
+      .badge.ok {
+        border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+        background: var(--success-soft);
+        color: var(--success);
+      }
+
+      .badge.warn {
+        border-color: color-mix(in srgb, var(--warning) 42%, var(--border));
+        background: var(--warning-soft);
+        color: var(--warning);
+      }
+
+      .badge.error {
+        border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
+      .badge.run {
+        border-color: color-mix(in srgb, var(--info) 42%, var(--border));
+        background: var(--info-soft);
+        color: var(--info);
+      }
+
       .mode-card strong {
         display: block;
         font-size: 20px;
@@ -900,6 +924,16 @@
         border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
         background: var(--danger-soft);
         color: var(--danger);
+      }
+
+      .status-line.run {
+        border-color: color-mix(in srgb, var(--info) 42%, var(--border));
+        background: var(--info-soft);
+        color: var(--info);
+      }
+
+      .bridge-log {
+        min-height: 118px;
       }
 
       .table-panel {
@@ -1376,7 +1410,7 @@
               </div>
               <div class="metric-grid">
                 <div class="metric"><span>Bot 数量</span><strong data-bot-count>0</strong><small class="muted">本机档案</small></div>
-                <div class="metric"><span>在线状态</span><strong>未连接</strong><small class="muted">微信桥接稍后接入</small></div>
+                <div class="metric"><span>桥接状态</span><strong data-bot-bridge-summary>未启用</strong><small class="muted">按当前 Bot 档案检测</small></div>
                 <div class="metric"><span>人格</span><strong>已分离</strong><small class="muted">模型人格和 Bot 人格分开保存</small></div>
                 <div class="metric"><span>配置状态</span><strong>可保存</strong><small class="muted">API 配置和 Bot 档案独立</small></div>
               </div>
@@ -1388,11 +1422,34 @@
                   <div class="bot-profile-list" data-bot-profile-list></div>
                 </div>
                 <div class="panel">
-                  <h2>下一步接入</h2>
+                  <div class="panel-head">
+                    <div>
+                      <h2>微信桥接</h2>
+                      <p class="muted">绑定当前 Bot 使用的 OpenClaw 或兼容桥接实例。没有本地微信桥接时，可以先关闭启用开关，只走 API。</p>
+                    </div>
+                    <span class="badge" data-bot-bridge-status>未检测</span>
+                  </div>
+                  <div class="form-grid">
+                    <label class="field">
+                      <span>桥接类型</span>
+                      <select class="text-input" data-bot-bridge-provider-input>
+                        <option value="openclaw">OpenClaw</option>
+                        <option value="compatible">兼容桥接</option>
+                      </select>
+                    </label>
+                    <label class="field"><span>集成实例 ID</span><input class="text-input" data-bot-bridge-integration-input value="weixin_personal" autocomplete="off" /></label>
+                    <label class="field"><span>桥接地址</span><input class="text-input" data-bot-bridge-url-input placeholder="可选，例如 http://127.0.0.1:18080" autocomplete="off" /></label>
+                    <label class="checkbox-field"><input type="checkbox" data-bot-bridge-enabled />启用这个微信桥接</label>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-bot-bridge-test>检测桥接</button>
+                    <button class="secondary-action" type="button" data-advanced-route="/app/integrations">打开高级桥接页</button>
+                  </div>
+                  <pre class="log-box bridge-log" data-bot-bridge-log>检测前不会连接微信。先保存 Bot 档案，再点检测桥接，页面会读取本机 integrations 状态。</pre>
                   <div class="step-list">
-                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>确认 API</strong><span>API 页面测试通过后，Bot 默认使用当前 API。</span></div><span class="status-chip">已接</span></div>
-                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>绑定微信桥接</strong><span>后续连接 OpenClaw 或兼容桥接。</span></div><span class="status-chip">待接</span></div>
-                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>写入对话数据</strong><span>Bot 对话单独存储，支持查看和删除。</span></div><span class="status-chip">待接</span></div>
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>保存绑定</strong><span>桥接字段随当前 Bot 档案保存，不影响模型 API 配置。</span></div><span class="status-chip">本阶段</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>检测实例</strong><span>检查集成实例是否存在、是否启用、是否有运行错误。</span></div><span class="status-chip">可用</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>登录和收发</strong><span>下一阶段接入扫码登录、实时日志和消息回放。</span></div><span class="status-chip">下一步</span></div>
                   </div>
                 </div>
               </div>
@@ -1685,6 +1742,13 @@ backend: checking packaged runtime</pre>
       const botSystemInput = document.querySelector("[data-bot-system-input]");
       const botReplyStyleInput = document.querySelector("[data-bot-reply-style-input]");
       const botToolsEnabledInput = document.querySelector("[data-bot-tools-enabled]");
+      const botBridgeProviderInput = document.querySelector("[data-bot-bridge-provider-input]");
+      const botBridgeIntegrationInput = document.querySelector("[data-bot-bridge-integration-input]");
+      const botBridgeUrlInput = document.querySelector("[data-bot-bridge-url-input]");
+      const botBridgeEnabledInput = document.querySelector("[data-bot-bridge-enabled]");
+      const botBridgeStatus = document.querySelector("[data-bot-bridge-status]");
+      const botBridgeSummary = document.querySelector("[data-bot-bridge-summary]");
+      const botBridgeLog = document.querySelector("[data-bot-bridge-log]");
       const botStatus = document.querySelector("[data-bot-status]");
       const botCount = document.querySelector("[data-bot-count]");
       const botSelectedName = document.querySelector("[data-bot-selected-name]");
@@ -1767,6 +1831,22 @@ backend: checking packaged runtime</pre>
         }
         botStatus.textContent = message;
         botStatus.className = `status-line ${tone}`;
+      }
+
+      function setBotBridgeStatus(message, tone = "warn") {
+        if (botBridgeStatus) {
+          botBridgeStatus.textContent = message;
+          botBridgeStatus.className = `badge ${tone}`;
+        }
+        if (botBridgeSummary) {
+          botBridgeSummary.textContent = message;
+        }
+      }
+
+      function setBotBridgeLog(message) {
+        if (botBridgeLog && message) {
+          botBridgeLog.textContent = message;
+        }
       }
 
       function setConfigStatus(message, tone = "warn") {
@@ -1883,6 +1963,10 @@ backend: checking packaged runtime</pre>
         return botProfiles.find((profile) => profile.id === selectedBotProfileId) || botProfiles[0] || null;
       }
 
+      function selectedBotBridgeIntegrationId() {
+        return botBridgeIntegrationInput?.value.trim() || "weixin_personal";
+      }
+
       function normalizeBotProfileId(value) {
         return String(value || "")
           .trim()
@@ -1929,6 +2013,20 @@ backend: checking packaged runtime</pre>
         if (botToolsEnabledInput) {
           botToolsEnabledInput.checked = current.tools_enabled !== false;
         }
+        if (botBridgeProviderInput) {
+          botBridgeProviderInput.value = current.bridge_provider || "openclaw";
+        }
+        if (botBridgeIntegrationInput) {
+          botBridgeIntegrationInput.value = current.bridge_integration_id || "weixin_personal";
+        }
+        if (botBridgeUrlInput) {
+          botBridgeUrlInput.value = current.bridge_url || "";
+        }
+        if (botBridgeEnabledInput) {
+          botBridgeEnabledInput.checked = current.bridge_enabled === true;
+        }
+        setBotBridgeStatus(current.bridge_enabled ? "待检测" : "未启用", current.bridge_enabled ? "warn" : "run");
+        setBotBridgeLog(`等待检测当前 Bot：${current.name || current.id || "当前 Bot"}\n集成实例：${current.bridge_integration_id || "weixin_personal"}`);
         if (botPersonaInput) {
           botPersonaInput.value = current.system || "";
         }
@@ -1986,6 +2084,10 @@ backend: checking packaged runtime</pre>
           system: botSystemInput?.value.trim() || botPersonaInput?.value.trim() || "只基于已有信息回复，不编造不存在的事情。",
           reply_style: botReplyStyleInput?.value.trim() || "natural",
           tools_enabled: Boolean(botToolsEnabledInput?.checked),
+          bridge_provider: botBridgeProviderInput?.value.trim() || "openclaw",
+          bridge_integration_id: selectedBotBridgeIntegrationId(),
+          bridge_url: botBridgeUrlInput?.value.trim() || "",
+          bridge_enabled: Boolean(botBridgeEnabledInput?.checked),
         };
       }
 
@@ -2027,11 +2129,77 @@ backend: checking packaged runtime</pre>
           botProfiles = Array.isArray(result.profiles) ? result.profiles : botProfiles;
           selectedBotProfileId = result.profile?.id || selectedBotProfileId;
           renderBotProfiles();
+          await syncBotBridgeIntegration(result.profile?.id || selectedBotProfileId);
           setBotStatus(`已保存 Bot：${result.profile?.name || payload.name}。`, "ok");
           setConfigStatus(`已保存 Bot 人格：${result.profile?.name || payload.name}。`, "ok");
         } catch (error) {
           setBotStatus(`保存失败：${error.message}`, "error");
           setConfigStatus(`保存 Bot 人格失败：${error.message}`, "error");
+        }
+      }
+
+      async function syncBotBridgeIntegration(profileId) {
+        const integrationId = selectedBotBridgeIntegrationId();
+        try {
+          const result = await backendRequest({
+            method: "PATCH",
+            path: `/api/integrations/${encodeURIComponent(integrationId)}`,
+            body: {
+              bot_profile_id: profileId || selectedBotProfileId,
+              enabled: Boolean(botBridgeEnabledInput?.checked),
+            },
+          });
+          const integration = result.integration || {};
+          setBotBridgeLog(`已同步桥接实例：${integration.id || integrationId}\n运行时 Bot profile：${integration.bot_profile_id || profileId || selectedBotProfileId}\n启用状态：${integration.enabled ? "启用" : "未启用"}`);
+          return integration;
+        } catch (error) {
+          setBotBridgeStatus("同步失败", "error");
+          setBotBridgeLog(`桥接绑定同步失败：${error.message}\n建议：确认集成实例 ${integrationId} 已在高级桥接页创建；Bot 档案本身已经保存。`);
+          return null;
+        }
+      }
+
+      async function testBotBridge() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        try {
+          setBotBridgeStatus("检测中", "run");
+          const payload = await backendRequest({ path: "/api/integrations" });
+          const integrations = Array.isArray(payload.integrations) ? payload.integrations : [];
+          const integration = integrations.find((item) => item.id === integrationId);
+          if (!integration) {
+            setBotBridgeStatus("未找到实例", "error");
+            setBotBridgeLog(`没有找到集成实例 ${integrationId}。\n建议：打开高级桥接页新增一个微信接入实例，或把这里的实例 ID 改成已有 ID。`);
+            return null;
+          }
+          const status = integration.status || "stopped";
+          const accounts = Array.isArray(integration.accounts) ? integration.accounts.length : 0;
+          const detail = [
+            `实例：${integration.id}`,
+            `类型：${integration.type || "weixin_oc"}`,
+            `状态：${status}`,
+            `启用：${integration.enabled ? "是" : "否"}`,
+            `运行时 Bot profile：${integration.bot_profile_id || "default"}`,
+            `OpenClaw profile：${integration.openclaw_profile || "-"}`,
+            `已登录账号：${accounts}`,
+            integration.last_error ? `错误：${integration.last_error}` : "错误：无",
+          ].join("\n");
+          setBotBridgeLog(detail);
+          if (integration.last_error) {
+            setBotBridgeStatus("存在错误", "error");
+          } else if (!integration.enabled) {
+            setBotBridgeStatus("未启用", "warn");
+          } else if (["running", "login", "logged_in"].includes(status) || accounts > 0) {
+            setBotBridgeStatus("可用", "ok");
+          } else if (integration.enabled) {
+            setBotBridgeStatus("已配置", "warn");
+          } else {
+            setBotBridgeStatus("未启用", "warn");
+          }
+          return integration;
+        } catch (error) {
+          setBotBridgeStatus("检测失败", "error");
+          setBotBridgeLog(`检测失败：${error.message}\n建议：确认桌面后端已启动，并且 integrations API 只从本机访问。`);
+          return null;
         }
       }
 
@@ -2253,6 +2421,11 @@ backend: checking packaged runtime</pre>
 
         if (event.target.closest("[data-bot-save]")) {
           saveBotProfile();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-test]")) {
+          testBotBridge();
           return;
         }
 

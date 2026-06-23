@@ -55,6 +55,10 @@ class BotProfilesApiTests(unittest.TestCase):
         self.assertEqual(len(payload["profiles"]), 1)
         self.assertEqual(payload["profiles"][0]["id"], "default")
         self.assertEqual(payload["profiles"][0]["system"], "默认模型人格")
+        self.assertEqual(payload["profiles"][0]["bridge_provider"], "openclaw")
+        self.assertEqual(payload["profiles"][0]["bridge_integration_id"], "weixin_personal")
+        self.assertEqual(payload["profiles"][0]["bridge_url"], "")
+        self.assertFalse(payload["profiles"][0]["bridge_enabled"])
 
     def test_create_profile_persists_bot_persona(self) -> None:
         response = self.client.post(
@@ -79,6 +83,29 @@ class BotProfilesApiTests(unittest.TestCase):
         persisted = json.loads(self.profile_path.read_text(encoding="utf-8"))
         self.assertIn("morning-bot", [profile["id"] for profile in persisted["profiles"]])
 
+    def test_create_profile_persists_weixin_bridge_config(self) -> None:
+        response = self.client.post(
+            "/api/bot-profiles",
+            json={
+                "id": "wx-bot",
+                "name": "微信 Bot",
+                "bridge_provider": "compatible",
+                "bridge_integration_id": "weixin_work",
+                "bridge_url": "http://127.0.0.1:19088",
+                "bridge_enabled": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        profile = response.json()["profile"]
+        self.assertEqual(profile["bridge_provider"], "compatible")
+        self.assertEqual(profile["bridge_integration_id"], "weixin_work")
+        self.assertEqual(profile["bridge_url"], "http://127.0.0.1:19088")
+        self.assertTrue(profile["bridge_enabled"])
+
+        reloaded = BotProfileStore(self.profile_path, "默认模型人格")
+        self.assertEqual(reloaded.get("wx-bot")["bridge_integration_id"], "weixin_work")
+
     def test_create_duplicate_profile_returns_conflict(self) -> None:
         self.client.post("/api/bot-profiles", json={"id": "wechat-bot", "name": "微信 Bot"})
 
@@ -100,6 +127,29 @@ class BotProfilesApiTests(unittest.TestCase):
         self.assertEqual(response.json()["profile"]["system"], "只处理明确提醒，没有提醒就不多说。")
         reloaded = BotProfileStore(self.profile_path, "默认模型人格")
         self.assertEqual(reloaded.get("task-bot")["system"], "只处理明确提醒，没有提醒就不多说。")
+
+    def test_patch_updates_weixin_bridge_config(self) -> None:
+        self.client.post("/api/bot-profiles", json={"id": "wx-bot", "name": "微信 Bot"})
+
+        response = self.client.patch(
+            "/api/bot-profiles/wx-bot",
+            json={
+                "bridge_provider": "openclaw",
+                "bridge_integration_id": "weixin_personal",
+                "bridge_url": "http://127.0.0.1:18080",
+                "bridge_enabled": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        profile = response.json()["profile"]
+        self.assertEqual(profile["bridge_provider"], "openclaw")
+        self.assertEqual(profile["bridge_integration_id"], "weixin_personal")
+        self.assertEqual(profile["bridge_url"], "http://127.0.0.1:18080")
+        self.assertTrue(profile["bridge_enabled"])
+
+        reloaded = BotProfileStore(self.profile_path, "默认模型人格")
+        self.assertEqual(reloaded.get("wx-bot")["bridge_url"], "http://127.0.0.1:18080")
 
     def test_delete_profile_keeps_default_profile(self) -> None:
         self.client.post("/api/bot-profiles", json={"id": "temporary-bot", "name": "临时 Bot"})
