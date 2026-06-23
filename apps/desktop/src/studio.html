@@ -379,6 +379,16 @@
         transform: translateY(-1px);
       }
 
+      .secondary-action.danger {
+        border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+        color: var(--danger);
+      }
+
+      .secondary-action.danger:hover {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
       .workspace {
         min-height: 0;
         display: grid;
@@ -936,6 +946,47 @@
         min-height: 118px;
       }
 
+      .bridge-login-box {
+        display: grid;
+        grid-template-columns: 140px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+      }
+
+      .bridge-qr-frame {
+        width: 140px;
+        min-height: 140px;
+        display: grid;
+        place-items: center;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text-muted);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .bridge-qr-frame img {
+        width: 128px;
+        height: 128px;
+        object-fit: contain;
+        border-radius: var(--radius-sm);
+      }
+
+      .bridge-login-meta {
+        min-width: 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .bridge-login-meta .panel-actions {
+        justify-content: flex-start;
+      }
+
       .table-panel {
         overflow: hidden;
       }
@@ -1388,6 +1439,7 @@
                     <button class="primary-action" type="button" data-bot-create>新增 Bot</button>
                     <button class="secondary-action" type="button" data-bot-save>保存当前 Bot</button>
                     <button class="secondary-action" type="button" data-bot-load>重新加载</button>
+                    <button class="secondary-action danger" type="button" data-bot-delete>删除当前 Bot</button>
                   </div>
                 </div>
                 <div class="panel">
@@ -1446,7 +1498,20 @@
                     <button class="secondary-action" type="button" data-bot-bridge-start>启动桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-stop>停止桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-restart>重启桥接</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-login-qr>微信扫码登录</button>
+                    <button class="secondary-action" type="button" data-bot-bridge-login-poll>刷新登录状态</button>
                     <button class="secondary-action" type="button" data-advanced-route="/app/integrations">打开高级桥接页</button>
+                  </div>
+                  <div class="bridge-login-box">
+                    <div class="bridge-qr-frame" data-bot-bridge-qr-frame>
+                      <span data-bot-bridge-qr-empty>生成二维码后显示在这里</span>
+                      <img data-bot-bridge-qr-image alt="微信登录二维码" hidden />
+                    </div>
+                    <div class="bridge-login-meta">
+                      <div class="status-line warn" data-bot-bridge-login-status>尚未发起扫码登录。</div>
+                      <label class="field"><span>验证数字</span><input class="text-input" data-bot-bridge-verify-input placeholder="需要时填写手机端提示的数字" autocomplete="off" /></label>
+                      <p class="muted">先启动桥接，再生成二维码。扫码后点刷新登录状态；如果微信要求验证数字，填入后再刷新。</p>
+                    </div>
                   </div>
                   <div class="panel-actions">
                     <button class="secondary-action" type="button" data-bot-bridge-logs-refresh>刷新日志</button>
@@ -1757,6 +1822,10 @@ backend: checking packaged runtime</pre>
       const botBridgeStatus = document.querySelector("[data-bot-bridge-status]");
       const botBridgeSummary = document.querySelector("[data-bot-bridge-summary]");
       const botBridgeLog = document.querySelector("[data-bot-bridge-log]");
+      const botBridgeVerifyInput = document.querySelector("[data-bot-bridge-verify-input]");
+      const botBridgeQrImage = document.querySelector("[data-bot-bridge-qr-image]");
+      const botBridgeQrEmpty = document.querySelector("[data-bot-bridge-qr-empty]");
+      const botBridgeLoginStatus = document.querySelector("[data-bot-bridge-login-status]");
       const botStatus = document.querySelector("[data-bot-status]");
       const botCount = document.querySelector("[data-bot-count]");
       const botSelectedName = document.querySelector("[data-bot-selected-name]");
@@ -1855,6 +1924,14 @@ backend: checking packaged runtime</pre>
         if (botBridgeLog && message) {
           botBridgeLog.textContent = message;
         }
+      }
+
+      function setBotBridgeLoginStatus(message, tone = "warn") {
+        if (!botBridgeLoginStatus) {
+          return;
+        }
+        botBridgeLoginStatus.textContent = message;
+        botBridgeLoginStatus.className = `status-line ${tone}`;
       }
 
       function setConfigStatus(message, tone = "warn") {
@@ -2130,6 +2207,29 @@ backend: checking packaged runtime</pre>
         }
       }
 
+      async function deleteBotProfile() {
+        if (selectedBotProfileId === "default") {
+          setBotStatus("默认 Bot 不能删除，可以新建一个 Bot 后再切换使用。", "warn");
+          return null;
+        }
+        const current = selectedBotProfile();
+        const confirmed = window.confirm(`删除 Bot「${current?.name || selectedBotProfileId}」？本操作只删除 Bot 档案，不会删除模型 API 配置。`);
+        if (!confirmed) {
+          return null;
+        }
+        try {
+          const result = await backendRequest({ method: "DELETE", path: `/api/bot-profiles/${encodeURIComponent(selectedBotProfileId)}` });
+          botProfiles = Array.isArray(result.profiles) ? result.profiles : botProfiles;
+          selectedBotProfileId = botProfiles[0]?.id || "default";
+          renderBotProfiles();
+          setBotStatus(result.ok ? "已删除 Bot 档案。" : "未删除 Bot 档案。", result.ok ? "ok" : "warn");
+          return result;
+        } catch (error) {
+          setBotStatus(`删除失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
       async function saveBotProfile() {
         try {
           const payload = currentBotProfileUpdatePayload();
@@ -2256,6 +2356,73 @@ backend: checking packaged runtime</pre>
           setBotBridgeStatus("日志已复制", "ok");
         } catch (error) {
           setBotBridgeStatus("复制失败", "error");
+        }
+      }
+
+      function normalizeQrImageSource(imageContent) {
+        const value = String(imageContent || "").trim();
+        if (!value) {
+          return "";
+        }
+        if (value.startsWith("data:")) {
+          return value;
+        }
+        return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(value)}`;
+      }
+
+      function renderBotBridgeLogin(login) {
+        const state = login || {};
+        const status = state.status || "idle";
+        const message = state.message || "尚未发起扫码登录。";
+        const imageSource = normalizeQrImageSource(state.qrcode_img_content);
+        if (botBridgeQrImage) {
+          botBridgeQrImage.hidden = !imageSource;
+          botBridgeQrImage.src = imageSource || "";
+        }
+        if (botBridgeQrEmpty) {
+          botBridgeQrEmpty.hidden = Boolean(imageSource);
+        }
+        const okStates = new Set(["created", "confirmed", "binded_redirect"]);
+        const errorStates = new Set(["expired", "cancel", "canceled", "denied", "verify_code_blocked", "error"]);
+        const tone = okStates.has(status) ? "ok" : errorStates.has(status) ? "error" : status === "idle" ? "warn" : "run";
+        setBotBridgeLoginStatus(`${status}：${message}`, tone);
+        if (status === "created") {
+          setBotBridgeStatus("已登录", "ok");
+        }
+        return state;
+      }
+
+      async function requestBotBridgeLoginQr() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        try {
+          setBotBridgeLoginStatus("正在生成微信登录二维码...", "run");
+          const payload = await backendRequest({ method: "POST", path: `/api/integrations/${encodeURIComponent(integrationId)}/login/qr`, body: { force: true } });
+          const login = renderBotBridgeLogin(payload.result?.login);
+          setBotBridgeLog(`扫码登录：${login.status || "unknown"}\n实例：${integrationId}\n提示：${login.message || "-"}`);
+          return payload;
+        } catch (error) {
+          setBotBridgeLoginStatus(`生成二维码失败：${error.message}`, "error");
+          setBotBridgeLog(`生成微信登录二维码失败：${error.message}\n建议：先启动桥接，并确认 OpenClaw 微信接口可用。`);
+          return null;
+        }
+      }
+
+      async function pollBotBridgeLogin() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        try {
+          setBotBridgeLoginStatus("正在刷新登录状态...", "run");
+          const payload = await backendRequest({
+            method: "POST",
+            path: `/api/integrations/${encodeURIComponent(integrationId)}/login/poll`,
+            body: { verify_code: botBridgeVerifyInput?.value.trim() || "" },
+          });
+          const login = renderBotBridgeLogin(payload.result?.login);
+          setBotBridgeLog(`登录状态：${login.status || "unknown"}\n实例：${integrationId}\n提示：${login.message || "-"}\n账号：${login.account_id || "-"}`);
+          return payload;
+        } catch (error) {
+          setBotBridgeLoginStatus(`刷新登录状态失败：${error.message}`, "error");
+          setBotBridgeLog(`刷新微信登录状态失败：${error.message}\n建议：确认已生成二维码；如二维码过期，请重新生成。`);
+          return null;
         }
       }
 
@@ -2524,6 +2691,11 @@ backend: checking packaged runtime</pre>
           return;
         }
 
+        if (event.target.closest("[data-bot-delete]")) {
+          deleteBotProfile();
+          return;
+        }
+
         if (event.target.closest("[data-bot-bridge-test]")) {
           testBotBridge();
           return;
@@ -2541,6 +2713,16 @@ backend: checking packaged runtime</pre>
 
         if (event.target.closest("[data-bot-bridge-restart]")) {
           controlBotBridge("restart");
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-login-qr]")) {
+          requestBotBridgeLoginQr();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-login-poll]")) {
+          pollBotBridgeLogin();
           return;
         }
 

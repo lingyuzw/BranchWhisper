@@ -219,6 +219,7 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
     "data-bot-tools-enabled",
     "data-bot-load",
     "data-bot-create",
+    "data-bot-delete",
     "data-bot-save",
     "data-bot-status",
     "data-bot-count",
@@ -232,6 +233,11 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
     "data-bot-bridge-start",
     "data-bot-bridge-stop",
     "data-bot-bridge-restart",
+    "data-bot-bridge-login-qr",
+    "data-bot-bridge-login-poll",
+    "data-bot-bridge-verify-input",
+    "data-bot-bridge-qr-image",
+    "data-bot-bridge-login-status",
     "data-bot-bridge-logs-refresh",
     "data-bot-bridge-logs-clear",
     "data-bot-bridge-logs-copy",
@@ -337,6 +343,42 @@ test("studio Bot bridge start lets backend resolve the BranchWhisper callback UR
 
   assert.match(html, /const result = await backendRequest\(\{\s*method:\s*"POST",\s*path\s*\}\)/);
   assert.doesNotMatch(html, /branchwhisper_url:\s*botBridgeUrlInput\.value\.trim\(\)/);
+});
+
+test("studio Bot page deletes non-default profiles through the backend", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /async function deleteBotProfile\(\)/);
+  assert.match(html, /if \(selectedBotProfileId === "default"\)/);
+  assert.match(html, /method:\s*"DELETE",\s*path:\s*`\/api\/bot-profiles\/\$\{encodeURIComponent\(selectedBotProfileId\)\}`/s);
+  assert.match(html, /selectedBotProfileId = botProfiles\[0\]\?\.id \|\| "default"/);
+  assert.match(html, /data-bot-delete/);
+  assert.match(html, /event\.target\.closest\("\[data-bot-delete\]"\)[\s\S]*deleteBotProfile\(\)/);
+});
+
+test("studio Bot page supports QR login and polling for the selected bridge", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /async function requestBotBridgeLoginQr\(\)/);
+  assert.match(html, /method:\s*"POST",\s*path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/login\/qr`,\s*body:\s*\{\s*force:\s*true\s*\}/s);
+  assert.match(html, /async function pollBotBridgeLogin\(\)/);
+  assert.match(html, /method:\s*"POST",\s*path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/login\/poll`,\s*body:\s*\{\s*verify_code:/s);
+  assert.match(html, /function renderBotBridgeLogin\(login\)/);
+  assert.match(html, /qrcode_img_content/);
+  assert.match(html, /data-bot-bridge-login-qr/);
+  assert.match(html, /data-bot-bridge-login-poll/);
+  assert.match(html, /event\.target\.closest\("\[data-bot-bridge-login-qr\]"\)[\s\S]*requestBotBridgeLoginQr\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-bot-bridge-login-poll\]"\)[\s\S]*pollBotBridgeLogin\(\)/);
+});
+
+test("studio Bot QR login renders non-image QR payloads as scannable QR codes", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /function normalizeQrImageSource\(imageContent\)/);
+  assert.match(html, /value\.startsWith\("data:"\)/);
+  assert.match(html, /api\.qrserver\.com\/v1\/create-qr-code/);
+  assert.match(html, /encodeURIComponent\(value\)/);
+  assert.doesNotMatch(html, /return `data:image\/png;base64,\$\{value\}`/);
 });
 
 test("studio Bot log copy failure preserves the current log text", async () => {
