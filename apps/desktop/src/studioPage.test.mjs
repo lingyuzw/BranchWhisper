@@ -783,3 +783,34 @@ test("studio controls use consistent desktop sizing and header alignment", async
   assert.match(html, /\.panel-actions\s*\{[\s\S]*align-items:\s*center;[\s\S]*gap:\s*var\(--control-gap\)/);
   assert.match(html, /\.topbar-actions\s*\{[\s\S]*align-items:\s*center;[\s\S]*flex-wrap:\s*wrap;[\s\S]*gap:\s*var\(--control-gap\)/);
 });
+
+test("studio guide hero avoids cramped mode cards and oversized empty space", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /\.page-hero\s*\{[\s\S]*grid-template-columns:\s*minmax\(360px,\s*1fr\) minmax\(300px,\s*0\.72fr\)/);
+  assert.match(html, /\.page\[data-panel="guide"\] \.mode-grid\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(html, /\.page\[data-panel="guide"\] \.mode-card\s*\{[\s\S]*min-height:\s*104px/);
+  assert.match(html, /\.page\[data-panel="guide"\] \.hero-copy \.panel-actions\s*\{[\s\S]*justify-content:\s*flex-start/);
+  assert.doesNotMatch(html, /\.page\[data-panel="guide"\] \.mode-card\s*\{[^}]*min-height:\s*180px/);
+});
+
+test("studio bot layout does not stretch the empty bot list beside the bridge panel", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*align-items:\s*start/);
+  assert.match(html, /\.bot-profile-list\s*\{[\s\S]*min-height:\s*96px;[\s\S]*max-height:\s*360px;[\s\S]*overflow:\s*auto/);
+  assert.match(html, /\.page\[data-panel="bot"\] \.page-hero\s*\{[\s\S]*grid-template-columns:\s*minmax\(420px,\s*1fr\) minmax\(420px,\s*0\.92fr\)/);
+  assert.match(html, /\.page\[data-panel="bot"\] \.page-hero\s*\{[\s\S]*align-items:\s*start/);
+  assert.match(html, /\.page\[data-panel="bot"\] \.text-area\s*\{[\s\S]*min-height:\s*120px/);
+});
+
+test("studio bridge controls are grouped into balanced action rows", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /class="panel-actions bridge-action-grid"/);
+  assert.match(html, /class="panel-actions bridge-log-actions"/);
+  assert.match(html, /\.bridge-action-grid\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(116px,\s*1fr\)\)/);
+  assert.match(html, /\.bridge-action-grid \.primary-action,\s*\.bridge-action-grid \.secondary-action\s*\{[\s\S]*width:\s*100%/);
+  assert.match(html, /\.bridge-login-box\s*\{[\s\S]*grid-template-columns:\s*minmax\(120px,\s*132px\) minmax\(0,\s*1fr\)/);
+  assert.match(html, /@media \(max-width: 780px\)[\s\S]*\.bridge-login-box[\s\S]*grid-template-columns:\s*1fr/);
+});

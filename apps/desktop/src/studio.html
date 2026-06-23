@@ -442,8 +442,9 @@
 
       .page-hero {
         display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        grid-template-columns: minmax(360px, 1fr) minmax(300px, 0.72fr);
         gap: 14px;
+        align-items: start;
         padding: 16px;
         overflow: hidden;
       }
@@ -493,7 +494,7 @@
       }
 
       .mode-card {
-        min-height: 132px;
+        min-height: 112px;
         display: grid;
         align-content: space-between;
         gap: 12px;
@@ -577,8 +578,8 @@
       .guide-card {
         min-width: 0;
         display: grid;
-        gap: 12px;
-        padding: 14px;
+        gap: 10px;
+        padding: 12px;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
         background: var(--surface-muted);
@@ -847,7 +848,13 @@
         min-height: 96px;
       }
 
-      .bot-workspace-layout,
+      .bot-workspace-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+        align-items: start;
+        gap: 14px;
+      }
+
       .config-layout,
       .conversation-layout {
         display: grid;
@@ -861,6 +868,13 @@
         align-content: start;
         gap: 8px;
         min-height: 180px;
+      }
+
+      .bot-profile-list {
+        min-height: 96px;
+        max-height: 360px;
+        overflow: auto;
+        padding-right: 2px;
       }
 
       .conversation-list {
@@ -1209,7 +1223,7 @@
 
       .bridge-login-box {
         display: grid;
-        grid-template-columns: 140px minmax(0, 1fr);
+        grid-template-columns: minmax(120px, 132px) minmax(0, 1fr);
         gap: 12px;
         align-items: start;
         padding: 12px;
@@ -1219,8 +1233,8 @@
       }
 
       .bridge-qr-frame {
-        width: 140px;
-        min-height: 140px;
+        width: 100%;
+        min-height: 132px;
         display: grid;
         place-items: center;
         border: 1px dashed var(--border-strong);
@@ -1232,8 +1246,8 @@
       }
 
       .bridge-qr-frame img {
-        width: 128px;
-        height: 128px;
+        width: 120px;
+        height: 120px;
         object-fit: contain;
         border-radius: var(--radius-sm);
       }
@@ -1246,6 +1260,42 @@
 
       .bridge-login-meta .panel-actions {
         justify-content: flex-start;
+      }
+
+      .page[data-panel="guide"] .mode-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page[data-panel="guide"] .mode-card {
+        min-height: 104px;
+      }
+
+      .page[data-panel="guide"] .hero-copy .panel-actions {
+        justify-content: flex-start;
+      }
+
+      .page[data-panel="bot"] .page-hero {
+        grid-template-columns: minmax(420px, 1fr) minmax(420px, 0.92fr);
+        align-items: start;
+      }
+
+      .page[data-panel="bot"] .text-area {
+        min-height: 120px;
+      }
+
+      .bridge-action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+        width: 100%;
+      }
+
+      .bridge-action-grid .primary-action,
+      .bridge-action-grid .secondary-action {
+        width: 100%;
+      }
+
+      .bridge-log-actions {
+        justify-content: flex-end;
       }
 
       .table-panel {
@@ -1464,7 +1514,8 @@
         .mode-grid,
         .guide-tabs,
         .form-grid,
-        .conversation-meta-grid {
+        .conversation-meta-grid,
+        .bridge-login-box {
           grid-template-columns: 1fr;
         }
 
@@ -1780,7 +1831,7 @@
                     </div>
                     <p class="muted">默认开启自动回复、关闭群聊回复。先用允许名单试一个联系人，确认稳定后再扩大范围。</p>
                   </div>
-                  <div class="panel-actions">
+                  <div class="panel-actions bridge-action-grid">
                     <button class="primary-action" type="button" data-bot-bridge-test>检测桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-start>启动桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-stop>停止桥接</button>
@@ -1801,7 +1852,7 @@
                     <p class="muted">先启动桥接，再生成二维码。扫码后点刷新登录状态；如果微信要求验证数字，填入后再刷新。</p>
                   </div>
                   </div>
-                  <div class="panel-actions">
+                  <div class="panel-actions bridge-log-actions">
                     <button class="secondary-action" type="button" data-bot-bridge-logs-refresh>刷新日志</button>
                     <button class="secondary-action" type="button" data-bot-bridge-logs-copy>复制日志</button>
                     <button class="secondary-action" type="button" data-bot-bridge-logs-clear>清空日志</button>
