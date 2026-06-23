@@ -2234,6 +2234,7 @@
       let botBridgeLogExpanded = false;
       let botBridgeLogFullText = botBridgeLog?.textContent || "";
       let platformLogs = [];
+      let platformLogLoadSequence = 0;
       let activePlatformLogSource = "all";
       let platformLogErrorsOnly = false;
       let platformLogPaused = false;
@@ -2425,51 +2426,61 @@
       }
 
       async function loadPlatformLogs() {
-        const nextLogs = platformLogEntriesFromText("app", "startup", [
+        const requestId = ++platformLogLoadSequence;
+        const nextLogs = platformLogEntriesFromText("app", "desktop-status", [
+          "App 来源当前展示桌面启动状态和日志路径；后台服务日志请从 Backend/API/Bot/微信桥接筛选查看。",
           "state: " + (currentStatus.state || "checking"),
           "summary: " + (currentStatus.summary || defaultStatus.summary),
           "detail: " + (currentStatus.detail || defaultStatus.detail),
           currentStatus.log_path ? "log_path: " + currentStatus.log_path : "",
         ].filter(Boolean).join("\n"));
-        setPlatformLogStatus("正在读取平台日志...", "run");
-        const serviceIds = ["asr", "llm", "tts"];
-        for (const serviceId of serviceIds) {
-          const source = serviceId === "llm" ? "api" : "backend";
-          try {
-            const payload = await backendRequest({ path: `/api/services/${serviceId}/logs?max_bytes=24000` });
-            nextLogs.push(...platformLogEntriesFromText(source, serviceId.toUpperCase(), payload.logs || payload.log || ""));
-          } catch (error) {
-            nextLogs.push(...platformLogEntriesFromText(source, serviceId.toUpperCase(), "ERROR 读取服务日志失败：" + error.message));
-          }
-        }
         try {
-          const payload = await backendRequest({ path: "/api/integrations" });
-          const integrations = Array.isArray(payload.integrations) ? payload.integrations : [];
-          for (const integration of integrations) {
-            nextLogs.push(...platformLogEntriesFromText("bot", integration.id || "integration", [
-              "状态：" + (integration.status || "unknown"),
-              "启用：" + (integration.enabled ? "是" : "否"),
-              "Bot profile：" + (integration.bot_profile_id || "default"),
-              integration.last_error ? "ERROR " + integration.last_error : "",
-            ].filter(Boolean).join("\n")));
+          setPlatformLogStatus("正在读取平台日志...", "run");
+          const serviceIds = ["asr", "llm", "tts"];
+          for (const serviceId of serviceIds) {
+            const source = serviceId === "llm" ? "api" : "backend";
             try {
-              const logPayload = await backendRequest({ path: `/api/integrations/${encodeURIComponent(integration.id)}/logs?max_bytes=64000&scope=current` });
-              nextLogs.push(...platformLogEntriesFromText("bridge", integration.id || "integration", logPayload.logs || logPayload.log || ""));
+              const payload = await backendRequest({ path: `/api/services/${serviceId}/logs?max_bytes=24000` });
+              nextLogs.push(...platformLogEntriesFromText(source, serviceId.toUpperCase(), payload.logs || payload.log || ""));
             } catch (error) {
-              nextLogs.push(...platformLogEntriesFromText("bridge", integration.id || "integration", "ERROR 读取桥接日志失败：" + error.message));
+              nextLogs.push(...platformLogEntriesFromText(source, serviceId.toUpperCase(), "ERROR 读取服务日志失败：" + error.message));
             }
           }
-          if (!integrations.length) {
-            nextLogs.push(...platformLogEntriesFromText("bridge", "integrations", "未发现微信桥接实例。"));
+          try {
+            const payload = await backendRequest({ path: "/api/integrations" });
+            const integrations = Array.isArray(payload.integrations) ? payload.integrations : [];
+            for (const integration of integrations) {
+              nextLogs.push(...platformLogEntriesFromText("bot", integration.id || "integration", [
+                "状态：" + (integration.status || "unknown"),
+                "启用：" + (integration.enabled ? "是" : "否"),
+                "Bot profile：" + (integration.bot_profile_id || "default"),
+                integration.last_error ? "ERROR " + integration.last_error : "",
+              ].filter(Boolean).join("\n")));
+              try {
+                const logPayload = await backendRequest({ path: `/api/integrations/${encodeURIComponent(integration.id)}/logs?max_bytes=64000&scope=current` });
+                nextLogs.push(...platformLogEntriesFromText("bridge", integration.id || "integration", logPayload.logs || logPayload.log || ""));
+              } catch (error) {
+                nextLogs.push(...platformLogEntriesFromText("bridge", integration.id || "integration", "ERROR 读取桥接日志失败：" + error.message));
+              }
+            }
+            if (!integrations.length) {
+              nextLogs.push(...platformLogEntriesFromText("bridge", "integrations", "未发现微信桥接实例。"));
+            }
+          } catch (error) {
+            nextLogs.push(...platformLogEntriesFromText("bridge", "integrations", "ERROR 读取集成列表失败：" + error.message));
           }
-        } catch (error) {
-          nextLogs.push(...platformLogEntriesFromText("bridge", "integrations", "ERROR 读取集成列表失败：" + error.message));
+          if (requestId !== platformLogLoadSequence) {
+            return platformLogs;
+          }
+          platformLogs = nextLogs;
+          return platformLogs;
+        } finally {
+          if (requestId === platformLogLoadSequence) {
+            renderPlatformLogs();
+            const errors = platformLogs.filter((entry) => entry.status === "error").length;
+            setPlatformLogStatus(errors ? "已加载日志，发现 " + errors + " 条异常。建议先查看错误筛选结果。" : "已加载日志，暂未发现明显异常。", errors ? "warn" : "ok");
+          }
         }
-        platformLogs = nextLogs;
-        renderPlatformLogs();
-        const errors = platformLogs.filter((entry) => entry.status === "error").length;
-        setPlatformLogStatus(errors ? "已加载日志，发现 " + errors + " 条异常。建议先查看错误筛选结果。" : "已加载日志，暂未发现明显异常。", errors ? "warn" : "ok");
-        return platformLogs;
       }
 
       async function copyPlatformLogs() {

@@ -754,3 +754,16 @@ test("studio platform log copy handles missing clipboard without clearing logs",
   assert.doesNotMatch(copySource, /platformLogs = \[\]/);
   assert.doesNotMatch(copySource, /platformLogOutput\.textContent = ""/);
 });
+
+test("studio platform logs ignore stale refresh responses and explain app source limits", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const loadSource = extractScriptFunction(script, "loadPlatformLogs");
+
+  assert.match(html, /let platformLogLoadSequence = 0/);
+  assert.match(loadSource, /const requestId = \+\+platformLogLoadSequence/);
+  assert.match(loadSource, /if \(requestId !== platformLogLoadSequence\) \{\s*return platformLogs;/s);
+  assert.match(loadSource, /finally \{\s*if \(requestId === platformLogLoadSequence\) \{/s);
+  assert.match(html, /App 来源当前展示桌面启动状态和日志路径/);
+  assert.match(loadSource, /platformLogEntriesFromText\("app", "desktop-status"/);
+});
