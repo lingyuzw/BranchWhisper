@@ -24,6 +24,22 @@ def args():
 
 
 class FrontendServingTests(unittest.TestCase):
+    def test_api_allows_desktop_shell_origin(self) -> None:
+        client = TestClient(create_app(args()))
+
+        preflight = client.options(
+            "/api/config",
+            headers={
+                "Origin": "tauri://localhost",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        response = client.get("/api/config", headers={"Origin": "tauri://localhost"})
+
+        self.assertEqual(preflight.status_code, 200)
+        self.assertEqual(preflight.headers["access-control-allow-origin"], "tauri://localhost")
+        self.assertEqual(response.headers["access-control-allow-origin"], "tauri://localhost")
+
     def test_root_redirects_to_app_when_dist_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             dist = Path(tmp)

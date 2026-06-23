@@ -11,6 +11,7 @@ import sys
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -430,6 +431,13 @@ def create_app(args) -> FastAPI:
     # still live in their own services so they can be restarted and tuned
     # independently.
     app = FastAPI(title="BranchWhisper")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^(tauri://localhost|https?://(localhost|127\.0\.0\.1)(:\d+)?)$",
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
     app.state.server_host = args.host
     app.state.server_port = args.port
     app.state.settings = load_persisted_settings(SessionSettings.from_args(args), SETTINGS_CONFIG)
