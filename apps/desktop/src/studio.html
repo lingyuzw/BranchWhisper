@@ -943,7 +943,38 @@
       }
 
       .bridge-log {
+        max-height: 260px;
         min-height: 118px;
+      }
+
+      .bridge-log-shell {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+      }
+
+      .bridge-log-summary {
+        margin: 0;
+        color: var(--text-soft);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+
+      .bridge-log-shell .bridge-log {
+        display: none;
+      }
+
+      .bridge-log-shell.expanded .bridge-log {
+        display: block;
+      }
+
+      .bridge-log-shell.expanded .bridge-log-summary {
+        display: none;
       }
 
       .bridge-login-box {
@@ -1519,7 +1550,11 @@
                     <button class="secondary-action" type="button" data-bot-bridge-logs-copy>复制日志</button>
                     <button class="secondary-action" type="button" data-bot-bridge-logs-clear>清空日志</button>
                   </div>
-                  <pre class="log-box bridge-log" data-bot-bridge-log>检测前不会连接微信。先保存 Bot 档案，再点检测桥接，页面会读取本机 integrations 状态。</pre>
+                  <div class="bridge-log-shell" data-bot-bridge-log-collapsed>
+                    <pre class="bridge-log-summary" data-bot-bridge-log-summary>检测前不会连接微信。先保存 Bot 档案，再点检测桥接，页面会读取本机 integrations 状态。</pre>
+                    <button class="secondary-action" type="button" data-bot-bridge-log-toggle>展开完整日志</button>
+                    <pre class="log-box bridge-log" data-bot-bridge-log>检测前不会连接微信。先保存 Bot 档案，再点检测桥接，页面会读取本机 integrations 状态。</pre>
+                  </div>
                   <div class="step-list">
                     <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>保存绑定</strong><span>桥接字段随当前 Bot 档案保存，不影响模型 API 配置。</span></div><span class="status-chip">本阶段</span></div>
                     <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>检测实例</strong><span>检查集成实例是否存在、是否启用、是否有运行错误。</span></div><span class="status-chip">可用</span></div>
@@ -1823,6 +1858,9 @@ backend: checking packaged runtime</pre>
       const botBridgeEnabledInput = document.querySelector("[data-bot-bridge-enabled]");
       const botBridgeStatus = document.querySelector("[data-bot-bridge-status]");
       const botBridgeSummary = document.querySelector("[data-bot-bridge-summary]");
+      const botBridgeLogShell = document.querySelector("[data-bot-bridge-log-collapsed]");
+      const botBridgeLogSummary = document.querySelector("[data-bot-bridge-log-summary]");
+      const botBridgeLogToggle = document.querySelector("[data-bot-bridge-log-toggle]");
       const botBridgeLog = document.querySelector("[data-bot-bridge-log]");
       const botBridgeVerifyInput = document.querySelector("[data-bot-bridge-verify-input]");
       const botBridgeQrImage = document.querySelector("[data-bot-bridge-qr-image]");
@@ -1841,6 +1879,8 @@ backend: checking packaged runtime</pre>
       let botBridgeLoginPollTimer = null;
       let botBridgeLoginPollIntegrationId = "";
       let botBridgeLoginPollInFlight = false;
+      let botBridgeLogExpanded = false;
+      let botBridgeLogFullText = botBridgeLog?.textContent || "";
 
       const apiPresets = {
         qwen: {
@@ -1926,9 +1966,38 @@ backend: checking packaged runtime</pre>
         }
       }
 
+      function summarizeBotBridgeLog(text) {
+        const lines = String(text || "").trim().split(/\r?\n/).filter(Boolean);
+        if (lines.length <= 8) {
+          return lines.join("\n") || "暂无桥接日志。";
+        }
+        const head = lines.slice(0, 3);
+        const tail = lines.slice(-4);
+        return [...head, `... 已折叠 ${lines.length - head.length - tail.length} 行日志，展开查看完整内容 ...`, ...tail].join("\n");
+      }
+
+      function updateBotBridgeLogView() {
+        const text = botBridgeLogFullText || "";
+        if (botBridgeLog) {
+          botBridgeLog.textContent = text;
+        }
+        if (botBridgeLogSummary) {
+          botBridgeLogSummary.textContent = summarizeBotBridgeLog(text);
+        }
+        if (botBridgeLogShell) {
+          botBridgeLogShell.classList.toggle("expanded", botBridgeLogExpanded);
+        }
+        if (botBridgeLogToggle) {
+          botBridgeLogToggle.textContent = botBridgeLogExpanded ? "收起日志" : "展开完整日志";
+          botBridgeLogToggle.setAttribute("aria-expanded", String(botBridgeLogExpanded));
+        }
+      }
+
       function setBotBridgeLog(message) {
-        if (botBridgeLog && message) {
-          botBridgeLog.textContent = message;
+        const text = String(message || "");
+        if (text) {
+          botBridgeLogFullText = text;
+          updateBotBridgeLogView();
         }
       }
 
@@ -2358,7 +2427,7 @@ backend: checking packaged runtime</pre>
 
       async function copyBotBridgeLogs() {
         try {
-          await navigator.clipboard.writeText(botBridgeLog?.textContent || "");
+          await navigator.clipboard.writeText(botBridgeLogFullText || botBridgeLog?.textContent || "");
           setBotBridgeStatus("日志已复制", "ok");
         } catch (error) {
           setBotBridgeStatus("复制失败", "error");
@@ -2868,6 +2937,12 @@ backend: checking packaged runtime</pre>
           return;
         }
 
+        if (event.target.closest("[data-bot-bridge-log-toggle]")) {
+          botBridgeLogExpanded = !botBridgeLogExpanded;
+          updateBotBridgeLogView();
+          return;
+        }
+
         if (event.target.closest("[data-config-load]")) {
           loadDesktopConfig();
           return;
@@ -2894,6 +2969,7 @@ backend: checking packaged runtime</pre>
 
       applyTheme(localStorage.getItem("branchwhisper:desktop-theme") || "light");
       applyLanguage(localStorage.getItem("branchwhisper:desktop-language") || "zh");
+      updateBotBridgeLogView();
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
       activateSection("guide");
     </script>

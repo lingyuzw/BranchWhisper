@@ -111,6 +111,65 @@ class IntegrationManagerProcessEnvTests(unittest.TestCase):
             self.assertIn("localhost", hosts)
             self.assertIn("::1", hosts)
 
+    def test_packaged_backend_starts_bridge_through_executable_bridge_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ,
+            {"OPENCLAW_STATE_DIR": str(Path(tmp) / "state")},
+            clear=True,
+        ), patch.object(manager_module.sys, "executable", r"C:\BranchWhisper\branchwhisper-backend.exe"), patch.object(
+            manager_module.sys,
+            "frozen",
+            True,
+            create=True,
+        ):
+            root = Path(tmp)
+            manager = IntegrationManager(
+                config_path=root / "integrations.json",
+                log_dir=root / "logs",
+                media_dir=root / "media",
+            )
+            captured: dict[str, object] = {}
+
+            def fake_start(integration: dict, command: list[str], status: str) -> dict:
+                captured["command"] = command
+                captured["status"] = status
+                return {"ok": True, "command": command, "status": status}
+
+            with patch.object(manager, "stop_orphan_bridge_processes") as stop_orphans, patch.object(
+                manager,
+                "start_background_process",
+                side_effect=fake_start,
+            ):
+                result = asyncio.run(manager.start_bridge("weixin_personal", "http://127.0.0.1:7860"))
+
+        command = captured["command"]
+        self.assertTrue(result["ok"])
+        self.assertEqual("running", captured["status"])
+        stop_orphans.assert_called_once_with("weixin_personal", "branchwhisper")
+        self.assertEqual([r"C:\BranchWhisper\branchwhisper-backend.exe", "--integration-bridge", "openclaw"], command[:3])
+        self.assertNotIn("-u", command)
+        self.assertFalse(any(str(part).endswith("openclaw_bridge.py") for part in command))
+
+
+class BackendEntryPointTests(unittest.TestCase):
+    def test_backend_entry_routes_openclaw_bridge_mode_before_server_parser(self) -> None:
+        import main as backend_entry
+
+        argv = [
+            "branchwhisper-backend",
+            "--integration-bridge",
+            "openclaw",
+            "--integration-id",
+            "weixin_personal",
+            "--once",
+        ]
+        with patch.object(sys, "argv", argv), patch("integration_runtime.openclaw_bridge.main", return_value=7) as bridge_main:
+            with self.assertRaises(SystemExit) as raised:
+                backend_entry.main()
+
+        self.assertEqual(7, raised.exception.code)
+        bridge_main.assert_called_once_with()
+
 
 class IntegrationManagerWeixinSessionTests(unittest.TestCase):
     def test_select_recent_weixin_target_prefers_requested_sender_and_account(self) -> None:

@@ -341,10 +341,26 @@ test("studio Bot page controls bridge runtime and logs through integration APIs"
   assert.match(html, /async function clearBotBridgeLogs\(\)/);
   assert.match(html, /method:\s*"DELETE",\s*path:\s*`\/api\/integrations\/\$\{encodeURIComponent\(integrationId\)\}\/logs`/s);
   assert.match(html, /async function copyBotBridgeLogs\(\)/);
-  assert.match(html, /navigator\.clipboard\.writeText\(botBridgeLog\?\.textContent \|\| ""\)/);
+  assert.match(html, /navigator\.clipboard\.writeText\(botBridgeLogFullText \|\| botBridgeLog\?\.textContent \|\| ""\)/);
   for (const action of ["start", "stop", "restart", "logs-refresh", "logs-clear", "logs-copy"]) {
     assert.match(html, new RegExp(`data-bot-bridge-${action}`));
   }
+});
+
+test("studio Bot bridge logs stay compact with expandable full details", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /class="bridge-log-shell"/);
+  assert.match(html, /data-bot-bridge-log-summary/);
+  assert.match(html, /data-bot-bridge-log-toggle/);
+  assert.match(html, /data-bot-bridge-log-collapsed/);
+  assert.match(html, /\.bridge-log-shell/);
+  assert.match(html, /\.bridge-log-shell\.expanded \.bridge-log/);
+  assert.match(html, /\.bridge-log \{\s*max-height:/s);
+  assert.match(html, /function setBotBridgeLog\(message\) \{[\s\S]*botBridgeLogFullText = text/s);
+  assert.match(html, /function updateBotBridgeLogView\(\)/);
+  assert.match(html, /function summarizeBotBridgeLog\(text\)/);
+  assert.match(html, /navigator\.clipboard\.writeText\(botBridgeLogFullText \|\| botBridgeLog\?\.textContent \|\| ""\)/);
 });
 
 test("studio Bot bridge start persists the selected Bot before launching", async () => {

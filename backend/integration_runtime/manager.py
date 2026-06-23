@@ -950,10 +950,7 @@ class IntegrationManager:
             return {"ok": True, "status": "already_running", "pid": existing.pid}
         self.stop_orphan_bridge_processes(integration["id"], integration["openclaw_profile"])
         script = Path(__file__).resolve().parent / "openclaw_bridge.py"
-        command = [
-            os.environ.get("PYTHON") or sys.executable or "python3",
-            "-u",
-            str(script),
+        bridge_args = [
             "--integration-id",
             integration["id"],
             "--profile",
@@ -963,6 +960,15 @@ class IntegrationManager:
             "--branchwhisper-url",
             branchwhisper_url,
         ]
+        if getattr(sys, "frozen", False):
+            command = [sys.executable, "--integration-bridge", "openclaw", *bridge_args]
+        else:
+            command = [
+                os.environ.get("BRANCHWHISPER_BRIDGE_PYTHON") or os.environ.get("PYTHON") or sys.executable or "python3",
+                "-u",
+                str(script),
+                *bridge_args,
+            ]
         return self.start_background_process(integration, command, status="running")
 
     def stop_orphan_bridge_processes(self, integration_id: str, profile: str) -> None:
