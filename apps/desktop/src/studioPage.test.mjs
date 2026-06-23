@@ -798,8 +798,9 @@ test("studio bot layout does not stretch the empty bot list beside the bridge pa
   const html = await readFile(studioHtmlPath, "utf8");
 
   assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*align-items:\s*start/);
-  assert.match(html, /\.bot-profile-list\s*\{[\s\S]*min-height:\s*96px;[\s\S]*max-height:\s*360px;[\s\S]*overflow:\s*auto/);
-  assert.match(html, /\.page\[data-panel="bot"\] \.page-hero\s*\{[\s\S]*grid-template-columns:\s*minmax\(420px,\s*1fr\) minmax\(420px,\s*0\.92fr\)/);
+  assert.match(html, /\.bot-profile-list\s*\{[\s\S]*min-height:\s*76px;[\s\S]*max-height:\s*320px;[\s\S]*overflow:\s*auto/);
+  assert.match(html, /\.bot-profile-list:empty::before\s*\{[\s\S]*content:\s*"还没有 Bot 档案，点上方新增 Bot 开始。"/);
+  assert.match(html, /\.page\[data-panel="bot"\] \.page-hero\s*\{[\s\S]*grid-template-columns:\s*minmax\(360px,\s*1fr\) minmax\(0,\s*0\.92fr\)/);
   assert.match(html, /\.page\[data-panel="bot"\] \.page-hero\s*\{[\s\S]*align-items:\s*start/);
   assert.match(html, /\.page\[data-panel="bot"\] \.text-area\s*\{[\s\S]*min-height:\s*120px/);
 });
@@ -813,4 +814,83 @@ test("studio bridge controls are grouped into balanced action rows", async () =>
   assert.match(html, /\.bridge-action-grid \.primary-action,\s*\.bridge-action-grid \.secondary-action\s*\{[\s\S]*width:\s*100%/);
   assert.match(html, /\.bridge-login-box\s*\{[\s\S]*grid-template-columns:\s*minmax\(120px,\s*132px\) minmax\(0,\s*1fr\)/);
   assert.match(html, /@media \(max-width: 780px\)[\s\S]*\.bridge-login-box[\s\S]*grid-template-columns:\s*1fr/);
+});
+
+test("studio guide hero nests deployment tracks under the setup copy and keeps mode cards beside it", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /<div class="hero-copy guide-setup-copy">[\s\S]*<div class="guide-track-grid">[\s\S]*API 轻量部署[\s\S]*本地完整部署[\s\S]*<\/div>[\s\S]*<\/div>\s*<div class="mode-grid guide-mode-grid"/);
+  assert.match(html, /\.guide-setup-hero\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(240px,\s*0\.54fr\)/);
+  assert.match(html, /\.guide-track-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(html, /\.guide-mode-grid\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*grid-template-rows:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(html, /\.guide-mode-grid \.mode-card small\s*\{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.doesNotMatch(html, /<div class="guide-card">[\s\S]*<div class="guide-tabs">[\s\S]*<div class="mode-grid"/);
+});
+
+test("studio bot page moves persona editing left and places large actions above bot list and bridge", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /<div class="bot-command-bar"[\s\S]*data-bot-create[\s\S]*data-bot-save[\s\S]*data-bot-load[\s\S]*data-bot-delete[\s\S]*<\/div>\s*<div class="bot-workspace-layout">/);
+  assert.match(html, /<div class="panel bot-profile-panel">[\s\S]*data-bot-profile-list[\s\S]*data-bot-system-input[\s\S]*<\/div>\s*<div class="panel bot-bridge-panel">/);
+  assert.match(html, /\.bot-command-bar\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(124px,\s*1fr\)\)/);
+  assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*grid-template-columns:\s*minmax\(360px,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
+  assert.match(html, /\.bot-profile-panel\s*\{[\s\S]*grid-template-rows:\s*auto auto auto auto/);
+});
+
+test("studio bot bridge includes loop checks and a fuller right-side weixin session layout", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const attr of [
+    "data-bot-bridge-test-text",
+    "data-bot-bridge-test-voice",
+    "data-bot-bridge-test-emoji",
+    "data-bot-bridge-session-card",
+  ]) {
+    assert.match(html, new RegExp(attr));
+  }
+  assert.match(html, /class="bridge-operational-grid"/);
+  assert.match(html, /class="bridge-loop-checks"/);
+  assert.match(html, /测试文字回复[\s\S]*测试语音回复[\s\S]*测试表情包回复/);
+  assert.match(html, /\.bridge-operational-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(250px,\s*0\.82fr\) minmax\(0,\s*1\.18fr\)/);
+  assert.match(html, /\.bridge-loop-card\s*\{[\s\S]*min-height:\s*108px/);
+});
+
+test("studio conversation metrics keep typography proportional and avoid oversized summary text", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /class="metric-grid conversation-summary-grid"/);
+  assert.match(html, /\.conversation-summary-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(132px,\s*1fr\)\)/);
+  assert.match(html, /\.conversation-summary-grid \.metric\s*\{[\s\S]*min-height:\s*112px/);
+  assert.match(html, /\.conversation-summary-grid \.metric strong\s*\{[\s\S]*font-size:\s*clamp\(15px,\s*1\.6vw,\s*20px\)/);
+  assert.match(html, /\.conversation-summary-grid \.metric strong\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
+});
+
+test("studio diagnostics hero shows full API card and chat workspace hides management navigation", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /class="diagnostic-summary-grid"/);
+  assert.match(html, /\.page\[data-panel="diagnostics"\] \.page-hero\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(html, /\.diagnostic-summary-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(150px,\s*1fr\)\)/);
+  assert.match(html, /\.diagnostic-summary-grid \.step-row\s*\{[\s\S]*grid-template-columns:\s*42px minmax\(0,\s*1fr\)/);
+  assert.match(html, /\.studio-shell\[data-workspace="chat"\]\s*\{[\s\S]*grid-template-columns:\s*0 minmax\(0,\s*1fr\)/);
+  assert.match(html, /\.studio-shell\[data-workspace="chat"\] \.studio-nav\s*\{[\s\S]*transform:\s*translateX\(-100%\)/);
+  assert.match(html, /\.page\[data-panel="chat"\]\s*\{[\s\S]*max-width:\s*1120px;[\s\S]*margin:\s*0 auto/);
+  assert.match(html, /\.chat-layout\s*\{[\s\S]*min-height:\s*calc\(100vh - 150px\)/);
+  assert.match(html, /function activateWorkspace\(workspace\) \{[\s\S]*root\.dataset\.rail = next === "chat" \? "hidden" : root\.dataset\.rail/s);
+});
+
+test("studio secondary pages show usable empty states instead of blank canvases", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /class="feature-workbench asset-workbench"/);
+  assert.match(html, /data-asset-empty[\s\S]*还没有素材/);
+  assert.match(html, /素材导入流程/);
+  assert.match(html, /class="feature-workbench rule-workbench"/);
+  assert.match(html, /规则为空/);
+  assert.match(html, /class="feature-workbench task-workbench"/);
+  assert.match(html, /早安问候规则/);
+  assert.match(html, /class="feature-workbench statistics-workbench"/);
+  assert.match(html, /暂无统计数据/);
+  assert.match(html, /\.feature-workbench\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(html, /\.empty-state-panel\s*\{[\s\S]*min-height:\s*220px/);
 });

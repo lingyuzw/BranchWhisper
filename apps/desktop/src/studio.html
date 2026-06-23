@@ -123,6 +123,10 @@
         box-shadow: var(--shadow-md);
       }
 
+      .studio-shell[data-workspace="chat"] {
+        grid-template-columns: 0 minmax(0, 1fr);
+      }
+
       .studio-nav {
         min-width: 0;
         display: grid;
@@ -133,6 +137,12 @@
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--primary) 6%), var(--surface) 240px),
           var(--surface);
+      }
+
+      .studio-shell[data-workspace="chat"] .studio-nav {
+        transform: translateX(-100%);
+        opacity: 0;
+        pointer-events: none;
       }
 
       .brand {
@@ -585,6 +595,25 @@
         background: var(--surface-muted);
       }
 
+      .guide-setup-hero {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 0.54fr);
+        align-items: stretch;
+        min-height: 512px;
+        padding: 16px;
+      }
+
+      .guide-setup-copy {
+        align-content: start;
+        gap: 14px;
+      }
+
+      .guide-track-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 6px;
+      }
+
       .guide-tabs {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -615,6 +644,27 @@
         color: var(--text-muted);
         font-size: 12px;
         line-height: 1.45;
+      }
+
+      .guide-mode-grid {
+        align-self: stretch;
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+      }
+
+      .guide-mode-grid .mode-card {
+        min-width: 0;
+        padding: 14px 12px;
+      }
+
+      .guide-mode-grid .mode-card strong {
+        font-size: 20px;
+        line-height: 1.18;
+      }
+
+      .guide-mode-grid .mode-card small {
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
 
       .step-list {
@@ -722,6 +772,42 @@
         color: var(--text);
         font-size: 22px;
         line-height: 1;
+      }
+
+      .feature-workbench {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .empty-state-panel {
+        min-height: 220px;
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 10px;
+        padding: 20px;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 78%, transparent);
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      .empty-state-panel strong {
+        color: var(--text);
+        font-size: 16px;
+      }
+
+      .empty-state-panel span {
+        max-width: 360px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .info-list {
+        display: grid;
+        gap: 8px;
       }
 
       .panel {
@@ -850,9 +936,42 @@
 
       .bot-workspace-layout {
         display: grid;
-        grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+        grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
         align-items: start;
         gap: 14px;
+      }
+
+      .bot-intro-panel {
+        min-height: auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .bot-command-bar {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(124px, 1fr));
+        gap: 10px;
+      }
+
+      .bot-command-bar .primary-action,
+      .bot-command-bar .secondary-action {
+        width: 100%;
+        min-height: 44px;
+      }
+
+      .bot-profile-panel {
+        grid-template-rows: auto auto auto auto;
+        align-content: start;
+      }
+
+      .bot-profile-panel .text-area {
+        min-height: 128px;
+      }
+
+      .bot-bridge-panel {
+        align-content: start;
       }
 
       .config-layout,
@@ -871,10 +990,23 @@
       }
 
       .bot-profile-list {
-        min-height: 96px;
-        max-height: 360px;
+        min-height: 76px;
+        max-height: 320px;
         overflow: auto;
         padding-right: 2px;
+      }
+
+      .bot-profile-list:empty::before {
+        content: "还没有 Bot 档案，点上方新增 Bot 开始。";
+        min-height: 76px;
+        display: grid;
+        place-items: center;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 76%, transparent);
+        color: var(--text-muted);
+        font-size: 13px;
+        text-align: center;
       }
 
       .conversation-list {
@@ -1027,6 +1159,20 @@
         overflow-wrap: anywhere;
       }
 
+      .conversation-summary-grid {
+        grid-template-columns: repeat(4, minmax(132px, 1fr));
+      }
+
+      .conversation-summary-grid .metric {
+        min-height: 112px;
+      }
+
+      .conversation-summary-grid .metric strong {
+        font-size: clamp(15px, 1.6vw, 20px);
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+
       .api-provider-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1141,6 +1287,49 @@
 
       .bridge-log-shell.expanded .bridge-log-summary {
         display: none;
+      }
+
+      .bridge-operational-grid {
+        display: grid;
+        grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr);
+        gap: 12px;
+        align-items: start;
+      }
+
+      .bridge-loop-checks {
+        display: grid;
+        gap: 10px;
+      }
+
+      .bridge-loop-card {
+        min-height: 108px;
+        display: grid;
+        align-content: space-between;
+        gap: 9px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+      }
+
+      .bridge-loop-card strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .bridge-loop-card span {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .bridge-loop-card .text-input {
+        min-height: 34px;
+      }
+
+      .bridge-session-card {
+        display: grid;
+        gap: 12px;
       }
 
       .platform-log-panel {
@@ -1275,12 +1464,16 @@
       }
 
       .page[data-panel="bot"] .page-hero {
-        grid-template-columns: minmax(420px, 1fr) minmax(420px, 0.92fr);
+        grid-template-columns: minmax(360px, 1fr) minmax(0, 0.92fr);
         align-items: start;
       }
 
       .page[data-panel="bot"] .text-area {
         min-height: 120px;
+      }
+
+      .page[data-panel="diagnostics"] .page-hero {
+        grid-template-columns: 1fr;
       }
 
       .bridge-action-grid {
@@ -1296,6 +1489,31 @@
 
       .bridge-log-actions {
         justify-content: flex-end;
+      }
+
+      .diagnostic-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
+        gap: 10px;
+        align-self: stretch;
+      }
+
+      .diagnostic-summary-grid .step-row {
+        grid-template-columns: 42px minmax(0, 1fr);
+        align-content: start;
+        align-items: start;
+        min-height: 108px;
+      }
+
+      .diagnostic-summary-grid .status-chip {
+        grid-column: 2;
+        width: fit-content;
+      }
+
+      .page[data-panel="chat"] {
+        max-width: 1120px;
+        width: 100%;
+        margin: 0 auto;
       }
 
       .table-panel {
@@ -1366,9 +1584,9 @@
       }
 
       .chat-layout {
-        min-height: 580px;
+        min-height: calc(100vh - 150px);
         display: grid;
-        grid-template-columns: 250px minmax(0, 1fr);
+        grid-template-columns: minmax(232px, 260px) minmax(0, 1fr);
         overflow: hidden;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
@@ -1489,6 +1707,9 @@
         .workspace,
         .page-hero,
         .chat-layout,
+        .bot-intro-panel,
+        .bot-workspace-layout,
+        .bridge-operational-grid,
         .conversation-layout {
           grid-template-columns: 1fr;
         }
@@ -1513,6 +1734,8 @@
         .metric-grid,
         .mode-grid,
         .guide-tabs,
+        .guide-track-grid,
+        .bot-command-bar,
         .form-grid,
         .conversation-meta-grid,
         .bridge-login-box {
@@ -1606,8 +1829,8 @@
         <section class="workspace">
           <div class="content-stack">
             <section class="page active" data-panel="guide">
-              <div class="page-hero">
-                <div class="hero-copy">
+              <div class="page-hero guide-setup-hero">
+                <div class="hero-copy guide-setup-copy">
                   <p class="eyebrow">欢迎引导</p>
                   <h1>从零开始配置 BranchWhisper</h1>
                   <p class="lead">这版先做成小白也能看懂的桌面应用：不装本地环境也能先跑通 API，再创建微信 Bot、设置人格、保存对话数据，最后按需要进入本地完整部署。</p>
@@ -1616,10 +1839,7 @@
                     <button class="secondary-action" type="button" data-section="bot">创建微信 Bot</button>
                     <button class="secondary-action" type="button" data-advanced-route="/app/">打开旧网页控制台</button>
                   </div>
-                </div>
-
-                <div class="guide-card">
-                  <div class="guide-tabs">
+                  <div class="guide-track-grid">
                     <div class="guide-track active">
                       <strong>API 轻量部署</strong>
                       <span>推荐新手先走这条，不需要 WSL、CUDA、conda、本地模型。</span>
@@ -1629,19 +1849,19 @@
                       <span>适合已经准备本地模型、语音链路和微信桥接的人。</span>
                     </div>
                   </div>
+                </div>
 
-                  <div class="mode-grid" aria-label="运行方式">
-                    <button class="mode-card recommended active" type="button" data-mode="api">
-                      <span>推荐</span>
-                      <strong>Use API</strong>
-                      <small>不装本地环境也能先跑通。配置 API URL、模型名和密钥后即可测试对话。</small>
-                    </button>
-                    <button class="mode-card" type="button" data-mode="local">
-                      <span>进阶</span>
-                      <strong>Configure Local Runtime</strong>
-                      <small>检查 WSL、conda、CUDA、Python、Node、ffmpeg、llama.cpp、CosyVoice、Qwen ASR、OpenClaw。</small>
-                    </button>
-                  </div>
+                <div class="mode-grid guide-mode-grid" aria-label="运行方式">
+                  <button class="mode-card recommended active" type="button" data-mode="api">
+                    <span>推荐</span>
+                    <strong>Use API</strong>
+                    <small>不装本地环境也能先跑通。配置 API URL、模型名和密钥后即可测试对话。</small>
+                  </button>
+                  <button class="mode-card" type="button" data-mode="local">
+                    <span>进阶</span>
+                    <strong>Configure Local Runtime</strong>
+                    <small>检查 WSL、conda、CUDA、Python、Node、ffmpeg、llama.cpp、CosyVoice、Qwen ASR、OpenClaw。</small>
+                  </button>
                 </div>
               </div>
 
@@ -1744,25 +1964,37 @@
             </section>
 
             <section class="page" data-panel="bot">
-              <div class="page-hero">
+              <div class="page-hero bot-intro-panel">
                 <div class="hero-copy">
                   <p class="eyebrow">Bot</p>
                   <h1>创建微信 Bot</h1>
                   <p class="lead">先把 Bot 档案创建出来：名称、ID、回复风格、工具开关和 Bot 人格会保存到本机后端。微信桥接、规则和素材后续按这个档案继续接入。</p>
-                  <div class="panel-actions">
-                    <button class="primary-action" type="button" data-bot-create>新增 Bot</button>
-                    <button class="secondary-action" type="button" data-bot-save>保存当前 Bot</button>
-                    <button class="secondary-action" type="button" data-bot-load>重新加载</button>
-                    <button class="secondary-action danger" type="button" data-bot-delete>删除当前 Bot</button>
-                  </div>
                 </div>
-                <div class="panel">
+                <div class="metric-grid">
+                  <div class="metric"><span>Bot 数量</span><strong data-bot-count>0</strong><small class="muted">本机档案</small></div>
+                  <div class="metric"><span>桥接状态</span><strong data-bot-bridge-summary>未启用</strong><small class="muted">按当前 Bot 档案检测</small></div>
+                  <div class="metric"><span>人格</span><strong>已分离</strong><small class="muted">模型人格和 Bot 人格分开保存</small></div>
+                  <div class="metric"><span>配置状态</span><strong>可保存</strong><small class="muted">API 配置和 Bot 档案独立</small></div>
+                </div>
+              </div>
+              <div class="bot-command-bar" aria-label="Bot 操作">
+                <button class="primary-action" type="button" data-bot-create>新增 Bot</button>
+                <button class="secondary-action" type="button" data-bot-save>保存当前 Bot</button>
+                <button class="secondary-action" type="button" data-bot-load>重新加载</button>
+                <button class="secondary-action danger" type="button" data-bot-delete>删除当前 Bot</button>
+              </div>
+              <div class="bot-workspace-layout">
+                <div class="panel bot-profile-panel">
+                  <div class="panel-head">
+                    <div><h2>Bot 列表</h2><p class="muted">选择档案后，下方会直接编辑这个 Bot 的基础信息和人格。</p></div>
+                    <span class="badge" data-bot-selected-name>未选择</span>
+                  </div>
+                  <div class="bot-profile-list" data-bot-profile-list></div>
                   <div class="panel-head">
                     <div>
                       <h3>Bot 基础信息</h3>
                       <p class="muted">ID 用于生成本地配置文件名，建议用英文、数字或短横线。</p>
                     </div>
-                    <span class="badge" data-bot-selected-name>未选择</span>
                   </div>
                   <div class="form-grid">
                     <label class="field"><span>Bot ID</span><input class="text-input" data-bot-id-input value="morning-bot" autocomplete="off" /></label>
@@ -1773,21 +2005,7 @@
                   <label class="field"><span>Bot 人格</span><textarea class="text-input text-area" data-bot-system-input>只基于已有信息回复，不编造天气、提醒或联系人状态。语气自然一点，像熟人正常说话。</textarea></label>
                   <div class="status-line warn" data-bot-status>正在等待加载 Bot 档案。</div>
                 </div>
-              </div>
-              <div class="metric-grid">
-                <div class="metric"><span>Bot 数量</span><strong data-bot-count>0</strong><small class="muted">本机档案</small></div>
-                <div class="metric"><span>桥接状态</span><strong data-bot-bridge-summary>未启用</strong><small class="muted">按当前 Bot 档案检测</small></div>
-                <div class="metric"><span>人格</span><strong>已分离</strong><small class="muted">模型人格和 Bot 人格分开保存</small></div>
-                <div class="metric"><span>配置状态</span><strong>可保存</strong><small class="muted">API 配置和 Bot 档案独立</small></div>
-              </div>
-              <div class="bot-workspace-layout">
-                <div class="panel">
-                  <div class="panel-head">
-                    <div><h2>Bot 列表</h2><p class="muted">点击左侧档案后，右侧表单会载入对应人格。</p></div>
-                  </div>
-                  <div class="bot-profile-list" data-bot-profile-list></div>
-                </div>
-                <div class="panel">
+                <div class="panel bot-bridge-panel">
                   <div class="panel-head">
                     <div>
                       <h2>微信桥接</h2>
@@ -1807,30 +2025,6 @@
                     <label class="field"><span>桥接地址</span><input class="text-input" data-bot-bridge-url-input placeholder="可选，例如 http://127.0.0.1:18080" autocomplete="off" /></label>
                     <label class="checkbox-field"><input type="checkbox" data-bot-bridge-enabled />启用这个微信桥接</label>
                   </div>
-                  <div class="guard-panel">
-                    <div class="panel-head">
-                      <div>
-                        <h3>自动回复控制</h3>
-                        <p class="muted">先把回复范围管住，避免测试时误回群聊或陌生人。</p>
-                      </div>
-                      <span class="badge" data-bot-reply-guard-summary>自动回复开启</span>
-                    </div>
-                    <div class="guard-switches">
-                      <label class="checkbox-field"><input type="checkbox" data-bot-auto-reply-enabled checked />启用自动回复</label>
-                      <label class="checkbox-field"><input type="checkbox" data-bot-group-replies-enabled />允许群聊自动回复</label>
-                    </div>
-                    <div class="guard-list-grid">
-                      <label class="field">
-                        <span>允许名单</span>
-                        <textarea class="text-input text-area" data-bot-allowlist-input placeholder="可选，每行一个 sender_id 或群 ID。填写后只回复名单内对象。"></textarea>
-                      </label>
-                      <label class="field">
-                        <span>屏蔽名单</span>
-                        <textarea class="text-input text-area" data-bot-blocklist-input placeholder="可选，每行一个 sender_id 或群 ID。命中后永不自动回复。"></textarea>
-                      </label>
-                    </div>
-                    <p class="muted">默认开启自动回复、关闭群聊回复。先用允许名单试一个联系人，确认稳定后再扩大范围。</p>
-                  </div>
                   <div class="panel-actions bridge-action-grid">
                     <button class="primary-action" type="button" data-bot-bridge-test>检测桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-start>启动桥接</button>
@@ -1840,17 +2034,65 @@
                     <button class="secondary-action" type="button" data-bot-bridge-login-poll>刷新登录状态</button>
                     <button class="secondary-action" type="button" data-advanced-route="/app/integrations">打开高级桥接页</button>
                   </div>
-                  <div class="bridge-login-box">
-                    <div class="bridge-qr-frame" data-bot-bridge-qr-frame>
-                      <span data-bot-bridge-qr-empty>生成二维码后显示在这里</span>
-                      <img data-bot-bridge-qr-image alt="微信登录二维码" hidden />
+                  <div class="bridge-operational-grid">
+                    <div class="bridge-loop-checks">
+                      <div class="bridge-loop-card">
+                        <strong>测试文字回复</strong>
+                        <span>发送一条模拟微信消息，确认 dialog 链路能生成文字回复。</span>
+                        <input class="text-input" data-bot-bridge-text-input value="你好，测试一下" autocomplete="off" />
+                        <button class="secondary-action" type="button" data-bot-bridge-test-text>运行</button>
+                      </div>
+                      <div class="bridge-loop-card">
+                        <strong>测试语音回复</strong>
+                        <span>调用当前集成实例的语音测试接口，确认 TTS 和微信发送链路。</span>
+                        <input class="text-input" data-bot-bridge-voice-input value="我在，听得到的话我们继续。" autocomplete="off" />
+                        <button class="secondary-action" type="button" data-bot-bridge-test-voice>运行</button>
+                      </div>
+                      <div class="bridge-loop-card">
+                        <strong>测试表情包回复</strong>
+                        <span>按测试文本选择素材并发送，确认表情包策略和素材库可用。</span>
+                        <input class="text-input" data-bot-bridge-emoji-input value="打一架" autocomplete="off" />
+                        <button class="secondary-action" type="button" data-bot-bridge-test-emoji>运行</button>
+                      </div>
                     </div>
-                  <div class="bridge-login-meta">
-                    <div class="status-line warn" data-bot-bridge-login-status>尚未发起扫码登录。</div>
-                    <div class="status-line warn" data-bot-bridge-account>账号：未登录</div>
-                    <label class="field"><span>验证数字</span><input class="text-input" data-bot-bridge-verify-input placeholder="需要时填写手机端提示的数字" autocomplete="off" /></label>
-                    <p class="muted">先启动桥接，再生成二维码。扫码后点刷新登录状态；如果微信要求验证数字，填入后再刷新。</p>
-                  </div>
+                    <div class="bridge-session-card" data-bot-bridge-session-card>
+                      <div class="bridge-login-box">
+                        <div class="bridge-qr-frame" data-bot-bridge-qr-frame>
+                          <span data-bot-bridge-qr-empty>生成二维码后显示在这里</span>
+                          <img data-bot-bridge-qr-image alt="微信登录二维码" hidden />
+                        </div>
+                        <div class="bridge-login-meta">
+                          <div class="status-line warn" data-bot-bridge-login-status>尚未发起扫码登录。</div>
+                          <div class="status-line warn" data-bot-bridge-account>账号：未登录</div>
+                          <label class="field"><span>验证数字</span><input class="text-input" data-bot-bridge-verify-input placeholder="需要时填写手机端提示的数字" autocomplete="off" /></label>
+                          <p class="muted">先启动桥接，再生成二维码。扫码后点刷新登录状态；如果微信要求验证数字，填入后再刷新。</p>
+                        </div>
+                      </div>
+                      <div class="guard-panel">
+                        <div class="panel-head">
+                          <div>
+                            <h3>自动回复控制</h3>
+                            <p class="muted">先把回复范围管住，避免测试时误回群聊或陌生人。</p>
+                          </div>
+                          <span class="badge" data-bot-reply-guard-summary>自动回复开启</span>
+                        </div>
+                        <div class="guard-switches">
+                          <label class="checkbox-field"><input type="checkbox" data-bot-auto-reply-enabled checked />启用自动回复</label>
+                          <label class="checkbox-field"><input type="checkbox" data-bot-group-replies-enabled />允许群聊自动回复</label>
+                        </div>
+                        <div class="guard-list-grid">
+                          <label class="field">
+                            <span>允许名单</span>
+                            <textarea class="text-input text-area" data-bot-allowlist-input placeholder="可选，每行一个 sender_id 或群 ID。填写后只回复名单内对象。"></textarea>
+                          </label>
+                          <label class="field">
+                            <span>屏蔽名单</span>
+                            <textarea class="text-input text-area" data-bot-blocklist-input placeholder="可选，每行一个 sender_id 或群 ID。命中后永不自动回复。"></textarea>
+                          </label>
+                        </div>
+                        <p class="muted">默认开启自动回复、关闭群聊回复。先用允许名单试一个联系人，确认稳定后再扩大范围。</p>
+                      </div>
+                    </div>
                   </div>
                   <div class="panel-actions bridge-log-actions">
                     <button class="secondary-action" type="button" data-bot-bridge-logs-refresh>刷新日志</button>
@@ -1928,7 +2170,7 @@
                     <button class="secondary-action danger" type="button" data-conversation-delete>删除当前会话</button>
                   </div>
                 </div>
-                <div class="metric-grid">
+                <div class="metric-grid conversation-summary-grid">
                   <div class="metric"><span>Bot 会话</span><strong data-conversation-count>0</strong><small class="muted">只统计微信/Bot 来源</small></div>
                   <div class="metric"><span>消息数量</span><strong data-conversation-message-count>0</strong><small class="muted">当前筛选结果</small></div>
                   <div class="metric"><span>最后更新</span><strong data-conversation-last-updated>-</strong><small class="muted">最近一条 Bot 对话</small></div>
@@ -1982,12 +2224,48 @@
                   <p class="eyebrow">素材库</p>
                   <h1>管理图片、语音、视频、文件和回复模板</h1>
                   <p class="lead">素材可以是全局素材，也可以绑定到某个 Bot、人格、自定义规则或未来任务。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button">导入素材</button>
+                    <button class="secondary-action" type="button">新建回复模板</button>
+                  </div>
                 </div>
                 <div class="metric-grid">
                   <div class="metric"><span>图片</span><strong>0</strong></div>
                   <div class="metric"><span>语音</span><strong>0</strong></div>
                   <div class="metric"><span>文件</span><strong>0</strong></div>
                   <div class="metric"><span>模板</span><strong>0</strong></div>
+                </div>
+              </div>
+              <div class="feature-workbench asset-workbench">
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>素材列表</h2><p class="muted">图片、语音、视频和文件会按类型归档。</p></div>
+                    <span class="badge">本地目录</span>
+                  </div>
+                  <div class="empty-state-panel" data-asset-empty>
+                    <strong>还没有素材</strong>
+                    <span>导入后会显示缩略信息、引用次数和绑定范围；素材文件仍保存在运行目录里。</span>
+                  </div>
+                </div>
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>素材导入流程</h2><p class="muted">先分类，再绑定使用场景。</p></div>
+                  </div>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>选择文件</strong><span>支持图片、语音、视频和普通文件。</span></div><span class="status-chip">准备</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>绑定范围</strong><span>全局、某个 Bot、规则或未来任务。</span></div><span class="status-chip">可选</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>引用素材</strong><span>规则和微信 Bot 发送时按 ID 引用。</span></div><span class="status-chip">下一步</span></div>
+                  </div>
+                </div>
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>回复模板</h2><p class="muted">用于固定话术、表情包说明或文件回复。</p></div>
+                    <button class="secondary-action" type="button">新增模板</button>
+                  </div>
+                  <div class="empty-state-panel">
+                    <strong>暂无模板</strong>
+                    <span>模板不会替代模型回复，只作为规则命中或人工选择时的固定内容。</span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -1998,9 +2276,21 @@
                   <div><h2>自定义规则</h2><p class="muted">规则需要明确触发条件、目标 Bot、优先级和动作；缺数据时不能编造。</p></div>
                   <button class="primary-action" type="button">新增规则</button>
                 </div>
-                <div class="step-list">
-                  <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>触发条件</strong><span>关键词、时间、联系人或上下文。</span></div><span class="status-chip">待配置</span></div>
-                  <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>响应动作</strong><span>回复文本、调用素材、创建任务或记录日志。</span></div><span class="status-chip">待配置</span></div>
+                <div class="feature-workbench rule-workbench">
+                  <div class="empty-state-panel">
+                    <strong>规则为空</strong>
+                    <span>先新增一条测试规则，只绑定一个 Bot 和一个联系人，确认不会误触发后再扩大范围。</span>
+                  </div>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>触发条件</strong><span>关键词、时间、联系人或上下文。</span></div><span class="status-chip">待配置</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>响应动作</strong><span>回复文本、调用素材、创建任务或记录日志。</span></div><span class="status-chip">待配置</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>安全边界</strong><span>限制群聊、陌生人和敏感关键词。</span></div><span class="status-chip">建议</span></div>
+                  </div>
+                  <div class="panel info-list">
+                    <div class="panel-head"><div><h3>建议动作</h3><p class="muted">按实际场景逐步开启。</p></div></div>
+                    <div class="status-line warn">未配置素材时，不发送表情包或文件。</div>
+                    <div class="status-line warn">缺少天气、提醒或联系人状态时，只说明不知道，不补具体值。</div>
+                  </div>
                 </div>
               </div>
             </section>
@@ -2017,6 +2307,26 @@
                   <div class="metric"><span>未来任务</span><strong>0</strong></div>
                   <div class="metric"><span>下次执行</span><strong>-</strong></div>
                 </div>
+                <div class="feature-workbench task-workbench">
+                  <div class="empty-state-panel">
+                    <strong>还没有任务</strong>
+                    <span>没有提醒时，对话里不会主动说“我会一起看提醒”。创建提醒后才会进入问候和任务上下文。</span>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><div><h3>早安问候规则</h3><p class="muted">按天气字段生成自然提醒。</p></div><span class="badge">可配置</span></div>
+                    <div class="step-list">
+                      <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>天气和温度</strong><span>必须提到天气和温度范围，缺失不编造。</span></div><span class="status-chip">核心</span></div>
+                      <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>生活动作</strong><span>带伞、防晒、外套、买水或少户外久待。</span></div><span class="status-chip">输出</span></div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><div><h3>任务列表</h3><p class="muted">提醒、定时消息和未来计划会显示在这里。</p></div></div>
+                    <div class="empty-state-panel">
+                      <strong>暂无待执行任务</strong>
+                      <span>新增任务后会显示执行时间、目标 Bot、提醒内容和最近执行结果。</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -2030,6 +2340,22 @@
               <div class="panel">
                 <h2>数据统计</h2>
                 <p class="muted">后续接入后端后，这里展示 Bot、消息、API 调用、Token、素材和任务执行统计。</p>
+                <div class="feature-workbench statistics-workbench">
+                  <div class="empty-state-panel">
+                    <strong>暂无统计数据</strong>
+                    <span>创建 Bot、连接微信或调用模型后，这里才会出现真实趋势，不用占位假数据。</span>
+                  </div>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>Bot 规模</strong><span>统计 Bot 数量、启用状态和桥接状态。</span></div><span class="status-chip">待接入</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>消息与调用</strong><span>统计消息数、模型请求和失败原因。</span></div><span class="status-chip">待接入</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>Token 成本</strong><span>按 API 或本地模型拆分 token 使用。</span></div><span class="status-chip">待接入</span></div>
+                  </div>
+                  <div class="panel info-list">
+                    <div class="panel-head"><div><h3>统计口径</h3><p class="muted">只展示本机运行目录内可验证的数据。</p></div></div>
+                    <div class="status-line warn">无法读取后端时保持 0，不推测调用量。</div>
+                    <div class="status-line warn">微信 Bot 对话和 Chat 对话分开统计。</div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -2081,7 +2407,7 @@
                     <button class="secondary-action" type="button" data-advanced-route="/app/diagnostics">打开高级诊断</button>
                   </div>
                 </div>
-                <div class="step-list">
+                <div class="diagnostic-summary-grid">
                   <div class="step-row"><span class="step-num">API</span><div class="step-main"><strong>聊天 API</strong><span>未配置时给出新增 API 建议。</span></div><span class="status-chip"><i class="status-dot warn"></i>未检测</span></div>
                   <div class="step-row"><span class="step-num">本地</span><div class="step-main"><strong>WSL / conda / CUDA</strong><span>本地模式才作为必需检查。</span></div><span class="status-chip"><i class="status-dot"></i>可跳过</span></div>
                   <div class="step-row"><span class="step-num">桥接</span><div class="step-main"><strong>OpenClaw</strong><span>按当前配置名称和路径显示，不硬编码模型。</span></div><span class="status-chip"><i class="status-dot"></i>未配置</span></div>
@@ -2246,6 +2572,9 @@
       const botBridgeLogSummary = document.querySelector("[data-bot-bridge-log-summary]");
       const botBridgeLogToggle = document.querySelector("[data-bot-bridge-log-toggle]");
       const botBridgeLog = document.querySelector("[data-bot-bridge-log]");
+      const botBridgeTextInput = document.querySelector("[data-bot-bridge-text-input]");
+      const botBridgeVoiceInput = document.querySelector("[data-bot-bridge-voice-input]");
+      const botBridgeEmojiInput = document.querySelector("[data-bot-bridge-emoji-input]");
       const botBridgeVerifyInput = document.querySelector("[data-bot-bridge-verify-input]");
       const botBridgeQrImage = document.querySelector("[data-bot-bridge-qr-image]");
       const botBridgeQrEmpty = document.querySelector("[data-bot-bridge-qr-empty]");
@@ -3569,6 +3898,75 @@
         }
       }
 
+      function formatBridgeProbeResult(result) {
+        return JSON.stringify(result || {}, null, 2);
+      }
+
+      async function runBotBridgeDialogProbe() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        const text = botBridgeTextInput?.value.trim() || "你好，测试一下";
+        try {
+          setBotBridgeStatus("文字测试中", "run");
+          const result = await backendRequest({
+            method: "POST",
+            path: "/api/integrations/dialog",
+            body: {
+              platform_id: integrationId,
+              session_id: "studio_probe",
+              sender_id: "branchwhisper_studio",
+              text,
+            },
+          });
+          setBotBridgeStatus(result.ok === false ? "文字异常" : "文字正常", result.ok === false ? "error" : "ok");
+          setBotBridgeLog(`测试文字回复\n实例：${integrationId}\n输入：${text}\n结果：\n${formatBridgeProbeResult(result)}`);
+          return result;
+        } catch (error) {
+          setBotBridgeStatus("文字失败", "error");
+          setBotBridgeLog(`测试文字回复失败：${error.message}\n建议：先确认 API、Bot 人格和微信桥接实例可用。`);
+          return null;
+        }
+      }
+
+      async function runBotBridgeVoiceProbe() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        const text = botBridgeVoiceInput?.value.trim() || "我在，听得到的话我们继续。";
+        try {
+          setBotBridgeStatus("语音测试中", "run");
+          const result = await backendRequest({
+            method: "POST",
+            path: `/api/integrations/${encodeURIComponent(integrationId)}/voice-test`,
+            body: { text },
+          });
+          setBotBridgeStatus(result.ok === false ? "语音异常" : "语音已请求", result.ok === false ? "error" : "ok");
+          setBotBridgeLog(`测试语音回复\n实例：${integrationId}\n输入：${text}\n结果：\n${formatBridgeProbeResult(result)}`);
+          return result;
+        } catch (error) {
+          setBotBridgeStatus("语音失败", "error");
+          setBotBridgeLog(`测试语音回复失败：${error.message}\n建议：确认 TTS、CosyVoice、OpenClaw 账号和微信客户端状态。`);
+          return null;
+        }
+      }
+
+      async function runBotBridgeStickerProbe() {
+        const integrationId = selectedBotBridgeIntegrationId();
+        const text = botBridgeEmojiInput?.value.trim() || "打一架";
+        try {
+          setBotBridgeStatus("表情包测试中", "run");
+          const result = await backendRequest({
+            method: "POST",
+            path: `/api/integrations/${encodeURIComponent(integrationId)}/sticker-test`,
+            body: { text },
+          });
+          setBotBridgeStatus(result.ok === false ? "表情包异常" : "表情包已请求", result.ok === false ? "error" : "ok");
+          setBotBridgeLog(`测试表情包回复\n实例：${integrationId}\n输入：${text}\n结果：\n${formatBridgeProbeResult(result)}`);
+          return result;
+        } catch (error) {
+          setBotBridgeStatus("表情包失败", "error");
+          setBotBridgeLog(`测试表情包回复失败：${error.message}\n建议：确认素材库、表情包策略和微信桥接账号可用。`);
+          return null;
+        }
+      }
+
       async function loadDesktopConfig() {
         try {
           const [config, profiles] = await Promise.all([loadApiConfig(), loadBotProfiles()]);
@@ -3644,6 +4042,7 @@
       function activateWorkspace(workspace) {
         const next = workspace === "chat" ? "chat" : "bot";
         root.dataset.workspace = next;
+        root.dataset.rail = next === "chat" ? "hidden" : root.dataset.rail;
         document.querySelectorAll("[data-workspace-tab]").forEach((button) => {
           button.classList.toggle("active", button.dataset.workspaceTab === next);
         });
@@ -3838,6 +4237,21 @@
 
         if (event.target.closest("[data-bot-bridge-test]")) {
           testBotBridge();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-test-text]")) {
+          runBotBridgeDialogProbe();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-test-voice]")) {
+          runBotBridgeVoiceProbe();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-test-emoji]")) {
+          runBotBridgeStickerProbe();
           return;
         }
 
