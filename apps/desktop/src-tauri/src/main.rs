@@ -1,17 +1,19 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod backend_contract;
 mod backend_launcher;
 mod startup_status;
 
 use startup_status::DesktopStartupStatus;
 use std::time::Duration;
-use tauri::{Manager, Url};
+use tauri::Manager;
 
 fn main() {
     // Startup contract:
     // 1. If http://127.0.0.1:7860/api/health is alive, reuse that backend.
     // 2. Otherwise start the configured backend command and capture logs.
-    // 3. Navigate to http://127.0.0.1:7860/app/ only after health responds.
-    // 4. If startup fails, keep startup.html visible with the copied command and log path.
+    // 3. Keep startup.html visible as the desktop control hub after health responds.
+    // 4. If startup fails, keep the hub visible with the copied command and log path.
     tauri::Builder::default()
         .setup(|app| {
             let window = app
@@ -73,11 +75,6 @@ fn main() {
                 send_startup_status(&window, &DesktopStartupStatus::reusing(&startup_result));
             }
 
-            if let Ok(url) = Url::parse(&startup_result.app_url) {
-                if let Err(error) = window.navigate(url) {
-                    eprintln!("Failed to navigate to app: {}", error);
-                }
-            }
             Ok(())
         })
         .run(tauri::generate_context!())

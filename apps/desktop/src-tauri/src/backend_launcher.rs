@@ -107,7 +107,10 @@ pub fn start_backend_process(
         .try_clone()
         .map_err(|error| format!("Failed to clone backend log handle: {}", error))?;
 
-    let child = Command::new(&contract.command.program)
+    let mut command = Command::new(&contract.command.program);
+    configure_backend_command(&mut command);
+
+    let child = command
         .args(&contract.command.args)
         .current_dir(&contract.cwd)
         .stdout(Stdio::from(stdout))
@@ -126,6 +129,17 @@ pub fn start_backend_process(
         log_path: contract.log_path.clone(),
     })
 }
+
+#[cfg(windows)]
+fn configure_backend_command(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn configure_backend_command(_command: &mut Command) {}
 
 pub fn wait_for_backend_ready(
     host: &str,
@@ -255,6 +269,15 @@ mod tests {
         let error = start_backend_process(&contract).expect_err("spawn should fail");
 
         assert!(error.contains("/definitely/missing/branchwhisper-backend"));
+    }
+
+    #[test]
+    fn backend_launcher_defines_windows_no_console_startup_flag() {
+        let source = std::fs::read_to_string("src/backend_launcher.rs")
+            .expect("backend launcher source should be readable");
+
+        assert!(source.contains("CREATE_NO_WINDOW"));
+        assert!(source.contains("creation_flags(CREATE_NO_WINDOW)"));
     }
 
     #[test]
