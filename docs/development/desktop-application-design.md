@@ -1,185 +1,207 @@
-# BranchWhisper Desktop Application Design
+# BranchWhisper Desktop Studio Design
+
+## Product Decision
+
+BranchWhisper.exe is a standalone desktop Studio, not a web page wrapper.
+
+The desktop app must feel closer to a launcher/control application such as AstrBot Launcher than to a browser window. It owns onboarding, mode selection, environment checks, runtime start/stop, logs, diagnosis, and user guidance. The existing web console remains a backend-powered advanced surface during migration, but it is not the default desktop experience.
 
 ## Product Principle
 
-BranchWhisper Desktop must be usable before it asks the user to build a full local AI runtime.
+BranchWhisper must be usable on a fresh Windows computer before the user installs local AI environments.
 
-The default first-run path is API quick start. A user on a fresh Windows machine should be able to open the app, enter API credentials, test the connection, and start chatting without installing WSL, CUDA, conda, Qwen3 ASR, CosyVoice, llama.cpp, or local model files.
+The first screen offers two paths:
 
-Local models are an enhancement path. The app should guide users toward WSL, conda, CUDA, Qwen3 ASR, CosyVoice, llama.cpp, and model directories only when they choose local runtime mode.
+```text
+Use API
+Configure Local Runtime
+```
+
+API mode is first, recommended, and immediately usable. Local runtime is an advanced path with guided checks for WSL, conda, CUDA, Python, Node, ffmpeg, llama.cpp, CosyVoice, Qwen ASR, OpenClaw, model paths, ports, and service commands.
+
+## What AstrBot Launcher Teaches Us
+
+BranchWhisper should borrow the product shape, not copy implementation details:
+
+- A real desktop entry point, not "open a terminal and visit a URL".
+- Clear instance/runtime status before the user touches advanced settings.
+- Guided setup with repair commands and logs.
+- Runtime isolation between application code, user data, and model assets.
+- Start, stop, restart, update, backup, restore, and open folder actions.
+- A friendly first-run path for users who do not understand the development environment.
+
+BranchWhisper differs in one important way: API mode must work without local model installation.
 
 ## Target Users
 
-- Normal user: no local AI environment and wants to use the app immediately.
-- Advanced user: has API keys and may later configure local models.
-- Developer: runs from source with WSL, conda, local services, and the repository runtime directory.
+- Normal user: wants to open an app, enter API credentials, connect WeChat, and use it.
+- Advanced user: wants API mode now and local runtime later.
+- Local model user: already has Qwen ASR, llama.cpp, CosyVoice, CUDA, and model files.
+- Developer: runs from source and needs diagnostics, logs, and packaging tools.
 
-## Runtime Modes
+## Desktop App Responsibilities
 
-### API Quick Mode
+The desktop Studio owns:
 
-API quick mode is the default onboarding path.
+- first-run onboarding
+- API mode setup
+- local runtime setup
+- mode switching
+- backend process lifecycle
+- service lifecycle controls
+- port detection and conflict handling
+- runtime directory selection
+- logs and diagnosis
+- repair suggestions
+- report export
+- desktop shortcuts and packaged exe placement
 
-Required:
+The backend owns:
 
-- Desktop app can open.
-- Lightweight backend can start.
-- User can configure at least one chat-completions compatible LLM API.
-- User can save settings.
-- User can open the conversation page.
+- dialog logic
+- memory
+- proactive behavior
+- tools
+- integrations
+- API/provider configuration persistence
+- health and diagnostic facts
 
-Optional:
+The web console owns, during migration:
 
-- ASR API for voice input.
-- TTS API for voice output.
-- Vision and sticker APIs.
+- advanced chat surface
+- detailed diagnostics page
+- advanced settings pages
+- legacy feature pages not yet ported to desktop Studio
 
-Not required:
-
-- WSL.
-- Ubuntu.
-- CUDA.
-- conda.
-- Qwen3 ASR.
-- CosyVoice.
-- llama.cpp.
-- local model files.
-
-### Local Runtime Mode
-
-Local runtime mode is an advanced enhancement path.
-
-Required:
-
-- WSL Ubuntu or another supported Linux runtime.
-- `qwen3-asr` conda environment.
-- Python runtime for the backend.
-- ffmpeg.
-- CUDA or a declared CPU fallback.
-- service profile configuration.
-- local ASR, LLM, and TTS service commands.
-
-Optional:
-
-- Docker runtime.
-- alternative local ASR/TTS providers.
-- OpenClaw or other integration bridge services.
-
-## System Architecture
+## Architecture
 
 ```text
-BranchWhisper Desktop
-├─ Desktop shell
-│  ├─ window, tray, app lifecycle
-│  ├─ lightweight backend launch
-│  ├─ port detection
-│  ├─ log capture
-│  └─ future updater
-├─ FastAPI backend
-│  ├─ /api/*
-│  ├─ /ws/dialog
-│  ├─ /runtime/uploads/*
-│  ├─ /runtime/stickers/*
-│  └─ /app/ production frontend shell
-├─ Vue frontend
-│  ├─ first-run wizard
-│  ├─ conversation
-│  ├─ services
-│  ├─ diagnostics
-│  ├─ integrations
-│  ├─ memory
-│  ├─ assets
-│  └─ settings
-├─ API runtime
+BranchWhisper.exe
+├─ Tauri desktop Studio
+│  ├─ Studio UI: onboarding, mode selector, setup, logs, diagnostics
+│  ├─ app state: selected mode, setup progress, window state
+│  ├─ desktop commands: start/stop backend, open folders, copy commands
+│  └─ embedded webview route only for advanced/legacy pages
+├─ Packaged backend
+│  ├─ FastAPI API surface
+│  ├─ lightweight API-mode runtime
+│  ├─ local service manager
+│  └─ runtime data storage
+├─ API runtime path
 │  ├─ LLM API
-│  ├─ ASR API
-│  └─ TTS API
-└─ Local runtime
+│  ├─ optional ASR API
+│  └─ optional TTS API
+└─ Local runtime path
    ├─ WSL Ubuntu
    ├─ conda qwen3-asr
-   ├─ Qwen3 ASR
+   ├─ Python / Node / ffmpeg
+   ├─ CUDA or CPU fallback
    ├─ llama.cpp
    ├─ CosyVoice
-   └─ OpenClaw / bridge services
+   ├─ Qwen ASR
+   └─ OpenClaw / WeChat bridge
 ```
 
-The desktop shell must not own dialog logic. The backend remains the business boundary. The frontend continues to depend only on stable public surfaces:
+The first screen must be a Studio-owned page. It must not automatically navigate to `/app/`.
+
+## First-Run Flow
 
 ```text
-/api/*
-/ws/dialog
-/runtime/uploads/*
-/runtime/stickers/*
+User double-clicks BranchWhisper.exe
+→ Studio window opens
+→ Studio checks packaged backend status
+→ if backend is missing or failed, show recovery panel with logs
+→ if first run, show mode choice
+→ API mode selected: run API wizard
+→ local mode selected: run local environment wizard
+→ setup passes: show Studio home dashboard
 ```
 
-## Startup Flow
+Backend failure must not produce a blank window. It must show the command, log path, failure reason, and a repair suggestion.
+
+## Main Studio Layout
+
+The application uses a desktop workbench layout:
 
 ```text
-User opens BranchWhisper
-→ desktop shell starts
-→ shell finds or starts lightweight backend
-→ shell waits for backend health
-→ frontend loads /app/
-→ frontend checks first-run state
-→ no config: show first-run wizard
-→ API config present: enter API quick mode
-→ local config present: check local runtime status
-→ local runtime failed: show non-blocking warning and offer API fallback
+┌────────────────────────────────────────────────────────────┐
+│ Top bar: BranchWhisper Studio | mode | backend | actions   │
+├───────────────┬────────────────────────────────────────────┤
+│ Navigation    │ Current Studio page                        │
+│ Home          │                                            │
+│ API Setup     │                                            │
+│ Local Setup   │                                            │
+│ WeChat        │                                            │
+│ Persona       │                                            │
+│ Conversations │                                            │
+│ Tasks         │                                            │
+│ Data          │                                            │
+│ Logs          │                                            │
+│ Diagnostics   │                                            │
+│ Advanced Web  │                                            │
+├───────────────┴────────────────────────────────────────────┤
+│ Status bar: backend, API, ASR, LLM, TTS, WeChat, issues     │
+└────────────────────────────────────────────────────────────┘
 ```
 
-Local runtime failure must not prevent the app from opening.
+Style:
 
-## First-Run Wizard
+- calm desktop utility
+- readable 14-16px body text
+- white surfaces, shallow borders, light shadows
+- consistent status colors: green normal, yellow warning, red error, gray unchecked, blue running
+- no landing-page hero
+- no decorative blobs
+- no nested cards
+- no giant marketing typography
 
-The first screen shows two choices:
+## Home Dashboard
+
+The home dashboard shows:
+
+- current mode: API or Local
+- backend status
+- WeChat bridge status
+- assistant readiness
+- latest issue summary
+- primary next action
+- recent logs
+
+The top priority is that a user can answer:
 
 ```text
-Quick Start: Use API
-Full Local: Configure local models
+Can I use it now?
+If not, what is broken?
+What should I click next?
 ```
 
-Quick Start is recommended and should be visually first.
+## API Mode
 
-### Quick Start Copy
+API mode must not require WSL, CUDA, conda, local models, llama.cpp, CosyVoice, Qwen ASR, or OpenClaw.
+
+Wizard steps:
 
 ```text
-Use BranchWhisper without installing WSL, CUDA, conda, or local models.
-Enter API credentials, test the connection, and start chatting.
+1. Choose provider preset
+2. Configure chat model
+3. Optional ASR API
+4. Optional TTS API
+5. Test and save
+6. Start using
 ```
 
-### Full Local Copy
+Required fields:
 
-```text
-Use local Qwen3 ASR, llama.cpp, and CosyVoice. Choose this if you already have local models or want an offline/private runtime.
-```
+- LLM API URL
+- LLM model
+- LLM API key
 
-## API Quick Wizard
+Optional fields:
 
-The API wizard has four steps:
+- ASR API URL, model, key, language
+- TTS API URL, model, key, voice, format
 
-```text
-1. Chat model
-2. Speech recognition
-3. Speech synthesis
-4. Review and start
-```
-
-Speech recognition and speech synthesis can be skipped. Chat model cannot be skipped.
-
-Each step uses the same panel structure:
-
-```text
-provider preset
-API URL
-model name
-API key
-test button
-test result
-repair hint
-save and continue
-```
-
-The wizard writes to the existing config surface:
+The API wizard writes to the existing backend config keys:
 
 ```text
 dialog_mode = api
@@ -189,15 +211,12 @@ api_llm_api_key
 api_temperature
 api_max_tokens
 api_history_turns
-
 asr_provider_mode = api
 api_asr_provider
 api_asr_url
 api_asr_model
 api_asr_api_key
 api_asr_language
-api_asr_timeout
-
 tts_provider_mode = api
 api_tts_provider
 api_tts_url
@@ -205,187 +224,104 @@ api_tts_model
 api_tts_api_key
 api_tts_voice_mode
 api_tts_voice
-api_tts_voice_id
 api_tts_format
-api_tts_sample_rate
 ```
 
-## Local Runtime Wizard
+API mode passes when a fresh Windows machine can configure an LLM API, test it, save it, enter the home dashboard, and send a text message without local runtime dependencies.
 
-The local runtime wizard is available from first-run, settings, services, and diagnostics.
+## Local Runtime Mode
 
-Steps:
+Local mode is a guided setup path, not the default first-run path.
+
+Wizard steps:
 
 ```text
-1. Runtime choice
-2. WSL check
-3. Ubuntu check
-4. conda check
-5. qwen3-asr environment check
-6. Python and ffmpeg check
-7. CUDA / GPU check
-8. model directory selection
-9. service profile generation
-10. service startup
-11. diagnostics review
+1. Explain local requirements
+2. Check Windows prerequisites
+3. Check WSL and Ubuntu
+4. Check conda
+5. Check qwen3-asr environment
+6. Check Python / Node / ffmpeg
+7. Check CUDA or CPU fallback
+8. Select model directories
+9. Detect llama.cpp
+10. Detect CosyVoice
+11. Detect Qwen ASR
+12. Configure OpenClaw / WeChat bridge
+13. Generate service profile
+14. Start services
+15. Review diagnostics
 ```
 
 Every check shows:
 
-```text
-what this step does
-why it is needed
-current status
-failure reason
-recommended fix
-copyable command
-retry check button
-details/log expansion
-```
+- status
+- failure reason
+- why it matters
+- exact repair command
+- copy button
+- retry button
+- log/details expansion
 
-## Diagnostics Semantics
+Local setup must support API fallback if a local dependency fails.
 
-Diagnostics are mode-aware.
+## WeChat Setup
 
-In API quick mode:
+WeChat setup is a Studio page, not just a link into the old web UI.
 
-- LLM API is required.
-- ASR API is required only if voice input is enabled.
-- TTS API is required only if voice output is enabled.
-- WSL, CUDA, conda, Qwen3 ASR, CosyVoice, and llama.cpp are optional enhancements.
+It shows:
 
-In local runtime mode:
+- selected mode
+- bridge type
+- bridge URL
+- login state
+- last poll time
+- send test message action
+- receive test message action
+- failure reason and repair suggestion
 
-- WSL or supported Linux runtime is required.
-- conda and `qwen3-asr` are required.
-- CUDA is required unless the selected profile declares CPU fallback.
-- local ASR/LLM/TTS services are required according to the selected service profile.
+Advanced legacy controls may remain accessible through "Open Advanced Web Console" until migrated.
 
-Diagnostics page sections:
+## Persona, Greeting, And Reminders
 
-```text
-current mode required checks
-optional local enhancements
-voice pipeline
-service status
-runtime logs
-repair recommendations
-export report
-```
+Studio must expose normal-user controls for:
 
-Missing optional local enhancements must not be shown as fatal errors in API quick mode.
+- persona prompt
+- speaking style
+- fabrication prevention
+- memory behavior
+- morning greeting template
+- weather city
+- reminder behavior
 
-## Main Application Layout
+Greeting rules:
 
-The desktop app uses a restrained workbench layout:
+- mention weather and temperature range when weather data exists
+- mention umbrella only when rain conditions justify it
+- mention reminders only when there are active reminders
+- do not invent weather, reminders, or user facts
+- avoid motivational filler
 
-```text
-┌─────────────────────────────────────────────┐
-│ Top bar: BranchWhisper / current mode / key status │
-├──────────────┬──────────────────────────────┤
-│ Navigation   │ Current page                 │
-│ Conversation │                              │
-│ Services     │                              │
-│ Diagnostics  │                              │
-│ Integrations │                              │
-│ Memory       │                              │
-│ Assets       │                              │
-│ Settings     │                              │
-├──────────────┴──────────────────────────────┤
-│ Status bar: Backend / API / ASR / LLM / TTS  │
-└─────────────────────────────────────────────┘
-```
+## Data And Logs
 
-The style should be quiet, readable, and tool-like:
+Studio pages:
 
-- light neutral background
-- white content surfaces
-- shallow borders
-- light shadows
-- consistent green/yellow/red/blue/gray state colors
-- compact but readable typography
-- no marketing hero
-- no oversized gradients
-- no decorative blobs
-- no nested cards
+- Conversations: recent conversations, WeChat conversations, export entry
+- Data: memory, attachments, runtime files, backups
+- Tasks: reminders, scheduled greetings, future tasks
+- Logs: backend logs, service logs, bridge logs, copied commands
+- Diagnostics: mode-aware checks and repair suggestions
 
-## Conversation Page
+The desktop app should never ask a normal user to search terminal output manually before showing a useful failure summary.
 
-The conversation page should feel like a chat app first and a diagnostic console second.
+## Runtime Data Directory
 
-Layout:
+Application installation and user data are separate.
+
+Preferred user data root:
 
 ```text
-left: conversation list and concise runtime status
-center: message stream
-bottom: composer
-right: optional drawer for context, tools, trace, and voice pipeline details
-```
-
-Rules:
-
-- Do not put status cards below the composer.
-- Keep detailed diagnostics out of the normal chat flow.
-- Show concise errors with links to diagnostics.
-- Allow switching to API mode if local services fail.
-
-## Services Page
-
-The services page manages local runtime services and explains API mode.
-
-In API quick mode, local service cards show:
-
-```text
-Optional enhancement. Current mode does not require this service.
-```
-
-In local runtime mode, service cards show:
-
-```text
-role
-status
-port
-PID
-health check
-configured command
-resolved command
-start / stop / restart
-view logs
-copy command
-```
-
-## Settings Page
-
-Settings should be grouped by user intent:
-
-```text
-Quick API mode
-Local models
-Voice
-Memory
-Tools
-Integrations
-Appearance
-Advanced
-```
-
-Quick API mode appears first and includes:
-
-- API chat model.
-- API ASR.
-- API TTS.
-- test all API services.
-
-Advanced and service command configuration remains available but should not be the first thing a normal user sees.
-
-## Data Directory
-
-Desktop application data should be separate from the installation directory.
-
-Preferred desktop data root:
-
-```text
-~/.branchwhisper/runtime
+%APPDATA%\BranchWhisper\runtime
 ```
 
 Development mode may continue to use:
@@ -394,95 +330,51 @@ Development mode may continue to use:
 BranchWhisper/runtime
 ```
 
-Runtime data includes:
+Model files remain external user assets. They are never committed and are not bundled in the base installer.
+
+## Packaging Requirement
+
+The desktop artifact must be:
 
 ```text
-settings.json
-service_profiles.json
-integrations.json
-tool_providers.json
-bot_profiles.json
-tools.json
-proactive_config.json
-memory.sqlite3
-proactive.sqlite3
-reminders.sqlite3
-conversations/
-uploads/
-stickers/
-integration_media/
-logs/
+C:\Users\Me\Desktop\BranchWhisper.exe
 ```
 
-Model files are external user assets. They must not be committed to Git and should not be included in the initial desktop package.
+The app must:
 
-## New Backend/Desktop Surfaces
+- open by double-click
+- avoid a visible terminal window
+- show the Studio UI first
+- start or reuse the packaged backend
+- keep user runtime data across upgrades
+- export diagnostics
+- stop child processes cleanly when appropriate
 
-Future desktop integration should add thin backend endpoints:
+## Migration Strategy
 
-```text
-/api/desktop/status
-/api/desktop/mode
-/api/desktop/runtime
-/api/desktop/first-run
-/api/desktop/setup-checks
-```
+The project moves from "desktop shell around web console" to "desktop Studio with backend integration" in stages.
 
-These endpoints report app mode, runtime paths, first-run state, setup progress, and desktop/development context. They must not duplicate dialog or service business logic.
+Stage 1 creates the standalone Studio shell and first-run mode choice.
 
-## Implementation Phases
+Stage 2 implements API mode inside the Studio.
 
-1. Backend serves production frontend.
-2. API quick start wizard.
-3. Mode-aware diagnostics.
-4. Desktop shell launches lightweight backend.
-5. Local runtime wizard.
-6. Local service management enhancements.
-7. Windows packaging.
+Stage 3 implements local runtime setup inside the Studio.
 
-Each phase must be independently verified, committed, and pushed before the next phase starts.
+Stage 4 migrates WeChat, persona, reminders, data, logs, and diagnostics pages into Studio-owned surfaces.
+
+Stage 5 keeps "Advanced Web Console" only for expert workflows that are not yet migrated.
 
 ## Acceptance Criteria
 
-API quick mode passes when a fresh Windows computer with no WSL, CUDA, conda, or local models can:
+Desktop Studio passes when:
 
 ```text
-open the app
-open first-run wizard
-enter LLM API settings
-test the LLM API
-save settings
-enter the conversation page
-send and receive text messages
-optionally configure ASR API for voice input
-optionally configure TTS API for voice output
-open diagnostics without local runtime missing items being fatal
+BranchWhisper.exe opens to a Studio-owned UI, not /app/
+the first screen offers API mode and Local mode
+API mode works without WSL, CUDA, conda, local models, llama.cpp, CosyVoice, Qwen ASR, or OpenClaw
+local mode gives guided checks and repair commands
+backend failure shows a recovery screen instead of a blank page
+logs and diagnostics are visible inside the app
+advanced web console is optional and explicitly labeled
 ```
 
-Local runtime mode passes when the app can:
-
-```text
-detect WSL / Ubuntu
-detect conda qwen3-asr
-detect Python / ffmpeg
-detect CUDA or declared CPU fallback
-select model directories
-generate service_profiles.json
-start local ASR / LLM / TTS services
-show service logs
-show repair suggestions for failures
-switch back to API mode when local runtime is unavailable
-```
-
-Desktop application mode passes when the app can:
-
-```text
-start by double-click
-run without Vite dev server
-start or find the backend
-load /app/
-avoid blank screens on backend failure
-clean up child processes on close
-preserve user runtime data
-export a diagnostic report
-```
