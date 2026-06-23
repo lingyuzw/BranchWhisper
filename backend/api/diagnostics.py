@@ -173,54 +173,15 @@ def create_diagnostics_router() -> APIRouter:
     @router.post("/api/diagnostics/llm-api-test")
     async def llm_api_test(request: Request):
         settings = request.app.state.settings
-        url = str(getattr(settings, "api_llm_url", "") or "").strip()
-        model = str(getattr(settings, "api_llm_model", "") or "").strip()
-        api_key = str(getattr(settings, "api_llm_api_key", "") or "").strip()
-        if not str(url or "").strip():
-            return {"ok": False, "url": "", "model": model, "error": "LLM API URL 未配置"}
-        if not str(model or "").strip():
-            return {"ok": False, "url": url, "model": "", "error": "LLM API 模型未配置"}
-        if not api_key:
-            return {"ok": False, "url": url, "model": model, "error": "LLM API Key 未配置"}
-
-        payload = {
-            "model": model,
-            "messages": [{"role": "user", "content": "ping"}],
-            "stream": False,
-            "temperature": 0,
-            "max_tokens": 8,
-        }
-        started = time.perf_counter()
         try:
-            headers = {"Authorization": f"Bearer {api_key}"}
-            async with httpx_client_for_url(url, timeout=httpx.Timeout(15.0, connect=5.0)) as client:
-                resp = await client.post(url, json=payload, headers=headers)
-            latency_ms = int((time.perf_counter() - started) * 1000)
-            try:
-                body = resp.json()
-            except Exception:
-                body = {"text": resp.text[:800]}
-            ok = 200 <= resp.status_code < 400 and isinstance(body, dict) and bool(body.get("choices"))
-            error = ""
-            if not ok:
-                error = extract_api_error(body) or f"HTTP {resp.status_code}"
-            return {
-                "ok": ok,
-                "url": url,
-                "model": model,
-                "status_code": resp.status_code,
-                "latency_ms": latency_ms,
-                "error": error,
-                "response": shrink_response(body),
-            }
-        except Exception as exc:
-            return {
-                "ok": False,
-                "url": url,
-                "model": model,
-                "latency_ms": int((time.perf_counter() - started) * 1000),
-                "error": str(exc),
-            }
+            body = await request.json()
+        except Exception:
+            body = {}
+        body = body if isinstance(body, dict) else {}
+        url = value_from_probe_body(body, ("url", "api_llm_url"), getattr(settings, "api_llm_url", ""))
+        model = value_from_probe_body(body, ("model", "api_llm_model"), getattr(settings, "api_llm_model", ""))
+        api_key = secret_from_probe_body(body, ("api_key", "api_llm_api_key"), getattr(settings, "api_llm_api_key", ""))
+        return await run_llm_api_probe(url, model, api_key)
 
     @router.post("/api/diagnostics/asr-api-test")
     async def asr_api_test(request: Request):
@@ -379,6 +340,94 @@ def create_diagnostics_router() -> APIRouter:
             )
 
     return router
+
+
+def value_from_probe_body(payload: dict, keys: tuple[str, ...], default) -> str:
+    for key in keys:
+        if key in payload:
+            return str(payload.get(key) or "").strip()
+    return str(default or "").strip()
+
+
+def secret_from_probe_body(payload: dict, keys: tuple[str, ...], default) -> str:
+    default_secret = str(default or "").strip()
+    for key in keys:
+        if key not in payload:
+            continue
+        value = str(payload.get(key) or "").strip()
+        if not value or "*" in value:
+            return default_secret
+        return value
+    return default_secret
+
+
+async def run_llm_api_probe(url: str, model: str, api_key: str) -> dict:
+    url = str(url or "").strip()
+    model = str(model or "").strip()
+    api_key = str(api_key or "").strip()
+    if not url:
+        return {"ok": False, "url": "", "model": model, "error": "LLM API URL 未配置"}
+    if not model:
+        return {"ok": False, "url": url, "model": "", "error": "LLM API 模型未配置"}
+    if not api_key:
+        return {"ok": False, "url": url, "model": model, "error": "LLM API Key 未配置"}
+
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "ping"}],
+        "stream": False,
+        "temperature": 0,
+        "max_tokens": 8,
+    }
+    started = time.perf_counter()
+    try:
+        headers = {"Authorization": f"Bearer {api_key}"}
+        async with httpx_client_for_url(url, timeout=httpx.Timeout(15.0, connect=5.0)) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        try:
+            body = resp.json()
+        except Exception:
+            body = {"text": resp.text[:800]}
+        ok = 200 <= resp.status_code < 400 and isinstance(body, dict) and bool(body.get("choices"))
+        error = ""
+        if not ok:
+            error = redact_secret(extract_api_error(body) or f"HTTP {resp.status_code}", api_key)
+        return {
+            "ok": ok,
+            "url": url,
+            "model": model,
+            "status_code": resp.status_code,
+            "latency_ms": latency_ms,
+            "error": error,
+            "response": redact_secret_from_payload(shrink_response(body), api_key),
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "url": url,
+            "model": model,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+            "error": redact_secret(str(exc), api_key),
+        }
+
+
+def redact_secret(value: str, secret: str) -> str:
+    value = str(value or "")
+    secret = str(secret or "")
+    if secret:
+        value = value.replace(secret, "[redacted]")
+    return value
+
+
+def redact_secret_from_payload(value, secret: str):
+    if isinstance(value, dict):
+        return {key: redact_secret_from_payload(item, secret) for key, item in value.items()}
+    if isinstance(value, list):
+        return [redact_secret_from_payload(item, secret) for item in value]
+    if isinstance(value, str):
+        return redact_secret(value, secret)
+    return value
 
 
 async def run_asr_api_probe(settings) -> dict:
