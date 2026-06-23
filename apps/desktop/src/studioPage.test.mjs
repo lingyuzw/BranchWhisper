@@ -561,3 +561,115 @@ test("studio config load keeps an error state when either backend config or bot 
   assert.match(html, /setConfigStatus\("配置未完整加载，请检查后端连接后重试。",\s*"error"\);/);
   assert.doesNotMatch(html, /const \[config\]\s*=\s*await Promise\.all\(\[loadApiConfig\(\), loadBotProfiles\(\)\]\);[\s\S]*setConfigStatus\("已加载模型人格和当前 Bot 人格。", "ok"\);/);
 });
+
+test("studio conversation data page loads filters opens deletes and exports bot conversations", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-conversation-search",
+    "data-conversation-load",
+    "data-conversation-list",
+    "data-conversation-thread",
+    "data-conversation-delete",
+    "data-conversation-export",
+    "data-conversation-status",
+    "data-conversation-selected-title",
+    "data-conversation-count",
+    "data-conversation-message-count",
+    "data-conversation-last-updated",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /let botConversations = \[\]/);
+  assert.match(html, /let selectedConversationId = ""/);
+  assert.match(html, /function isBotConversation\(conversation\)/);
+  assert.match(html, /conversation\.metadata\?\.source/);
+  assert.match(html, /conversation\.metadata\?\.platform_id/);
+  assert.match(html, /conversation\.metadata\?\.sender_id/);
+  assert.match(html, /async function loadBotConversations\(\)/);
+  assert.match(html, /path:\s*`\/api\/conversations\?\$\{params\.toString\(\)\}`/);
+  assert.match(html, /botConversations = conversations\.filter\(isBotConversation\)/);
+  assert.match(html, /async function openBotConversation\(conversationId\)/);
+  assert.match(html, /path:\s*`\/api\/conversations\/\$\{encodeURIComponent\(conversationId\)\}`/);
+  assert.match(html, /async function deleteBotConversation\(\)/);
+  assert.match(html, /method:\s*"DELETE",\s*path:\s*`\/api\/conversations\/\$\{encodeURIComponent\(selectedConversationId\)\}`/s);
+  assert.match(html, /function exportBotConversation\(\)/);
+  assert.match(html, /\/api\/conversations\/\$\{encodeURIComponent\(selectedConversationId\)\}\/export\.md/);
+  assert.match(html, /if \(next === "conversations"\) \{\s*loadBotConversations\(\);/s);
+  assert.match(html, /event\.target\.closest\("\[data-conversation-load\]"\)[\s\S]*loadBotConversations\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-conversation-delete\]"\)[\s\S]*deleteBotConversation\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-conversation-export\]"\)[\s\S]*exportBotConversation\(\)/);
+});
+
+test("studio conversation data page filters only bot or weixin conversation sources", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const identitySource = extractScriptFunction(script, "conversationIdentity");
+  const filterSource = extractScriptFunction(script, "isBotConversation");
+  const { isBotConversation } = Function(
+    `${identitySource}; ${filterSource}; return { isBotConversation };`,
+  )();
+
+  assert.equal(isBotConversation({ source: "weixin_oc", platform_id: "wx", sender_id: "alice" }), true);
+  assert.equal(isBotConversation({ source: "openclaw", platform_id: "weixin", sender_id: "alice" }), true);
+  assert.equal(isBotConversation({ source: "slack", platform_id: "workspace-1", sender_id: "alice" }), false);
+  assert.equal(isBotConversation({ metadata: { source: "bot", platform_id: "weixin", sender_id: "alice" } }), true);
+});
+
+test("studio conversation data page searches bot metadata after backend query", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const identitySource = extractScriptFunction(script, "conversationIdentity");
+  const searchSource = extractScriptFunction(script, "conversationMatchesSearch");
+  const { conversationMatchesSearch } = Function(
+    `${identitySource}; ${searchSource}; return { conversationMatchesSearch };`,
+  )();
+  const conversation = {
+    title: "晨间提醒",
+    source: "weixin_oc",
+    platform_id: "weixin",
+    sender_id: "wxid_alice",
+    last_message: "早安",
+    summary: "天气提醒",
+  };
+
+  assert.equal(conversationMatchesSearch(conversation, "wxid_alice"), true);
+  assert.equal(conversationMatchesSearch(conversation, "weixin"), true);
+  assert.equal(conversationMatchesSearch(conversation, "天气"), true);
+  assert.equal(conversationMatchesSearch(conversation, "不存在"), false);
+  assert.match(html, /botConversations = conversations\.filter\(isBotConversation\)\.filter\(\(conversation\) => conversationMatchesSearch\(conversation,\s*query\)\)/);
+});
+
+test("studio conversation data page keeps layout robust for long content and mobile", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /\.conversation-message\s*\{[\s\S]*overflow-wrap:\s*anywhere/s);
+  assert.match(html, /\.conversation-card small\s*\{[\s\S]*overflow-wrap:\s*anywhere/s);
+  assert.match(html, /\.conversation-layout\s*\{[\s\S]*grid-template-columns:\s*minmax\(280px,\s*0\.75fr\) minmax\(0,\s*1\.25fr\)/s);
+  assert.match(html, /@media \(max-width: 1180px\)[\s\S]*\.conversation-layout[\s\S]*grid-template-columns:\s*1fr/s);
+  assert.match(html, /@media \(max-width: 780px\)[\s\S]*\.conversation-meta-grid[\s\S]*grid-template-columns:\s*1fr/s);
+});
+
+test("studio conversation delete does not remove local UI state when backend delete fails", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const deleteSource = extractScriptFunction(script, "deleteBotConversation");
+
+  assert.match(deleteSource, /if \(!result\.ok\) \{/);
+  assert.match(deleteSource, /return result;/);
+  assert.match(deleteSource, /botConversations = botConversations\.filter/);
+  assert(
+    deleteSource.indexOf("if (!result.ok)") < deleteSource.indexOf("botConversations = botConversations.filter"),
+    "delete failure guard must run before mutating local list",
+  );
+});
+
+test("studio conversation export tolerates missing clipboard API", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const exportSource = extractScriptFunction(script, "exportBotConversation");
+
+  assert.match(exportSource, /navigator\.clipboard\?\.writeText\?\.call\(navigator\.clipboard,\s*url\)\.catch\(\(\) => \{\}\)/);
+  assert.doesNotMatch(exportSource, /navigator\.clipboard\.writeText\(url\)/);
+});

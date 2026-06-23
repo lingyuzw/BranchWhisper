@@ -842,20 +842,29 @@
       }
 
       .bot-workspace-layout,
-      .config-layout {
+      .config-layout,
+      .conversation-layout {
         display: grid;
         grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
         gap: 14px;
       }
 
-      .bot-profile-list {
+      .bot-profile-list,
+      .conversation-list {
         display: grid;
         align-content: start;
         gap: 8px;
         min-height: 180px;
       }
 
-      .bot-profile-card {
+      .conversation-list {
+        max-height: 520px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .bot-profile-card,
+      .conversation-card {
         display: grid;
         gap: 6px;
         padding: 11px;
@@ -867,24 +876,135 @@
       }
 
       .bot-profile-card:hover,
-      .bot-profile-card.active {
+      .bot-profile-card.active,
+      .conversation-card:hover,
+      .conversation-card.active {
         border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
         background: var(--primary-soft);
         color: var(--text);
       }
 
-      .bot-profile-card strong {
+      .bot-profile-card strong,
+      .conversation-card strong {
         color: var(--text);
         font-size: 14px;
       }
 
-      .bot-profile-card span {
+      .bot-profile-card span,
+      .conversation-card span {
         overflow: hidden;
         color: var(--text-muted);
         font-size: 12px;
         line-height: 1.45;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      .conversation-card small {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .conversation-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .conversation-meta-item {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+      }
+
+      .conversation-meta-item span {
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .conversation-meta-item strong {
+        overflow: hidden;
+        color: var(--text);
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .conversation-thread-panel {
+        min-height: 620px;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+      }
+
+      .conversation-thread {
+        min-height: 360px;
+        max-height: 560px;
+        display: grid;
+        align-content: start;
+        gap: 10px;
+        overflow: auto;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+      }
+
+      .conversation-empty {
+        display: grid;
+        place-items: center;
+        min-height: 220px;
+        padding: 18px;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        color: var(--text-muted);
+        font-size: 13px;
+        text-align: center;
+      }
+
+      .conversation-message {
+        width: min(760px, 92%);
+        display: grid;
+        gap: 7px;
+        min-width: 0;
+        padding: 11px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        color: var(--text-soft);
+        font-size: 13px;
+        line-height: 1.65;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .conversation-message.user {
+        justify-self: end;
+        background: var(--primary-soft);
+      }
+
+      .conversation-message.assistant {
+        justify-self: start;
+        background: var(--surface);
+      }
+
+      .conversation-message.system {
+        justify-self: center;
+        width: min(680px, 100%);
+        background: var(--warning-soft);
+      }
+
+      .conversation-message-meta,
+      .conversation-attachments {
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
       }
 
       .api-provider-grid {
@@ -1234,7 +1354,8 @@
         .topbar,
         .workspace,
         .page-hero,
-        .chat-layout {
+        .chat-layout,
+        .conversation-layout {
           grid-template-columns: 1fr;
         }
       }
@@ -1258,7 +1379,8 @@
         .metric-grid,
         .mode-grid,
         .guide-tabs,
-        .form-grid {
+        .form-grid,
+        .conversation-meta-grid {
           grid-template-columns: 1fr;
         }
 
@@ -1660,15 +1782,62 @@
             </section>
 
             <section class="page" data-panel="conversations">
-              <div class="table-panel">
-                <div class="table-head">
-                  <div><h2>对话数据</h2><p class="muted">这里只放 Bot 的对话数据，支持查看、筛选、删除和导出。</p></div>
-                  <button class="secondary-action" type="button">打开数据文件夹</button>
+              <div class="page-hero">
+                <div class="hero-copy">
+                  <p class="eyebrow">对话数据</p>
+                  <h1>只管理 Bot 的微信对话</h1>
+                  <p class="lead">这里读取本机后端保存的 Bot/微信会话。可以按联系人或内容搜索，查看消息明细，删除单个会话，或导出 Markdown 留档。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-conversation-load>刷新对话</button>
+                    <button class="secondary-action" type="button" data-conversation-export>导出当前会话</button>
+                    <button class="secondary-action danger" type="button" data-conversation-delete>删除当前会话</button>
+                  </div>
                 </div>
-                <table class="table">
-                  <thead><tr><th>Bot</th><th>会话</th><th>消息数</th><th>最后更新</th></tr></thead>
-                  <tbody><tr><td>暂无</td><td>创建 Bot 后开始记录</td><td>0</td><td>-</td></tr></tbody>
-                </table>
+                <div class="metric-grid">
+                  <div class="metric"><span>Bot 会话</span><strong data-conversation-count>0</strong><small class="muted">只统计微信/Bot 来源</small></div>
+                  <div class="metric"><span>消息数量</span><strong data-conversation-message-count>0</strong><small class="muted">当前筛选结果</small></div>
+                  <div class="metric"><span>最后更新</span><strong data-conversation-last-updated>-</strong><small class="muted">最近一条 Bot 对话</small></div>
+                  <div class="metric"><span>当前选择</span><strong data-conversation-selected-title>未选择</strong><small class="muted">打开后显示详情</small></div>
+                </div>
+              </div>
+              <div class="conversation-layout">
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>会话列表</h2><p class="muted">搜索标题、联系人、最后消息或来源。</p></div>
+                  </div>
+                  <label class="field">
+                    <span>搜索 Bot 对话</span>
+                    <input class="text-input" data-conversation-search placeholder="例如：联系人、weixin、早安" autocomplete="off" />
+                  </label>
+                  <div class="panel-actions">
+                    <button class="secondary-action" type="button" data-conversation-load>重新加载</button>
+                  </div>
+                  <div class="conversation-list" data-conversation-list>
+                    <div class="conversation-empty">还没有加载 Bot 对话。</div>
+                  </div>
+                  <div class="status-line warn" data-conversation-status>进入页面后会自动加载 Bot 对话数据。</div>
+                </div>
+                <div class="panel conversation-thread-panel">
+                  <div class="panel-head">
+                    <div>
+                      <h2 data-conversation-detail-title>请选择一个会话</h2>
+                      <p class="muted" data-conversation-detail-subtitle>打开会话后会显示消息、来源、联系人和附件摘要。</p>
+                    </div>
+                    <span class="badge" data-conversation-detail-badge>未选择</span>
+                  </div>
+                  <div class="conversation-meta-grid">
+                    <div class="conversation-meta-item"><span>来源</span><strong data-conversation-source>-</strong></div>
+                    <div class="conversation-meta-item"><span>平台</span><strong data-conversation-platform>-</strong></div>
+                    <div class="conversation-meta-item"><span>联系人</span><strong data-conversation-sender>-</strong></div>
+                  </div>
+                  <div class="conversation-thread" data-conversation-thread>
+                    <div class="conversation-empty">从左侧选择一个 Bot 会话查看内容。</div>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="secondary-action" type="button" data-conversation-export>导出 Markdown</button>
+                    <button class="secondary-action danger" type="button" data-conversation-delete>删除会话</button>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1929,8 +2098,24 @@ backend: checking packaged runtime</pre>
       const botPersonaInput = document.querySelector("[data-bot-persona-input]");
       const configSelectedBot = document.querySelector("[data-config-selected-bot]");
       const configStatus = document.querySelector("[data-config-status]");
+      const conversationSearchInput = document.querySelector("[data-conversation-search]");
+      const conversationList = document.querySelector("[data-conversation-list]");
+      const conversationThread = document.querySelector("[data-conversation-thread]");
+      const conversationStatus = document.querySelector("[data-conversation-status]");
+      const conversationSelectedTitle = document.querySelector("[data-conversation-selected-title]");
+      const conversationCount = document.querySelector("[data-conversation-count]");
+      const conversationMessageCount = document.querySelector("[data-conversation-message-count]");
+      const conversationLastUpdated = document.querySelector("[data-conversation-last-updated]");
+      const conversationDetailTitle = document.querySelector("[data-conversation-detail-title]");
+      const conversationDetailSubtitle = document.querySelector("[data-conversation-detail-subtitle]");
+      const conversationDetailBadge = document.querySelector("[data-conversation-detail-badge]");
+      const conversationSource = document.querySelector("[data-conversation-source]");
+      const conversationPlatform = document.querySelector("[data-conversation-platform]");
+      const conversationSender = document.querySelector("[data-conversation-sender]");
       let botProfiles = [];
       let selectedBotProfileId = "default";
+      let botConversations = [];
+      let selectedConversationId = "";
       let botBridgeLoginPollTimer = null;
       let botBridgeLoginPollIntegrationId = "";
       let botBridgeLoginPollInFlight = false;
@@ -2070,6 +2255,286 @@ backend: checking packaged runtime</pre>
         }
         configStatus.textContent = message;
         configStatus.className = `status-line ${tone}`;
+      }
+
+      function setConversationStatus(message, tone = "warn") {
+        if (!conversationStatus) {
+          return;
+        }
+        conversationStatus.textContent = message;
+        conversationStatus.className = `status-line ${tone}`;
+      }
+
+      function formatDateTime(value) {
+        if (!value) {
+          return "-";
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+        return date.toLocaleString();
+      }
+
+      function conversationIdentity(conversation) {
+        const source = String(conversation.source || conversation.metadata?.source || "").trim();
+        const platform = String(conversation.platform_id || conversation.metadata?.platform_id || "").trim();
+        const sender = String(conversation.sender_id || conversation.metadata?.sender_id || "").trim();
+        return { source, platform, sender };
+      }
+
+      function isBotConversation(conversation) {
+        const { source, platform, sender } = conversationIdentity(conversation || {});
+        const combined = `${source} ${platform}`.toLowerCase();
+        const sourceLooksLikeBot = /(^|[_\-\s])(bot|weixin|wechat|wx|openclaw)([_\-\s]|$)/.test(combined);
+        return Boolean(sourceLooksLikeBot && (sender || source || platform));
+      }
+
+      function conversationMatchesSearch(conversation, query) {
+        const q = String(query || "").trim().toLowerCase();
+        if (!q) {
+          return true;
+        }
+        const { source, platform, sender } = conversationIdentity(conversation || {});
+        const haystack = [
+          conversation.title,
+          conversation.last_message,
+          conversation.summary,
+          source,
+          platform,
+          sender,
+        ].map((value) => String(value || "").toLowerCase());
+        return haystack.some((value) => value.includes(q));
+      }
+
+      function updateConversationMetrics() {
+        const messageTotal = botConversations.reduce((total, item) => total + Number(item.message_count || 0), 0);
+        const lastUpdated = botConversations[0]?.updated_at || "";
+        if (conversationCount) {
+          conversationCount.textContent = String(botConversations.length);
+        }
+        if (conversationMessageCount) {
+          conversationMessageCount.textContent = String(messageTotal);
+        }
+        if (conversationLastUpdated) {
+          conversationLastUpdated.textContent = formatDateTime(lastUpdated);
+        }
+        if (conversationSelectedTitle) {
+          const selected = botConversations.find((item) => item.id === selectedConversationId);
+          conversationSelectedTitle.textContent = selected?.title || "未选择";
+        }
+      }
+
+      function renderConversationList() {
+        updateConversationMetrics();
+        if (!conversationList) {
+          return;
+        }
+        conversationList.innerHTML = "";
+        if (!botConversations.length) {
+          const empty = document.createElement("div");
+          empty.className = "conversation-empty";
+          empty.textContent = "还没有 Bot 对话。微信 Bot 收发消息后会自动出现在这里。";
+          conversationList.appendChild(empty);
+          return;
+        }
+        botConversations.forEach((conversation) => {
+          const { source, platform, sender } = conversationIdentity(conversation);
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `conversation-card${conversation.id === selectedConversationId ? " active" : ""}`;
+          button.dataset.conversationId = conversation.id;
+          button.innerHTML = "<strong></strong><span></span><small></small>";
+          button.querySelector("strong").textContent = conversation.title || conversation.id;
+          button.querySelector("span").textContent = conversation.last_message || conversation.summary || "暂无消息预览";
+          button.querySelector("small").textContent = `${source || platform || "Bot"} · ${sender || "未知联系人"} · ${conversation.message_count || 0} 条`;
+          conversationList.appendChild(button);
+        });
+      }
+
+      function resetConversationDetail(message = "从左侧选择一个 Bot 会话查看内容。") {
+        if (conversationDetailTitle) {
+          conversationDetailTitle.textContent = "请选择一个会话";
+        }
+        if (conversationDetailSubtitle) {
+          conversationDetailSubtitle.textContent = "打开会话后会显示消息、来源、联系人和附件摘要。";
+        }
+        if (conversationDetailBadge) {
+          conversationDetailBadge.textContent = "未选择";
+          conversationDetailBadge.className = "badge";
+        }
+        if (conversationSource) {
+          conversationSource.textContent = "-";
+        }
+        if (conversationPlatform) {
+          conversationPlatform.textContent = "-";
+        }
+        if (conversationSender) {
+          conversationSender.textContent = "-";
+        }
+        if (conversationThread) {
+          conversationThread.innerHTML = "";
+          const empty = document.createElement("div");
+          empty.className = "conversation-empty";
+          empty.textContent = message;
+          conversationThread.appendChild(empty);
+        }
+        updateConversationMetrics();
+      }
+
+      function renderConversationThread(conversation) {
+        const detail = conversation || {};
+        const messages = Array.isArray(detail.messages) ? detail.messages : [];
+        const { source, platform, sender } = conversationIdentity(detail);
+        selectedConversationId = detail.id || selectedConversationId;
+        if (conversationDetailTitle) {
+          conversationDetailTitle.textContent = detail.title || detail.id || "未命名会话";
+        }
+        if (conversationDetailSubtitle) {
+          conversationDetailSubtitle.textContent = `${messages.length} 条消息 · 更新于 ${formatDateTime(detail.updated_at)}`;
+        }
+        if (conversationDetailBadge) {
+          conversationDetailBadge.textContent = messages.length ? "已打开" : "空会话";
+          conversationDetailBadge.className = `badge ${messages.length ? "ok" : "warn"}`;
+        }
+        if (conversationSource) {
+          conversationSource.textContent = source || "-";
+        }
+        if (conversationPlatform) {
+          conversationPlatform.textContent = platform || "-";
+        }
+        if (conversationSender) {
+          conversationSender.textContent = sender || "-";
+        }
+        if (!conversationThread) {
+          updateConversationMetrics();
+          return;
+        }
+        conversationThread.innerHTML = "";
+        if (!messages.length) {
+          const empty = document.createElement("div");
+          empty.className = "conversation-empty";
+          empty.textContent = "这个会话还没有消息。";
+          conversationThread.appendChild(empty);
+          updateConversationMetrics();
+          return;
+        }
+        messages.forEach((message) => {
+          const role = ["user", "assistant", "system"].includes(message.role) ? message.role : "assistant";
+          const item = document.createElement("article");
+          item.className = `conversation-message ${role}`;
+          const meta = document.createElement("div");
+          meta.className = "conversation-message-meta";
+          meta.textContent = `${role} · ${formatDateTime(message.created_at)}${message.display_name ? ` · ${message.display_name}` : ""}`;
+          const body = document.createElement("div");
+          body.textContent = message.content || "(无文本内容)";
+          item.append(meta, body);
+          const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+          if (attachments.length) {
+            const attachmentMeta = document.createElement("div");
+            attachmentMeta.className = "conversation-attachments";
+            attachmentMeta.textContent = `附件 ${attachments.length} 个：${attachments.map((attachment) => attachment.name || attachment.tag || attachment.mime || "未命名").join("、")}`;
+            item.appendChild(attachmentMeta);
+          }
+          conversationThread.appendChild(item);
+        });
+        conversationThread.scrollTop = conversationThread.scrollHeight;
+        updateConversationMetrics();
+      }
+
+      async function loadBotConversations() {
+        try {
+          setConversationStatus("正在加载 Bot 对话数据...", "run");
+          const params = new URLSearchParams({ archived: "active" });
+          const query = conversationSearchInput?.value.trim() || "";
+          if (query) {
+            params.set("query", query);
+          }
+          const payload = await backendRequest({ path: `/api/conversations?${params.toString()}` });
+          const conversations = Array.isArray(payload.conversations) ? payload.conversations : [];
+          botConversations = conversations.filter(isBotConversation).filter((conversation) => conversationMatchesSearch(conversation, query));
+          if (!botConversations.some((item) => item.id === selectedConversationId)) {
+            selectedConversationId = botConversations[0]?.id || "";
+            resetConversationDetail(botConversations.length ? "选择左侧会话查看消息明细。" : "还没有 Bot 对话。微信 Bot 收发消息后会自动出现在这里。");
+          }
+          renderConversationList();
+          if (selectedConversationId) {
+            await openBotConversation(selectedConversationId);
+          }
+          setConversationStatus(`已加载 ${botConversations.length} 个 Bot 会话。`, "ok");
+          return botConversations;
+        } catch (error) {
+          setConversationStatus(`加载失败：${error.message}。确认桌面后端已启动后再重试。`, "error");
+          return null;
+        }
+      }
+
+      async function openBotConversation(conversationId) {
+        if (!conversationId) {
+          resetConversationDetail();
+          return null;
+        }
+        try {
+          selectedConversationId = conversationId;
+          renderConversationList();
+          const payload = await backendRequest({ path: `/api/conversations/${encodeURIComponent(conversationId)}` });
+          const conversation = payload.conversation;
+          if (!conversation) {
+            resetConversationDetail("这个会话已经不存在，请重新加载列表。");
+            setConversationStatus("会话不存在，请重新加载列表。", "warn");
+            return null;
+          }
+          renderConversationThread(conversation);
+          setConversationStatus(`已打开会话：${conversation.title || conversation.id}`, "ok");
+          return conversation;
+        } catch (error) {
+          setConversationStatus(`打开失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function deleteBotConversation() {
+        if (!selectedConversationId) {
+          setConversationStatus("请先选择一个会话再删除。", "warn");
+          return null;
+        }
+        const selected = botConversations.find((item) => item.id === selectedConversationId);
+        const confirmed = window.confirm(`删除会话「${selected?.title || selectedConversationId}」？这会删除本机保存的 Bot 对话记录。`);
+        if (!confirmed) {
+          return null;
+        }
+        try {
+          const deletedId = selectedConversationId;
+          const result = await backendRequest({ method: "DELETE", path: `/api/conversations/${encodeURIComponent(selectedConversationId)}` });
+          if (!result.ok) {
+            setConversationStatus("后端没有删除该会话，请刷新确认。", "warn");
+            return result;
+          }
+          botConversations = botConversations.filter((item) => item.id !== deletedId);
+          selectedConversationId = botConversations[0]?.id || "";
+          renderConversationList();
+          if (selectedConversationId) {
+            await openBotConversation(selectedConversationId);
+          } else {
+            resetConversationDetail("已删除会话，当前没有可显示的 Bot 对话。");
+          }
+          setConversationStatus("会话已删除。", "ok");
+          return result;
+        } catch (error) {
+          setConversationStatus(`删除失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      function exportBotConversation() {
+        if (!selectedConversationId) {
+          setConversationStatus("请先选择一个会话再导出。", "warn");
+          return;
+        }
+        const url = `${backendOrigin()}/api/conversations/${encodeURIComponent(selectedConversationId)}/export.md`;
+        window.open(url, "_blank", "noopener,noreferrer");
+        navigator.clipboard?.writeText?.call(navigator.clipboard, url).catch(() => {});
+        setConversationStatus("已打开 Markdown 导出链接，并尝试复制到剪贴板。", "ok");
       }
 
       function setActiveApiProvider(provider) {
@@ -2828,6 +3293,9 @@ backend: checking packaged runtime</pre>
         if (next === "config") {
           loadDesktopConfig();
         }
+        if (next === "conversations") {
+          loadBotConversations();
+        }
       }
 
       function activateWorkspace(workspace) {
@@ -3056,10 +3524,39 @@ backend: checking packaged runtime</pre>
           return;
         }
 
+        if (event.target.closest("[data-conversation-load]")) {
+          loadBotConversations();
+          return;
+        }
+
+        const conversationTarget = event.target.closest("[data-conversation-id]");
+        if (conversationTarget) {
+          openBotConversation(conversationTarget.dataset.conversationId);
+          return;
+        }
+
+        if (event.target.closest("[data-conversation-delete]")) {
+          deleteBotConversation();
+          return;
+        }
+
+        if (event.target.closest("[data-conversation-export]")) {
+          exportBotConversation();
+          return;
+        }
+
         if (event.target.closest('[data-action="export"]')) {
           exportReport();
         }
       });
+
+      if (conversationSearchInput) {
+        conversationSearchInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            loadBotConversations();
+          }
+        });
+      }
 
       window.addEventListener("branchwhisper:startup-status", (event) => {
         renderStatus(event.detail || {});
