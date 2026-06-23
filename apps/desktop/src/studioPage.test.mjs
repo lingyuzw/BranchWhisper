@@ -27,3 +27,11 @@ test("studio keeps advanced web console explicit", async () => {
   assert.match(html, /data-advanced-route="\/app\/"/);
   assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
 });
+
+test("recommended mode card does not reuse primary button styling", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /class="mode-card recommended active"/);
+  assert.match(html, /\.mode-card\.recommended/);
+  assert.doesNotMatch(html, /class="mode-card primary/);
+});
