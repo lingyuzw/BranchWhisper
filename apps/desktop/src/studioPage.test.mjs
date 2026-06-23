@@ -206,3 +206,91 @@ test("studio API page wires backend config load save and live test without expos
   assert.match(html, /if \(!apiKeyInput\.value\.trim\(\)\)/);
   assert.match(html, /if \(next === "api"\) \{\s*loadApiConfig\(\);/s);
 });
+
+test("studio Bot page creates loads and saves real bot profiles", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-bot-profile-list",
+    "data-bot-id-input",
+    "data-bot-name-input",
+    "data-bot-system-input",
+    "data-bot-reply-style-input",
+    "data-bot-tools-enabled",
+    "data-bot-load",
+    "data-bot-create",
+    "data-bot-save",
+    "data-bot-status",
+    "data-bot-count",
+    "data-bot-selected-name",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /let botProfiles = \[\]/);
+  assert.match(html, /let selectedBotProfileId = "default"/);
+  assert.match(html, /async function loadBotProfiles\(\)/);
+  assert.match(html, /function renderBotProfiles\(\)/);
+  assert.match(html, /function currentBotProfilePayload\(\)/);
+  assert.match(html, /async function createBotProfile\(\)/);
+  assert.match(html, /async function saveBotProfile\(\)/);
+  assert.match(html, /backendRequest\(\{\s*path:\s*"\/api\/bot-profiles"\s*\}\)/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/bot-profiles"/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*`\/api\/bot-profiles\/\$\{encodeURIComponent\(selectedBotProfileId\)\}`/s);
+  assert.doesNotMatch(html, /等待创建/);
+});
+
+test("studio config page persists model personality separately from bot personality", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-model-system-input",
+    "data-bot-persona-input",
+    "data-config-selected-bot",
+    "data-config-load",
+    "data-config-save-model",
+    "data-config-save-bot",
+    "data-config-status",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /async function loadDesktopConfig\(\)/);
+  assert.match(html, /async function saveModelSystemConfig\(\)/);
+  assert.match(html, /async function saveBotPersonaConfig\(\)/);
+  assert.match(html, /backendRequest\(\{\s*path:\s*"\/api\/config"\s*\}\)/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*"\/api\/config",\s*body:\s*\{\s*system:/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*`\/api\/bot-profiles\/\$\{encodeURIComponent\(selectedBotProfileId\)\}`/s);
+  assert.match(html, /if \(next === "bot"\) \{\s*loadBotProfiles\(\);/s);
+  assert.match(html, /if \(next === "config"\) \{\s*loadDesktopConfig\(\);/s);
+  assert.doesNotMatch(html, /data-panel="config"[\s\S]*配置分组[\s\S]*后续接入后端后/);
+});
+
+test("studio Bot creation avoids reposting the selected default profile", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /function uniqueBotProfileId\(/);
+  assert.match(html, /function currentBotProfileCreatePayload\(\)/);
+  assert.match(html, /const payload = currentBotProfileCreatePayload\(\);/);
+  assert.match(html, /if \(botProfiles\.some\(\(profile\) => profile\.id === payload\.id\)\)/);
+  assert.match(html, /payload\.id = uniqueBotProfileId\(payload\.id,\s*payload\.name\);/);
+  assert.doesNotMatch(html, /async function createBotProfile\(\)[\s\S]*const payload = currentBotProfilePayload\(\);/);
+});
+
+test("studio Bot save treats profile id as immutable instead of silently dropping edits", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /botIdInput\.readOnly = true/);
+  assert.match(html, /function currentBotProfileUpdatePayload\(\)/);
+  assert.match(html, /const payload = currentBotProfileUpdatePayload\(\);/);
+  assert.doesNotMatch(html, /async function saveBotProfile\(\)[\s\S]*const payload = currentBotProfilePayload\(\);/);
+});
+
+test("studio config load keeps an error state when either backend config or bot profiles fail", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /const \[config,\s*profiles\]\s*=\s*await Promise\.all\(\[loadApiConfig\(\),\s*loadBotProfiles\(\)\]\)/);
+  assert.match(html, /if \(!config \|\| !profiles\) \{/);
+  assert.match(html, /setConfigStatus\("配置未完整加载，请检查后端连接后重试。",\s*"error"\);/);
+  assert.doesNotMatch(html, /const \[config\]\s*=\s*await Promise\.all\(\[loadApiConfig\(\), loadBotProfiles\(\)\]\);[\s\S]*setConfigStatus\("已加载模型人格和当前 Bot 人格。", "ok"\);/);
+});

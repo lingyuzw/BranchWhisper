@@ -47,6 +47,7 @@ class ConfigApiTests(unittest.TestCase):
                     "api_llm_url": settings.api_llm_url,
                     "api_llm_model": settings.api_llm_model,
                     "api_llm_api_key": settings.api_llm_api_key,
+                    "system": settings.system,
                 }
             )
 
@@ -93,6 +94,22 @@ class ConfigApiTests(unittest.TestCase):
         self.assertTrue(payload["api_llm_api_key_set"])
         self.assertEqual(payload["api_llm_api_key_masked"], "new-sec***********************alue")
         self.assertNotIn("new-secret-value", response.text)
+
+    def test_patch_updates_and_persists_model_system_prompt(self) -> None:
+        settings = make_settings(system="旧模型人格")
+        client = make_client(settings)
+
+        response = client.patch(
+            "/api/config",
+            json={
+                "system": "你是 BranchWhisper 的模型人格：自然、准确，不编造事实。",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(settings.system, "你是 BranchWhisper 的模型人格：自然、准确，不编造事实。")
+        self.assertEqual(self.saved_payloads[-1]["system"], "你是 BranchWhisper 的模型人格：自然、准确，不编造事实。")
+        self.assertEqual(response.json()["system"], "你是 BranchWhisper 的模型人格：自然、准确，不编造事实。")
 
     def test_patch_with_masked_api_llm_key_keeps_existing_key(self) -> None:
         settings = make_settings(api_llm_api_key="existing-secret")

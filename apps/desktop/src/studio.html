@@ -758,6 +758,75 @@
         color: var(--text-muted);
       }
 
+      .text-area {
+        min-height: 154px;
+        padding: 10px;
+        resize: vertical;
+        line-height: 1.6;
+      }
+
+      .checkbox-field {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-soft);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .checkbox-field input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
+      }
+
+      .bot-workspace-layout,
+      .config-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+        gap: 14px;
+      }
+
+      .bot-profile-list {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        min-height: 180px;
+      }
+
+      .bot-profile-card {
+        display: grid;
+        gap: 6px;
+        padding: 11px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        text-align: left;
+      }
+
+      .bot-profile-card:hover,
+      .bot-profile-card.active {
+        border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
+        background: var(--primary-soft);
+        color: var(--text);
+      }
+
+      .bot-profile-card strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .bot-profile-card span {
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .api-provider-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1280,23 +1349,52 @@
                 <div class="hero-copy">
                   <p class="eyebrow">Bot</p>
                   <h1>创建微信 Bot</h1>
-                  <p class="lead">Bot 页面用于创建微信 Bot，绑定 API、微信桥接、Bot 人格、规则、素材库和任务提醒。</p>
+                  <p class="lead">先把 Bot 档案创建出来：名称、ID、回复风格、工具开关和 Bot 人格会保存到本机后端。微信桥接、规则和素材后续按这个档案继续接入。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-bot-create>新增 Bot</button>
+                    <button class="secondary-action" type="button" data-bot-save>保存当前 Bot</button>
+                    <button class="secondary-action" type="button" data-bot-load>重新加载</button>
+                  </div>
                 </div>
                 <div class="panel">
-                  <h3>创建表单</h3>
-                  <div class="form-grid">
-                    <label class="field"><span>Bot 名称</span><div class="input-preview">例如：早安助手</div></label>
-                    <label class="field"><span>微信桥接</span><div class="input-preview">OpenClaw / 兼容桥接地址</div></label>
-                    <label class="field"><span>API</span><div class="input-preview">选择已启用 API</div></label>
-                    <label class="field"><span>状态</span><div class="input-preview">未启动</div></label>
+                  <div class="panel-head">
+                    <div>
+                      <h3>Bot 基础信息</h3>
+                      <p class="muted">ID 用于生成本地配置文件名，建议用英文、数字或短横线。</p>
+                    </div>
+                    <span class="badge" data-bot-selected-name>未选择</span>
                   </div>
+                  <div class="form-grid">
+                    <label class="field"><span>Bot ID</span><input class="text-input" data-bot-id-input value="morning-bot" autocomplete="off" /></label>
+                    <label class="field"><span>Bot 名称</span><input class="text-input" data-bot-name-input value="早安助手" autocomplete="off" /></label>
+                    <label class="field"><span>回复风格</span><input class="text-input" data-bot-reply-style-input value="natural" autocomplete="off" /></label>
+                    <label class="checkbox-field"><input type="checkbox" data-bot-tools-enabled checked />允许使用工具</label>
+                  </div>
+                  <label class="field"><span>Bot 人格</span><textarea class="text-input text-area" data-bot-system-input>只基于已有信息回复，不编造天气、提醒或联系人状态。语气自然一点，像熟人正常说话。</textarea></label>
+                  <div class="status-line warn" data-bot-status>正在等待加载 Bot 档案。</div>
                 </div>
               </div>
               <div class="metric-grid">
-                <div class="metric"><span>Bot 数量</span><strong>0</strong><small class="muted">等待创建</small></div>
-                <div class="metric"><span>在线状态</span><strong>未连接</strong><small class="muted">微信桥接未测试</small></div>
-                <div class="metric"><span>人格</span><strong>分离</strong><small class="muted">API 模型人格和 Bot 人格分开</small></div>
-                <div class="metric"><span>测试</span><strong>待执行</strong><small class="muted">发送微信测试消息</small></div>
+                <div class="metric"><span>Bot 数量</span><strong data-bot-count>0</strong><small class="muted">本机档案</small></div>
+                <div class="metric"><span>在线状态</span><strong>未连接</strong><small class="muted">微信桥接稍后接入</small></div>
+                <div class="metric"><span>人格</span><strong>已分离</strong><small class="muted">模型人格和 Bot 人格分开保存</small></div>
+                <div class="metric"><span>配置状态</span><strong>可保存</strong><small class="muted">API 配置和 Bot 档案独立</small></div>
+              </div>
+              <div class="bot-workspace-layout">
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>Bot 列表</h2><p class="muted">点击左侧档案后，右侧表单会载入对应人格。</p></div>
+                  </div>
+                  <div class="bot-profile-list" data-bot-profile-list></div>
+                </div>
+                <div class="panel">
+                  <h2>下一步接入</h2>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>确认 API</strong><span>API 页面测试通过后，Bot 默认使用当前 API。</span></div><span class="status-chip">已接</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>绑定微信桥接</strong><span>后续连接 OpenClaw 或兼容桥接。</span></div><span class="status-chip">待接</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>写入对话数据</strong><span>Bot 对话单独存储，支持查看和删除。</span></div><span class="status-chip">待接</span></div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1305,14 +1403,42 @@
                 <div class="hero-copy">
                   <p class="eyebrow">配置文件</p>
                   <h1>分开管理模型人格和 Bot 人格</h1>
-                  <p class="lead">配置页会把 API 模型设置、Bot 设置、人格、记忆、问候和存储路径拆开，避免所有配置混在一起。</p>
+                  <p class="lead">模型人格影响所有 API/Chat 的默认行为；Bot 人格只影响当前选中的微信 Bot。两者分开保存，后续更换模型时不用重写 Bot 档案。</p>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-config-save-model>保存模型人格</button>
+                    <button class="secondary-action" type="button" data-config-save-bot>保存 Bot 人格</button>
+                    <button class="secondary-action" type="button" data-config-load>重新加载</button>
+                  </div>
                 </div>
                 <div class="panel">
-                  <h3>配置分组</h3>
-                  <div class="step-list">
-                    <div class="step-row"><span class="step-num">A</span><div class="step-main"><strong>API 模型人格</strong><span>回答风格、事实边界、模型默认行为。</span></div><span class="status-chip">独立</span></div>
-                    <div class="step-row"><span class="step-num">B</span><div class="step-main"><strong>微信 Bot 人格</strong><span>面向具体 Bot 的语气、关系和场景设定。</span></div><span class="status-chip">独立</span></div>
+                  <div class="panel-head">
+                    <div>
+                      <h3>当前选中 Bot</h3>
+                      <p class="muted" data-config-selected-bot>默认 Bot</p>
+                    </div>
+                    <span class="badge">独立保存</span>
                   </div>
+                  <div class="step-list">
+                    <div class="step-row"><span class="step-num">A</span><div class="step-main"><strong>API 模型人格</strong><span>事实边界、默认语气、记忆使用原则。</span></div><span class="status-chip">全局</span></div>
+                    <div class="step-row"><span class="step-num">B</span><div class="step-main"><strong>微信 Bot 人格</strong><span>具体 Bot 的关系、场景、回复偏好。</span></div><span class="status-chip">单独</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="config-layout">
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>模型人格</h2><p class="muted">保存到后端 `/api/config` 的 system 字段。</p></div>
+                    <button class="secondary-action" type="button" data-config-save-model>保存</button>
+                  </div>
+                  <label class="field"><span>全局 System Prompt</span><textarea class="text-input text-area" data-model-system-input></textarea></label>
+                </div>
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><h2>Bot 人格</h2><p class="muted">保存到当前 Bot profile 的 system 字段。</p></div>
+                    <button class="secondary-action" type="button" data-config-save-bot>保存</button>
+                  </div>
+                  <label class="field"><span>当前 Bot Persona</span><textarea class="text-input text-area" data-bot-persona-input></textarea></label>
+                  <div class="status-line warn" data-config-status>等待加载模型和 Bot 配置。</div>
                 </div>
               </div>
             </section>
@@ -1553,6 +1679,21 @@ backend: checking packaged runtime</pre>
       const apiMaxTokensInput = document.querySelector("[data-api-max-tokens-input]");
       const apiStatus = document.querySelector("[data-api-status]");
       const apiSecretState = document.querySelector("[data-api-secret-state]");
+      const botProfileList = document.querySelector("[data-bot-profile-list]");
+      const botIdInput = document.querySelector("[data-bot-id-input]");
+      const botNameInput = document.querySelector("[data-bot-name-input]");
+      const botSystemInput = document.querySelector("[data-bot-system-input]");
+      const botReplyStyleInput = document.querySelector("[data-bot-reply-style-input]");
+      const botToolsEnabledInput = document.querySelector("[data-bot-tools-enabled]");
+      const botStatus = document.querySelector("[data-bot-status]");
+      const botCount = document.querySelector("[data-bot-count]");
+      const botSelectedName = document.querySelector("[data-bot-selected-name]");
+      const modelSystemInput = document.querySelector("[data-model-system-input]");
+      const botPersonaInput = document.querySelector("[data-bot-persona-input]");
+      const configSelectedBot = document.querySelector("[data-config-selected-bot]");
+      const configStatus = document.querySelector("[data-config-status]");
+      let botProfiles = [];
+      let selectedBotProfileId = "default";
 
       const apiPresets = {
         qwen: {
@@ -1618,6 +1759,22 @@ backend: checking packaged runtime</pre>
         }
         apiStatus.textContent = message;
         apiStatus.className = `status-line ${tone}`;
+      }
+
+      function setBotStatus(message, tone = "warn") {
+        if (!botStatus) {
+          return;
+        }
+        botStatus.textContent = message;
+        botStatus.className = `status-line ${tone}`;
+      }
+
+      function setConfigStatus(message, tone = "warn") {
+        if (!configStatus) {
+          return;
+        }
+        configStatus.textContent = message;
+        configStatus.className = `status-line ${tone}`;
       }
 
       function setActiveApiProvider(provider) {
@@ -1722,6 +1879,200 @@ backend: checking packaged runtime</pre>
         }
       }
 
+      function selectedBotProfile() {
+        return botProfiles.find((profile) => profile.id === selectedBotProfileId) || botProfiles[0] || null;
+      }
+
+      function normalizeBotProfileId(value) {
+        return String(value || "")
+          .trim()
+          .replace(/[^a-zA-Z0-9_-]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 64) || "bot";
+      }
+
+      function uniqueBotProfileId(preferredId, name) {
+        let base = normalizeBotProfileId(preferredId === "default" ? name : preferredId || name);
+        if (base === "default") {
+          base = "bot";
+        }
+        const existingIds = new Set(botProfiles.map((profile) => profile.id));
+        let candidate = base;
+        let index = 2;
+        while (existingIds.has(candidate)) {
+          candidate = `${base}-${index}`;
+          index += 1;
+        }
+        return candidate;
+      }
+
+      function renderSelectedBotProfile(profile) {
+        const current = profile || selectedBotProfile();
+        if (!current) {
+          return;
+        }
+        selectedBotProfileId = current.id || "default";
+        if (botIdInput) {
+          botIdInput.value = current.id || "";
+          botIdInput.readOnly = true;
+          botIdInput.title = "Bot ID 创建后不可修改；新增 Bot 会自动生成唯一 ID。";
+        }
+        if (botNameInput) {
+          botNameInput.value = current.name || "";
+        }
+        if (botSystemInput) {
+          botSystemInput.value = current.system || "";
+        }
+        if (botReplyStyleInput) {
+          botReplyStyleInput.value = current.reply_style || "natural";
+        }
+        if (botToolsEnabledInput) {
+          botToolsEnabledInput.checked = current.tools_enabled !== false;
+        }
+        if (botPersonaInput) {
+          botPersonaInput.value = current.system || "";
+        }
+        if (botSelectedName) {
+          botSelectedName.textContent = current.name || current.id || "当前 Bot";
+        }
+        if (configSelectedBot) {
+          configSelectedBot.textContent = `${current.name || current.id || "当前 Bot"} · ${current.id || "default"}`;
+        }
+      }
+
+      function renderBotProfiles() {
+        if (botCount) {
+          botCount.textContent = String(botProfiles.length);
+        }
+        if (!botProfileList) {
+          renderSelectedBotProfile();
+          return;
+        }
+        botProfileList.innerHTML = "";
+        botProfiles.forEach((profile) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `bot-profile-card${profile.id === selectedBotProfileId ? " active" : ""}`;
+          button.dataset.botProfileId = profile.id;
+          button.innerHTML = `<strong></strong><span></span>`;
+          button.querySelector("strong").textContent = profile.name || profile.id;
+          button.querySelector("span").textContent = `${profile.id} · ${profile.reply_style || "natural"}`;
+          botProfileList.appendChild(button);
+        });
+        if (!selectedBotProfile() && botProfiles[0]) {
+          selectedBotProfileId = botProfiles[0].id;
+        }
+        renderSelectedBotProfile();
+      }
+
+      function currentBotProfilePayload() {
+        return {
+          id: botIdInput?.value.trim() || selectedBotProfileId || "default",
+          ...currentBotProfileUpdatePayload(),
+        };
+      }
+
+      function currentBotProfileCreatePayload() {
+        const payload = currentBotProfilePayload();
+        if (botProfiles.some((profile) => profile.id === payload.id)) {
+          payload.id = uniqueBotProfileId(payload.id, payload.name);
+        }
+        return payload;
+      }
+
+      function currentBotProfileUpdatePayload() {
+        return {
+          name: botNameInput?.value.trim() || "未命名 Bot",
+          system: botSystemInput?.value.trim() || botPersonaInput?.value.trim() || "只基于已有信息回复，不编造不存在的事情。",
+          reply_style: botReplyStyleInput?.value.trim() || "natural",
+          tools_enabled: Boolean(botToolsEnabledInput?.checked),
+        };
+      }
+
+      async function loadBotProfiles() {
+        try {
+          const payload = await backendRequest({ path: "/api/bot-profiles" });
+          botProfiles = Array.isArray(payload.profiles) ? payload.profiles : [];
+          if (!selectedBotProfile() && botProfiles[0]) {
+            selectedBotProfileId = botProfiles[0].id;
+          }
+          renderBotProfiles();
+          setBotStatus(`已加载 ${botProfiles.length} 个 Bot 档案。`, "ok");
+          setConfigStatus("模型人格和 Bot 人格已加载，可以分别保存。", "ok");
+          return botProfiles;
+        } catch (error) {
+          setBotStatus(`无法加载 Bot 档案：${error.message}`, "error");
+          setConfigStatus(`无法加载 Bot 档案：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function createBotProfile() {
+        try {
+          const payload = currentBotProfileCreatePayload();
+          const result = await backendRequest({ method: "POST", path: "/api/bot-profiles", body: payload });
+          botProfiles = Array.isArray(result.profiles) ? result.profiles : botProfiles;
+          selectedBotProfileId = result.profile?.id || payload.id;
+          renderBotProfiles();
+          setBotStatus(`已创建 Bot：${result.profile?.name || payload.name}。`, "ok");
+        } catch (error) {
+          setBotStatus(`创建失败：${error.message}`, "error");
+        }
+      }
+
+      async function saveBotProfile() {
+        try {
+          const payload = currentBotProfileUpdatePayload();
+          const result = await backendRequest({ method: "PATCH", path: `/api/bot-profiles/${encodeURIComponent(selectedBotProfileId)}`, body: payload });
+          botProfiles = Array.isArray(result.profiles) ? result.profiles : botProfiles;
+          selectedBotProfileId = result.profile?.id || selectedBotProfileId;
+          renderBotProfiles();
+          setBotStatus(`已保存 Bot：${result.profile?.name || payload.name}。`, "ok");
+          setConfigStatus(`已保存 Bot 人格：${result.profile?.name || payload.name}。`, "ok");
+        } catch (error) {
+          setBotStatus(`保存失败：${error.message}`, "error");
+          setConfigStatus(`保存 Bot 人格失败：${error.message}`, "error");
+        }
+      }
+
+      async function loadDesktopConfig() {
+        try {
+          const [config, profiles] = await Promise.all([loadApiConfig(), loadBotProfiles()]);
+          if (!config || !profiles) {
+            setConfigStatus("配置未完整加载，请检查后端连接后重试。", "error");
+            return null;
+          }
+          if (modelSystemInput && config) {
+            modelSystemInput.value = config.system || "";
+          }
+          renderSelectedBotProfile();
+          setConfigStatus("已加载模型人格和当前 Bot 人格。", "ok");
+          return config;
+        } catch (error) {
+          setConfigStatus(`加载配置失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function saveModelSystemConfig() {
+        try {
+          const config = await backendRequest({ method: "PATCH", path: "/api/config", body: { system: modelSystemInput?.value.trim() || "" } });
+          if (modelSystemInput) {
+            modelSystemInput.value = config.system || "";
+          }
+          setConfigStatus("模型人格已保存。", "ok");
+        } catch (error) {
+          setConfigStatus(`保存模型人格失败：${error.message}`, "error");
+        }
+      }
+
+      async function saveBotPersonaConfig() {
+        if (botSystemInput && botPersonaInput) {
+          botSystemInput.value = botPersonaInput.value;
+        }
+        await saveBotProfile();
+      }
+
       function activateSection(section) {
         const next = document.querySelector(`[data-panel="${section}"]`) ? section : "guide";
         root.dataset.activeSection = next;
@@ -1741,6 +2092,12 @@ backend: checking packaged runtime</pre>
         root.dataset.rail = railPages.has(next) ? next : "hidden";
         if (next === "api") {
           loadApiConfig();
+        }
+        if (next === "bot") {
+          loadBotProfiles();
+        }
+        if (next === "config") {
+          loadDesktopConfig();
         }
       }
 
@@ -1873,6 +2230,44 @@ backend: checking packaged runtime</pre>
 
         if (event.target.closest("[data-api-test]")) {
           testApiConfig();
+          return;
+        }
+
+        const botProfileTarget = event.target.closest("[data-bot-profile-id]");
+        if (botProfileTarget) {
+          selectedBotProfileId = botProfileTarget.dataset.botProfileId;
+          renderBotProfiles();
+          setBotStatus(`已选择 Bot：${selectedBotProfile()?.name || selectedBotProfileId}。`, "ok");
+          return;
+        }
+
+        if (event.target.closest("[data-bot-load]")) {
+          loadBotProfiles();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-create]")) {
+          createBotProfile();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-save]")) {
+          saveBotProfile();
+          return;
+        }
+
+        if (event.target.closest("[data-config-load]")) {
+          loadDesktopConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-config-save-model]")) {
+          saveModelSystemConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-config-save-bot]")) {
+          saveBotPersonaConfig();
           return;
         }
 
