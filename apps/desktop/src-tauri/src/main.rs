@@ -5,13 +5,15 @@ mod backend_launcher;
 mod startup_status;
 
 use startup_status::DesktopStartupStatus;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::menu::MenuBuilder;
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 use tauri::{App, AppHandle, Manager, WindowEvent};
 
 const TRAY_SHOW_ID: &str = "show";
 const TRAY_QUIT_ID: &str = "quit";
+static IS_QUITTING: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     // Startup contract:
@@ -20,6 +22,9 @@ fn main() {
     // 3. Keep studio.html visible as the standalone desktop Studio after health responds.
     // 4. If startup fails, keep the hub visible with the copied command and log path.
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
         .setup(|app| {
             setup_tray(app)?;
             let window = app
@@ -85,6 +90,9 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
+                if IS_QUITTING.load(Ordering::SeqCst) {
+                    return;
+                }
                 api.prevent_close();
                 if let Err(error) = window.hide() {
                     eprintln!("Failed to hide BranchWhisper window: {}", error);
@@ -110,11 +118,19 @@ fn setup_tray(app: &App) -> tauri::Result<()> {
             if event.id().as_ref() == TRAY_SHOW_ID {
                 show_main_window(app);
             } else if event.id().as_ref() == TRAY_QUIT_ID {
+                IS_QUITTING.store(true, Ordering::SeqCst);
                 app.exit(0);
             }
         })
         .on_tray_icon_event(|tray, event| match event {
-            TrayIconEvent::Click { .. } | TrayIconEvent::DoubleClick { .. } => {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                ..
+            }
+            | TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } => {
                 show_main_window(tray.app_handle());
             }
             _ => {}

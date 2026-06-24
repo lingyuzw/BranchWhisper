@@ -5,6 +5,7 @@ import test from "node:test";
 
 const startupHtmlPath = resolve("apps/desktop/src/startup.html");
 const desktopMainPath = resolve("apps/desktop/src-tauri/src/main.rs");
+const desktopCargoPath = resolve("apps/desktop/src-tauri/Cargo.toml");
 
 test("startup page exposes a desktop-grade recovery surface", async () => {
   const html = await readFile(startupHtmlPath, "utf8");
@@ -51,15 +52,37 @@ test("desktop shell hides to background and exposes tray restore and quit action
   const main = await readFile(desktopMainPath, "utf8");
 
   assert.match(main, /use tauri::menu::MenuBuilder/);
-  assert.match(main, /use tauri::tray::\{TrayIconBuilder,\s*TrayIconEvent\}/);
+  assert.match(main, /use tauri::tray::\{MouseButton,\s*TrayIconBuilder,\s*TrayIconEvent\}/);
+  assert.match(main, /use std::sync::atomic::\{AtomicBool,\s*Ordering\}/);
+  assert.match(main, /static IS_QUITTING:\s*AtomicBool\s*=\s*AtomicBool::new\(false\)/);
   assert.match(main, /setup_tray\(app\)/);
   assert.match(main, /WindowEvent::CloseRequested\s*\{\s*api,\s*\.\.\s*\}/);
+  assert.match(main, /if IS_QUITTING\.load\(Ordering::SeqCst\)\s*\{\s*return;\s*\}/s);
   assert.match(main, /api\.prevent_close\(\)/);
   assert.match(main, /window\.hide\(\)/);
   assert.match(main, /const TRAY_SHOW_ID:\s*&str\s*=\s*"show"/);
   assert.match(main, /const TRAY_QUIT_ID:\s*&str\s*=\s*"quit"/);
   assert.match(main, /event\.id\(\)\.as_ref\(\)\s*==\s*TRAY_SHOW_ID/);
   assert.match(main, /event\.id\(\)\.as_ref\(\)\s*==\s*TRAY_QUIT_ID/);
+  assert.match(main, /IS_QUITTING\.store\(true,\s*Ordering::SeqCst\)/);
   assert.match(main, /app\.exit\(0\)/);
   assert.match(main, /show_main_window\(app\)/);
+});
+
+test("desktop shell enforces a single running app instance and restores the existing window", async () => {
+  const [main, cargo] = await Promise.all([
+    readFile(desktopMainPath, "utf8"),
+    readFile(desktopCargoPath, "utf8"),
+  ]);
+
+  assert.match(cargo, /tauri-plugin-single-instance\s*=\s*\{\s*version\s*=\s*"2"/);
+  assert.match(main, /\.plugin\(tauri_plugin_single_instance::init\(/);
+  assert.match(main, /show_main_window\(app\)/);
+});
+
+test("desktop tray right click opens only the menu instead of stealing focus", async () => {
+  const main = await readFile(desktopMainPath, "utf8");
+
+  assert.match(main, /TrayIconEvent::Click\s*\{\s*button:\s*MouseButton::Left,[\s\S]*?\}\s*\|\s*TrayIconEvent::DoubleClick\s*\{\s*button:\s*MouseButton::Left,/);
+  assert.doesNotMatch(main, /TrayIconEvent::Click\s*\{\s*\.\.\s*\}\s*\|\s*TrayIconEvent::DoubleClick\s*\{\s*\.\.\s*\}/);
 });
