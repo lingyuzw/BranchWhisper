@@ -812,7 +812,7 @@ test("studio bridge controls are grouped into balanced action rows", async () =>
   assert.match(html, /class="panel-actions bridge-log-actions"/);
   assert.match(html, /\.bridge-action-grid\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(116px,\s*1fr\)\)/);
   assert.match(html, /\.bridge-action-grid \.primary-action,\s*\.bridge-action-grid \.secondary-action\s*\{[\s\S]*width:\s*100%/);
-  assert.match(html, /\.bridge-login-box\s*\{[\s\S]*grid-template-columns:\s*minmax\(120px,\s*132px\) minmax\(0,\s*1fr\)/);
+  assert.match(html, /\.bridge-login-box\s*\{[\s\S]*grid-template-columns:\s*minmax\(120px,\s*140px\) minmax\(0,\s*1fr\)/);
   assert.match(html, /@media \(max-width: 780px\)[\s\S]*\.bridge-login-box[\s\S]*grid-template-columns:\s*1fr/);
 });
 
@@ -831,10 +831,11 @@ test("studio bot page moves persona editing left and places large actions above 
   const html = await readFile(studioHtmlPath, "utf8");
 
   assert.match(html, /<div class="bot-command-bar"[\s\S]*data-bot-create[\s\S]*data-bot-save[\s\S]*data-bot-load[\s\S]*data-bot-delete[\s\S]*<\/div>\s*<div class="bot-workspace-layout">/);
-  assert.match(html, /<div class="panel bot-profile-panel">[\s\S]*data-bot-profile-list[\s\S]*data-bot-system-input[\s\S]*<\/div>\s*<div class="panel bot-bridge-panel">/);
+  assert.match(html, /<div class="panel bot-profile-panel">[\s\S]*class="bridge-login-box"[\s\S]*data-bot-profile-list[\s\S]*data-bot-system-input[\s\S]*<\/div>\s*<div class="panel bot-bridge-panel">/);
+  assert.doesNotMatch(html, /<div class="panel bot-bridge-panel">[\s\S]*class="bridge-login-box"[\s\S]*<div class="step-list">/);
   assert.match(html, /\.bot-command-bar\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(124px,\s*1fr\)\)/);
-  assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*grid-template-columns:\s*minmax\(360px,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
-  assert.match(html, /\.bot-profile-panel\s*\{[\s\S]*grid-template-rows:\s*auto auto auto auto/);
+  assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*grid-template-columns:\s*minmax\(390px,\s*0\.86fr\) minmax\(0,\s*1\.14fr\)/);
+  assert.match(html, /\.bot-profile-panel\s*\{[\s\S]*grid-template-rows:\s*auto auto auto auto auto/);
 });
 
 test("studio bot bridge includes loop checks and a fuller right-side weixin session layout", async () => {
@@ -851,18 +852,21 @@ test("studio bot bridge includes loop checks and a fuller right-side weixin sess
   assert.match(html, /class="bridge-operational-grid"/);
   assert.match(html, /class="bridge-loop-checks"/);
   assert.match(html, /测试文字回复[\s\S]*测试语音回复[\s\S]*测试表情包回复/);
-  assert.match(html, /\.bridge-operational-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(250px,\s*0\.82fr\) minmax\(0,\s*1\.18fr\)/);
+  assert.match(html, /\.bridge-operational-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(260px,\s*0\.78fr\) minmax\(320px,\s*1\.22fr\)/);
   assert.match(html, /\.bridge-loop-card\s*\{[\s\S]*min-height:\s*108px/);
+  assert.match(html, /\.bridge-log-shell\s*\{[\s\S]*max-height:\s*260px;[\s\S]*overflow:\s*hidden/);
+  assert.match(html, /\.bridge-log-shell\.expanded\s*\{[\s\S]*max-height:\s*460px/);
 });
 
 test("studio conversation metrics keep typography proportional and avoid oversized summary text", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
   assert.match(html, /class="metric-grid conversation-summary-grid"/);
-  assert.match(html, /\.conversation-summary-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(132px,\s*1fr\)\)/);
-  assert.match(html, /\.conversation-summary-grid \.metric\s*\{[\s\S]*min-height:\s*112px/);
-  assert.match(html, /\.conversation-summary-grid \.metric strong\s*\{[\s\S]*font-size:\s*clamp\(15px,\s*1\.6vw,\s*20px\)/);
+  assert.match(html, /\.conversation-summary-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(154px,\s*1fr\)\)/);
+  assert.match(html, /\.conversation-summary-grid \.metric\s*\{[\s\S]*min-height:\s*104px/);
+  assert.match(html, /\.conversation-summary-grid \.metric strong\s*\{[\s\S]*font-size:\s*clamp\(15px,\s*1\.2vw,\s*19px\)/);
   assert.match(html, /\.conversation-summary-grid \.metric strong\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(html, /\.conversation-summary-grid \.metric small\s*\{[\s\S]*font-size:\s*12px/);
 });
 
 test("studio diagnostics hero shows full API card and chat workspace hides management navigation", async () => {

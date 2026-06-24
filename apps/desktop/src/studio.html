@@ -911,7 +911,7 @@
       .guard-panel {
         display: grid;
         gap: 12px;
-        margin: 14px 0;
+        margin: 0;
         padding: 12px;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
@@ -936,7 +936,7 @@
 
       .bot-workspace-layout {
         display: grid;
-        grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
+        grid-template-columns: minmax(390px, 0.86fr) minmax(0, 1.14fr);
         align-items: start;
         gap: 14px;
       }
@@ -962,7 +962,7 @@
       }
 
       .bot-profile-panel {
-        grid-template-rows: auto auto auto auto;
+        grid-template-rows: auto auto auto auto auto;
         align-content: start;
       }
 
@@ -991,7 +991,7 @@
 
       .bot-profile-list {
         min-height: 76px;
-        max-height: 320px;
+        max-height: 220px;
         overflow: auto;
         padding-right: 2px;
       }
@@ -1160,17 +1160,22 @@
       }
 
       .conversation-summary-grid {
-        grid-template-columns: repeat(4, minmax(132px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(154px, 1fr));
       }
 
       .conversation-summary-grid .metric {
-        min-height: 112px;
+        min-height: 104px;
       }
 
       .conversation-summary-grid .metric strong {
-        font-size: clamp(15px, 1.6vw, 20px);
+        font-size: clamp(15px, 1.2vw, 19px);
         line-height: 1.15;
         overflow-wrap: anywhere;
+      }
+
+      .conversation-summary-grid .metric small {
+        font-size: 12px;
+        line-height: 1.45;
       }
 
       .api-provider-grid {
@@ -1262,6 +1267,8 @@
       .bridge-log-shell {
         display: grid;
         gap: 8px;
+        max-height: 260px;
+        overflow: hidden;
         padding: 10px;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
@@ -1270,6 +1277,8 @@
 
       .bridge-log-summary {
         margin: 0;
+        max-height: 148px;
+        overflow: auto;
         color: var(--text-soft);
         font-family: var(--font-mono);
         font-size: 12px;
@@ -1285,13 +1294,18 @@
         display: block;
       }
 
+      .bridge-log-shell.expanded {
+        max-height: 460px;
+        overflow: auto;
+      }
+
       .bridge-log-shell.expanded .bridge-log-summary {
         display: none;
       }
 
       .bridge-operational-grid {
         display: grid;
-        grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr);
+        grid-template-columns: minmax(260px, 0.78fr) minmax(320px, 1.22fr);
         gap: 12px;
         align-items: start;
       }
@@ -1330,6 +1344,7 @@
       .bridge-session-card {
         display: grid;
         gap: 12px;
+        align-content: start;
       }
 
       .platform-log-panel {
@@ -1412,7 +1427,7 @@
 
       .bridge-login-box {
         display: grid;
-        grid-template-columns: minmax(120px, 132px) minmax(0, 1fr);
+        grid-template-columns: minmax(120px, 140px) minmax(0, 1fr);
         gap: 12px;
         align-items: start;
         padding: 12px;
@@ -1423,7 +1438,7 @@
 
       .bridge-qr-frame {
         width: 100%;
-        min-height: 132px;
+        min-height: 140px;
         display: grid;
         place-items: center;
         border: 1px dashed var(--border-strong);
@@ -1989,6 +2004,18 @@
                     <div><h2>Bot 列表</h2><p class="muted">选择档案后，下方会直接编辑这个 Bot 的基础信息和人格。</p></div>
                     <span class="badge" data-bot-selected-name>未选择</span>
                   </div>
+                  <div class="bridge-login-box">
+                    <div class="bridge-qr-frame" data-bot-bridge-qr-frame>
+                      <span data-bot-bridge-qr-empty>生成二维码后显示在这里</span>
+                      <img data-bot-bridge-qr-image alt="微信登录二维码" hidden />
+                    </div>
+                    <div class="bridge-login-meta">
+                      <div class="status-line warn" data-bot-bridge-login-status>尚未发起扫码登录。</div>
+                      <div class="status-line warn" data-bot-bridge-account>账号：未登录</div>
+                      <label class="field"><span>验证数字</span><input class="text-input" data-bot-bridge-verify-input placeholder="需要时填写手机端提示的数字" autocomplete="off" /></label>
+                      <p class="muted">先启动桥接，再生成二维码。扫码后点刷新登录状态；如果微信要求验证数字，填入后再刷新。</p>
+                    </div>
+                  </div>
                   <div class="bot-profile-list" data-bot-profile-list></div>
                   <div class="panel-head">
                     <div>
@@ -2056,18 +2083,6 @@
                       </div>
                     </div>
                     <div class="bridge-session-card" data-bot-bridge-session-card>
-                      <div class="bridge-login-box">
-                        <div class="bridge-qr-frame" data-bot-bridge-qr-frame>
-                          <span data-bot-bridge-qr-empty>生成二维码后显示在这里</span>
-                          <img data-bot-bridge-qr-image alt="微信登录二维码" hidden />
-                        </div>
-                        <div class="bridge-login-meta">
-                          <div class="status-line warn" data-bot-bridge-login-status>尚未发起扫码登录。</div>
-                          <div class="status-line warn" data-bot-bridge-account>账号：未登录</div>
-                          <label class="field"><span>验证数字</span><input class="text-input" data-bot-bridge-verify-input placeholder="需要时填写手机端提示的数字" autocomplete="off" /></label>
-                          <p class="muted">先启动桥接，再生成二维码。扫码后点刷新登录状态；如果微信要求验证数字，填入后再刷新。</p>
-                        </div>
-                      </div>
                       <div class="guard-panel">
                         <div class="panel-head">
                           <div>
