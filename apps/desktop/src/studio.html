@@ -1112,15 +1112,23 @@
         align-items: start;
       }
 
+      .rule-workbench {
+        grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.1fr) minmax(300px, 1.08fr);
+        align-items: start;
+      }
+
+      .rule-panel,
       .task-panel {
         min-width: 0;
         align-content: start;
       }
 
+      .rule-panel .form-grid,
       .task-panel .form-grid {
         grid-template-columns: 1fr;
       }
 
+      .rule-list,
       .task-list,
       .task-event-list {
         display: grid;
@@ -1131,6 +1139,7 @@
         padding-right: 2px;
       }
 
+      .rule-card,
       .task-card {
         min-width: 0;
         display: grid;
@@ -1141,6 +1150,17 @@
         background: var(--surface-muted);
       }
 
+      .rule-card {
+        text-align: left;
+      }
+
+      .rule-card:hover,
+      .rule-card.active {
+        border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
+        background: var(--primary-soft);
+      }
+
+      .rule-card-head,
       .task-card-head {
         min-width: 0;
         display: grid;
@@ -1149,6 +1169,9 @@
         align-items: start;
       }
 
+      .rule-card strong,
+      .rule-card span,
+      .rule-card small,
       .task-card strong,
       .task-card span,
       .task-card small {
@@ -1156,11 +1179,14 @@
         overflow-wrap: anywhere;
       }
 
+      .rule-card strong,
       .task-card strong {
         color: var(--text);
         font-size: 14px;
       }
 
+      .rule-card span,
+      .rule-card small,
       .task-card span,
       .task-card small {
         color: var(--text-muted);
@@ -1195,6 +1221,21 @@
         grid-column: 1 / -1;
       }
 
+      .rule-test-output {
+        min-height: 160px;
+        max-height: 300px;
+        overflow: auto;
+      }
+
+      .rule-panel .text-area {
+        min-height: 118px;
+      }
+
+      .rule-panel .rule-test-output {
+        min-height: 132px;
+      }
+
+      .rule-status-line,
       .task-status-line {
         min-height: 42px;
       }
@@ -3353,20 +3394,53 @@
               <div class="panel">
                 <div class="panel-head">
                   <div><h2>自定义规则</h2><p class="muted">规则需要明确触发条件、目标 Bot、优先级和动作；缺数据时不能编造。</p></div>
-                  <button class="primary-action" type="button">新增规则</button>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-rule-create>新增规则</button>
+                    <button class="secondary-action" type="button" data-rule-load>刷新规则</button>
+                  </div>
                 </div>
                 <div class="feature-workbench rule-workbench">
-                  <div class="empty-state-panel">
-                    <strong>规则为空</strong>
-                    <span>先新增一条测试规则，只绑定一个 Bot 和一个联系人，确认不会误触发后再扩大范围。</span>
+                  <div class="panel rule-panel">
+                    <div class="panel-head">
+                      <div><h3>规则列表</h3><p class="muted">规则保存到工具配置，后续执行器可直接读取。</p></div>
+                      <span class="badge" data-rule-count>0 条</span>
+                    </div>
+                    <div class="rule-list" data-rule-list>
+                      <div class="empty-state-panel">
+                        <strong>规则为空</strong>
+                        <span>先新增一条测试规则，只绑定一个 Bot 和一个联系人，确认不会误触发后再扩大范围。</span>
+                      </div>
+                    </div>
+                    <div class="status-line warn rule-status-line" data-rule-status>进入页面后会自动加载自定义规则。</div>
                   </div>
-                  <div class="step-list">
-                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>触发条件</strong><span>关键词、时间、联系人或上下文。</span></div><span class="status-chip">待配置</span></div>
-                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>响应动作</strong><span>回复文本、调用素材、创建任务或记录日志。</span></div><span class="status-chip">待配置</span></div>
-                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>安全边界</strong><span>限制群聊、陌生人和敏感关键词。</span></div><span class="status-chip">建议</span></div>
+                  <div class="panel rule-panel">
+                    <div class="panel-head">
+                      <div><h3>规则编辑</h3><p class="muted">关键词可以用逗号或换行分隔；动作先保存为配置，不自动扩大回复范围。</p></div>
+                      <span class="badge" data-rule-active-name>未选择</span>
+                    </div>
+                    <div class="form-grid">
+                      <label class="field"><span>规则 ID</span><input class="text-input" data-rule-id-input value="morning_rule" autocomplete="off" /></label>
+                      <label class="field"><span>规则名称</span><input class="text-input" data-rule-name-input value="早安问候规则" autocomplete="off" /></label>
+                      <label class="checkbox-field"><input type="checkbox" data-rule-enabled-input checked />启用规则</label>
+                      <label class="field"><span>动作类型</span><select class="text-input" data-rule-action-input><option value="reply">回复文本</option><option value="sticker">调用素材</option><option value="reminder">创建提醒</option><option value="log">记录日志</option></select></label>
+                    </div>
+                    <label class="field"><span>触发条件</span><textarea class="text-input text-area" data-rule-trigger-input placeholder="例如：早安、天气、提醒"></textarea></label>
+                    <label class="field"><span>响应内容 / 规则说明</span><textarea class="text-input text-area" data-rule-response-input placeholder="规则命中后要做什么，缺数据时要怎么说"></textarea></label>
+                    <div class="panel-actions">
+                      <button class="primary-action" type="button" data-rule-save>保存规则</button>
+                      <button class="secondary-action danger" type="button" data-rule-delete>删除规则</button>
+                    </div>
                   </div>
-                  <div class="panel info-list">
-                    <div class="panel-head"><div><h3>建议动作</h3><p class="muted">按实际场景逐步开启。</p></div></div>
+                  <div class="panel rule-panel">
+                    <div class="panel-head">
+                      <div><h3>规则测试</h3><p class="muted">先用工具解析接口检查文本会不会触发工具或直接回答。</p></div>
+                      <span class="badge" data-rule-enabled-count>0 启用</span>
+                    </div>
+                    <label class="field"><span>测试文本</span><textarea class="text-input text-area" data-rule-test-input placeholder="输入一条模拟微信消息"></textarea></label>
+                    <div class="panel-actions">
+                      <button class="secondary-action" type="button" data-rule-test>测试解析</button>
+                    </div>
+                    <pre class="log-box rule-test-output" data-rule-test-output>测试结果会显示在这里。</pre>
                     <div class="status-line warn">未配置素材时，不发送表情包或文件。</div>
                     <div class="status-line warn">缺少天气、提醒或联系人状态时，只说明不知道，不补具体值。</div>
                   </div>
@@ -3782,6 +3856,19 @@
       const conversationSource = document.querySelector("[data-conversation-source]");
       const conversationPlatform = document.querySelector("[data-conversation-platform]");
       const conversationSender = document.querySelector("[data-conversation-sender]");
+      const ruleList = document.querySelector("[data-rule-list]");
+      const ruleStatus = document.querySelector("[data-rule-status]");
+      const ruleCount = document.querySelector("[data-rule-count]");
+      const ruleEnabledCount = document.querySelector("[data-rule-enabled-count]");
+      const ruleActiveName = document.querySelector("[data-rule-active-name]");
+      const ruleIdInput = document.querySelector("[data-rule-id-input]");
+      const ruleNameInput = document.querySelector("[data-rule-name-input]");
+      const ruleTriggerInput = document.querySelector("[data-rule-trigger-input]");
+      const ruleActionInput = document.querySelector("[data-rule-action-input]");
+      const ruleResponseInput = document.querySelector("[data-rule-response-input]");
+      const ruleEnabledInput = document.querySelector("[data-rule-enabled-input]");
+      const ruleTestInput = document.querySelector("[data-rule-test-input]");
+      const ruleTestOutput = document.querySelector("[data-rule-test-output]");
       const platformLogShell = document.querySelector(".platform-log-shell");
       const platformLogSummary = document.querySelector("[data-platform-log-summary]");
       const platformLogOutput = document.querySelector("[data-platform-log-output]");
@@ -3853,6 +3940,9 @@
       let selectedBotProfileId = "default";
       let botConversations = [];
       let selectedConversationId = "";
+      let toolsConfig = null;
+      let customRules = [];
+      let selectedRuleId = "";
       let botBridgeLoginPollTimer = null;
       let botBridgeLoginPollIntegrationId = "";
       let botBridgeLoginPollInFlight = false;
@@ -4805,6 +4895,232 @@
         } catch (error) {
           setTaskStatus(`加载任务失败：${error.message}`, "error");
           renderTaskWorkbench();
+          return null;
+        }
+      }
+
+      function setRuleStatus(message, tone = "warn") {
+        if (!ruleStatus) {
+          return;
+        }
+        ruleStatus.textContent = message;
+        ruleStatus.className = `status-line rule-status-line ${tone}`;
+      }
+
+      function normalizeRuleId(value, fallback = "custom_rule") {
+        const id = String(value || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+        return id || fallback;
+      }
+
+      function selectedCustomRule() {
+        return customRules.find((rule) => String(rule?.id || "") === selectedRuleId) || customRules[0] || null;
+      }
+
+      function ruleKeywordText(rule) {
+        const triggers = rule?.triggers || rule?.keywords || [];
+        if (Array.isArray(triggers)) {
+          return triggers.join("\n");
+        }
+        return String(triggers || "");
+      }
+
+      function parseRuleKeywords(value) {
+        return String(value || "")
+          .split(/[\n,，]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function renderRuleForm(rule) {
+        const current = rule || selectedCustomRule();
+        if (!current) {
+          if (ruleActiveName) {
+            ruleActiveName.textContent = "未选择";
+          }
+          return;
+        }
+        selectedRuleId = String(current.id || selectedRuleId || "");
+        if (ruleIdInput) {
+          ruleIdInput.value = current.id || "";
+        }
+        if (ruleNameInput) {
+          ruleNameInput.value = current.name || "";
+        }
+        if (ruleTriggerInput) {
+          ruleTriggerInput.value = ruleKeywordText(current);
+        }
+        if (ruleActionInput) {
+          ruleActionInput.value = current.action || "reply";
+        }
+        if (ruleResponseInput) {
+          ruleResponseInput.value = current.response || current.description || "";
+        }
+        if (ruleEnabledInput) {
+          ruleEnabledInput.checked = current.enabled !== false;
+        }
+        if (ruleActiveName) {
+          ruleActiveName.textContent = current.name || current.id || "未命名规则";
+        }
+      }
+
+      function currentRulePayload() {
+        const id = normalizeRuleId(ruleIdInput?.value || ruleNameInput?.value || selectedRuleId, `rule_${customRules.length + 1}`);
+        return {
+          id,
+          name: ruleNameInput?.value.trim() || id,
+          enabled: Boolean(ruleEnabledInput?.checked),
+          triggers: parseRuleKeywords(ruleTriggerInput?.value || ""),
+          action: ruleActionInput?.value || "reply",
+          response: ruleResponseInput?.value.trim() || "",
+          updated_at: new Date().toISOString(),
+        };
+      }
+
+      function renderRulesWorkbench() {
+        if (ruleCount) {
+          ruleCount.textContent = `${customRules.length} 条`;
+        }
+        if (ruleEnabledCount) {
+          const enabled = customRules.filter((rule) => rule.enabled !== false).length;
+          ruleEnabledCount.textContent = `${enabled} 启用`;
+          ruleEnabledCount.className = `badge ${enabled ? "ok" : "warn"}`;
+        }
+        if (!ruleList) {
+          renderRuleForm();
+          return;
+        }
+        ruleList.innerHTML = "";
+        if (!customRules.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state-panel";
+          empty.innerHTML = "<strong>规则为空</strong><span>先新增一条测试规则，只绑定一个 Bot 和一个联系人，确认不会误触发后再扩大范围。</span>";
+          ruleList.appendChild(empty);
+          renderRuleForm(null);
+          return;
+        }
+        if (!customRules.some((rule) => rule.id === selectedRuleId)) {
+          selectedRuleId = customRules[0]?.id || "";
+        }
+        const fragment = document.createDocumentFragment();
+        customRules.forEach((rule) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `rule-card${rule.id === selectedRuleId ? " active" : ""}`;
+          button.dataset.ruleId = rule.id || "";
+          button.innerHTML = `
+            <div class="rule-card-head">
+              <div><strong></strong><span></span></div>
+              <span class="badge"></span>
+            </div>
+            <small></small>
+          `;
+          button.querySelector("strong").textContent = rule.name || rule.id || "未命名规则";
+          button.querySelector(".rule-card-head span").textContent = `${rule.action || "reply"} · ${ruleKeywordText(rule) || "无触发词"}`;
+          const badge = button.querySelector(".badge");
+          badge.className = `badge ${rule.enabled === false ? "warn" : "ok"}`;
+          badge.textContent = rule.enabled === false ? "停用" : "启用";
+          button.querySelector("small").textContent = rule.response || "未填写响应说明";
+          fragment.appendChild(button);
+        });
+        ruleList.appendChild(fragment);
+        renderRuleForm(selectedCustomRule());
+      }
+
+      async function loadRulesWorkbench() {
+        try {
+          setRuleStatus("正在加载自定义规则...", "run");
+          const payload = await backendRequest({ path: "/api/tools" });
+          toolsConfig = payload || {};
+          customRules = Array.isArray(payload.custom_rules) ? payload.custom_rules : [];
+          selectedRuleId = customRules[0]?.id || selectedRuleId;
+          renderRulesWorkbench();
+          setRuleStatus(customRules.length ? "已加载自定义规则。" : "已加载工具配置，还没有自定义规则。", customRules.length ? "ok" : "warn");
+          return toolsConfig;
+        } catch (error) {
+          setRuleStatus(`加载规则失败：${error.message}`, "error");
+          renderRulesWorkbench();
+          return null;
+        }
+      }
+
+      function createCustomRule() {
+        const baseId = normalizeRuleId(ruleNameInput?.value || "custom_rule", `rule_${customRules.length + 1}`);
+        let id = baseId;
+        let index = 2;
+        while (customRules.some((rule) => rule.id === id)) {
+          id = `${baseId}_${index}`;
+          index += 1;
+        }
+        const rule = {
+          id,
+          name: ruleNameInput?.value.trim() || "新规则",
+          enabled: true,
+          triggers: parseRuleKeywords(ruleTriggerInput?.value || "测试"),
+          action: ruleActionInput?.value || "reply",
+          response: ruleResponseInput?.value.trim() || "只基于已有信息回复，缺数据不编造。",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        customRules = [rule, ...customRules];
+        selectedRuleId = rule.id;
+        renderRulesWorkbench();
+        setRuleStatus("已新增规则，保存后会写入工具配置。", "warn");
+      }
+
+      async function saveRuleConfig() {
+        const payload = currentRulePayload();
+        const existingIndex = customRules.findIndex((rule) => rule.id === selectedRuleId || rule.id === payload.id);
+        if (existingIndex >= 0) {
+          customRules[existingIndex] = { ...customRules[existingIndex], ...payload };
+        } else {
+          customRules = [payload, ...customRules];
+        }
+        selectedRuleId = payload.id;
+        try {
+          setRuleStatus("正在保存规则配置...", "run");
+          const result = await backendRequest({ method: "PATCH", path: "/api/tools", body: { custom_rules: customRules } });
+          toolsConfig = result || toolsConfig;
+          customRules = Array.isArray(result.custom_rules) ? result.custom_rules : customRules;
+          renderRulesWorkbench();
+          setRuleStatus("规则配置已保存。", "ok");
+          return result;
+        } catch (error) {
+          renderRulesWorkbench();
+          setRuleStatus(`保存规则失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      function deleteCustomRule() {
+        if (!selectedRuleId) {
+          setRuleStatus("没有可删除的规则。", "warn");
+          return;
+        }
+        customRules = customRules.filter((rule) => rule.id !== selectedRuleId);
+        selectedRuleId = customRules[0]?.id || "";
+        renderRulesWorkbench();
+        setRuleStatus("已从本地列表删除，点击保存规则后写入配置。", "warn");
+      }
+
+      async function testCustomRule() {
+        const text = ruleTestInput?.value.trim() || ruleTriggerInput?.value.trim() || "测试一下规则";
+        try {
+          setRuleStatus("正在测试规则解析...", "run");
+          const result = await backendRequest({ method: "POST", path: "/api/tools/resolve", body: { text } });
+          if (ruleTestOutput) {
+            ruleTestOutput.textContent = JSON.stringify(result, null, 2);
+          }
+          setRuleStatus(result.tool_call ? "测试完成，命中了工具解析。" : "测试完成，未命中工具解析。", result.tool_call ? "ok" : "warn");
+          return result;
+        } catch (error) {
+          if (ruleTestOutput) {
+            ruleTestOutput.textContent = `测试失败：${error.message}`;
+          }
+          setRuleStatus(`规则测试失败：${error.message}`, "error");
           return null;
         }
       }
@@ -6969,6 +7285,9 @@
         if (next === "assets") {
           loadAssets();
         }
+        if (next === "rules") {
+          loadRulesWorkbench();
+        }
         if (next === "tasks") {
           loadTaskWorkbench();
         }
@@ -7239,6 +7558,39 @@
           return;
         }
 
+        if (event.target.closest("[data-rule-load]")) {
+          loadRulesWorkbench();
+          return;
+        }
+
+        if (event.target.closest("[data-rule-create]")) {
+          createCustomRule();
+          return;
+        }
+
+        if (event.target.closest("[data-rule-save]")) {
+          saveRuleConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-rule-delete]")) {
+          deleteCustomRule();
+          return;
+        }
+
+        if (event.target.closest("[data-rule-test]")) {
+          testCustomRule();
+          return;
+        }
+
+        const ruleTarget = event.target.closest("[data-rule-id]");
+        if (ruleTarget) {
+          selectedRuleId = ruleTarget.dataset.ruleId || "";
+          renderRulesWorkbench();
+          setRuleStatus(`已选择规则：${selectedCustomRule()?.name || selectedRuleId}。`, "ok");
+          return;
+        }
+
         if (event.target.closest("[data-task-create]")) {
           createTaskReminder();
           return;
@@ -7503,6 +7855,7 @@
       renderBotBridgePreflight(buildBotBridgePreflightChecks());
       renderBotRunLoop();
       renderBotAssetSuggestions();
+      renderRulesWorkbench();
       renderTaskWorkbench();
       renderChatModelOptions();
       renderChatSessions();

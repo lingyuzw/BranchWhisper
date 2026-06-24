@@ -1430,3 +1430,51 @@ test("studio tasks page manages reminders and proactive greetings through backen
   assert.match(script, /event\.target\.closest\("\[data-task-save-greeting\]"\)[\s\S]*saveGoodMorningConfig\(\)/);
   assert.match(script, /event\.target\.closest\("\[data-task-test-proactive\]"\)[\s\S]*testProactiveMessage\(\)/);
 });
+
+test("studio rules page persists custom rules through the tools config API", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+
+  for (const selector of [
+    "data-rule-load",
+    "data-rule-create",
+    "data-rule-save",
+    "data-rule-delete",
+    "data-rule-test",
+    "data-rule-list",
+    "data-rule-status",
+    "data-rule-count",
+    "data-rule-enabled-count",
+    "data-rule-active-name",
+    "data-rule-id-input",
+    "data-rule-name-input",
+    "data-rule-trigger-input",
+    "data-rule-action-input",
+    "data-rule-response-input",
+    "data-rule-enabled-input",
+    "data-rule-test-input",
+    "data-rule-test-output",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(script, /let toolsConfig = null/);
+  assert.match(script, /let customRules = \[\]/);
+  assert.match(script, /let selectedRuleId = ""/);
+  assert.match(script, /async function loadRulesWorkbench\(\)/);
+  assert.match(script, /function renderRulesWorkbench\(\)/);
+  assert.match(script, /function currentRulePayload\(\)/);
+  assert.match(script, /async function saveRuleConfig\(\)/);
+  assert.match(script, /function createCustomRule\(\)/);
+  assert.match(script, /function deleteCustomRule\(\)/);
+  assert.match(script, /async function testCustomRule\(\)/);
+  assert.match(script, /backendRequest\(\{\s*path:\s*"\/api\/tools"\s*\}\)/s);
+  assert.match(script, /method:\s*"PATCH",\s*path:\s*"\/api\/tools",\s*body:\s*\{\s*custom_rules:\s*customRules/s);
+  assert.match(script, /method:\s*"POST",\s*path:\s*"\/api\/tools\/resolve"/s);
+  assert.match(script, /if \(next === "rules"\) \{\s*loadRulesWorkbench\(\);/s);
+  assert.match(script, /event\.target\.closest\("\[data-rule-load\]"\)[\s\S]*loadRulesWorkbench\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-rule-create\]"\)[\s\S]*createCustomRule\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-rule-save\]"\)[\s\S]*saveRuleConfig\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-rule-delete\]"\)[\s\S]*deleteCustomRule\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-rule-test\]"\)[\s\S]*testCustomRule\(\)/);
+});
