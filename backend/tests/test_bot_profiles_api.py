@@ -59,6 +59,7 @@ class BotProfilesApiTests(unittest.TestCase):
         self.assertEqual(payload["profiles"][0]["bridge_integration_id"], "weixin_personal")
         self.assertEqual(payload["profiles"][0]["bridge_url"], "")
         self.assertFalse(payload["profiles"][0]["bridge_enabled"])
+        self.assertEqual(payload["profiles"][0]["api_provider_id"], "qwen")
         self.assertTrue(payload["profiles"][0]["auto_reply_enabled"])
         self.assertFalse(payload["profiles"][0]["allow_group_chats"])
         self.assertEqual(payload["profiles"][0]["reply_allowlist"], [])
@@ -110,6 +111,24 @@ class BotProfilesApiTests(unittest.TestCase):
         reloaded = BotProfileStore(self.profile_path, "默认模型人格")
         self.assertEqual(reloaded.get("wx-bot")["bridge_integration_id"], "weixin_work")
 
+    def test_create_profile_persists_api_provider_binding(self) -> None:
+        response = self.client.post(
+            "/api/bot-profiles",
+            json={
+                "id": "deepseek-bot",
+                "name": "DeepSeek 微信 Bot",
+                "api_provider_id": "deepseek",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        profile = response.json()["profile"]
+        self.assertEqual(profile["api_provider_id"], "deepseek")
+
+        persisted = json.loads(self.profile_path.read_text(encoding="utf-8"))
+        saved = next(item for item in persisted["profiles"] if item["id"] == "deepseek-bot")
+        self.assertEqual(saved["api_provider_id"], "deepseek")
+
     def test_create_profile_persists_reply_guard_config(self) -> None:
         response = self.client.post(
             "/api/bot-profiles",
@@ -154,6 +173,19 @@ class BotProfilesApiTests(unittest.TestCase):
         self.assertEqual(response.json()["profile"]["system"], "只处理明确提醒，没有提醒就不多说。")
         reloaded = BotProfileStore(self.profile_path, "默认模型人格")
         self.assertEqual(reloaded.get("task-bot")["system"], "只处理明确提醒，没有提醒就不多说。")
+
+    def test_patch_updates_api_provider_binding(self) -> None:
+        self.client.post("/api/bot-profiles", json={"id": "api-switch-bot", "name": "切换 API Bot"})
+
+        response = self.client.patch(
+            "/api/bot-profiles/api-switch-bot",
+            json={"api_provider_id": "custom"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["profile"]["api_provider_id"], "custom")
+        reloaded = BotProfileStore(self.profile_path, "默认模型人格")
+        self.assertEqual(reloaded.get("api-switch-bot")["api_provider_id"], "custom")
 
     def test_patch_updates_weixin_bridge_config(self) -> None:
         self.client.post("/api/bot-profiles", json={"id": "wx-bot", "name": "微信 Bot"})

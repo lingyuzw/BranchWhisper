@@ -12,6 +12,7 @@ from core.io_utils import write_json_file
 DEFAULT_PROFILE_ID = "default"
 DEFAULT_BRIDGE_PROVIDER = "openclaw"
 DEFAULT_BRIDGE_INTEGRATION_ID = "weixin_personal"
+DEFAULT_API_PROVIDER_ID = "qwen"
 BRIDGE_PROVIDERS = {"openclaw", "compatible"}
 
 
@@ -63,6 +64,7 @@ class BotProfileStore:
             "bridge_integration_id": DEFAULT_BRIDGE_INTEGRATION_ID,
             "bridge_url": "",
             "bridge_enabled": False,
+            "api_provider_id": DEFAULT_API_PROVIDER_ID,
             "auto_reply_enabled": True,
             "allow_group_chats": False,
             "reply_allowlist": [],
@@ -146,6 +148,7 @@ class BotProfileStore:
             ),
             "bridge_url": str(item.get("bridge_url") or "").strip()[:300],
             "bridge_enabled": bool(item.get("bridge_enabled", False)),
+            "api_provider_id": safe_id(str(item.get("api_provider_id") or DEFAULT_API_PROVIDER_ID), fallback=DEFAULT_API_PROVIDER_ID).lower(),
             "auto_reply_enabled": bool(item.get("auto_reply_enabled", True)),
             "allow_group_chats": bool(item.get("allow_group_chats", False)),
             "reply_allowlist": normalize_reply_list(item.get("reply_allowlist")),
