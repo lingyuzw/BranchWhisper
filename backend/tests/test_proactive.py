@@ -180,6 +180,22 @@ class ProactiveStoreTests(unittest.TestCase):
         self.assertNotIn(first["id"], ids)
         self.assertIn(second["id"], ids)
 
+    def test_event_counts_include_all_events_beyond_recent_list_limit(self) -> None:
+        tmp, store = self.make_store()
+        self.addCleanup(tmp.cleanup)
+        for index in range(90):
+            status = "done" if index < 45 else "pending"
+            store.create_event({"title": f"事件 {index}", "content": "x", "status": status})
+
+        counts = store.event_counts()
+
+        self.assertEqual(counts["events"], 90)
+        self.assertEqual(counts["tasks"], 90)
+        self.assertEqual(counts["done"], 45)
+        self.assertEqual(counts["pending"], 45)
+        self.assertEqual(counts["failed"], 0)
+        self.assertEqual(len(store.list_events()), 80)
+
     def test_save_config_uses_shared_json_writer(self) -> None:
         tmp, store = self.make_store()
         self.addCleanup(tmp.cleanup)

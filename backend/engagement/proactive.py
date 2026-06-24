@@ -387,6 +387,21 @@ class ProactiveStore:
             rows = conn.execute(query, params).fetchall()
         return [dict(row) for row in rows]
 
+    def event_counts(self) -> dict[str, int]:
+        counts = {"events": 0, "tasks": 0, "pending": 0, "done": 0, "failed": 0}
+        with self.session() as conn:
+            total = conn.execute("SELECT COUNT(*) AS count FROM proactive_events").fetchone()
+            rows = conn.execute(
+                "SELECT status, COUNT(*) AS count FROM proactive_events GROUP BY status"
+            ).fetchall()
+        counts["events"] = int(total["count"] if total else 0)
+        counts["tasks"] = counts["events"]
+        for row in rows:
+            status = str(row["status"] or "").strip().lower()
+            if status in ("pending", "done", "failed"):
+                counts[status] = int(row["count"])
+        return counts
+
     def create_event(self, payload: dict) -> dict:
         now = now_text()
         item = {

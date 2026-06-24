@@ -1096,10 +1096,88 @@ test("studio secondary pages show usable empty states instead of blank canvases"
   assert.match(html, /规则为空/);
   assert.match(html, /class="feature-workbench task-workbench"/);
   assert.match(html, /早安问候规则/);
-  assert.match(html, /class="feature-workbench statistics-workbench"/);
-  assert.match(html, /暂无统计数据/);
+  assert.match(html, /class="statistics-detail-grid statistics-workbench"/);
+  assert.match(html, /data-stat-status/);
   assert.match(html, /\.feature-workbench\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(html, /\.empty-state-panel\s*\{[\s\S]*min-height:\s*220px/);
+});
+
+test("studio statistics page loads aggregate backend data and renders metric targets", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+
+  for (const selector of [
+    "data-stat-bots",
+    "data-stat-conversations",
+    "data-stat-messages",
+    "data-stat-stickers",
+    "data-stat-integrations",
+    "data-stat-bridges",
+    "data-stat-reminders",
+    "data-stat-proactive-events",
+    "data-stat-proactive-tasks",
+    "data-stat-model-calls",
+    "data-stat-tokens",
+    "data-stat-breakdown",
+    "data-stat-status",
+    "data-stat-generated-at",
+    "data-stat-refresh",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(script, /let statisticsData = null/);
+  assert.match(script, /async function loadStatistics\(\)/);
+  assert.match(script, /function renderStatistics\(\)/);
+  assert.match(script, /function setStatisticsStatus\(/);
+  assert.match(script, /backendRequest\(\{\s*path:\s*"\/api\/statistics"\s*\}\)/s);
+  assert.match(script, /if \(next === "statistics"\) \{\s*loadStatistics\(\);/s);
+  assert.match(script, /event\.target\.closest\("\[data-stat-refresh\]"\)[\s\S]*loadStatistics\(\)/);
+});
+
+test("studio statistics page keeps primary dashboard compact at desktop sizes", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const statisticsPanel = html.match(/<section class="page" data-panel="statistics">([\s\S]*?)<\/section>\s*<section class="page" data-panel="logs">/)?.[1] || "";
+  const summaryGrid = statisticsPanel.match(/<div class="metric-grid statistics-summary-grid">([\s\S]*?)<\/div>\s*<div class="panel statistics-dashboard-panel">/)?.[1] || "";
+  const summaryMetricCount = (summaryGrid.match(/class="metric"/g) || []).length;
+
+  assert.equal(summaryMetricCount, 6);
+  for (const selector of [
+    "data-stat-bots",
+    "data-stat-conversations",
+    "data-stat-messages",
+    "data-stat-stickers",
+    "data-stat-proactive-tasks",
+    "data-stat-tokens",
+  ]) {
+    assert.match(summaryGrid, new RegExp(selector));
+  }
+  for (const selector of [
+    "data-stat-integrations",
+    "data-stat-bridges",
+    "data-stat-reminders",
+    "data-stat-proactive-events",
+    "data-stat-model-calls",
+    "data-stat-generated-at",
+  ]) {
+    assert.doesNotMatch(summaryGrid, new RegExp(selector));
+    assert.match(statisticsPanel, new RegExp(selector));
+  }
+
+  assert.match(statisticsPanel, /class="panel statistics-dashboard-panel"/);
+  assert.match(statisticsPanel, /class="statistics-detail-grid statistics-workbench"/);
+  assert.match(statisticsPanel, /class="statistics-slice-grid" data-stat-breakdown/);
+  assert.match(statisticsPanel, /class="[^"]*statistics-status-strip[^"]*"/);
+  assert.match(html, /\.statistics-summary-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(html, /\.statistics-summary-grid \.metric\s*\{[\s\S]*min-height:\s*78px/);
+  assert.match(html, /\.statistics-detail-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.05fr\) minmax\(0,\s*0\.95fr\)/);
+  assert.match(html, /\.statistics-slice-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(html, /\.statistics-slice-chip\s*\{[\s\S]*min-height:\s*0/);
+  assert.match(html, /\.statistics-status-strip\s*\{[\s\S]*min-height:\s*0/);
+  assert.match(html, /statTargets\.status\.className = `status-line \$\{tone\} statistics-status-strip`/);
+  assert.match(html, /row\.className = "statistics-slice-chip"/);
+  assert.doesNotMatch(html, /row\.className = "step-row"/);
+  assert.doesNotMatch(statisticsPanel, /<div class="empty-state-panel">[\s\S]*等待统计/);
 });
 
 test("studio assets page exposes sticker library controls and summary metrics", async () => {

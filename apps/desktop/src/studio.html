@@ -774,6 +774,113 @@
         line-height: 1;
       }
 
+      .statistics-summary-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .statistics-summary-grid .metric {
+        min-height: 78px;
+        gap: 6px;
+        padding: 9px 11px;
+      }
+
+      .statistics-summary-grid .metric strong {
+        font-size: 19px;
+        overflow-wrap: anywhere;
+      }
+
+      .statistics-dashboard-panel {
+        gap: 8px;
+      }
+
+      .statistics-detail-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .statistics-detail-card {
+        display: grid;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--surface-muted) 70%, transparent);
+      }
+
+      .statistics-detail-card h3 {
+        margin: 0;
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .statistics-detail-card .step-list {
+        gap: 6px;
+      }
+
+      .statistics-slice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .statistics-slice-chip {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 7px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+
+      .statistics-slice-chip strong,
+      .statistics-slice-chip span {
+        min-width: 0;
+      }
+
+      .statistics-slice-chip strong {
+        display: block;
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .statistics-slice-chip .slice-source {
+        display: block;
+        margin-top: 2px;
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .statistics-slice-chip .status-chip {
+        padding: 3px 6px;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .statistics-detail-card .step-row {
+        min-height: 42px;
+        padding: 7px;
+      }
+
+      .statistics-status-strip {
+        min-height: 0;
+        padding: 6px 8px;
+        border-style: dashed;
+        background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+      }
+
       .asset-toolbar {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -2688,29 +2795,51 @@
             </section>
 
             <section class="page" data-panel="statistics">
-              <div class="metric-grid">
-                <div class="metric"><span>Bot 数量</span><strong>0</strong></div>
-                <div class="metric"><span>消息数量</span><strong>0</strong></div>
-                <div class="metric"><span>模型调用</span><strong>0</strong></div>
-                <div class="metric"><span>Token 使用</span><strong>0</strong></div>
+              <div class="metric-grid statistics-summary-grid">
+                <div class="metric"><span>Bot 数量</span><strong data-stat-bots>0</strong></div>
+                <div class="metric"><span>对话数量</span><strong data-stat-conversations>0</strong></div>
+                <div class="metric"><span>消息数量</span><strong data-stat-messages>0</strong></div>
+                <div class="metric"><span>素材数量</span><strong data-stat-stickers>0</strong></div>
+                <div class="metric"><span>任务</span><strong data-stat-proactive-tasks>0</strong></div>
+                <div class="metric"><span>模型用量</span><strong data-stat-tokens>0</strong></div>
               </div>
-              <div class="panel">
-                <h2>数据统计</h2>
-                <p class="muted">后续接入后端后，这里展示 Bot、消息、API 调用、Token、素材和任务执行统计。</p>
-                <div class="feature-workbench statistics-workbench">
-                  <div class="empty-state-panel">
-                    <strong>暂无统计数据</strong>
-                    <span>创建 Bot、连接微信或调用模型后，这里才会出现真实趋势，不用占位假数据。</span>
+              <div class="panel statistics-dashboard-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>数据统计</h2>
+                    <p class="muted">读取本机后端可验证的数据；模型调用和 Token 暂未埋点时保持 0。</p>
                   </div>
-                  <div class="step-list">
-                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>Bot 规模</strong><span>统计 Bot 数量、启用状态和桥接状态。</span></div><span class="status-chip">待接入</span></div>
-                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>消息与调用</strong><span>统计消息数、模型请求和失败原因。</span></div><span class="status-chip">待接入</span></div>
-                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>Token 成本</strong><span>按 API 或本地模型拆分 token 使用。</span></div><span class="status-chip">待接入</span></div>
+                  <div class="panel-actions">
+                    <button class="secondary-action" type="button" data-stat-refresh>刷新统计</button>
                   </div>
-                  <div class="panel info-list">
-                    <div class="panel-head"><div><h3>统计口径</h3><p class="muted">只展示本机运行目录内可验证的数据。</p></div></div>
-                    <div class="status-line warn">无法读取后端时保持 0，不推测调用量。</div>
-                    <div class="status-line warn">微信 Bot 对话和 Chat 对话分开统计。</div>
+                </div>
+                <div class="statistics-detail-grid statistics-workbench">
+                  <div class="statistics-detail-card">
+                    <h3>核心切片</h3>
+                    <div class="step-list">
+                      <div class="step-row"><span class="step-num">Bot</span><div class="step-main"><strong>Bot 规模</strong><span data-stat-bot-detail>0 个 Bot，0 个桥接启用。</span></div><span class="status-chip" data-stat-bot-status>待加载</span></div>
+                      <div class="step-row"><span class="step-num">Msg</span><div class="step-main"><strong>对话与消息</strong><span data-stat-message-detail>0 个对话，0 条消息。</span></div><span class="status-chip" data-stat-message-status>待加载</span></div>
+                      <div class="step-row"><span class="step-num">Run</span><div class="step-main"><strong>任务执行</strong><span data-stat-task-detail>0 个提醒，0 个主动任务。</span></div><span class="status-chip" data-stat-task-status>待加载</span></div>
+                    </div>
+                  </div>
+                  <div class="statistics-detail-card">
+                    <h3>集成与模型</h3>
+                    <div class="step-list">
+                      <div class="step-row"><span class="step-num">接入</span><div class="step-main"><strong>实例与桥接</strong><span><strong data-stat-integrations>0</strong> 个实例，<strong data-stat-bridges>0</strong> 个桥接启用。</span></div><span class="status-chip">运行口径</span></div>
+                      <div class="step-row"><span class="step-num">提醒</span><div class="step-main"><strong>提醒与主动事件</strong><span><strong data-stat-reminders>0</strong> 个提醒，<strong data-stat-proactive-events>0</strong> 个事件。</span></div><span class="status-chip">任务口径</span></div>
+                      <div class="step-row"><span class="step-num">模型</span><div class="step-main"><strong>调用记录</strong><span><strong data-stat-model-calls>0</strong> 次调用，生成于 <strong data-stat-generated-at>-</strong>。</span></div><span class="status-chip">用量口径</span></div>
+                    </div>
+                  </div>
+                  <div class="statistics-detail-card">
+                    <h3>数据切片</h3>
+                    <div class="statistics-slice-grid" data-stat-breakdown>
+                      <div class="statistics-slice-chip"><div><strong>等待统计</strong><span class="slice-source">打开本页或点击刷新统计</span></div><span class="status-chip">待加载</span></div>
+                    </div>
+                  </div>
+                  <div class="statistics-detail-card">
+                    <h3>统计口径</h3>
+                    <div class="status-line warn statistics-status-strip" data-stat-status>进入页面后会自动加载统计。</div>
+                    <div class="status-line warn statistics-status-strip">模型调用和 Token 还未跟踪，当前明确显示 0。</div>
                   </div>
                 </div>
               </div>
@@ -2983,6 +3112,28 @@
       const assetStatus = document.querySelector("[data-asset-status]");
       const assetList = document.querySelector("[data-asset-list]");
       const assetEmpty = document.querySelector("[data-asset-empty]");
+      const statTargets = {
+        bots: document.querySelector("[data-stat-bots]"),
+        conversations: document.querySelector("[data-stat-conversations]"),
+        messages: document.querySelector("[data-stat-messages]"),
+        stickers: document.querySelector("[data-stat-stickers]"),
+        integrations: document.querySelector("[data-stat-integrations]"),
+        bridges: document.querySelector("[data-stat-bridges]"),
+        reminders: document.querySelector("[data-stat-reminders]"),
+        proactiveEvents: document.querySelector("[data-stat-proactive-events]"),
+        proactiveTasks: document.querySelector("[data-stat-proactive-tasks]"),
+        modelCalls: document.querySelector("[data-stat-model-calls]"),
+        tokens: document.querySelector("[data-stat-tokens]"),
+        generatedAt: document.querySelector("[data-stat-generated-at]"),
+        botDetail: document.querySelector("[data-stat-bot-detail]"),
+        messageDetail: document.querySelector("[data-stat-message-detail]"),
+        taskDetail: document.querySelector("[data-stat-task-detail]"),
+        botStatus: document.querySelector("[data-stat-bot-status]"),
+        messageStatus: document.querySelector("[data-stat-message-status]"),
+        taskStatus: document.querySelector("[data-stat-task-status]"),
+        breakdown: document.querySelector("[data-stat-breakdown]"),
+        status: document.querySelector("[data-stat-status]"),
+      };
       let botProfiles = [];
       let selectedBotProfileId = "default";
       let botConversations = [];
@@ -3004,6 +3155,7 @@
       let assetItems = [];
       let assetSearchQuery = "";
       let assetStatusFilter = "";
+      let statisticsData = null;
 
       const apiPresets = {
         qwen: {
@@ -3149,6 +3301,139 @@
         }
         assetStatus.textContent = message;
         assetStatus.className = `status-line asset-status-line ${tone}`;
+      }
+
+      function setStatisticsStatus(message, tone = "warn") {
+        if (!statTargets.status) {
+          return;
+        }
+        statTargets.status.textContent = message;
+        statTargets.status.className = `status-line ${tone} statistics-status-strip`;
+      }
+
+      function statNumber(value) {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : 0;
+      }
+
+      function setStatText(target, value) {
+        if (target) {
+          target.textContent = String(value);
+        }
+      }
+
+      function statStatusLabel(slice) {
+        if (!slice) {
+          return "待加载";
+        }
+        if (slice.status === "ok") {
+          return "已读取";
+        }
+        if (slice.status === "not_tracked") {
+          return "未跟踪";
+        }
+        return "不可用";
+      }
+
+      function statStatusTone(slice) {
+        if (!slice) {
+          return "warn";
+        }
+        if (slice.status === "ok") {
+          return "ok";
+        }
+        if (slice.status === "not_tracked") {
+          return "warn";
+        }
+        return "error";
+      }
+
+      function renderStatChip(target, slice) {
+        if (!target) {
+          return;
+        }
+        const tone = statStatusTone(slice);
+        target.className = `status-chip ${tone}`;
+        target.textContent = statStatusLabel(slice);
+      }
+
+      function statGeneratedAtLabel(value) {
+        if (!value) {
+          return "-";
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return "-";
+        }
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function renderStatistics() {
+        const summary = statisticsData?.summary || {};
+        const slices = statisticsData?.slices || {};
+        setStatText(statTargets.bots, statNumber(summary.bots));
+        setStatText(statTargets.conversations, statNumber(summary.conversations));
+        setStatText(statTargets.messages, statNumber(summary.messages));
+        setStatText(statTargets.stickers, statNumber(summary.stickers));
+        setStatText(statTargets.integrations, statNumber(summary.integrations));
+        setStatText(statTargets.bridges, statNumber(summary.bridges));
+        setStatText(statTargets.reminders, statNumber(summary.reminders));
+        setStatText(statTargets.proactiveEvents, statNumber(summary.proactive_events));
+        setStatText(statTargets.proactiveTasks, statNumber(summary.proactive_tasks));
+        setStatText(statTargets.modelCalls, statNumber(summary.model_calls));
+        setStatText(statTargets.tokens, statNumber(summary.tokens));
+        setStatText(statTargets.generatedAt, statGeneratedAtLabel(statisticsData?.generated_at));
+
+        setStatText(statTargets.botDetail, `${statNumber(summary.bots)} 个 Bot，${statNumber(slices.bots?.enabled)} 个桥接启用。`);
+        setStatText(statTargets.messageDetail, `${statNumber(summary.conversations)} 个对话，${statNumber(summary.messages)} 条消息。`);
+        setStatText(statTargets.taskDetail, `${statNumber(summary.reminders)} 个提醒，${statNumber(summary.proactive_tasks)} 个主动任务。`);
+        renderStatChip(statTargets.botStatus, slices.bots);
+        renderStatChip(statTargets.messageStatus, slices.messages);
+        renderStatChip(statTargets.taskStatus, slices.proactive);
+
+        if (!statTargets.breakdown) {
+          return;
+        }
+        statTargets.breakdown.innerHTML = "";
+        const labels = {
+          bots: "Bot 档案",
+          conversations: "对话",
+          messages: "消息",
+          stickers: "素材",
+          integrations: "接入",
+          reminders: "提醒",
+          proactive: "主动任务",
+          model_usage: "模型用量",
+        };
+        const fragment = document.createDocumentFragment();
+        Object.entries(labels).forEach(([key, label]) => {
+          const slice = slices[key] || {};
+          const row = document.createElement("div");
+          row.className = "statistics-slice-chip";
+          row.innerHTML = `<div><strong></strong><span class="slice-source"></span></div><span class="status-chip"></span>`;
+          row.querySelector("strong").textContent = label;
+          row.querySelector(".slice-source").textContent = slice.error || slice.source || "等待加载";
+          renderStatChip(row.querySelector(".status-chip"), slice);
+          fragment.appendChild(row);
+        });
+        statTargets.breakdown.appendChild(fragment);
+      }
+
+      async function loadStatistics() {
+        try {
+          setStatisticsStatus("正在加载统计数据...", "run");
+          const payload = await backendRequest({ path: "/api/statistics" });
+          statisticsData = payload;
+          renderStatistics();
+          const unavailable = Object.values(payload.slices || {}).filter((slice) => slice?.status === "unavailable").length;
+          setStatisticsStatus(unavailable ? `已加载统计，${unavailable} 个切片不可用。` : "已加载本机统计数据。", unavailable ? "warn" : "ok");
+          return statisticsData;
+        } catch (error) {
+          statisticsData = null;
+          renderStatistics();
+          setStatisticsStatus(`加载统计失败：${error.message}`, "error");
+          return null;
+        }
       }
 
       function normalizeAssetStatus(sticker) {
@@ -5011,6 +5296,9 @@
         if (next === "assets") {
           loadAssets();
         }
+        if (next === "statistics") {
+          loadStatistics();
+        }
       }
 
       function activateWorkspace(workspace) {
@@ -5207,6 +5495,11 @@
 
         if (event.target.closest("[data-asset-load]")) {
           loadAssets();
+          return;
+        }
+
+        if (event.target.closest("[data-stat-refresh]")) {
+          loadStatistics();
           return;
         }
 

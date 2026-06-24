@@ -29,6 +29,7 @@ from api.memory import create_memory_router
 from api.tools import create_tools_router
 from api.conversations import create_conversations_router
 from api.integrations import create_integrations_router
+from api.statistics import create_statistics_router
 from api.dependencies import (
     local_branchwhisper_url,
     unique_urls,
@@ -497,6 +498,7 @@ def create_app(args) -> FastAPI:
     app.include_router(create_tools_router())
     app.include_router(create_conversations_router())
     app.include_router(create_integrations_router(resolve_branchwhisper_url, preferred_integration_id))
+    app.include_router(create_statistics_router())
     app.include_router(
         create_services_router(
             attach_service_warmups,
