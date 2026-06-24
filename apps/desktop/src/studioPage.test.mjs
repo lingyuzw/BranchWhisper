@@ -810,7 +810,7 @@ test("studio bridge controls are grouped into balanced action rows", async () =>
 
   assert.match(html, /class="panel-actions bridge-action-grid"/);
   assert.match(html, /class="panel-actions bridge-log-actions"/);
-  assert.match(html, /\.bridge-action-grid\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(116px,\s*1fr\)\)/);
+  assert.match(html, /\.bridge-action-grid\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(118px,\s*100%\),\s*1fr\)\)/);
   assert.match(html, /\.bridge-action-grid \.primary-action,\s*\.bridge-action-grid \.secondary-action\s*\{[\s\S]*width:\s*100%/);
   assert.match(html, /\.bridge-login-box\s*\{[\s\S]*grid-template-columns:\s*minmax\(120px,\s*140px\) minmax\(0,\s*1fr\)/);
   assert.match(html, /@media \(max-width: 780px\)[\s\S]*\.bridge-login-box[\s\S]*grid-template-columns:\s*1fr/);
@@ -852,10 +852,19 @@ test("studio bot bridge includes loop checks and a fuller right-side weixin sess
   assert.match(html, /class="bridge-operational-grid"/);
   assert.match(html, /class="bridge-loop-checks"/);
   assert.match(html, /测试文字回复[\s\S]*测试语音回复[\s\S]*测试表情包回复/);
-  assert.match(html, /\.bridge-operational-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(260px,\s*0\.78fr\) minmax\(320px,\s*1\.22fr\)/);
+  assert.match(html, /\.bridge-operational-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(260px,\s*100%\),\s*1fr\)\)/);
   assert.match(html, /\.bridge-loop-card\s*\{[\s\S]*min-height:\s*108px/);
   assert.match(html, /\.bridge-log-shell\s*\{[\s\S]*max-height:\s*260px;[\s\S]*overflow:\s*hidden/);
   assert.match(html, /\.bridge-log-shell\.expanded\s*\{[\s\S]*max-height:\s*460px/);
+});
+
+test("studio bot bridge avoids horizontal overflow at the default desktop window width", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /\.bot-bridge-panel,\s*\.bot-bridge-panel > \*,\s*\.bridge-operational-grid > \*,\s*\.guard-list-grid > \*\s*\{[\s\S]*min-width:\s*0/);
+  assert.match(html, /\.bridge-action-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(118px,\s*100%\),\s*1fr\)\)/);
+  assert.match(html, /\.guard-list-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(132px,\s*100%\),\s*1fr\)\)/);
+  assert.match(html, /@media \(max-width:\s*1320px\)[\s\S]*\.bot-workspace-layout[\s\S]*grid-template-columns:\s*1fr/);
 });
 
 test("studio conversation metrics keep typography proportional and avoid oversized summary text", async () => {

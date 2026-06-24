@@ -926,7 +926,7 @@
 
       .guard-list-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
         gap: 10px;
       }
 
@@ -972,6 +972,13 @@
 
       .bot-bridge-panel {
         align-content: start;
+      }
+
+      .bot-bridge-panel,
+      .bot-bridge-panel > *,
+      .bridge-operational-grid > *,
+      .guard-list-grid > * {
+        min-width: 0;
       }
 
       .config-layout,
@@ -1305,7 +1312,7 @@
 
       .bridge-operational-grid {
         display: grid;
-        grid-template-columns: minmax(260px, 0.78fr) minmax(320px, 1.22fr);
+        grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
         gap: 12px;
         align-items: start;
       }
@@ -1493,7 +1500,7 @@
 
       .bridge-action-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(118px, 100%), 1fr));
         width: 100%;
       }
 
@@ -1726,6 +1733,12 @@
         .bot-workspace-layout,
         .bridge-operational-grid,
         .conversation-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 1320px) {
+        .bot-workspace-layout {
           grid-template-columns: 1fr;
         }
       }
