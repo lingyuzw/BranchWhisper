@@ -1682,6 +1682,44 @@
         line-height: 1.55;
       }
 
+      .api-next-step {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--info) 28%, var(--border));
+        border-radius: var(--radius-md);
+        background:
+          linear-gradient(135deg, var(--info-soft), transparent 76%),
+          color-mix(in srgb, var(--surface-muted) 80%, transparent);
+      }
+
+      .api-next-step.ready {
+        border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+        background:
+          linear-gradient(135deg, var(--success-soft), transparent 76%),
+          color-mix(in srgb, var(--surface-muted) 82%, transparent);
+      }
+
+      .api-next-step h3 {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .api-next-step p {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .api-next-step .panel-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .api-next-step .primary-action {
+        width: 100%;
+        min-height: 34px;
+      }
+
       .api-config-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
@@ -2025,6 +2063,58 @@
 
       .page[data-panel="guide"] .hero-copy .panel-actions {
         justify-content: flex-start;
+      }
+
+      .page[data-panel="api"] {
+        gap: 12px;
+      }
+
+      .page[data-panel="api"] .page-hero {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, 0.68fr);
+        min-height: 178px;
+        padding: 14px;
+      }
+
+      .page[data-panel="api"] .hero-copy {
+        gap: 9px;
+      }
+
+      .page[data-panel="api"] .lead {
+        max-width: 720px;
+      }
+
+      .page[data-panel="api"] .api-provider-card {
+        min-height: 68px;
+        padding: 10px 11px;
+      }
+
+      .page[data-panel="api"] .api-config-layout {
+        grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+        gap: 12px;
+      }
+
+      .page[data-panel="api"] .panel {
+        align-content: start;
+        gap: 10px;
+        padding: 13px 14px;
+      }
+
+      .page[data-panel="api"] .form-grid {
+        gap: 8px 10px;
+      }
+
+      .page[data-panel="api"] .text-input {
+        min-height: 42px;
+      }
+
+      .page[data-panel="api"] .api-provider-list {
+        max-height: 176px;
+        gap: 7px;
+        padding: 0 2px 4px 0;
+      }
+
+      .page[data-panel="api"] .api-provider-row {
+        padding: 8px 10px;
       }
 
       .page[data-panel="bot"] .page-hero {
@@ -2543,9 +2633,18 @@
                     <button class="primary-action" type="button" data-api-provider-activate>启用选中</button>
                     <button class="secondary-action danger" type="button" data-api-provider-delete>删除选中</button>
                   </div>
+                  <div class="api-next-step" data-api-next-step>
+                    <div>
+                      <h3>下一步：创建微信 Bot</h3>
+                      <p data-api-next-status>先测试当前 API。测试通过后，就可以把这个 API 绑定到 Bot，再去连接微信。</p>
+                    </div>
+                    <div class="panel-actions">
+                      <button class="primary-action" type="button" data-api-next-bot>去创建 Bot</button>
+                    </div>
+                  </div>
                   <div class="api-guide-compact">
                     <h3>保存规则</h3>
-                    <p>预设只负责快速填充名称、URL 和模型。API Key 保存到本机后端，列表只显示是否已保存，不回显原文。</p>
+                    <p>预设只填名称、URL 和模型。API Key 只保存到本机后端，列表不回显原文。</p>
                   </div>
                 </div>
               </div>
@@ -3182,6 +3281,8 @@
       const apiProviderList = document.querySelector("[data-api-provider-list]");
       const apiProviderCount = document.querySelector("[data-api-provider-count]");
       const apiProviderActiveName = document.querySelector("[data-api-provider-active-name]");
+      const apiNextStep = document.querySelector("[data-api-next-step]");
+      const apiNextStatus = document.querySelector("[data-api-next-status]");
       const botProfileList = document.querySelector("[data-bot-profile-list]");
       const botIdInput = document.querySelector("[data-bot-id-input]");
       const botNameInput = document.querySelector("[data-bot-name-input]");
@@ -4519,6 +4620,16 @@
         });
       }
 
+      function markApiReadyForBot() {
+        if (apiNextStep) {
+          apiNextStep.classList.add("ready");
+        }
+        if (apiNextStatus) {
+          apiNextStatus.textContent = "测试通过，下一步创建微信 Bot。创建时选择这个 API，再配置 Bot 人格和微信桥接。";
+        }
+        refreshGuideProgress();
+      }
+
       function renderBotApiProviderOptions() {
         if (!botApiProviderInput) {
           return;
@@ -4635,6 +4746,7 @@
           renderApiProviders();
           renderSelectedApiProvider();
           setApiStatus("新的 API 配置已创建。可以继续填写 Key、测试，再启用。", "ok");
+          refreshGuideProgress();
           return result;
         } catch (error) {
           setApiStatus(`新增 API 失败：${error.message}`, "error");
@@ -4654,6 +4766,7 @@
           renderApiProviders();
           renderSelectedApiProvider();
           setApiStatus("API 配置已保存。需要生效时点击启用选中或保存启用。", "ok");
+          refreshGuideProgress();
           return result;
         } catch (error) {
           setApiStatus(`保存 API 失败：${error.message}`, "error");
@@ -4679,6 +4792,7 @@
           renderApiProviders();
           renderSelectedApiProvider();
           setApiStatus(result.ok ? "API 配置已删除。" : "后端没有删除该 API，请重新加载确认。", result.ok ? "ok" : "warn");
+          refreshGuideProgress();
           return result;
         } catch (error) {
           setApiStatus(`删除 API 失败：${error.message}`, "error");
@@ -4702,6 +4816,7 @@
             renderSelectedApiProvider();
           }
           setApiStatus("API 已保存并启用。Chat 和 Bot 会使用当前 API 模式。", "ok");
+          refreshGuideProgress();
           return result;
         } catch (error) {
           setApiStatus(`启用 API 失败：${error.message}`, "error");
@@ -4737,6 +4852,7 @@
           const result = await backendRequest({ method: "POST", path: "/api/diagnostics/llm-api-test", body: payload });
           if (result.ok) {
             setApiStatus(`测试通过：${result.model || payload.api_llm_model}，延迟 ${result.latency_ms ?? "-"} ms。`, "ok");
+            markApiReadyForBot();
           } else {
             setApiStatus(`测试未通过：${result.error || "接口没有返回有效 choices"}`, "error");
           }
@@ -5779,6 +5895,12 @@
 
         if (event.target.closest("[data-api-provider-activate]")) {
           activateApiProvider();
+          return;
+        }
+
+        if (event.target.closest("[data-api-next-bot]")) {
+          activateWorkspace("bot");
+          activateSection("bot");
           return;
         }
 

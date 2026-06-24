@@ -350,6 +350,28 @@ test("studio API page keeps default provider choices visible when backend provid
   assert.match(html, /renderSelectedApiProvider\(\)/);
 });
 
+test("studio API page closes the setup loop by advancing to Bot creation after a successful test", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-api-next-step",
+    "data-api-next-status",
+    "data-api-next-bot",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /function markApiReadyForBot\(\)/);
+  assert.match(html, /测试通过，下一步创建微信 Bot/);
+  assert.match(html, /data-api-next-bot/);
+  assert.match(html, /activateWorkspace\("bot"\);\s*activateSection\("bot"\);/s);
+  assert.match(html, /if \(result\.ok\) \{[\s\S]*markApiReadyForBot\(\);/);
+
+  for (const operation of ["createApiProvider", "saveApiProvider", "deleteApiProvider", "activateApiProvider"]) {
+    assert.match(html, new RegExp(`async function ${operation}\\(\\)[\\s\\S]*refreshGuideProgress\\(\\)`));
+  }
+});
+
 test("studio Bot page creates loads and saves real bot profiles", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
