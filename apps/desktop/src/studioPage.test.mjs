@@ -674,6 +674,34 @@ test("studio Bot page deletes non-default profiles through the backend", async (
   assert.match(html, /event\.target\.closest\("\[data-bot-delete\]"\)[\s\S]*deleteBotProfile\(\)/);
 });
 
+test("studio Bot page closes the run loop from profile creation to Chat", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-bot-run-loop",
+    "data-bot-run-loop-summary",
+    "data-bot-run-loop-list",
+    "data-bot-next-chat",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /const botRunLoopSteps = \[/);
+  assert.match(html, /function buildBotRunLoopSteps\(\)/);
+  assert.match(html, /function renderBotRunLoop\(\)/);
+  assert.match(html, /function markBotReadyForChat\(\)/);
+  assert.match(html, /activateWorkspace\("chat"\);\s*activateSection\("chat"\);/s);
+
+  for (const operation of ["createBotProfile", "saveBotProfile", "deleteBotProfile", "controlBotBridge", "runBotBridgeFullLoopTest"]) {
+    assert.match(html, new RegExp(`async function ${operation}\\([^)]*\\)[\\s\\S]*renderBotRunLoop\\(\\)`));
+  }
+  for (const operation of ["createBotProfile", "saveBotProfile", "deleteBotProfile", "controlBotBridge"]) {
+    assert.match(html, new RegExp(`async function ${operation}\\([^)]*\\)[\\s\\S]*refreshGuideProgress\\(\\)`));
+  }
+
+  assert.match(html, /if \(fullLoopFailed === false\) \{[\s\S]*markBotReadyForChat\(\);/);
+});
+
 test("studio Bot page supports QR login and polling for the selected bridge", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
@@ -1090,7 +1118,7 @@ test("studio bot page moves persona editing left and places large actions above 
   assert.match(html, /<div class="panel bot-profile-panel">[\s\S]*class="bridge-login-box"[\s\S]*data-bot-profile-list[\s\S]*data-bot-system-input[\s\S]*<\/div>\s*<div class="panel bot-bridge-panel">/);
   assert.doesNotMatch(html, /<div class="panel bot-bridge-panel">[\s\S]*class="bridge-login-box"[\s\S]*<div class="step-list">/);
   assert.match(html, /\.bot-command-bar\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(124px,\s*1fr\)\)/);
-  assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*grid-template-columns:\s*minmax\(390px,\s*0\.86fr\) minmax\(0,\s*1\.14fr\)/);
+  assert.match(html, /\.bot-workspace-layout\s*\{[\s\S]*grid-template-columns:\s*minmax\(320px,\s*0\.78fr\) minmax\(0,\s*1\.22fr\)/);
   assert.match(html, /\.bot-profile-panel\s*\{[\s\S]*grid-template-rows:\s*auto auto auto auto auto/);
 });
 
@@ -1120,7 +1148,7 @@ test("studio bot bridge avoids horizontal overflow at the default desktop window
   assert.match(html, /\.bot-bridge-panel,\s*\.bot-bridge-panel > \*,\s*\.bridge-operational-grid > \*,\s*\.guard-list-grid > \*\s*\{[\s\S]*min-width:\s*0/);
   assert.match(html, /\.bridge-action-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(118px,\s*100%\),\s*1fr\)\)/);
   assert.match(html, /\.guard-list-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(132px,\s*100%\),\s*1fr\)\)/);
-  assert.match(html, /@media \(max-width:\s*1320px\)[\s\S]*\.bot-workspace-layout[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(html, /@media \(max-width:\s*1080px\)[\s\S]*\.bot-workspace-layout[\s\S]*grid-template-columns:\s*1fr/);
 });
 
 test("studio conversation metrics keep typography proportional and avoid oversized summary text", async () => {

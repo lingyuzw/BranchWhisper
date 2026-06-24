@@ -1263,7 +1263,7 @@
 
       .bot-workspace-layout {
         display: grid;
-        grid-template-columns: minmax(390px, 0.86fr) minmax(0, 1.14fr);
+        grid-template-columns: minmax(320px, 0.78fr) minmax(0, 1.22fr);
         align-items: start;
         gap: 14px;
       }
@@ -1382,6 +1382,76 @@
         color: var(--text-muted);
         font-size: 12px;
         line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bot-run-loop {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--info) 30%, var(--border));
+        border-radius: var(--radius-md);
+        background:
+          linear-gradient(135deg, var(--info-soft), transparent 76%),
+          color-mix(in srgb, var(--surface-muted) 82%, transparent);
+      }
+
+      .bot-run-loop.ready {
+        border-color: color-mix(in srgb, var(--success) 40%, var(--border));
+        background:
+          linear-gradient(135deg, var(--success-soft), transparent 76%),
+          color-mix(in srgb, var(--surface-muted) 84%, transparent);
+      }
+
+      .bot-run-loop h3 {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .bot-run-loop-summary {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .bot-run-loop-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .bot-run-loop-item {
+        min-width: 0;
+        display: grid;
+        gap: 2px;
+        padding: 7px 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+
+      .bot-run-loop-item.ok {
+        border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+      }
+
+      .bot-run-loop-item.warn {
+        border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+      }
+
+      .bot-run-loop-item strong {
+        overflow: hidden;
+        color: var(--text);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bot-run-loop-item span {
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.4;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
@@ -2369,7 +2439,7 @@
         }
       }
 
-      @media (max-width: 1320px) {
+      @media (max-width: 1080px) {
         .bot-workspace-layout {
           grid-template-columns: 1fr;
         }
@@ -2724,6 +2794,21 @@
                     <label class="field"><span>集成实例 ID</span><input class="text-input" data-bot-bridge-integration-input value="weixin_personal" autocomplete="off" /></label>
                     <label class="field"><span>桥接地址</span><input class="text-input" data-bot-bridge-url-input placeholder="可选，例如 http://127.0.0.1:18080" autocomplete="off" /></label>
                     <label class="checkbox-field"><input type="checkbox" data-bot-bridge-enabled />启用这个微信桥接</label>
+                  </div>
+                  <div class="bot-run-loop" data-bot-run-loop>
+                    <div>
+                      <h3>当前 Bot 运行闭环</h3>
+                      <p class="bot-run-loop-summary" data-bot-run-loop-summary>先保存 Bot，再启用微信桥接；完整链路通过后可以进入 Chat 检查对话。</p>
+                    </div>
+                    <div class="bot-run-loop-list" data-bot-run-loop-list>
+                      <div class="bot-run-loop-item warn"><strong>创建 Bot</strong><span>等待加载</span></div>
+                      <div class="bot-run-loop-item warn"><strong>绑定 API</strong><span>等待加载</span></div>
+                      <div class="bot-run-loop-item warn"><strong>连接微信</strong><span>等待加载</span></div>
+                      <div class="bot-run-loop-item warn"><strong>完整链路</strong><span>等待测试</span></div>
+                    </div>
+                    <div class="panel-actions">
+                      <button class="primary-action" type="button" data-bot-next-chat>进入 Chat</button>
+                    </div>
                   </div>
                   <div class="bridge-preflight-panel" data-bot-bridge-preflight>
                     <div class="bridge-preflight-summary" data-bot-bridge-preflight-summary>
@@ -3316,6 +3401,9 @@
       const botBridgePreflight = document.querySelector("[data-bot-bridge-preflight]");
       const botBridgePreflightSummary = document.querySelector("[data-bot-bridge-preflight-summary]");
       const botBridgePreflightList = document.querySelector("[data-bot-bridge-preflight-list]");
+      const botRunLoop = document.querySelector("[data-bot-run-loop]");
+      const botRunLoopSummary = document.querySelector("[data-bot-run-loop-summary]");
+      const botRunLoopList = document.querySelector("[data-bot-run-loop-list]");
       const botStatus = document.querySelector("[data-bot-status]");
       const botCount = document.querySelector("[data-bot-count]");
       const botSelectedName = document.querySelector("[data-bot-selected-name]");
@@ -3392,6 +3480,7 @@
       let botBridgeLoginPollInFlight = false;
       let botBridgeLogExpanded = false;
       let botBridgeLogFullText = botBridgeLog?.textContent || "";
+      let botFullLoopPassed = false;
       let platformLogs = [];
       let platformLogLoadSequence = 0;
       let activePlatformLogSource = "all";
@@ -3472,6 +3561,35 @@
           api_key_set: false,
           api_key_masked: "",
           editable: false,
+        },
+      ];
+      const botRunLoopSteps = [
+        {
+          id: "profile",
+          label: "创建 Bot",
+          ready: () => Boolean(selectedBotProfile()?.id),
+          detail: () => selectedBotProfile()?.name || selectedBotProfile()?.id || "还没有 Bot 档案",
+        },
+        {
+          id: "api",
+          label: "绑定 API",
+          ready: () => Boolean(findBotBridgeApiProvider()?.api_key_set),
+          detail: () => {
+            const provider = findBotBridgeApiProvider();
+            return provider ? `${provider.name || provider.id} · ${provider.api_key_set ? "Key 已保存" : "Key 待保存"}` : "未找到当前 API";
+          },
+        },
+        {
+          id: "weixin",
+          label: "连接微信",
+          ready: () => selectedBotProfile()?.bridge_enabled === true || Boolean(botBridgeEnabledInput?.checked),
+          detail: () => selectedBotBridgeIntegrationId() || "未填写实例 ID",
+        },
+        {
+          id: "loop",
+          label: "完整链路",
+          ready: () => botFullLoopPassed,
+          detail: () => (botFullLoopPassed ? "文字、语音、素材链路已通过" : "还没有完成完整链路测试"),
         },
       ];
       const guideWorkflowSteps = [
@@ -4909,6 +5027,52 @@
         ];
       }
 
+      function buildBotRunLoopSteps() {
+        return botRunLoopSteps.map((step) => {
+          let ready = false;
+          let detail = "等待检测";
+          try {
+            ready = Boolean(step.ready());
+            detail = step.detail();
+          } catch (error) {
+            detail = `检测失败：${error.message}`;
+          }
+          return { ...step, ready, detail };
+        });
+      }
+
+      function renderBotRunLoop() {
+        if (!botRunLoopList) {
+          return;
+        }
+        const steps = buildBotRunLoopSteps();
+        const done = steps.filter((step) => step.ready).length;
+        const next = steps.find((step) => !step.ready);
+        botRunLoop?.classList.toggle("ready", done === steps.length);
+        if (botRunLoopSummary) {
+          botRunLoopSummary.textContent = done === steps.length
+            ? "当前 Bot 已完成运行闭环，可以进入 Chat 检查人格、上下文和回复风格。"
+            : `已完成 ${done}/${steps.length}，下一步：${next?.label || "继续检查"}。${next?.detail || ""}`;
+        }
+        botRunLoopList.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+        steps.forEach((step) => {
+          const item = document.createElement("div");
+          item.className = `bot-run-loop-item ${step.ready ? "ok" : "warn"}`;
+          item.innerHTML = "<strong></strong><span></span>";
+          item.querySelector("strong").textContent = `${step.ready ? "完成" : "待处理"} · ${step.label}`;
+          item.querySelector("span").textContent = step.detail;
+          fragment.appendChild(item);
+        });
+        botRunLoopList.appendChild(fragment);
+      }
+
+      function markBotReadyForChat() {
+        botFullLoopPassed = true;
+        renderBotRunLoop();
+        refreshGuideProgress();
+      }
+
       function renderBotBridgePreflight(checks) {
         const items = checks || buildBotBridgePreflightChecks();
         const failedRequired = items.filter((item) => !item.ok);
@@ -5059,6 +5223,7 @@
           configSelectedBot.textContent = `${current.name || current.id || "当前 Bot"} · ${current.id || "default"}`;
         }
         renderBotBridgePreflight(buildBotBridgePreflightChecks());
+        renderBotRunLoop();
       }
 
       function renderBotProfiles() {
@@ -5147,6 +5312,8 @@
           selectedBotProfileId = result.profile?.id || payload.id;
           renderBotProfiles();
           setBotStatus(`已创建 Bot：${result.profile?.name || payload.name}。`, "ok");
+          renderBotRunLoop();
+          refreshGuideProgress();
         } catch (error) {
           setBotStatus(`创建失败：${error.message}`, "error");
         }
@@ -5168,6 +5335,8 @@
           selectedBotProfileId = botProfiles[0]?.id || "default";
           renderBotProfiles();
           setBotStatus(result.ok ? "已删除 Bot 档案。" : "未删除 Bot 档案。", result.ok ? "ok" : "warn");
+          renderBotRunLoop();
+          refreshGuideProgress();
           return result;
         } catch (error) {
           setBotStatus(`删除失败：${error.message}`, "error");
@@ -5185,6 +5354,8 @@
           await syncBotBridgeIntegration(result.profile?.id || selectedBotProfileId);
           setBotStatus(`已保存 Bot：${result.profile?.name || payload.name}。`, "ok");
           setConfigStatus(`已保存 Bot 人格：${result.profile?.name || payload.name}。`, "ok");
+          renderBotRunLoop();
+          refreshGuideProgress();
         } catch (error) {
           setBotStatus(`保存失败：${error.message}`, "error");
           setConfigStatus(`保存 Bot 人格失败：${error.message}`, "error");
@@ -5267,6 +5438,8 @@
           setBotBridgeStatus(action === "stop" ? "已停止" : actionResult.ok === false ? "操作失败" : "运行中", actionResult.ok === false ? "error" : action === "stop" ? "warn" : "ok");
           setBotBridgeLog(`${labels[action] || "操作"}桥接：${actionResult.status || (actionResult.ok === false ? "failed" : "ok")}\n实例：${integrationId}\nPID：${actionResult.pid || "-"}\n日志：${actionResult.log_file || "-"}`);
           await loadBotBridgeLogs();
+          renderBotRunLoop();
+          refreshGuideProgress();
           return result;
         } catch (error) {
           setBotBridgeStatus(`${labels[action] || "操作"}失败`, "error");
@@ -5653,11 +5826,15 @@
           detailSections.push(stickerDetail);
         }
         summaryLines.push(bridgeLoopStepStatus("表情包", stickerResult));
-        const failed = [textResult, voiceResult, stickerResult].some((result) => !result || result.ok === false);
-        const fullLoopSummary = [...summaryLines, failed ? "结论：有步骤未通过，请按上方失败项修复。" : "结论：完整链路测试通过。"].join("\n");
-        setBotBridgeStatus(failed ? "链路异常" : "链路通过", failed ? "error" : "ok");
+        const fullLoopFailed = [textResult, voiceResult, stickerResult].some((result) => !result || result.ok === false);
+        const fullLoopSummary = [...summaryLines, fullLoopFailed ? "结论：有步骤未通过，请按上方失败项修复。" : "结论：完整链路测试通过。"].join("\n");
+        setBotBridgeStatus(fullLoopFailed ? "链路异常" : "链路通过", fullLoopFailed ? "error" : "ok");
         setBotBridgeLog([fullLoopSummary, ...detailSections].join("\n\n"));
-        return { integration, text: textResult, voice: voiceResult, sticker: stickerResult, ok: !failed };
+        renderBotRunLoop();
+        if (fullLoopFailed === false) {
+          markBotReadyForChat();
+        }
+        return { integration, text: textResult, voice: voiceResult, sticker: stickerResult, ok: !fullLoopFailed };
       }
 
       async function loadDesktopConfig() {
@@ -5991,6 +6168,12 @@
           return;
         }
 
+        if (event.target.closest("[data-bot-next-chat]")) {
+          activateWorkspace("chat");
+          activateSection("chat");
+          return;
+        }
+
         if (event.target.closest("[data-bot-bridge-test]")) {
           testBotBridge();
           return;
@@ -6144,6 +6327,7 @@
       applyTheme(localStorage.getItem("branchwhisper:desktop-theme") || "light");
       applyLanguage(localStorage.getItem("branchwhisper:desktop-language") || "zh");
       renderBotBridgePreflight(buildBotBridgePreflightChecks());
+      renderBotRunLoop();
       updateBotBridgeLogView();
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
       activateSection("guide");
