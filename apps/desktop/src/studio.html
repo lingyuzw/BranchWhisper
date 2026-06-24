@@ -2319,28 +2319,59 @@
 
       .chat-list {
         display: grid;
-        align-content: start;
-        gap: 8px;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 12px;
         padding: 12px;
         border-right: 1px solid var(--border);
         background: var(--surface-muted);
       }
 
+      .chat-list-head {
+        display: grid;
+        gap: 8px;
+      }
+
+      .chat-list-scroll {
+        min-height: 0;
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
       .chat-item {
+        width: 100%;
         padding: 10px;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
         background: var(--surface);
+        color: var(--text-soft);
+        text-align: left;
+      }
+
+      .chat-item.active {
+        border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+        background: var(--primary-soft);
+        color: var(--text);
+        box-shadow: inset 3px 0 0 var(--primary);
       }
 
       .chat-item strong {
         display: block;
+        overflow: hidden;
         font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .chat-item span {
+        display: block;
+        overflow: hidden;
         color: var(--text-muted);
         font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .chat-thread {
@@ -2353,6 +2384,64 @@
       .composer {
         padding: 12px 14px;
         border-bottom: 1px solid var(--border);
+      }
+
+      .chat-thread-head {
+        display: grid;
+        gap: 10px;
+      }
+
+      .chat-title-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .chat-title-row h2 {
+        font-size: 20px;
+      }
+
+      .chat-model-bar {
+        display: grid;
+        grid-template-columns: minmax(150px, 0.9fr) minmax(170px, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+      }
+
+      .chat-model-bar label {
+        display: grid;
+        gap: 5px;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .chat-model-bar select {
+        width: 100%;
+        min-height: 36px;
+        border: 1px solid var(--border);
+        border-radius: var(--control-radius);
+        background: var(--surface);
+        color: var(--text);
+        padding: 0 10px;
+      }
+
+      .chat-status-card {
+        min-width: 158px;
+        display: grid;
+        gap: 3px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-size: 12px;
+      }
+
+      .chat-status-card strong {
+        color: var(--text);
+        font-size: 13px;
       }
 
       .messages {
@@ -2382,6 +2471,20 @@
         background: var(--surface-muted);
       }
 
+      .message.error {
+        background: var(--danger-soft);
+        border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+      }
+
+      .chat-empty {
+        min-height: 100%;
+        display: grid;
+        place-items: center;
+        padding: 26px;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
       .composer {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -2390,15 +2493,29 @@
         border-bottom: 0;
       }
 
+      .composer textarea,
       .composer-box {
-        min-height: 42px;
-        display: flex;
-        align-items: center;
+        width: 100%;
+        min-height: 46px;
+        max-height: 126px;
         padding: 0 12px;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
         background: var(--surface-muted);
+        color: var(--text);
+        resize: vertical;
+      }
+
+      .composer-box {
+        display: flex;
+        align-items: center;
         color: var(--text-muted);
+      }
+
+      .chat-list-foot {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.6;
       }
 
       @media (max-width: 1180px) {
@@ -3245,22 +3362,46 @@
             <section class="page" data-panel="chat">
               <div class="chat-layout">
                 <aside class="chat-list">
-                  <button class="primary-action" type="button">创建对话</button>
-                  <div class="chat-item"><strong>新的对话</strong><span>选择 API 后开始聊天</span></div>
-                  <div class="chat-item"><strong>Bot 测试</strong><span>用于测试人格和规则</span></div>
+                  <div class="chat-list-head">
+                    <button class="primary-action" type="button" data-chat-new>创建对话</button>
+                    <p class="muted">只用于桌面端测试 Bot 人格、API 回复和规则效果。</p>
+                  </div>
+                  <div class="chat-list-scroll" data-chat-list></div>
+                  <div class="chat-list-foot">
+                    <strong>数据说明</strong>
+                    <span>发送内容会走 Bot 对话接口，正式 Bot 聊天记录仍在“对话数据”页面统一管理。</span>
+                  </div>
                 </aside>
                 <div class="chat-thread">
                   <div class="chat-thread-head">
-                    <h2>Chat</h2>
-                    <p class="muted">这里是独立的正常对话页面，布局接近 ChatGPT，不混在 Bot 管理页里。</p>
+                    <div class="chat-title-row">
+                      <div>
+                        <h2>Chat</h2>
+                        <p class="muted">独立的模型对话页面，用来测试当前 Bot、API 和人格配置。</p>
+                      </div>
+                      <span class="badge warn" data-chat-status>准备开始</span>
+                    </div>
+                    <div class="chat-model-bar">
+                      <label>
+                        Bot
+                        <select data-chat-bot-select></select>
+                      </label>
+                      <label>
+                        API
+                        <select data-chat-api-select></select>
+                      </label>
+                      <div class="chat-status-card">
+                        <span>Token 估算</span>
+                        <strong data-chat-token-estimate>0 tokens</strong>
+                      </div>
+                    </div>
                   </div>
-                  <div class="messages">
-                    <div class="message assistant">先选择 API 或本地模型，然后创建对话。这里会显示模型配置、当前人格、Token 使用和对话内容。</div>
-                    <div class="message user">我想测试一下 BranchWhisper 的聊天效果。</div>
+                  <div class="messages" data-chat-thread>
+                    <div class="chat-empty">点击“创建对话”，选择 Bot 和 API 后开始测试。</div>
                   </div>
                   <div class="composer">
-                    <div class="composer-box">输入消息...</div>
-                    <button class="primary-action" type="button">发送</button>
+                    <textarea rows="2" placeholder="输入消息..." data-chat-composer></textarea>
+                    <button class="primary-action" type="button" data-chat-send>发送</button>
                   </div>
                 </div>
               </div>
@@ -3404,6 +3545,15 @@
       const botRunLoop = document.querySelector("[data-bot-run-loop]");
       const botRunLoopSummary = document.querySelector("[data-bot-run-loop-summary]");
       const botRunLoopList = document.querySelector("[data-bot-run-loop-list]");
+      const chatNewButton = document.querySelector("[data-chat-new]");
+      const chatList = document.querySelector("[data-chat-list]");
+      const chatThread = document.querySelector("[data-chat-thread]");
+      const chatStatus = document.querySelector("[data-chat-status]");
+      const chatBotSelect = document.querySelector("[data-chat-bot-select]");
+      const chatApiSelect = document.querySelector("[data-chat-api-select]");
+      const chatComposer = document.querySelector("[data-chat-composer]");
+      const chatSendButton = document.querySelector("[data-chat-send]");
+      const chatTokenEstimate = document.querySelector("[data-chat-token-estimate]");
       const botStatus = document.querySelector("[data-bot-status]");
       const botCount = document.querySelector("[data-bot-count]");
       const botSelectedName = document.querySelector("[data-bot-selected-name]");
@@ -3481,6 +3631,8 @@
       let botBridgeLogExpanded = false;
       let botBridgeLogFullText = botBridgeLog?.textContent || "";
       let botFullLoopPassed = false;
+      let chatSessions = [];
+      let activeChatSessionId = "";
       let platformLogs = [];
       let platformLogLoadSequence = 0;
       let activePlatformLogSource = "all";
@@ -4769,6 +4921,7 @@
         }
         botApiProviderInput.value = currentValue;
         renderBotBridgePreflight(buildBotBridgePreflightChecks());
+        renderChatModelOptions();
       }
 
       function currentApiProviderPayload() {
@@ -5071,6 +5224,240 @@
         botFullLoopPassed = true;
         renderBotRunLoop();
         refreshGuideProgress();
+      }
+
+      function setChatStatus(message, tone = "warn") {
+        if (!chatStatus) {
+          return;
+        }
+        chatStatus.textContent = message;
+        chatStatus.className = `badge ${tone}`;
+      }
+
+      function renderChatModelOptions() {
+        const providers = apiProviders.length ? apiProviders : defaultApiProviders;
+        const currentProvider = chatApiSelect?.value || selectedBotProfile()?.api_provider_id || activeApiProviderId || providers[0]?.id || "qwen";
+        if (chatApiSelect) {
+          chatApiSelect.innerHTML = "";
+          providers.forEach((provider) => {
+            const option = document.createElement("option");
+            option.value = provider.id;
+            option.textContent = `${provider.name || provider.id} · ${provider.model || "未填写模型"}`;
+            chatApiSelect.appendChild(option);
+          });
+          if (!providers.some((provider) => provider.id === currentProvider)) {
+            const option = document.createElement("option");
+            option.value = currentProvider;
+            option.textContent = `${currentProvider} · 未在 API 列表中`;
+            chatApiSelect.appendChild(option);
+          }
+          chatApiSelect.value = currentProvider;
+        }
+
+        const currentBot = chatBotSelect?.value || selectedBotProfileId || botProfiles[0]?.id || "weixin_personal";
+        if (chatBotSelect) {
+          chatBotSelect.innerHTML = "";
+          const profiles = botProfiles.length ? botProfiles : [{ id: selectedBotBridgeIntegrationId(), name: "当前微信桥接" }];
+          profiles.forEach((profile) => {
+            const option = document.createElement("option");
+            option.value = profile.integration_id || profile.bridge_integration_id || profile.id;
+            option.textContent = `${profile.name || profile.id} · ${profile.id}`;
+            chatBotSelect.appendChild(option);
+          });
+          if (!Array.from(chatBotSelect.options).some((option) => option.value === currentBot)) {
+            const option = document.createElement("option");
+            option.value = currentBot;
+            option.textContent = `${currentBot} · 当前选择`;
+            chatBotSelect.appendChild(option);
+          }
+          chatBotSelect.value = currentBot;
+        }
+      }
+
+      function activeChatSession() {
+        return chatSessions.find((session) => session.id === activeChatSessionId) || null;
+      }
+
+      function estimateChatTokens() {
+        const session = activeChatSession();
+        const messages = session?.messages || [];
+        const typed = chatComposer?.value || "";
+        const chars = messages.reduce((total, message) => total + String(message.text || "").length, typed.length);
+        return Math.max(0, Math.ceil(chars / 2));
+      }
+
+      function updateChatTokenEstimate() {
+        if (chatTokenEstimate) {
+          chatTokenEstimate.textContent = `${estimateChatTokens()} tokens`;
+        }
+      }
+
+      function createChatSession() {
+        const now = new Date();
+        const botId = chatBotSelect?.value || selectedBotBridgeIntegrationId();
+        const apiId = chatApiSelect?.value || activeApiProviderId || "qwen";
+        const session = {
+          id: `desktop_chat_${now.getTime()}`,
+          title: "新的对话",
+          bot_id: botId,
+          api_provider_id: apiId,
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+          messages: [
+            {
+              role: "assistant",
+              text: "可以开始测试了。我会按当前 Bot 和 API 配置回复。",
+              created_at: now.toISOString(),
+            },
+          ],
+        };
+        chatSessions = [session, ...chatSessions].slice(0, 20);
+        activeChatSessionId = session.id;
+        renderChatSessions();
+        renderChatThread();
+        setChatStatus("已创建对话", "ok");
+        chatComposer?.focus();
+        return session;
+      }
+
+      function renderChatSessions() {
+        renderChatModelOptions();
+        if (!chatList) {
+          renderChatThread();
+          return;
+        }
+        if (!chatSessions.length) {
+          chatList.innerHTML = '<div class="chat-item"><strong>还没有对话</strong><span>点击上方按钮创建第一个测试会话</span></div>';
+          renderChatThread();
+          updateChatTokenEstimate();
+          return;
+        }
+        chatList.innerHTML = "";
+        chatSessions.forEach((session) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `chat-item${session.id === activeChatSessionId ? " active" : ""}`;
+          button.dataset.chatSessionId = session.id;
+          button.innerHTML = "<strong></strong><span></span>";
+          const lastMessage = session.messages[session.messages.length - 1];
+          button.querySelector("strong").textContent = session.title || "未命名对话";
+          button.querySelector("span").textContent = lastMessage?.text || formatDateTime(session.updated_at);
+          chatList.appendChild(button);
+        });
+        renderChatThread();
+        updateChatTokenEstimate();
+      }
+
+      function renderChatThread() {
+        const session = activeChatSession();
+        if (!chatThread) {
+          updateChatTokenEstimate();
+          return;
+        }
+        if (!session) {
+          chatThread.innerHTML = '<div class="chat-empty">点击“创建对话”，选择 Bot 和 API 后开始测试。</div>';
+          setChatStatus("准备开始", "warn");
+          updateChatTokenEstimate();
+          return;
+        }
+        chatThread.innerHTML = "";
+        session.messages.forEach((message) => {
+          const item = document.createElement("div");
+          item.className = `message ${message.role === "user" ? "user" : message.role === "error" ? "error" : "assistant"}`;
+          item.textContent = message.text || "";
+          chatThread.appendChild(item);
+        });
+        chatThread.scrollTop = chatThread.scrollHeight;
+        updateChatTokenEstimate();
+      }
+
+      function extractChatReply(result) {
+        if (!result) {
+          return "没有拿到回复内容。";
+        }
+        if (typeof result === "string") {
+          return result;
+        }
+        const data = result.data || {};
+        const candidates = [
+          result.reply,
+          result.text,
+          result.message,
+          result.content,
+          data.reply,
+          data.text,
+          data.message,
+          data.content,
+          data.answer,
+        ];
+        const value = candidates.find((candidate) => typeof candidate === "string" && candidate.trim());
+        if (value) {
+          return value;
+        }
+        if (Array.isArray(data.messages) && data.messages.length) {
+          const last = data.messages[data.messages.length - 1];
+          return last?.text || last?.content || JSON.stringify(last);
+        }
+        return result.error || JSON.stringify(result, null, 2);
+      }
+
+      async function sendChatMessage() {
+        const text = chatComposer?.value.trim() || "";
+        if (!text) {
+          setChatStatus("先输入一条消息", "warn");
+          chatComposer?.focus();
+          return null;
+        }
+        let session = activeChatSession();
+        if (!session) {
+          session = createChatSession();
+        }
+        const now = new Date().toISOString();
+        session.messages.push({ role: "user", text, created_at: now });
+        session.title = session.title === "新的对话" ? text.slice(0, 22) : session.title;
+        session.updated_at = now;
+        if (chatComposer) {
+          chatComposer.value = "";
+        }
+        renderChatSessions();
+        setChatStatus("发送中", "run");
+        if (chatSendButton) {
+          chatSendButton.disabled = true;
+        }
+        try {
+          const result = await backendRequest({
+            method: "POST",
+            path: "/api/integrations/dialog",
+            body: {
+              platform_id: chatBotSelect?.value || selectedBotBridgeIntegrationId(),
+              session_id: activeChatSessionId,
+              sender_id: "branchwhisper_desktop_chat",
+              text,
+              api_provider_id: chatApiSelect?.value || session.api_provider_id || activeApiProviderId,
+            },
+          });
+          const reply = extractChatReply(result);
+          session.messages.push({ role: result.ok === false ? "error" : "assistant", text: reply, created_at: new Date().toISOString() });
+          session.updated_at = new Date().toISOString();
+          renderChatSessions();
+          setChatStatus(result.ok === false ? "接口返回异常" : "已收到回复", result.ok === false ? "error" : "ok");
+          markBotReadyForChat();
+          return result;
+        } catch (error) {
+          session.messages.push({
+            role: "error",
+            text: `发送失败：${error.message}。建议先检查后端、API Key、Bot 绑定和微信桥接实例。`,
+            created_at: new Date().toISOString(),
+          });
+          session.updated_at = new Date().toISOString();
+          renderChatSessions();
+          setChatStatus("发送失败", "error");
+          return null;
+        } finally {
+          if (chatSendButton) {
+            chatSendButton.disabled = false;
+          }
+        }
       }
 
       function renderBotBridgePreflight(checks) {
@@ -5916,6 +6303,12 @@
         if (next === "statistics") {
           loadStatistics();
         }
+        if (next === "chat") {
+          loadBotProfiles().finally(() => {
+            renderChatModelOptions();
+            renderChatSessions();
+          });
+        }
       }
 
       function activateWorkspace(workspace) {
@@ -6092,6 +6485,24 @@
           const section = guideNextTarget.dataset.sectionTarget || "api";
           activateWorkspace(workspace);
           activateSection(section);
+          return;
+        }
+
+        const chatSessionTarget = event.target.closest("[data-chat-session-id]");
+        if (chatSessionTarget) {
+          activeChatSessionId = chatSessionTarget.dataset.chatSessionId || "";
+          renderChatSessions();
+          setChatStatus("已切换对话", "ok");
+          return;
+        }
+
+        if (event.target.closest("[data-chat-new]")) {
+          createChatSession();
+          return;
+        }
+
+        if (event.target.closest("[data-chat-send]")) {
+          sendChatMessage();
           return;
         }
 
@@ -6311,12 +6722,48 @@
       if (botApiProviderInput) {
         botApiProviderInput.addEventListener("change", () => {
           renderBotBridgePreflight(buildBotBridgePreflightChecks());
+          renderChatModelOptions();
         });
       }
 
       if (botBridgeIntegrationInput) {
         botBridgeIntegrationInput.addEventListener("input", () => {
           renderBotBridgePreflight(buildBotBridgePreflightChecks());
+          renderChatModelOptions();
+        });
+      }
+
+      if (chatComposer) {
+        chatComposer.addEventListener("input", updateChatTokenEstimate);
+        chatComposer.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendChatMessage();
+          }
+        });
+      }
+
+      if (chatBotSelect) {
+        chatBotSelect.addEventListener("change", () => {
+          const session = activeChatSession();
+          if (session) {
+            session.bot_id = chatBotSelect.value;
+            session.updated_at = new Date().toISOString();
+            renderChatSessions();
+          }
+          setChatStatus("已切换 Bot", "warn");
+        });
+      }
+
+      if (chatApiSelect) {
+        chatApiSelect.addEventListener("change", () => {
+          const session = activeChatSession();
+          if (session) {
+            session.api_provider_id = chatApiSelect.value;
+            session.updated_at = new Date().toISOString();
+            renderChatSessions();
+          }
+          setChatStatus("已切换 API", "warn");
         });
       }
 
@@ -6328,6 +6775,8 @@
       applyLanguage(localStorage.getItem("branchwhisper:desktop-language") || "zh");
       renderBotBridgePreflight(buildBotBridgePreflightChecks());
       renderBotRunLoop();
+      renderChatModelOptions();
+      renderChatSessions();
       updateBotBridgeLogView();
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
       activateSection("guide");

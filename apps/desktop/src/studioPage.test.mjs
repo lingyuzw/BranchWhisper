@@ -1176,6 +1176,39 @@ test("studio diagnostics hero shows full API card and chat workspace hides manag
   assert.match(html, /function activateWorkspace\(workspace\) \{[\s\S]*root\.dataset\.rail = next === "chat" \? "hidden" : root\.dataset\.rail/s);
 });
 
+test("studio Chat page creates conversations and sends Bot test messages through backend APIs", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-chat-new",
+    "data-chat-list",
+    "data-chat-thread",
+    "data-chat-status",
+    "data-chat-bot-select",
+    "data-chat-api-select",
+    "data-chat-composer",
+    "data-chat-send",
+    "data-chat-token-estimate",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /let chatSessions = \[\]/);
+  assert.match(html, /let activeChatSessionId = ""/);
+  assert.match(html, /function renderChatSessions\(\)/);
+  assert.match(html, /function renderChatThread\(\)/);
+  assert.match(html, /function createChatSession\(\)/);
+  assert.match(html, /async function sendChatMessage\(\)/);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/integrations\/dialog"/s);
+  assert.match(html, /platform_id:\s*chatBotSelect\?\.value \|\| selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /session_id:\s*activeChatSessionId/);
+  assert.match(html, /sender_id:\s*"branchwhisper_desktop_chat"/);
+  assert.match(html, /renderBotApiProviderOptions\(\)[\s\S]*renderChatModelOptions\(\)/);
+  assert.match(html, /if \(next === "chat"\) \{[\s\S]*renderChatModelOptions\(\);[\s\S]*renderChatSessions\(\);/s);
+  assert.match(html, /event\.target\.closest\("\[data-chat-new\]"\)[\s\S]*createChatSession\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-chat-send\]"\)[\s\S]*sendChatMessage\(\)/);
+});
+
 test("studio secondary pages show usable empty states instead of blank canvases", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
