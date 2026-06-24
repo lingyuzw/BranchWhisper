@@ -1455,6 +1455,10 @@
         gap: 10px;
       }
 
+      .bridge-loop-run-all {
+        width: 100%;
+      }
+
       .bridge-loop-card {
         min-height: 108px;
         display: grid;
@@ -2312,6 +2316,7 @@
                   </div>
                   <div class="bridge-operational-grid">
                     <div class="bridge-loop-checks">
+                      <button class="primary-action bridge-loop-run-all" type="button" data-bot-bridge-test-all>测试完整链路</button>
                       <div class="bridge-loop-card">
                         <strong>测试文字回复</strong>
                         <span>发送一条模拟微信消息，确认 dialog 链路能生成文字回复。</span>
@@ -4607,6 +4612,55 @@
         }
       }
 
+      function bridgeLoopStepStatus(name, result) {
+        if (!result) {
+          return `失败 · ${name}`;
+        }
+        return result.ok === false ? `异常 · ${name}` : `通过 · ${name}`;
+      }
+
+      async function runBotBridgeFullLoopTest() {
+        setBotBridgeStatus("链路测试中", "run");
+        const startedAt = new Date().toLocaleTimeString();
+        const summaryLines = [`完整链路测试`, `开始时间：${startedAt}`];
+        const detailSections = [];
+        const integration = await testBotBridge();
+        const integrationDetail = botBridgeLogFullText || "";
+        if (integrationDetail) {
+          detailSections.push(integrationDetail);
+        }
+        if (!integration) {
+          const fullLoopSummary = [...summaryLines, "失败 · 检测实例", "检测实例失败，已停止后续测试。", "建议：先确认集成实例 ID、桌面后端和 OpenClaw 状态。"].join("\n");
+          setBotBridgeStatus("链路失败", "error");
+          setBotBridgeLog([fullLoopSummary, ...detailSections].join("\n\n"));
+          return null;
+        }
+        summaryLines.push("通过 · 检测实例");
+        const textResult = await runBotBridgeDialogProbe();
+        const textDetail = botBridgeLogFullText || "";
+        if (textDetail) {
+          detailSections.push(textDetail);
+        }
+        summaryLines.push(bridgeLoopStepStatus("文字回复", textResult));
+        const voiceResult = await runBotBridgeVoiceProbe();
+        const voiceDetail = botBridgeLogFullText || "";
+        if (voiceDetail) {
+          detailSections.push(voiceDetail);
+        }
+        summaryLines.push(bridgeLoopStepStatus("语音回复", voiceResult));
+        const stickerResult = await runBotBridgeStickerProbe();
+        const stickerDetail = botBridgeLogFullText || "";
+        if (stickerDetail) {
+          detailSections.push(stickerDetail);
+        }
+        summaryLines.push(bridgeLoopStepStatus("表情包", stickerResult));
+        const failed = [textResult, voiceResult, stickerResult].some((result) => !result || result.ok === false);
+        const fullLoopSummary = [...summaryLines, failed ? "结论：有步骤未通过，请按上方失败项修复。" : "结论：完整链路测试通过。"].join("\n");
+        setBotBridgeStatus(failed ? "链路异常" : "链路通过", failed ? "error" : "ok");
+        setBotBridgeLog([fullLoopSummary, ...detailSections].join("\n\n"));
+        return { integration, text: textResult, voice: voiceResult, sticker: stickerResult, ok: !failed };
+      }
+
       async function loadDesktopConfig() {
         try {
           const [config, profiles] = await Promise.all([loadApiConfig(), loadBotProfiles()]);
@@ -4916,6 +4970,11 @@
 
         if (event.target.closest("[data-bot-bridge-test-emoji]")) {
           runBotBridgeStickerProbe();
+          return;
+        }
+
+        if (event.target.closest("[data-bot-bridge-test-all]")) {
+          runBotBridgeFullLoopTest();
           return;
         }
 

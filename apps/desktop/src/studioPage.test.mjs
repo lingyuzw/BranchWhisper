@@ -527,6 +527,43 @@ test("studio Bot page controls bridge runtime and logs through integration APIs"
   }
 });
 
+test("studio Bot bridge has a one-click full loop test", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /data-bot-bridge-test-all/);
+  assert.match(html, /async function runBotBridgeFullLoopTest\(\)/);
+  assert.match(html, /event\.target\.closest\("\[data-bot-bridge-test-all\]"\)[\s\S]*runBotBridgeFullLoopTest\(\)/);
+});
+
+test("studio Bot bridge full loop test reuses existing probes in order", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const source = extractScriptFunction(html, "runBotBridgeFullLoopTest");
+
+  assert.ok(source.indexOf("testBotBridge()") < source.indexOf("runBotBridgeDialogProbe()"));
+  assert.ok(source.indexOf("runBotBridgeDialogProbe()") < source.indexOf("runBotBridgeVoiceProbe()"));
+  assert.ok(source.indexOf("runBotBridgeVoiceProbe()") < source.indexOf("runBotBridgeStickerProbe()"));
+  assert.match(source, /setBotBridgeStatus\("链路测试中", "run"\)/);
+  assert.match(source, /setBotBridgeLog\(\[fullLoopSummary,\s*\.\.\.detailSections\]\.join\("\\n\\n"\)\)/);
+  assert.match(source, /完整链路测试/);
+  assert.match(source, /检测实例失败，已停止后续测试/);
+});
+
+test("studio Bot bridge full loop test preserves detailed diagnostics from each step", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const source = extractScriptFunction(html, "runBotBridgeFullLoopTest");
+
+  assert.match(source, /const integrationDetail = botBridgeLogFullText \|\| ""/);
+  assert.match(source, /const textDetail = botBridgeLogFullText \|\| ""/);
+  assert.match(source, /const voiceDetail = botBridgeLogFullText \|\| ""/);
+  assert.match(source, /const stickerDetail = botBridgeLogFullText \|\| ""/);
+  assert.match(source, /const detailSections = \[\]/);
+  assert.match(source, /detailSections\.push\(integrationDetail\)/);
+  assert.match(source, /detailSections\.push\(textDetail\)/);
+  assert.match(source, /detailSections\.push\(voiceDetail\)/);
+  assert.match(source, /detailSections\.push\(stickerDetail\)/);
+  assert.match(source, /setBotBridgeLog\(\[fullLoopSummary,\s*\.\.\.detailSections\]\.join\("\\n\\n"\)\)/);
+});
+
 test("studio Bot bridge logs stay compact with expandable full details", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
