@@ -36,6 +36,7 @@ from api.dependencies import (
 from core.http_client import httpx_client_for_url
 from domain.paths import (
     APP_DIR,
+    API_PROVIDERS_CONFIG,
     AVATAR_DIR,
     BOT_PROFILES_CONFIG,
     CHAT_IMAGE_DIR,
@@ -76,6 +77,7 @@ from core.config import (
     load_persisted_settings,
 )
 from data.conversations import ConversationStore
+from data.api_providers import ApiProviderStore
 from dialog.session import DialogSession
 from dialog.trace import DialogTraceStore
 from integration_runtime.manager import ExternalDialogEngine, IntegrationManager
@@ -449,6 +451,7 @@ def create_app(args) -> FastAPI:
     app.state.conversation_store = ConversationStore(CONVERSATION_DIR)
     app.state.memory_store = MemoryStore(MEMORY_DB)
     app.state.tool_providers = ToolProviderConfig(TOOL_PROVIDERS_CONFIG)
+    app.state.api_providers = ApiProviderStore(API_PROVIDERS_CONFIG)
     app.state.tool_manager = ToolManager(TOOLS_CONFIG, app.state.tool_providers)
     app.state.bot_profiles = BotProfileStore(BOT_PROFILES_CONFIG, app.state.settings.system)
     app.state.avatar_store = AvatarStore(AVATAR_DIR)

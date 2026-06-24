@@ -227,6 +227,50 @@ test("studio API page wires backend config load save and live test without expos
   assert.match(html, /if \(next === "api"\) \{\s*loadApiConfig\(\);/s);
 });
 
+test("studio API page manages provider profiles through backend APIs", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-api-provider-list",
+    "data-api-provider-create",
+    "data-api-provider-delete",
+    "data-api-provider-activate",
+    "data-api-provider-count",
+    "data-api-provider-active-name",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /let apiProviders = \[\]/);
+  assert.match(html, /let selectedApiProviderId = "qwen"/);
+  assert.match(html, /async function loadApiProviders\(\)/);
+  assert.match(html, /function renderApiProviders\(\)/);
+  assert.match(html, /function currentApiProviderPayload\(\)/);
+  assert.match(html, /async function createApiProvider\(\)/);
+  assert.match(html, /async function saveApiProvider\(\)/);
+  assert.match(html, /async function deleteApiProvider\(\)/);
+  assert.match(html, /async function activateApiProvider\(\)/);
+  assert.match(html, /backendRequest\(\{\s*path:\s*"\/api\/config\/api-providers"\s*\}\)/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/config\/api-providers"/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*`\/api\/config\/api-providers\/\$\{encodeURIComponent\(selectedApiProviderId\)\}`/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"DELETE",\s*path:\s*`\/api\/config\/api-providers\/\$\{encodeURIComponent\(selectedApiProviderId\)\}`/s);
+  assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*`\/api\/config\/api-providers\/\$\{encodeURIComponent\(selectedApiProviderId\)\}\/activate`/s);
+  assert.match(html, /apiKeyInput\.placeholder = provider\.api_key_masked \|\| "未保存 API Key"/);
+  assert.doesNotMatch(html, /apiKeyInput\.value\s*=\s*provider\.api_key_masked/);
+});
+
+test("studio API page keeps default provider choices visible when backend provider list is unavailable", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /const defaultApiProviders = \[/);
+  for (const providerId of ["qwen", "deepseek", "openai", "custom"]) {
+    assert.match(html, new RegExp(`id: "${providerId}"`));
+  }
+  assert.match(html, /apiProviders = defaultApiProviders\.map\(\(provider\) => \(\{ \.\.\.provider \}\)\)/);
+  assert.match(html, /activeApiProviderId = "qwen"/);
+  assert.match(html, /renderSelectedApiProvider\(\)/);
+});
+
 test("studio Bot page creates loads and saves real bot profiles", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 

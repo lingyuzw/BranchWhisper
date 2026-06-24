@@ -38,6 +38,72 @@ def create_config_router() -> APIRouter:
             ) from exc
         return public_settings(settings)
 
+    @router.get("/api/config/api-providers")
+    async def api_providers(request: Request):
+        require_local_service_control(request)
+        return request.app.state.api_providers.public()
+
+    @router.post("/api/config/api-providers")
+    async def create_api_provider(request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        try:
+            provider = request.app.state.api_providers.create(payload or {})
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {"provider": provider, **request.app.state.api_providers.public()}
+
+    @router.patch("/api/config/api-providers/{provider_id}")
+    async def update_api_provider(provider_id: str, request: Request, payload: dict | None = Body(default=None)):
+        require_local_service_control(request)
+        try:
+            provider = request.app.state.api_providers.update(provider_id, payload or {})
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="API provider not found") from exc
+        return {"provider": provider, **request.app.state.api_providers.public()}
+
+    @router.delete("/api/config/api-providers/{provider_id}")
+    async def delete_api_provider(provider_id: str, request: Request):
+        require_local_service_control(request)
+        try:
+            ok = request.app.state.api_providers.delete(provider_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {"ok": ok, **request.app.state.api_providers.public()}
+
+    @router.post("/api/config/api-providers/{provider_id}/activate")
+    async def activate_api_provider(provider_id: str, request: Request):
+        require_local_service_control(request)
+        try:
+            provider = request.app.state.api_providers.activate(provider_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="API provider not found") from exc
+
+        settings = request.app.state.settings
+        before = asdict(settings)
+        try:
+            settings.update_from_dict(
+                {
+                    "dialog_mode": "api",
+                    "api_llm_url": provider.get("url", ""),
+                    "api_llm_model": provider.get("model", ""),
+                    "api_llm_api_key": provider.get("api_key", ""),
+                    "api_temperature": provider.get("temperature", 0.7),
+                    "api_max_tokens": provider.get("max_tokens", 1024),
+                }
+            )
+            save_persisted_settings(settings, SETTINGS_CONFIG)
+        except Exception as exc:
+            for key, value in before.items():
+                setattr(settings, key, value)
+            raise HTTPException(
+                status_code=500,
+                detail=f"启用 API provider 失败：path={SETTINGS_CONFIG} error={exc}",
+            ) from exc
+        return {
+            **request.app.state.api_providers.public(),
+            "config": public_settings(settings),
+        }
+
     @router.post("/api/config/voice-samples")
     async def upload_voice_sample(request: Request, payload: dict | None = Body(default=None)):
         require_local_service_control(request)
