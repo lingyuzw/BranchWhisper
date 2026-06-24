@@ -2,15 +2,19 @@
 
 mod backend_contract;
 mod backend_launcher;
+mod desktop_shell;
 mod startup_status;
 
 use backend_launcher::StartedBackendProcess;
+use desktop_shell::{
+    CloseRequestAction, DesktopShellAction, TrayIconSignal, TrayMouseButton, TrayMouseButtonState,
+};
 use startup_status::DesktopStartupStatus;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 use tauri::menu::MenuBuilder;
-use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{App, AppHandle, Manager, WindowEvent};
 
 const TRAY_SHOW_ID: &str = "show";
@@ -96,12 +100,14 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if IS_QUITTING.load(Ordering::SeqCst) {
-                    return;
-                }
-                api.prevent_close();
-                if let Err(error) = window.hide() {
-                    eprintln!("Failed to hide BranchWhisper window: {}", error);
+                match desktop_shell::close_request_action(IS_QUITTING.load(Ordering::SeqCst)) {
+                    CloseRequestAction::AllowClose => {}
+                    CloseRequestAction::HideToTray => {
+                        api.prevent_close();
+                        if let Err(error) = window.hide() {
+                            eprintln!("Failed to hide BranchWhisper window: {}", error);
+                        }
+                    }
                 }
             }
         })
@@ -120,27 +126,38 @@ fn setup_tray(app: &App) -> tauri::Result<()> {
         .menu(&menu)
         .tooltip("BranchWhisper 正在后台运行")
         .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| {
-            if event.id().as_ref() == TRAY_SHOW_ID {
-                show_main_window(app);
-            } else if event.id().as_ref() == TRAY_QUIT_ID {
-                IS_QUITTING.store(true, Ordering::SeqCst);
-                shutdown_started_backend_process();
-                app.exit(0);
-            }
-        })
-        .on_tray_icon_event(|tray, event| match event {
-            TrayIconEvent::Click {
-                button: MouseButton::Left,
-                ..
-            }
-            | TrayIconEvent::DoubleClick {
-                button: MouseButton::Left,
-                ..
-            } => {
+        .on_menu_event(
+            |app, event| match desktop_shell::menu_action_for_id(event.id().as_ref()) {
+                DesktopShellAction::ShowMainWindow => show_main_window(app),
+                DesktopShellAction::Quit => {
+                    IS_QUITTING.store(true, Ordering::SeqCst);
+                    shutdown_started_backend_process();
+                    app.exit(0);
+                }
+                DesktopShellAction::None => {}
+            },
+        )
+        .on_tray_icon_event(|tray, event| {
+            let action = match event {
+                TrayIconEvent::Click {
+                    button,
+                    button_state,
+                    ..
+                } => desktop_shell::tray_icon_action(TrayIconSignal::Click {
+                    button: tray_mouse_button(button),
+                    state: tray_mouse_button_state(button_state),
+                }),
+                TrayIconEvent::DoubleClick { button, .. } => {
+                    desktop_shell::tray_icon_action(TrayIconSignal::DoubleClick {
+                        button: tray_mouse_button(button),
+                    })
+                }
+                _ => DesktopShellAction::None,
+            };
+
+            if action == DesktopShellAction::ShowMainWindow {
                 show_main_window(tray.app_handle());
             }
-            _ => {}
         });
 
     if let Some(icon) = app.default_window_icon().cloned() {
@@ -149,6 +166,21 @@ fn setup_tray(app: &App) -> tauri::Result<()> {
 
     tray.build(app)?;
     Ok(())
+}
+
+fn tray_mouse_button(button: MouseButton) -> TrayMouseButton {
+    match button {
+        MouseButton::Left => TrayMouseButton::Left,
+        MouseButton::Right => TrayMouseButton::Right,
+        MouseButton::Middle => TrayMouseButton::Middle,
+    }
+}
+
+fn tray_mouse_button_state(state: MouseButtonState) -> TrayMouseButtonState {
+    match state {
+        MouseButtonState::Down => TrayMouseButtonState::Down,
+        MouseButtonState::Up => TrayMouseButtonState::Up,
+    }
 }
 
 fn show_main_window(app: &AppHandle) {
@@ -176,7 +208,10 @@ fn shutdown_started_backend_process() {
     }
 
     if let Err(error) = stop_process_tree(pid) {
-        eprintln!("Failed to stop BranchWhisper backend PID {}: {}", pid, error);
+        eprintln!(
+            "Failed to stop BranchWhisper backend PID {}: {}",
+            pid, error
+        );
     }
 }
 
