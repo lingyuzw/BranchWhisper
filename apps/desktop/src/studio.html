@@ -774,6 +774,85 @@
         line-height: 1;
       }
 
+      .asset-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .asset-filters {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 188px;
+        gap: 8px;
+      }
+
+      .asset-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .asset-row {
+        display: grid;
+        gap: 10px;
+        padding: 12px 13px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+      }
+
+      .asset-row-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: start;
+      }
+
+      .asset-row strong {
+        display: block;
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .asset-row small {
+        display: block;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .asset-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .asset-meta {
+        min-width: 0;
+        padding: 8px 9px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+      }
+
+      .asset-meta span {
+        display: block;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 750;
+      }
+
+      .asset-meta strong {
+        font-size: 13px;
+      }
+
+      .asset-status-line {
+        min-width: 0;
+        padding: 10px 12px;
+      }
+
       .feature-workbench {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2491,49 +2570,58 @@
               <div class="page-hero">
                 <div class="hero-copy">
                   <p class="eyebrow">素材库</p>
-                  <h1>管理图片、语音、视频、文件和回复模板</h1>
-                  <p class="lead">素材可以是全局素材，也可以绑定到某个 Bot、人格、自定义规则或未来任务。</p>
-                  <div class="panel-actions">
-                    <button class="primary-action" type="button">导入素材</button>
-                    <button class="secondary-action" type="button">新建回复模板</button>
+                  <h1>管理贴纸素材</h1>
+                  <p class="lead">查看贴纸的审核状态、标签、通道和使用次数，确认素材库是否可用。</p>
+                  <div class="panel-actions asset-toolbar">
+                    <div class="asset-filters">
+                      <input class="text-input" type="search" placeholder="搜索名称、ID、标签" data-asset-search-input />
+                      <select class="text-input" data-asset-status-filter>
+                        <option value="">全部状态</option>
+                        <option value="approved">已通过</option>
+                        <option value="pending">待审核</option>
+                        <option value="failed">失败 / 已禁用</option>
+                      </select>
+                    </div>
+                    <button class="primary-action" type="button" data-asset-load>刷新素材</button>
                   </div>
                 </div>
                 <div class="metric-grid">
-                  <div class="metric"><span>图片</span><strong>0</strong></div>
-                  <div class="metric"><span>语音</span><strong>0</strong></div>
-                  <div class="metric"><span>文件</span><strong>0</strong></div>
-                  <div class="metric"><span>模板</span><strong>0</strong></div>
+                  <div class="metric"><span>素材总数</span><strong data-asset-total>0</strong></div>
+                  <div class="metric"><span>已通过</span><strong data-asset-approved>0</strong></div>
+                  <div class="metric"><span>待审核</span><strong data-asset-pending>0</strong></div>
+                  <div class="metric"><span>有问题</span><strong data-asset-problem>0</strong></div>
                 </div>
               </div>
               <div class="feature-workbench asset-workbench">
                 <div class="panel">
                   <div class="panel-head">
-                    <div><h2>素材列表</h2><p class="muted">图片、语音、视频和文件会按类型归档。</p></div>
-                    <span class="badge">本地目录</span>
+                    <div><h2>贴纸条目</h2><p class="muted">从后端读取 sticker 索引，按状态和关键词筛选。</p></div>
+                    <span class="badge">只读</span>
                   </div>
-                  <div class="empty-state-panel" data-asset-empty>
-                    <strong>还没有素材</strong>
-                    <span>导入后会显示缩略信息、引用次数和绑定范围；素材文件仍保存在运行目录里。</span>
+                  <div class="status-line asset-status-line" data-asset-status>等待加载贴纸库。</div>
+                  <div class="asset-list" data-asset-list></div>
+                  <div class="empty-state-panel" data-asset-empty hidden>
+                    <strong>还没有可显示的贴纸</strong>
+                    <span>可以先刷新，或者切换状态和搜索条件。</span>
                   </div>
                 </div>
                 <div class="panel">
                   <div class="panel-head">
-                    <div><h2>素材导入流程</h2><p class="muted">先分类，再绑定使用场景。</p></div>
+                    <div><h2>字段说明</h2><p class="muted">每条贴纸都保留审核与使用信息。</p></div>
                   </div>
                   <div class="step-list">
-                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>选择文件</strong><span>支持图片、语音、视频和普通文件。</span></div><span class="status-chip">准备</span></div>
-                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>绑定范围</strong><span>全局、某个 Bot、规则或未来任务。</span></div><span class="status-chip">可选</span></div>
-                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>引用素材</strong><span>规则和微信 Bot 发送时按 ID 引用。</span></div><span class="status-chip">下一步</span></div>
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>名称 / ID</strong><span>用于检索与引用。</span></div><span class="status-chip">显示</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>状态 / 情绪</strong><span>展示审核状态、情绪与标签。</span></div><span class="status-chip">显示</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>通道 / 计数</strong><span>展示可用通道、次数和错误摘要。</span></div><span class="status-chip">显示</span></div>
                   </div>
                 </div>
                 <div class="panel">
                   <div class="panel-head">
-                    <div><h2>回复模板</h2><p class="muted">用于固定话术、表情包说明或文件回复。</p></div>
-                    <button class="secondary-action" type="button">新增模板</button>
+                    <div><h2>素材操作</h2><p class="muted">上传、删除和批量编辑会在独立操作区完成。</p></div>
                   </div>
                   <div class="empty-state-panel">
-                    <strong>暂无模板</strong>
-                    <span>模板不会替代模型回复，只作为规则命中或人工选择时的固定内容。</span>
+                    <strong>当前为浏览模式</strong>
+                    <span>先确认素材索引、审核状态和通道配置，再进行批量管理。</span>
                   </div>
                 </div>
               </div>
@@ -2886,6 +2974,15 @@
       const platformLogState = document.querySelector("[data-platform-log-state]");
       const platformLogSourceLabel = document.querySelector("[data-platform-log-source-label]");
       const platformLogToggle = document.querySelector("[data-platform-log-toggle]");
+      const assetSearchInput = document.querySelector("[data-asset-search-input]");
+      const assetStatusFilterInput = document.querySelector("[data-asset-status-filter]");
+      const assetTotalCount = document.querySelector("[data-asset-total]");
+      const assetApprovedCount = document.querySelector("[data-asset-approved]");
+      const assetPendingCount = document.querySelector("[data-asset-pending]");
+      const assetProblemCount = document.querySelector("[data-asset-problem]");
+      const assetStatus = document.querySelector("[data-asset-status]");
+      const assetList = document.querySelector("[data-asset-list]");
+      const assetEmpty = document.querySelector("[data-asset-empty]");
       let botProfiles = [];
       let selectedBotProfileId = "default";
       let botConversations = [];
@@ -2904,6 +3001,9 @@
       let apiProviders = [];
       let selectedApiProviderId = "qwen";
       let activeApiProviderId = "qwen";
+      let assetItems = [];
+      let assetSearchQuery = "";
+      let assetStatusFilter = "";
 
       const apiPresets = {
         qwen: {
@@ -3041,6 +3141,183 @@
         }
         platformLogStatus.textContent = message;
         platformLogStatus.className = `status-line ${tone}`;
+      }
+
+      function setAssetStatus(message, tone = "warn") {
+        if (!assetStatus) {
+          return;
+        }
+        assetStatus.textContent = message;
+        assetStatus.className = `status-line asset-status-line ${tone}`;
+      }
+
+      function normalizeAssetStatus(sticker) {
+        const status = String(sticker?.review_status || "").trim().toLowerCase();
+        if (status === "approved") {
+          return "approved";
+        }
+        if (status === "pending") {
+          return "pending";
+        }
+        if (status === "failed") {
+          return "failed";
+        }
+        return sticker?.enabled === false ? "failed" : status || "pending";
+      }
+
+      function assetStatusLabel(sticker) {
+        const status = normalizeAssetStatus(sticker);
+        if (status === "approved") {
+          return "已通过";
+        }
+        if (status === "pending") {
+          return "待审核";
+        }
+        if (sticker?.enabled === false) {
+          return "已禁用";
+        }
+        if (status === "failed") {
+          return "失败";
+        }
+        return status || "未知";
+      }
+
+      function assetStatusTone(sticker) {
+        const status = normalizeAssetStatus(sticker);
+        if (status === "approved") {
+          return "ok";
+        }
+        if (status === "pending") {
+          return "warn";
+        }
+        return "error";
+      }
+
+      function assetMatchesSearch(sticker, query) {
+        const needle = String(query || "").trim().toLowerCase();
+        if (!needle) {
+          return true;
+        }
+        const haystack = [
+          sticker?.id,
+          sticker?.name,
+          sticker?.tag,
+          sticker?.emotion,
+          sticker?.review_status,
+          Array.isArray(sticker?.channels) ? sticker.channels.join(" ") : sticker?.channels,
+          sticker?.error,
+          sticker?.caption,
+          sticker?.description,
+          sticker?.ocr_text,
+          Array.isArray(sticker?.tags) ? sticker.tags.join(" ") : "",
+          Array.isArray(sticker?.scene) ? sticker.scene.join(" ") : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(needle);
+      }
+
+      function assetMatchesStatus(sticker, status) {
+        const next = String(status || "").trim();
+        if (!next) {
+          return true;
+        }
+        if (next === "failed") {
+          return sticker?.review_status === "failed" || sticker?.enabled === false;
+        }
+        return normalizeAssetStatus(sticker) === next;
+      }
+
+      function assetDisplayChannels(sticker) {
+        if (Array.isArray(sticker?.channels)) {
+          return sticker.channels.length ? sticker.channels.join(" / ") : "全部";
+        }
+        return String(sticker?.channels || "全部");
+      }
+
+      function renderAssets() {
+        const total = assetItems.length;
+        const approved = assetItems.filter((item) => normalizeAssetStatus(item) === "approved").length;
+        const pending = assetItems.filter((item) => normalizeAssetStatus(item) === "pending").length;
+        const problem = assetItems.filter((item) => normalizeAssetStatus(item) === "failed" || item?.enabled === false).length;
+        if (assetTotalCount) {
+          assetTotalCount.textContent = String(total);
+        }
+        if (assetApprovedCount) {
+          assetApprovedCount.textContent = String(approved);
+        }
+        if (assetPendingCount) {
+          assetPendingCount.textContent = String(pending);
+        }
+        if (assetProblemCount) {
+          assetProblemCount.textContent = String(problem);
+        }
+
+        if (!assetList) {
+          return;
+        }
+
+        const filtered = assetItems.filter((item) => assetMatchesSearch(item, assetSearchQuery) && assetMatchesStatus(item, assetStatusFilter));
+        assetList.innerHTML = "";
+        if (assetEmpty) {
+          assetEmpty.hidden = filtered.length > 0;
+        }
+        if (!filtered.length) {
+          setAssetStatus(assetItems.length ? "没有符合筛选条件的贴纸。" : "还没有贴纸数据，请刷新加载。", assetItems.length ? "warn" : "run");
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        filtered.forEach((sticker) => {
+          const row = document.createElement("article");
+          row.className = "asset-row";
+          const errorSummary = String(sticker?.error || "").trim();
+          row.innerHTML = `
+            <div class="asset-row-head">
+              <div>
+                <strong></strong>
+                <small></small>
+              </div>
+              <span class="badge ${assetStatusTone(sticker)}"></span>
+            </div>
+            <div class="asset-meta-grid">
+              <div class="asset-meta"><span>标签 / 情绪</span><strong></strong></div>
+              <div class="asset-meta"><span>通道</span><strong></strong></div>
+              <div class="asset-meta"><span>使用次数</span><strong></strong></div>
+              <div class="asset-meta"><span>错误</span><strong></strong></div>
+            </div>
+          `;
+          row.querySelector("strong").textContent = sticker?.name || sticker?.id || "未命名贴纸";
+          row.querySelector("small").textContent = `ID: ${sticker?.id || "-"} · ${sticker?.review_status || "pending"}`;
+          row.querySelector(".badge").textContent = assetStatusLabel(sticker);
+          const metaStrong = row.querySelectorAll(".asset-meta strong");
+          metaStrong[0].textContent = `${sticker?.tag || "-"} / ${sticker?.emotion || "-"}`;
+          metaStrong[1].textContent = assetDisplayChannels(sticker);
+          metaStrong[2].textContent = String(sticker?.use_count ?? 0);
+          metaStrong[3].textContent = errorSummary ? errorSummary : "无";
+          if (!errorSummary) {
+            metaStrong[3].classList.add("muted");
+          }
+          fragment.appendChild(row);
+        });
+        assetList.appendChild(fragment);
+        setAssetStatus(`已加载 ${filtered.length} / ${total} 条贴纸。`, "ok");
+      }
+
+      async function loadAssets() {
+        try {
+          setAssetStatus("正在加载贴纸库...", "run");
+          const payload = await backendRequest({ path: "/api/stickers" });
+          assetItems = Array.isArray(payload.stickers) ? payload.stickers : [];
+          renderAssets();
+          return assetItems;
+        } catch (error) {
+          assetItems = [];
+          renderAssets();
+          setAssetStatus(`加载贴纸库失败：${error.message}`, "error");
+          return null;
+        }
       }
 
       function platformLogEntriesFromText(source, label, text) {
@@ -4731,6 +5008,9 @@
         if (next === "logs") {
           loadPlatformLogs();
         }
+        if (next === "assets") {
+          loadAssets();
+        }
       }
 
       function activateWorkspace(workspace) {
@@ -4925,6 +5205,11 @@
           return;
         }
 
+        if (event.target.closest("[data-asset-load]")) {
+          loadAssets();
+          return;
+        }
+
         const botProfileTarget = event.target.closest("[data-bot-profile-id]");
         if (botProfileTarget) {
           selectedBotProfileId = botProfileTarget.dataset.botProfileId;
@@ -5070,6 +5355,20 @@
           if (event.key === "Enter") {
             loadBotConversations();
           }
+        });
+      }
+
+      if (assetSearchInput) {
+        assetSearchInput.addEventListener("input", () => {
+          assetSearchQuery = assetSearchInput.value || "";
+          renderAssets();
+        });
+      }
+
+      if (assetStatusFilterInput) {
+        assetStatusFilterInput.addEventListener("change", () => {
+          assetStatusFilter = assetStatusFilterInput.value || "";
+          renderAssets();
         });
       }
 

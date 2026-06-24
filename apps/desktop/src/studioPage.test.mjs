@@ -1088,8 +1088,10 @@ test("studio secondary pages show usable empty states instead of blank canvases"
   const html = await readFile(studioHtmlPath, "utf8");
 
   assert.match(html, /class="feature-workbench asset-workbench"/);
-  assert.match(html, /data-asset-empty[\s\S]*还没有素材/);
-  assert.match(html, /素材导入流程/);
+  assert.match(html, /data-asset-status/);
+  assert.match(html, /data-asset-list/);
+  assert.match(html, /data-asset-empty[\s\S]*还没有可显示的贴纸/);
+  assert.match(html, /贴纸条目/);
   assert.match(html, /class="feature-workbench rule-workbench"/);
   assert.match(html, /规则为空/);
   assert.match(html, /class="feature-workbench task-workbench"/);
@@ -1098,4 +1100,46 @@ test("studio secondary pages show usable empty states instead of blank canvases"
   assert.match(html, /暂无统计数据/);
   assert.match(html, /\.feature-workbench\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(html, /\.empty-state-panel\s*\{[\s\S]*min-height:\s*220px/);
+});
+
+test("studio assets page exposes sticker library controls and summary metrics", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-asset-load",
+    "data-asset-search-input",
+    "data-asset-status-filter",
+    "data-asset-total",
+    "data-asset-approved",
+    "data-asset-pending",
+    "data-asset-problem",
+    "data-asset-status",
+    "data-asset-list",
+    "data-asset-empty",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(html, /素材总数/);
+  assert.match(html, /已通过/);
+  assert.match(html, /待审核/);
+  assert.match(html, /有问题/);
+});
+
+test("studio assets page loads stickers through backend api and renders searchable filtered rows", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+
+  assert.match(script, /let assetItems = \[\]/);
+  assert.match(script, /let assetSearchQuery = ""/);
+  assert.match(script, /let assetStatusFilter = ""/);
+  assert.match(script, /async function loadAssets\(\)/);
+  assert.match(script, /function renderAssets\(\)/);
+  assert.match(script, /backendRequest\(\{\s*path:\s*"\/api\/stickers"\s*\}\)/s);
+  assert.match(script, /Array\.isArray\(payload\.stickers\) \? payload\.stickers : \[\]/);
+  assert.match(script, /setAssetStatus\(/);
+  assert.match(script, /if \(next === "assets"\) \{\s*loadAssets\(\);/s);
+  assert.match(script, /data-asset-load/);
+  assert.match(script, /data-asset-search-input/);
+  assert.match(script, /data-asset-status-filter/);
 });
