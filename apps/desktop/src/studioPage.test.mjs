@@ -1375,3 +1375,58 @@ test("studio Bot page connects approved sticker assets to the WeChat sticker pro
   assert.match(stickerProbeSource, /sticker_id:\s*selectedAsset\?\.id \|\| selectedBotAssetId \|\| undefined/);
   assert.match(stickerProbeSource, /sticker_tag:\s*selectedAsset\?\.tag \|\| selectedAsset\?\.emotion \|\| undefined/);
 });
+
+test("studio tasks page manages reminders and proactive greetings through backend APIs", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+
+  for (const selector of [
+    "data-task-load",
+    "data-task-create",
+    "data-task-save-greeting",
+    "data-task-test-proactive",
+    "data-task-reminder-count",
+    "data-task-greeting-state",
+    "data-task-event-count",
+    "data-task-next-due",
+    "data-task-title-input",
+    "data-task-content-input",
+    "data-task-due-input",
+    "data-task-channel-input",
+    "data-task-list",
+    "data-task-event-list",
+    "data-task-status",
+    "data-task-good-morning-enabled",
+    "data-task-good-morning-start",
+    "data-task-good-morning-end",
+    "data-task-good-morning-message",
+    "data-task-weather-enabled",
+    "data-task-reminders-enabled",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(script, /let taskReminders = \[\]/);
+  assert.match(script, /let proactiveConfig = null/);
+  assert.match(script, /let proactiveEvents = \[\]/);
+  assert.match(script, /async function loadTaskWorkbench\(\)/);
+  assert.match(script, /function renderTaskWorkbench\(\)/);
+  assert.match(script, /async function createTaskReminder\(\)/);
+  assert.match(script, /async function saveGoodMorningConfig\(\)/);
+  assert.match(script, /async function testProactiveMessage\(\)/);
+  assert.match(script, /async function deleteTaskReminder\(reminderId\)/);
+  assert.match(script, /async function dismissProactiveEvent\(eventId\)/);
+  assert.match(script, /backendRequest\(\{\s*path:\s*"\/api\/reminders"\s*\}\)/s);
+  assert.match(script, /backendRequest\(\{\s*path:\s*"\/api\/proactive\/config"\s*\}\)/s);
+  assert.match(script, /backendRequest\(\{\s*path:\s*"\/api\/proactive\/events\?limit=40"\s*\}\)/s);
+  assert.match(script, /method:\s*"POST",\s*path:\s*"\/api\/reminders"/s);
+  assert.match(script, /method:\s*"PATCH",\s*path:\s*"\/api\/proactive\/config"/s);
+  assert.match(script, /method:\s*"POST",\s*path:\s*"\/api\/proactive\/test"/s);
+  assert.match(script, /method:\s*"DELETE",\s*path:\s*`\/api\/reminders\/\$\{encodeURIComponent\(reminderId\)\}`/s);
+  assert.match(script, /path:\s*`\/api\/proactive\/events\/\$\{encodeURIComponent\(eventId\)\}\/dismiss`/);
+  assert.match(script, /if \(next === "tasks"\) \{\s*loadTaskWorkbench\(\);/s);
+  assert.match(script, /event\.target\.closest\("\[data-task-load\]"\)[\s\S]*loadTaskWorkbench\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-task-create\]"\)[\s\S]*createTaskReminder\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-task-save-greeting\]"\)[\s\S]*saveGoodMorningConfig\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-task-test-proactive\]"\)[\s\S]*testProactiveMessage\(\)/);
+});

@@ -1107,6 +1107,98 @@
         gap: 14px;
       }
 
+      .task-workbench {
+        grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.12fr) minmax(320px, 1.06fr);
+        align-items: start;
+      }
+
+      .task-panel {
+        min-width: 0;
+        align-content: start;
+      }
+
+      .task-panel .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .task-list,
+      .task-event-list {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        max-height: 430px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .task-card {
+        min-width: 0;
+        display: grid;
+        gap: 7px;
+        padding: 11px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+      }
+
+      .task-card-head {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: start;
+      }
+
+      .task-card strong,
+      .task-card span,
+      .task-card small {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .task-card strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .task-card span,
+      .task-card small {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .task-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+      }
+
+      .task-card-actions .secondary-action {
+        min-height: 30px;
+        padding: 0 9px;
+        font-size: 12px;
+      }
+
+      .task-config-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .task-config-grid .checkbox-field {
+        min-height: 34px;
+      }
+
+      .task-config-grid .wide {
+        grid-column: 1 / -1;
+      }
+
+      .task-status-line {
+        min-height: 42px;
+      }
+
       .empty-state-panel {
         min-height: 220px;
         display: grid;
@@ -2617,7 +2709,8 @@
         .bot-intro-panel,
         .bot-workspace-layout,
         .bridge-operational-grid,
-        .conversation-layout {
+        .conversation-layout,
+        .task-workbench {
           grid-template-columns: 1fr;
         }
       }
@@ -2650,6 +2743,7 @@
         .guide-track-grid,
         .bot-command-bar,
         .form-grid,
+        .task-config-grid,
         .conversation-meta-grid,
         .bridge-login-box {
           grid-template-columns: 1fr;
@@ -3284,31 +3378,63 @@
               <div class="panel">
                 <div class="panel-head">
                   <div><h2>未来任务</h2><p class="muted">管理提醒、早安问候和未来任务；没有提醒时，助手不要多说“我会看提醒”。</p></div>
-                  <button class="primary-action" type="button">新增任务</button>
+                  <div class="panel-actions">
+                    <button class="primary-action" type="button" data-task-create>新增提醒</button>
+                    <button class="secondary-action" type="button" data-task-load>刷新任务</button>
+                  </div>
                 </div>
                 <div class="metric-grid">
-                  <div class="metric"><span>提醒</span><strong>0</strong></div>
-                  <div class="metric"><span>早安问候</span><strong>未启用</strong></div>
-                  <div class="metric"><span>未来任务</span><strong>0</strong></div>
-                  <div class="metric"><span>下次执行</span><strong>-</strong></div>
+                  <div class="metric"><span>提醒</span><strong data-task-reminder-count>0</strong></div>
+                  <div class="metric"><span>早安问候</span><strong data-task-greeting-state>未加载</strong></div>
+                  <div class="metric"><span>主动事件</span><strong data-task-event-count>0</strong></div>
+                  <div class="metric"><span>下次执行</span><strong data-task-next-due>-</strong></div>
                 </div>
                 <div class="feature-workbench task-workbench">
-                  <div class="empty-state-panel">
-                    <strong>还没有任务</strong>
-                    <span>没有提醒时，对话里不会主动说“我会一起看提醒”。创建提醒后才会进入问候和任务上下文。</span>
+                  <div class="panel task-panel">
+                    <div class="panel-head">
+                      <div><h3>新增提醒</h3><p class="muted">提醒会写入本机后端，只有存在提醒时才进入问候上下文。</p></div>
+                    </div>
+                    <div class="form-grid">
+                      <label class="field"><span>标题</span><input class="text-input" data-task-title-input value="提醒我" autocomplete="off" /></label>
+                      <label class="field"><span>发送通道</span><select class="text-input" data-task-channel-input><option value="web">Web</option><option value="weixin">微信</option></select></label>
+                      <label class="field"><span>执行时间</span><input class="text-input" data-task-due-input type="datetime-local" autocomplete="off" /></label>
+                      <label class="field"><span>重复规则</span><input class="text-input" data-task-repeat-input placeholder="可选，例如 daily" autocomplete="off" /></label>
+                    </div>
+                    <label class="field"><span>提醒内容</span><textarea class="text-input text-area" data-task-content-input placeholder="例如：下午三点提醒我喝水"></textarea></label>
+                    <div class="status-line warn task-status-line" data-task-status>进入页面后会自动加载提醒和主动事件。</div>
                   </div>
-                  <div class="panel">
-                    <div class="panel-head"><div><h3>早安问候规则</h3><p class="muted">按天气字段生成自然提醒。</p></div><span class="badge">可配置</span></div>
-                    <div class="step-list">
-                      <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>天气和温度</strong><span>必须提到天气和温度范围，缺失不编造。</span></div><span class="status-chip">核心</span></div>
-                      <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>生活动作</strong><span>带伞、防晒、外套、买水或少户外久待。</span></div><span class="status-chip">输出</span></div>
+                  <div class="panel task-panel">
+                    <div class="panel-head">
+                      <div><h3>任务列表</h3><p class="muted">提醒、定时消息和未来计划会显示在这里。</p></div>
+                      <span class="badge" data-task-list-state>待加载</span>
+                    </div>
+                    <div class="task-list" data-task-list>
+                      <div class="empty-state-panel">
+                        <strong>暂无待执行任务</strong>
+                        <span>新增任务后会显示执行时间、目标通道、提醒内容和最近执行结果。</span>
+                      </div>
                     </div>
                   </div>
-                  <div class="panel">
-                    <div class="panel-head"><div><h3>任务列表</h3><p class="muted">提醒、定时消息和未来计划会显示在这里。</p></div></div>
-                    <div class="empty-state-panel">
-                      <strong>暂无待执行任务</strong>
-                      <span>新增任务后会显示执行时间、目标 Bot、提醒内容和最近执行结果。</span>
+                  <div class="panel task-panel">
+                    <div class="panel-head"><div><h3>早安问候规则</h3><p class="muted">按天气字段生成自然提醒，缺数据不编造。</p></div><span class="badge" data-task-config-state>待加载</span></div>
+                    <div class="task-config-grid">
+                      <label class="checkbox-field"><input type="checkbox" data-task-good-morning-enabled />启用早安问候</label>
+                      <label class="checkbox-field"><input type="checkbox" data-task-weather-enabled />参考天气</label>
+                      <label class="checkbox-field"><input type="checkbox" data-task-reminders-enabled />仅有提醒时带提醒</label>
+                      <label class="field"><span>通道</span><select class="text-input" data-task-greeting-channel><option value="web">Web</option><option value="weixin">微信</option></select></label>
+                      <label class="field"><span>开始</span><input class="text-input" data-task-good-morning-start value="07:00" autocomplete="off" /></label>
+                      <label class="field"><span>结束</span><input class="text-input" data-task-good-morning-end value="09:30" autocomplete="off" /></label>
+                      <label class="field wide"><span>自定义问候</span><textarea class="text-input text-area" data-task-good-morning-message placeholder="留空则按天气和提醒自动生成自然问候"></textarea></label>
+                    </div>
+                    <div class="panel-actions">
+                      <button class="primary-action" type="button" data-task-save-greeting>保存早安规则</button>
+                      <button class="secondary-action" type="button" data-task-test-proactive>测试主动消息</button>
+                    </div>
+                    <div class="task-event-list" data-task-event-list>
+                      <div class="empty-state-panel">
+                        <strong>暂无主动事件</strong>
+                        <span>早安问候、长时间未联系和测试消息会记录在这里。</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3674,6 +3800,27 @@
       const assetStatus = document.querySelector("[data-asset-status]");
       const assetList = document.querySelector("[data-asset-list]");
       const assetEmpty = document.querySelector("[data-asset-empty]");
+      const taskReminderCount = document.querySelector("[data-task-reminder-count]");
+      const taskGreetingState = document.querySelector("[data-task-greeting-state]");
+      const taskEventCount = document.querySelector("[data-task-event-count]");
+      const taskNextDue = document.querySelector("[data-task-next-due]");
+      const taskTitleInput = document.querySelector("[data-task-title-input]");
+      const taskContentInput = document.querySelector("[data-task-content-input]");
+      const taskDueInput = document.querySelector("[data-task-due-input]");
+      const taskRepeatInput = document.querySelector("[data-task-repeat-input]");
+      const taskChannelInput = document.querySelector("[data-task-channel-input]");
+      const taskList = document.querySelector("[data-task-list]");
+      const taskEventList = document.querySelector("[data-task-event-list]");
+      const taskStatus = document.querySelector("[data-task-status]");
+      const taskListState = document.querySelector("[data-task-list-state]");
+      const taskConfigState = document.querySelector("[data-task-config-state]");
+      const taskGoodMorningEnabled = document.querySelector("[data-task-good-morning-enabled]");
+      const taskWeatherEnabled = document.querySelector("[data-task-weather-enabled]");
+      const taskRemindersEnabled = document.querySelector("[data-task-reminders-enabled]");
+      const taskGreetingChannel = document.querySelector("[data-task-greeting-channel]");
+      const taskGoodMorningStart = document.querySelector("[data-task-good-morning-start]");
+      const taskGoodMorningEnd = document.querySelector("[data-task-good-morning-end]");
+      const taskGoodMorningMessage = document.querySelector("[data-task-good-morning-message]");
       const guideProgressSummary = document.querySelector("[data-guide-progress-summary]");
       const guideProgressScore = document.querySelector("[data-guide-progress-score]");
       const guideProgressDetail = document.querySelector("[data-guide-progress-detail]");
@@ -3727,6 +3874,9 @@
       let assetSearchQuery = "";
       let assetStatusFilter = "";
       let selectedBotAssetId = "";
+      let taskReminders = [];
+      let proactiveConfig = null;
+      let proactiveEvents = [];
       let statisticsData = null;
 
       const apiPresets = {
@@ -4448,6 +4598,363 @@
           renderAssets();
           renderBotAssetSuggestions();
           setAssetStatus(`加载贴纸库失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      function setTaskStatus(message, tone = "warn") {
+        if (!taskStatus) {
+          return;
+        }
+        taskStatus.textContent = message;
+        taskStatus.className = `status-line task-status-line ${tone}`;
+      }
+
+      function taskStatusTone(status) {
+        const value = String(status || "").toLowerCase();
+        if (value === "done" || value === "sent") {
+          return "ok";
+        }
+        if (value === "failed" || value === "error") {
+          return "error";
+        }
+        if (value === "pending") {
+          return "run";
+        }
+        return "warn";
+      }
+
+      function formatTaskDateTime(value) {
+        const text = String(value || "").trim();
+        if (!text) {
+          return "-";
+        }
+        return text.replace("T", " ").replace(/:00$/, "");
+      }
+
+      function datetimeLocalToBackend(value) {
+        const text = String(value || "").trim();
+        if (!text) {
+          return "";
+        }
+        return text.replace("T", " ") + (text.length === 16 ? ":00" : "");
+      }
+
+      function backendToDatetimeLocal(value) {
+        const text = String(value || "").trim();
+        if (!text) {
+          return "";
+        }
+        return text.replace(" ", "T").slice(0, 16);
+      }
+
+      function pendingTaskReminders() {
+        return taskReminders.filter((item) => String(item?.status || "pending").toLowerCase() === "pending");
+      }
+
+      function renderReminderList() {
+        if (!taskList) {
+          return;
+        }
+        taskList.innerHTML = "";
+        if (!taskReminders.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state-panel";
+          empty.innerHTML = "<strong>暂无待执行任务</strong><span>新增任务后会显示执行时间、目标通道、提醒内容和最近执行结果。</span>";
+          taskList.appendChild(empty);
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        taskReminders.forEach((reminder) => {
+          const card = document.createElement("article");
+          card.className = "task-card";
+          card.innerHTML = `
+            <div class="task-card-head">
+              <div><strong></strong><span></span></div>
+              <span class="badge"></span>
+            </div>
+            <small></small>
+            <div class="task-card-actions">
+              <button class="secondary-action" type="button" data-task-fill-reminder-id="">编辑</button>
+              <button class="secondary-action danger" type="button" data-task-delete-reminder-id="">删除</button>
+            </div>
+          `;
+          card.querySelector("strong").textContent = reminder?.title || "提醒";
+          card.querySelector(".task-card-head span").textContent = `${formatTaskDateTime(reminder?.due_at)} · ${reminder?.channel || "web"}`;
+          const badge = card.querySelector(".badge");
+          badge.className = `badge ${taskStatusTone(reminder?.status)}`;
+          badge.textContent = reminder?.status || "pending";
+          card.querySelector("small").textContent = reminder?.content || "无内容";
+          card.querySelector("[data-task-fill-reminder-id]").dataset.taskFillReminderId = reminder?.id || "";
+          card.querySelector("[data-task-delete-reminder-id]").dataset.taskDeleteReminderId = reminder?.id || "";
+          fragment.appendChild(card);
+        });
+        taskList.appendChild(fragment);
+      }
+
+      function renderProactiveEvents() {
+        if (!taskEventList) {
+          return;
+        }
+        taskEventList.innerHTML = "";
+        if (!proactiveEvents.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state-panel";
+          empty.innerHTML = "<strong>暂无主动事件</strong><span>早安问候、长时间未联系和测试消息会记录在这里。</span>";
+          taskEventList.appendChild(empty);
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        proactiveEvents.slice(0, 10).forEach((event) => {
+          const card = document.createElement("article");
+          card.className = "task-card";
+          card.innerHTML = `
+            <div class="task-card-head">
+              <div><strong></strong><span></span></div>
+              <span class="badge"></span>
+            </div>
+            <small></small>
+            <div class="task-card-actions">
+              <button class="secondary-action" type="button" data-task-dismiss-event-id="">忽略</button>
+              <button class="secondary-action danger" type="button" data-task-delete-event-id="">删除</button>
+            </div>
+          `;
+          card.querySelector("strong").textContent = event?.title || event?.kind || "主动事件";
+          card.querySelector(".task-card-head span").textContent = `${event?.kind || "event"} · ${event?.channel || "web"} · ${formatTaskDateTime(event?.due_at || event?.created_at)}`;
+          const badge = card.querySelector(".badge");
+          badge.className = `badge ${taskStatusTone(event?.status)}`;
+          badge.textContent = event?.status || "pending";
+          card.querySelector("small").textContent = event?.last_error || event?.content || "无详情";
+          card.querySelector("[data-task-dismiss-event-id]").dataset.taskDismissEventId = event?.id || "";
+          card.querySelector("[data-task-delete-event-id]").dataset.taskDeleteEventId = event?.id || "";
+          fragment.appendChild(card);
+        });
+        taskEventList.appendChild(fragment);
+      }
+
+      function renderTaskConfig() {
+        const greetings = proactiveConfig?.greetings || {};
+        const goodMorning = greetings.good_morning || {};
+        const channels = proactiveConfig?.channels || {};
+        if (taskGoodMorningEnabled) {
+          taskGoodMorningEnabled.checked = Boolean(proactiveConfig?.enabled && greetings.enabled && goodMorning.enabled);
+        }
+        if (taskWeatherEnabled) {
+          taskWeatherEnabled.checked = goodMorning.with_weather !== false;
+        }
+        if (taskRemindersEnabled) {
+          taskRemindersEnabled.checked = goodMorning.with_reminders !== false;
+        }
+        if (taskGreetingChannel) {
+          taskGreetingChannel.value = channels.weixin ? "weixin" : "web";
+        }
+        if (taskGoodMorningStart) {
+          taskGoodMorningStart.value = goodMorning.window_start || "07:00";
+        }
+        if (taskGoodMorningEnd) {
+          taskGoodMorningEnd.value = goodMorning.window_end || "09:30";
+        }
+        if (taskGoodMorningMessage) {
+          taskGoodMorningMessage.value = goodMorning.message || "";
+        }
+        if (taskConfigState) {
+          taskConfigState.textContent = taskGoodMorningEnabled?.checked ? "已启用" : "未启用";
+          taskConfigState.className = `badge ${taskGoodMorningEnabled?.checked ? "ok" : "warn"}`;
+        }
+      }
+
+      function renderTaskWorkbench() {
+        const pending = pendingTaskReminders();
+        const nextDue = pending[0]?.due_at || "";
+        if (taskReminderCount) {
+          taskReminderCount.textContent = String(taskReminders.length);
+        }
+        if (taskGreetingState) {
+          const enabled = Boolean(proactiveConfig?.enabled && proactiveConfig?.greetings?.enabled && proactiveConfig?.greetings?.good_morning?.enabled);
+          taskGreetingState.textContent = enabled ? "已启用" : proactiveConfig ? "未启用" : "未加载";
+        }
+        if (taskEventCount) {
+          taskEventCount.textContent = String(proactiveEvents.length);
+        }
+        if (taskNextDue) {
+          taskNextDue.textContent = formatTaskDateTime(nextDue);
+        }
+        if (taskListState) {
+          taskListState.textContent = taskReminders.length ? `${pending.length} 个待执行` : "暂无提醒";
+          taskListState.className = `badge ${pending.length ? "run" : "warn"}`;
+        }
+        renderReminderList();
+        renderTaskConfig();
+        renderProactiveEvents();
+      }
+
+      async function loadTaskWorkbench() {
+        try {
+          setTaskStatus("正在加载提醒、早安配置和主动事件...", "run");
+          const [remindersPayload, configPayload, eventsPayload] = await Promise.all([
+            backendRequest({ path: "/api/reminders" }),
+            backendRequest({ path: "/api/proactive/config" }),
+            backendRequest({ path: "/api/proactive/events?limit=40" }),
+          ]);
+          taskReminders = Array.isArray(remindersPayload.reminders) ? remindersPayload.reminders : [];
+          proactiveConfig = configPayload.config || {};
+          proactiveEvents = Array.isArray(eventsPayload.events) ? eventsPayload.events : [];
+          renderTaskWorkbench();
+          setTaskStatus("已加载未来任务、早安问候和主动事件。", "ok");
+          return { reminders: taskReminders, config: proactiveConfig, events: proactiveEvents };
+        } catch (error) {
+          setTaskStatus(`加载任务失败：${error.message}`, "error");
+          renderTaskWorkbench();
+          return null;
+        }
+      }
+
+      function fillTaskReminder(reminderId) {
+        const reminder = taskReminders.find((item) => String(item?.id || "") === String(reminderId || ""));
+        if (!reminder) {
+          return;
+        }
+        if (taskTitleInput) {
+          taskTitleInput.value = reminder.title || "";
+        }
+        if (taskContentInput) {
+          taskContentInput.value = reminder.content || "";
+        }
+        if (taskDueInput) {
+          taskDueInput.value = backendToDatetimeLocal(reminder.due_at);
+        }
+        if (taskRepeatInput) {
+          taskRepeatInput.value = reminder.repeat_rule || "";
+        }
+        if (taskChannelInput) {
+          taskChannelInput.value = reminder.channel || "web";
+        }
+        setTaskStatus("已把提醒内容填入表单，可以调整后新增一条。", "warn");
+      }
+
+      async function createTaskReminder() {
+        const payload = {
+          title: taskTitleInput?.value.trim() || taskContentInput?.value.trim() || "提醒",
+          content: taskContentInput?.value.trim() || taskTitleInput?.value.trim() || "提醒",
+          due_at: datetimeLocalToBackend(taskDueInput?.value || ""),
+          repeat_rule: taskRepeatInput?.value.trim() || "",
+          channel: taskChannelInput?.value || "web",
+        };
+        try {
+          setTaskStatus("正在创建提醒...", "run");
+          const result = await backendRequest({ method: "POST", path: "/api/reminders", body: payload });
+          taskReminders = Array.isArray(result.reminders) ? result.reminders : taskReminders;
+          renderTaskWorkbench();
+          setTaskStatus("提醒已创建。", "ok");
+          return result;
+        } catch (error) {
+          setTaskStatus(`创建提醒失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function deleteTaskReminder(reminderId) {
+        if (!reminderId) {
+          return null;
+        }
+        try {
+          setTaskStatus("正在删除提醒...", "run");
+          const result = await backendRequest({ method: "DELETE", path: `/api/reminders/${encodeURIComponent(reminderId)}` });
+          taskReminders = Array.isArray(result.reminders) ? result.reminders : taskReminders.filter((item) => item.id !== reminderId);
+          renderTaskWorkbench();
+          setTaskStatus(result.ok === false ? "提醒未删除，后端未确认。" : "提醒已删除。", result.ok === false ? "warn" : "ok");
+          return result;
+        } catch (error) {
+          setTaskStatus(`删除提醒失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      function goodMorningConfigPayload() {
+        const channel = taskGreetingChannel?.value || "web";
+        const enabled = Boolean(taskGoodMorningEnabled?.checked);
+        return {
+          enabled,
+          channels: { web: channel === "web", weixin: channel === "weixin" },
+          greetings: {
+            enabled,
+            good_morning: {
+              enabled,
+              window_start: taskGoodMorningStart?.value.trim() || "07:00",
+              window_end: taskGoodMorningEnd?.value.trim() || "09:30",
+              with_weather: Boolean(taskWeatherEnabled?.checked),
+              with_reminders: Boolean(taskRemindersEnabled?.checked),
+              message: taskGoodMorningMessage?.value.trim() || "",
+            },
+          },
+        };
+      }
+
+      async function saveGoodMorningConfig() {
+        try {
+          setTaskStatus("正在保存早安问候规则...", "run");
+          const result = await backendRequest({ method: "PATCH", path: "/api/proactive/config", body: goodMorningConfigPayload() });
+          proactiveConfig = result.config || proactiveConfig;
+          renderTaskWorkbench();
+          setTaskStatus("早安问候规则已保存。", "ok");
+          return result;
+        } catch (error) {
+          setTaskStatus(`保存早安规则失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function testProactiveMessage() {
+        const content = taskGoodMorningMessage?.value.trim() || "这是一条 BranchWhisper 主动消息测试。";
+        try {
+          setTaskStatus("正在发送主动消息测试...", "run");
+          const result = await backendRequest({
+            method: "POST",
+            path: "/api/proactive/test",
+            body: {
+              title: "桌面端主动消息测试",
+              content,
+              channel: taskGreetingChannel?.value || "web",
+            },
+          });
+          proactiveEvents = Array.isArray(result.events) ? result.events : proactiveEvents;
+          renderTaskWorkbench();
+          setTaskStatus(result.result?.ok === false ? "测试消息已记录，但发送失败。" : "测试消息已发送并记录。", result.result?.ok === false ? "warn" : "ok");
+          return result;
+        } catch (error) {
+          setTaskStatus(`主动消息测试失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function dismissProactiveEvent(eventId) {
+        if (!eventId) {
+          return null;
+        }
+        try {
+          const result = await backendRequest({ method: "POST", path: `/api/proactive/events/${encodeURIComponent(eventId)}/dismiss` });
+          proactiveEvents = Array.isArray(result.events) ? result.events : proactiveEvents;
+          renderTaskWorkbench();
+          setTaskStatus(result.ok === false ? "事件未忽略，后端未确认。" : "事件已忽略。", result.ok === false ? "warn" : "ok");
+          return result;
+        } catch (error) {
+          setTaskStatus(`忽略事件失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function deleteProactiveEvent(eventId) {
+        if (!eventId) {
+          return null;
+        }
+        try {
+          const result = await backendRequest({ method: "DELETE", path: `/api/proactive/events/${encodeURIComponent(eventId)}` });
+          proactiveEvents = Array.isArray(result.events) ? result.events : proactiveEvents.filter((item) => item.id !== eventId);
+          renderTaskWorkbench();
+          setTaskStatus(result.ok === false ? "事件未删除，后端未确认。" : "事件已删除。", result.ok === false ? "warn" : "ok");
+          return result;
+        } catch (error) {
+          setTaskStatus(`删除事件失败：${error.message}`, "error");
           return null;
         }
       }
@@ -6462,6 +6969,9 @@
         if (next === "assets") {
           loadAssets();
         }
+        if (next === "tasks") {
+          loadTaskWorkbench();
+        }
         if (next === "statistics") {
           loadStatistics();
         }
@@ -6724,6 +7234,50 @@
           return;
         }
 
+        if (event.target.closest("[data-task-load]")) {
+          loadTaskWorkbench();
+          return;
+        }
+
+        if (event.target.closest("[data-task-create]")) {
+          createTaskReminder();
+          return;
+        }
+
+        if (event.target.closest("[data-task-save-greeting]")) {
+          saveGoodMorningConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-task-test-proactive]")) {
+          testProactiveMessage();
+          return;
+        }
+
+        const taskFillTarget = event.target.closest("[data-task-fill-reminder-id]");
+        if (taskFillTarget) {
+          fillTaskReminder(taskFillTarget.dataset.taskFillReminderId);
+          return;
+        }
+
+        const taskDeleteTarget = event.target.closest("[data-task-delete-reminder-id]");
+        if (taskDeleteTarget) {
+          deleteTaskReminder(taskDeleteTarget.dataset.taskDeleteReminderId);
+          return;
+        }
+
+        const taskDismissTarget = event.target.closest("[data-task-dismiss-event-id]");
+        if (taskDismissTarget) {
+          dismissProactiveEvent(taskDismissTarget.dataset.taskDismissEventId);
+          return;
+        }
+
+        const taskDeleteEventTarget = event.target.closest("[data-task-delete-event-id]");
+        if (taskDeleteEventTarget) {
+          deleteProactiveEvent(taskDeleteEventTarget.dataset.taskDeleteEventId);
+          return;
+        }
+
         const botProfileTarget = event.target.closest("[data-bot-profile-id]");
         if (botProfileTarget) {
           selectedBotProfileId = botProfileTarget.dataset.botProfileId;
@@ -6949,6 +7503,7 @@
       renderBotBridgePreflight(buildBotBridgePreflightChecks());
       renderBotRunLoop();
       renderBotAssetSuggestions();
+      renderTaskWorkbench();
       renderChatModelOptions();
       renderChatSessions();
       updateBotBridgeLogView();
