@@ -598,13 +598,13 @@
       .guide-setup-hero {
         grid-template-columns: minmax(0, 1fr) minmax(240px, 0.54fr);
         align-items: stretch;
-        min-height: 512px;
-        padding: 16px;
+        min-height: 320px;
+        padding: 14px;
       }
 
       .guide-setup-copy {
         align-content: start;
-        gap: 14px;
+        gap: 10px;
       }
 
       .guide-track-grid {
@@ -623,7 +623,7 @@
       .guide-track {
         display: grid;
         gap: 6px;
-        padding: 10px;
+        padding: 9px;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
         background: var(--surface);
@@ -650,21 +650,162 @@
         align-self: stretch;
         grid-template-columns: 1fr;
         grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 10px;
       }
 
       .guide-mode-grid .mode-card {
         min-width: 0;
-        padding: 14px 12px;
+        min-height: 0;
+        padding: 10px;
       }
 
       .guide-mode-grid .mode-card strong {
-        font-size: 20px;
+        font-size: 18px;
         line-height: 1.18;
       }
 
       .guide-mode-grid .mode-card small {
+        font-size: 12px;
+        line-height: 1.45;
         white-space: normal;
         overflow-wrap: anywhere;
+      }
+
+      .guide-progress-panel {
+        display: grid;
+        grid-template-columns: minmax(230px, 0.42fr) minmax(0, 1fr);
+        gap: 12px;
+      }
+
+      .guide-progress-summary {
+        display: grid;
+        align-content: space-between;
+        gap: 10px;
+        min-height: 100%;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background:
+          linear-gradient(135deg, var(--primary-soft), transparent 72%),
+          var(--surface);
+      }
+
+      .guide-progress-score {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+
+      .guide-progress-score strong {
+        color: var(--text);
+        font-size: 32px;
+        line-height: 1;
+      }
+
+      .guide-progress-score span {
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .guide-progress-summary p {
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .guide-next-card {
+        display: grid;
+        gap: 7px;
+        padding: 9px;
+        border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--primary-soft) 72%, transparent);
+      }
+
+      .guide-next-card span {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .guide-next-card strong {
+        color: var(--text);
+        font-size: 15px;
+      }
+
+      .guide-progress-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+      }
+
+      .guide-progress-item {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        min-height: 58px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface) 92%, transparent);
+      }
+
+      .guide-progress-item.ok {
+        border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+      }
+
+      .guide-progress-item.run {
+        border-color: color-mix(in srgb, var(--info) 35%, var(--border));
+      }
+
+      .guide-progress-item.warn {
+        border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+      }
+
+      .guide-progress-item.error {
+        border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+      }
+
+      .guide-progress-index {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .guide-progress-item.ok .guide-progress-index {
+        background: var(--success-soft);
+        color: var(--success);
+      }
+
+      .guide-progress-body {
+        min-width: 0;
+      }
+
+      .guide-progress-body strong {
+        display: block;
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.2;
+      }
+
+      .guide-progress-body span {
+        display: block;
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .step-list {
@@ -2294,34 +2435,35 @@
                 </div>
               </div>
 
-              <div class="panel">
+              <div class="panel" data-guide-progress>
                 <div class="panel-head">
                   <div>
-                    <h2>API 新手路径</h2>
-                    <p class="muted">每一步都给出要填什么、为什么要填、成功后会看到什么。</p>
+                    <h2>从零到运行总览</h2>
+                    <p class="muted" data-guide-progress-summary>正在根据 API、Bot、微信桥接、素材、提醒、统计和日志状态生成下一步。</p>
                   </div>
-                  <span class="badge">当前推荐</span>
+                  <button class="secondary-action" type="button" data-guide-refresh>刷新状态</button>
                 </div>
-                <div class="step-list">
-                  <div class="step-row">
-                    <span class="step-num">1</span>
-                    <div class="step-main"><strong>选择使用方式</strong><span>默认选择 API 轻量部署，先不处理本地环境。</span></div>
-                    <span class="status-chip"><i class="status-dot ok"></i>可开始</span>
+                <div class="guide-progress-panel">
+                  <div class="guide-progress-summary">
+                    <div>
+                      <div class="guide-progress-score"><strong data-guide-progress-score>0/8</strong><span>已完成</span></div>
+                      <p data-guide-progress-detail>没有环境的电脑也可以先走 API；本地模型、CUDA、CosyVoice 后续再配。</p>
+                    </div>
+                    <div class="guide-next-card">
+                      <span>下一步</span>
+                      <strong data-guide-next-label>配置 API</strong>
+                      <button class="primary-action" type="button" data-guide-next-action data-section-target="api">去处理</button>
+                    </div>
                   </div>
-                  <div class="step-row">
-                    <span class="step-num">2</span>
-                    <div class="step-main"><strong>新增 API</strong><span>内置 Qwen、DeepSeek、OpenAI 兼容和自定义预设。</span></div>
-                    <button class="secondary-action" type="button" data-section="api">去配置</button>
-                  </div>
-                  <div class="step-row">
-                    <span class="step-num">3</span>
-                    <div class="step-main"><strong>创建微信 Bot</strong><span>配置 Bot 名称、微信桥接、Bot 人格和模型人格。</span></div>
-                    <button class="secondary-action" type="button" data-section="bot">去创建</button>
-                  </div>
-                  <div class="step-row">
-                    <span class="step-num">4</span>
-                    <div class="step-main"><strong>测试对话</strong><span>发送一条测试消息，确认对话数据、平台日志和调用统计都会记录。</span></div>
-                    <button class="secondary-action" type="button" data-workspace-tab="chat">打开 Chat</button>
+                  <div class="guide-progress-list" data-guide-progress-list>
+                    <div class="guide-progress-item run"><span class="guide-progress-index">1</span><div class="guide-progress-body"><strong>选择 API 模式</strong><span>推荐新手先走 API。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">2</span><div class="guide-progress-body"><strong>配置 API</strong><span>保存并测试模型连通性。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">3</span><div class="guide-progress-body"><strong>创建 Bot</strong><span>创建微信 Bot 档案。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">4</span><div class="guide-progress-body"><strong>连接微信</strong><span>扫码登录并启动桥接。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">5</span><div class="guide-progress-body"><strong>Chat 对话</strong><span>创建对话并保存记录。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">6</span><div class="guide-progress-body"><strong>早安问候</strong><span>配置提醒和问候规则。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">7</span><div class="guide-progress-body"><strong>素材库</strong><span>上传并启用可用素材。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item warn"><span class="guide-progress-index">8</span><div class="guide-progress-body"><strong>统计和日志</strong><span>确认日志和统计可读取。</span></div><span class="status-chip">待刷新</span></div>
                   </div>
                 </div>
               </div>
@@ -3112,6 +3254,12 @@
       const assetStatus = document.querySelector("[data-asset-status]");
       const assetList = document.querySelector("[data-asset-list]");
       const assetEmpty = document.querySelector("[data-asset-empty]");
+      const guideProgressSummary = document.querySelector("[data-guide-progress-summary]");
+      const guideProgressScore = document.querySelector("[data-guide-progress-score]");
+      const guideProgressDetail = document.querySelector("[data-guide-progress-detail]");
+      const guideProgressList = document.querySelector("[data-guide-progress-list]");
+      const guideNextLabel = document.querySelector("[data-guide-next-label]");
+      const guideNextAction = document.querySelector("[data-guide-next-action]");
       const statTargets = {
         bots: document.querySelector("[data-stat-bots]"),
         conversations: document.querySelector("[data-stat-conversations]"),
@@ -3225,6 +3373,97 @@
           editable: false,
         },
       ];
+      const guideWorkflowSteps = [
+        {
+          id: "mode",
+          label: "选择 API 模式",
+          section: "guide",
+          ready: () => root.dataset.activeMode !== "local",
+          detail: () => (root.dataset.activeMode === "local" ? "当前是本地模式，新手建议先切回 API。" : "已选择 API 轻量部署。"),
+          action: "回到引导",
+        },
+        {
+          id: "api",
+          label: "配置 API",
+          section: "api",
+          ready: () => apiProviders.some((provider) => provider.id === activeApiProviderId && (provider.api_key_set || apiKeyInput?.value.trim())),
+          detail: () => {
+            const active = apiProviders.find((provider) => provider.id === activeApiProviderId);
+            if (!active) {
+              return "还没有启用的 API。";
+            }
+            return active.api_key_set || apiKeyInput?.value.trim() ? `${active.name || active.id} 已有密钥状态。` : `${active.name || active.id} 还缺 API Key。`;
+          },
+          action: "去配置 API",
+        },
+        {
+          id: "bot",
+          label: "创建 Bot",
+          section: "bot",
+          ready: () => botProfiles.length > 0,
+          detail: () => (botProfiles.length ? `已有 ${botProfiles.length} 个 Bot 档案。` : "还没有 Bot 档案。"),
+          action: "去创建 Bot",
+        },
+        {
+          id: "weixin",
+          label: "连接微信",
+          section: "bot",
+          ready: () => botProfiles.some((profile) => profile.bridge_enabled === true),
+          detail: () => {
+            const enabled = botProfiles.filter((profile) => profile.bridge_enabled === true).length;
+            return enabled ? `${enabled} 个 Bot 已启用微信桥接。` : "还没有启用微信桥接。";
+          },
+          action: "去连接微信",
+        },
+        {
+          id: "chat",
+          label: "Chat 对话",
+          section: "chat",
+          ready: () => botConversations.some((conversation) => Number(conversation.message_count || 0) > 0),
+          detail: () => {
+            const total = botConversations.reduce((sum, item) => sum + Number(item.message_count || 0), 0);
+            return total ? `已保存 ${total} 条 Bot 对话消息。` : "还没有保存的 Bot 对话消息。";
+          },
+          action: "打开 Chat",
+          workspace: "chat",
+        },
+        {
+          id: "morning",
+          label: "早安问候",
+          section: "tasks",
+          ready: () => statNumber(statisticsData?.totals?.reminders) > 0 || statNumber(statisticsData?.totals?.proactive_tasks) > 0,
+          detail: () => {
+            const reminders = statNumber(statisticsData?.totals?.reminders);
+            const proactive = statNumber(statisticsData?.totals?.proactive_tasks);
+            return reminders || proactive ? `${reminders} 个提醒，${proactive} 个主动任务。` : "还没有提醒或早安问候任务。";
+          },
+          action: "去配置问候",
+        },
+        {
+          id: "assets",
+          label: "素材库",
+          section: "assets",
+          ready: () => assetItems.some((item) => normalizeAssetStatus(item) === "approved" && item.enabled !== false),
+          detail: () => {
+            const approved = assetItems.filter((item) => normalizeAssetStatus(item) === "approved" && item.enabled !== false).length;
+            return approved ? `${approved} 个可用素材。` : "还没有可用素材。";
+          },
+          action: "去素材库",
+        },
+        {
+          id: "ops",
+          label: "统计和日志",
+          section: "statistics",
+          ready: () => Boolean(statisticsData) && platformLogs.length > 0,
+          detail: () => {
+            if (!statisticsData) {
+              return "统计还未加载。";
+            }
+            return platformLogs.length ? `统计已加载，日志 ${platformLogs.length} 条。` : "统计已加载，日志还未读取。";
+          },
+          action: "看统计日志",
+        },
+      ];
 
       function resolveAdvancedRoute(route) {
         const base = currentStatus.app_url || defaultAppUrl;
@@ -3309,6 +3548,88 @@
         }
         statTargets.status.textContent = message;
         statTargets.status.className = `status-line ${tone} statistics-status-strip`;
+      }
+
+      function buildGuideProgress() {
+        return guideWorkflowSteps.map((step, index) => {
+          let ready = false;
+          let detail = "等待检测。";
+          try {
+            ready = Boolean(step.ready());
+            detail = step.detail();
+          } catch (error) {
+            ready = false;
+            detail = `检测失败：${error.message}`;
+          }
+          const tone = ready ? "ok" : index === 0 ? "run" : "warn";
+          return { ...step, index: index + 1, ready, detail, tone };
+        });
+      }
+
+      function renderGuideProgress(steps) {
+        if (!guideProgressList) {
+          return;
+        }
+        const items = Array.isArray(steps) ? steps : buildGuideProgress();
+        const completed = items.filter((item) => item.ready).length;
+        const nextStep = items.find((item) => !item.ready) || items[items.length - 1];
+        if (guideProgressScore) {
+          guideProgressScore.textContent = `${completed}/${items.length}`;
+        }
+        if (guideProgressSummary) {
+          guideProgressSummary.textContent = completed === items.length ? "核心闭环已完成。可以继续优化本地部署、提醒策略和素材规则。" : `已完成 ${completed} 项，下一步处理：${nextStep?.label || "检查状态"}。`;
+        }
+        if (guideProgressDetail) {
+          guideProgressDetail.textContent = nextStep?.detail || "没有环境的电脑也可以先走 API；本地模型、CUDA、CosyVoice 后续再配。";
+        }
+        if (guideNextLabel) {
+          guideNextLabel.textContent = nextStep?.label || "检查状态";
+        }
+        if (guideNextAction) {
+          guideNextAction.textContent = nextStep?.action || "去处理";
+          guideNextAction.dataset.sectionTarget = nextStep?.section || "api";
+          guideNextAction.dataset.workspaceTarget = nextStep?.workspace || "bot";
+        }
+        guideProgressList.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+        items.forEach((item) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = `guide-progress-item ${item.tone}`;
+          card.dataset.section = item.section === "chat" ? "" : item.section;
+          if (item.workspace) {
+            card.dataset.workspaceTab = item.workspace;
+          }
+          card.innerHTML = `
+            <span class="guide-progress-index"></span>
+            <div class="guide-progress-body"><strong></strong><span></span></div>
+            <span class="status-chip"><i class="status-dot"></i><span></span></span>
+          `;
+          card.querySelector(".guide-progress-index").textContent = String(item.index);
+          card.querySelector("strong").textContent = item.label;
+          card.querySelector(".guide-progress-body span").textContent = item.detail;
+          const dot = card.querySelector(".status-dot");
+          dot.className = `status-dot ${item.ready ? "ok" : item.tone === "run" ? "run" : "warn"}`;
+          card.querySelector(".status-chip span").textContent = item.ready ? "完成" : "待处理";
+          fragment.appendChild(card);
+        });
+        guideProgressList.appendChild(fragment);
+      }
+
+      async function refreshGuideProgress() {
+        renderGuideProgress(buildGuideProgress());
+        if (guideProgressSummary) {
+          guideProgressSummary.textContent = "正在刷新 API、Bot、素材、统计和日志状态...";
+        }
+        await Promise.allSettled([
+          loadApiConfig(),
+          loadBotProfiles(),
+          loadBotConversations(),
+          loadStatistics(),
+          loadAssets(),
+          loadPlatformLogs(),
+        ]);
+        renderGuideProgress(buildGuideProgress());
       }
 
       function statNumber(value) {
@@ -5278,6 +5599,9 @@
         title.textContent = nextTitle;
         subtitle.textContent = nextSubtitle;
         root.dataset.rail = railPages.has(next) ? next : "hidden";
+        if (next === "guide") {
+          refreshGuideProgress();
+        }
         if (next === "api") {
           loadApiConfig();
         }
@@ -5455,6 +5779,20 @@
 
         if (event.target.closest("[data-api-provider-activate]")) {
           activateApiProvider();
+          return;
+        }
+
+        if (event.target.closest("[data-guide-refresh]")) {
+          refreshGuideProgress();
+          return;
+        }
+
+        const guideNextTarget = event.target.closest("[data-guide-next-action]");
+        if (guideNextTarget) {
+          const workspace = guideNextTarget.dataset.workspaceTarget || "bot";
+          const section = guideNextTarget.dataset.sectionTarget || "api";
+          activateWorkspace(workspace);
+          activateSection(section);
           return;
         }
 

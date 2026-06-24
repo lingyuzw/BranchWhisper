@@ -160,6 +160,48 @@ test("studio guide page gives beginner API and local setup tracks", async () => 
   assert.match(html, /CUDA/);
 });
 
+test("studio guide page shows a live zero-to-running checklist across the full app workflow", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-guide-progress",
+    "data-guide-progress-summary",
+    "data-guide-progress-list",
+    "data-guide-refresh",
+    "data-guide-next-action",
+    "data-guide-next-label",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  for (const label of [
+    "选择 API 模式",
+    "配置 API",
+    "创建 Bot",
+    "连接微信",
+    "Chat 对话",
+    "早安问候",
+    "素材库",
+    "统计和日志",
+  ]) {
+    assert.match(html, new RegExp(label));
+  }
+
+  assert.match(html, /const guideWorkflowSteps = \[/);
+  assert.match(html, /function buildGuideProgress\(\)/);
+  assert.match(html, /function renderGuideProgress\(steps\)/);
+  assert.match(html, /async function refreshGuideProgress\(\)/);
+  assert.match(html, /Promise\.allSettled\(\[/);
+  assert.match(html, /loadApiConfig\(\)/);
+  assert.match(html, /loadBotProfiles\(\)/);
+  assert.match(html, /loadStatistics\(\)/);
+  assert.match(html, /loadAssets\(\)/);
+  assert.match(html, /loadPlatformLogs\(\)/);
+  assert.match(html, /if \(next === "guide"\) \{\s*refreshGuideProgress\(\);/s);
+  assert.match(html, /event\.target\.closest\("\[data-guide-refresh\]"\)/);
+  assert.match(html, /event\.target\.closest\("\[data-guide-next-action\]"\)/);
+});
+
 test("studio top bar keeps the title from being squeezed by right actions", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
