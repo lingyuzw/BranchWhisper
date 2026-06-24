@@ -1,11 +1,15 @@
 {
   "scripts": {
     "desktop:preflight": "node apps/desktop/src/preflight.mjs",
-    "desktop:test": "node --test apps/desktop/src/*.test.mjs",
+    "desktop:test": "node -e \"const path = require('node:path'); const { pathToFileURL } = require('node:url'); const cwd = process.env.INIT_CWD || process.cwd(); const runner = path.resolve(cwd, 'apps/desktop/src/desktopTestRunner.mjs'); import(pathToFileURL(runner).href).then((module) => module.runDesktopTestsCli({ cwd }))\"",
+    "desktop:verify-layout": "node -e \"const path = require('node:path'); const { pathToFileURL } = require('node:url'); const cwd = process.env.INIT_CWD || process.cwd(); const verifier = path.resolve(cwd, 'apps/desktop/src/studioLayoutVerifier.mjs'); import(pathToFileURL(verifier).href).then((module) => module.runLayoutVerifierCli(process.argv.slice(1), { cwd }))\" --",
     "desktop:build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_windows_desktop.ps1"
   },
   "dependencies": {
     "silk-sdk": "^0.2.2",
     "silk-wasm": "^3.7.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
   }
 }
