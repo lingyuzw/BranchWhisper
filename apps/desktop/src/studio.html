@@ -1920,6 +1920,72 @@
         min-height: 34px;
       }
 
+      .bot-asset-picker {
+        display: grid;
+        gap: 8px;
+        padding: 9px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+
+      .bot-asset-picker-head {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .bot-asset-picker-head strong {
+        overflow: hidden;
+        color: var(--text);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bot-asset-picker-head small {
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .bot-asset-suggestions {
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .bot-asset-suggestion {
+        min-height: 30px;
+        max-width: 100%;
+        padding: 0 9px;
+        border: 1px solid var(--border);
+        border-radius: var(--control-radius);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-size: 12px;
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bot-asset-suggestion:hover,
+      .bot-asset-suggestion.active {
+        border-color: color-mix(in srgb, var(--primary) 46%, var(--border));
+        background: var(--primary-soft);
+        color: var(--text);
+      }
+
+      .bot-asset-empty {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
       .bridge-session-card {
         display: grid;
         gap: 12px;
@@ -2962,6 +3028,18 @@
                         <strong>测试表情包回复</strong>
                         <span>按测试文本选择素材并发送，确认表情包策略和素材库可用。</span>
                         <input class="text-input" data-bot-bridge-emoji-input value="打一架" autocomplete="off" />
+                        <div class="bot-asset-picker" data-bot-asset-picker>
+                          <div class="bot-asset-picker-head">
+                            <div>
+                              <strong data-bot-asset-selected>未选择素材</strong>
+                              <small data-bot-asset-count>素材库未加载</small>
+                            </div>
+                            <button class="secondary-action" type="button" data-bot-asset-refresh>刷新素材</button>
+                          </div>
+                          <div class="bot-asset-suggestions" data-bot-asset-suggestions>
+                            <span class="bot-asset-empty">进入 Bot 页面后会显示已通过审核的微信素材。</span>
+                          </div>
+                        </div>
                         <button class="secondary-action" type="button" data-bot-bridge-test-emoji>运行</button>
                       </div>
                     </div>
@@ -3534,6 +3612,9 @@
       const botBridgeTextInput = document.querySelector("[data-bot-bridge-text-input]");
       const botBridgeVoiceInput = document.querySelector("[data-bot-bridge-voice-input]");
       const botBridgeEmojiInput = document.querySelector("[data-bot-bridge-emoji-input]");
+      const botAssetSuggestions = document.querySelector("[data-bot-asset-suggestions]");
+      const botAssetSelected = document.querySelector("[data-bot-asset-selected]");
+      const botAssetCount = document.querySelector("[data-bot-asset-count]");
       const botBridgeVerifyInput = document.querySelector("[data-bot-bridge-verify-input]");
       const botBridgeQrImage = document.querySelector("[data-bot-bridge-qr-image]");
       const botBridgeQrEmpty = document.querySelector("[data-bot-bridge-qr-empty]");
@@ -3645,6 +3726,7 @@
       let assetItems = [];
       let assetSearchQuery = "";
       let assetStatusFilter = "";
+      let selectedBotAssetId = "";
       let statisticsData = null;
 
       const apiPresets = {
@@ -4213,6 +4295,77 @@
         return String(sticker?.channels || "全部");
       }
 
+      function assetSupportsWeixin(sticker) {
+        const channels = Array.isArray(sticker?.channels) ? sticker.channels : [sticker?.channels];
+        const normalized = channels
+          .filter(Boolean)
+          .map((channel) => String(channel).trim().toLowerCase());
+        if (!normalized.length) {
+          return true;
+        }
+        return normalized.some((channel) => ["all", "wechat", "weixin", "weixin_oc", "openclaw"].includes(channel));
+      }
+
+      function approvedBotAssetItems() {
+        return assetItems
+          .filter((item) => normalizeAssetStatus(item) === "approved" && item?.enabled !== false && assetSupportsWeixin(item))
+          .sort((left, right) => Number(right?.use_count || 0) - Number(left?.use_count || 0));
+      }
+
+      function botAssetSuggestionLabel(sticker) {
+        return String(sticker?.tag || sticker?.emotion || sticker?.name || sticker?.id || "未命名素材").trim();
+      }
+
+      function selectedBotAsset() {
+        return approvedBotAssetItems().find((item) => String(item?.id || "") === selectedBotAssetId) || null;
+      }
+
+      function renderBotAssetSuggestions() {
+        if (!botAssetSuggestions) {
+          return;
+        }
+        const approved = approvedBotAssetItems();
+        const selected = selectedBotAsset();
+        if (botAssetCount) {
+          botAssetCount.textContent = approved.length ? `素材库可用 ${approved.length} 个` : "暂无可用微信素材";
+        }
+        if (botAssetSelected) {
+          botAssetSelected.textContent = selected ? `已选：${botAssetSuggestionLabel(selected)}` : "未选择素材";
+        }
+        botAssetSuggestions.innerHTML = "";
+        if (!approved.length) {
+          const empty = document.createElement("span");
+          empty.className = "bot-asset-empty";
+          empty.textContent = assetItems.length ? "没有已通过审核且适合微信通道的素材。" : "素材库未加载，点刷新素材读取。";
+          botAssetSuggestions.appendChild(empty);
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        approved.slice(0, 6).forEach((sticker) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `bot-asset-suggestion${String(sticker?.id || "") === selectedBotAssetId ? " active" : ""}`;
+          button.dataset.botAssetSuggestionId = String(sticker?.id || "");
+          button.textContent = botAssetSuggestionLabel(sticker);
+          button.title = `${sticker?.name || sticker?.id || "素材"} · ${assetDisplayChannels(sticker)}`;
+          fragment.appendChild(button);
+        });
+        botAssetSuggestions.appendChild(fragment);
+      }
+
+      function applyBotAssetSuggestion(stickerId) {
+        selectedBotAssetId = String(stickerId || "");
+        const selected = selectedBotAsset();
+        if (selected && botBridgeEmojiInput) {
+          botBridgeEmojiInput.value = botAssetSuggestionLabel(selected);
+        }
+        renderBotAssetSuggestions();
+        if (selected) {
+          setBotBridgeStatus("已选择素材", "ok");
+          setBotBridgeLog(`已选择素材：${selected.name || selected.id || "-"}\n标签：${botAssetSuggestionLabel(selected)}\n通道：${assetDisplayChannels(selected)}\n下一步可运行表情包测试。`);
+        }
+      }
+
       function renderAssets() {
         const total = assetItems.length;
         const approved = assetItems.filter((item) => normalizeAssetStatus(item) === "approved").length;
@@ -4230,6 +4383,7 @@
         if (assetProblemCount) {
           assetProblemCount.textContent = String(problem);
         }
+        renderBotAssetSuggestions();
 
         if (!assetList) {
           return;
@@ -4292,6 +4446,7 @@
         } catch (error) {
           assetItems = [];
           renderAssets();
+          renderBotAssetSuggestions();
           setAssetStatus(`加载贴纸库失败：${error.message}`, "error");
           return null;
         }
@@ -6154,15 +6309,21 @@
       async function runBotBridgeStickerProbe() {
         const integrationId = selectedBotBridgeIntegrationId();
         const text = botBridgeEmojiInput?.value.trim() || "打一架";
+        const selectedAsset = selectedBotAsset();
         try {
           setBotBridgeStatus("表情包测试中", "run");
           const result = await backendRequest({
             method: "POST",
             path: `/api/integrations/${encodeURIComponent(integrationId)}/sticker-test`,
-            body: { text },
+            body: {
+              text,
+              sticker_id: selectedAsset?.id || selectedBotAssetId || undefined,
+              sticker_tag: selectedAsset?.tag || selectedAsset?.emotion || undefined,
+              sticker_name: selectedAsset?.name || undefined,
+            },
           });
           setBotBridgeStatus(result.ok === false ? "表情包异常" : "表情包已请求", result.ok === false ? "error" : "ok");
-          setBotBridgeLog(`测试表情包回复\n实例：${integrationId}\n输入：${text}\n结果：\n${formatBridgeProbeResult(result)}`);
+          setBotBridgeLog(`测试表情包回复\n实例：${integrationId}\n输入：${text}\n素材：${selectedAsset ? `${selectedAsset.name || selectedAsset.id || "-"} / ${botAssetSuggestionLabel(selectedAsset)}` : "未指定"}\n结果：\n${formatBridgeProbeResult(result)}`);
           return result;
         } catch (error) {
           setBotBridgeStatus("表情包失败", "error");
@@ -6287,6 +6448,7 @@
         }
         if (next === "bot") {
           loadBotProfiles();
+          loadAssets();
         }
         if (next === "config") {
           loadDesktopConfig();
@@ -6546,6 +6708,17 @@
           return;
         }
 
+        if (event.target.closest("[data-bot-asset-refresh]")) {
+          loadAssets();
+          return;
+        }
+
+        const suggestionButton = event.target.closest("[data-bot-asset-suggestion-id]");
+        if (suggestionButton) {
+          applyBotAssetSuggestion(suggestionButton.dataset.botAssetSuggestionId);
+          return;
+        }
+
         if (event.target.closest("[data-stat-refresh]")) {
           loadStatistics();
           return;
@@ -6775,6 +6948,7 @@
       applyLanguage(localStorage.getItem("branchwhisper:desktop-language") || "zh");
       renderBotBridgePreflight(buildBotBridgePreflightChecks());
       renderBotRunLoop();
+      renderBotAssetSuggestions();
       renderChatModelOptions();
       renderChatSessions();
       updateBotBridgeLogView();

@@ -1346,3 +1346,32 @@ test("studio assets page loads stickers through backend api and renders searchab
   assert.match(script, /data-asset-search-input/);
   assert.match(script, /data-asset-status-filter/);
 });
+
+test("studio Bot page connects approved sticker assets to the WeChat sticker probe", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+
+  for (const selector of [
+    "data-bot-asset-suggestions",
+    "data-bot-asset-refresh",
+    "data-bot-asset-selected",
+    "data-bot-asset-count",
+    "data-bot-asset-suggestion-id",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(script, /let selectedBotAssetId = ""/);
+  assert.match(script, /function approvedBotAssetItems\(\)/);
+  assert.match(script, /function renderBotAssetSuggestions\(\)/);
+  assert.match(script, /function applyBotAssetSuggestion\(stickerId\)/);
+  assert.match(script, /renderBotAssetSuggestions\(\);/);
+  assert.match(script, /if \(next === "bot"\) \{[\s\S]*loadAssets\(\);/s);
+  assert.match(script, /event\.target\.closest\("\[data-bot-asset-refresh\]"\)[\s\S]*loadAssets\(\)/);
+  assert.match(script, /event\.target\.closest\("\[data-bot-asset-suggestion-id\]"\)[\s\S]*applyBotAssetSuggestion\(suggestionButton\.dataset\.botAssetSuggestionId\)/s);
+
+  const stickerProbeSource = extractScriptFunction(script, "runBotBridgeStickerProbe");
+  assert.match(stickerProbeSource, /const selectedAsset = selectedBotAsset\(\);/);
+  assert.match(stickerProbeSource, /sticker_id:\s*selectedAsset\?\.id \|\| selectedBotAssetId \|\| undefined/);
+  assert.match(stickerProbeSource, /sticker_tag:\s*selectedAsset\?\.tag \|\| selectedAsset\?\.emotion \|\| undefined/);
+});
