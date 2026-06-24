@@ -4,8 +4,10 @@ mod backend_contract;
 mod backend_launcher;
 mod startup_status;
 
+use backend_launcher::StartedBackendProcess;
 use startup_status::DesktopStartupStatus;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::process::Command;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 use tauri::menu::MenuBuilder;
 use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
@@ -14,6 +16,7 @@ use tauri::{App, AppHandle, Manager, WindowEvent};
 const TRAY_SHOW_ID: &str = "show";
 const TRAY_QUIT_ID: &str = "quit";
 static IS_QUITTING: AtomicBool = AtomicBool::new(false);
+static STARTED_BACKEND_PID: AtomicU32 = AtomicU32::new(0);
 
 fn main() {
     // Startup contract:
@@ -49,7 +52,10 @@ fn main() {
 
                 let started_process =
                     match backend_launcher::start_backend_process(&startup_contract) {
-                        Ok(process) => Some(process),
+                        Ok(process) => {
+                            remember_started_backend(&process);
+                            Some(process)
+                        }
                         Err(error) => {
                             send_startup_status(
                                 &window,
@@ -119,6 +125,7 @@ fn setup_tray(app: &App) -> tauri::Result<()> {
                 show_main_window(app);
             } else if event.id().as_ref() == TRAY_QUIT_ID {
                 IS_QUITTING.store(true, Ordering::SeqCst);
+                shutdown_started_backend_process();
                 app.exit(0);
             }
         })
@@ -155,6 +162,55 @@ fn show_main_window(app: &AppHandle) {
         if let Err(error) = window.set_focus() {
             eprintln!("Failed to focus BranchWhisper window: {}", error);
         }
+    }
+}
+
+fn remember_started_backend(process: &StartedBackendProcess) {
+    STARTED_BACKEND_PID.store(process.pid, Ordering::SeqCst);
+}
+
+fn shutdown_started_backend_process() {
+    let pid = STARTED_BACKEND_PID.swap(0, Ordering::SeqCst);
+    if pid == 0 {
+        return;
+    }
+
+    if let Err(error) = stop_process_tree(pid) {
+        eprintln!("Failed to stop BranchWhisper backend PID {}: {}", pid, error);
+    }
+}
+
+#[cfg(windows)]
+fn stop_process_tree(pid: u32) -> Result<(), String> {
+    let pid_text = pid.to_string();
+    let output = Command::new("taskkill")
+        .args(["/PID", &pid_text, "/F", "/T"])
+        .output()
+        .map_err(|error| format!("failed to run taskkill: {}", error))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Err(format!("{}{}", stdout, stderr).trim().to_string())
+    }
+}
+
+#[cfg(not(windows))]
+fn stop_process_tree(pid: u32) -> Result<(), String> {
+    let pid_text = pid.to_string();
+    let output = Command::new("kill")
+        .args(["-TERM", &pid_text])
+        .output()
+        .map_err(|error| format!("failed to run kill: {}", error))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Err(format!("{}{}", stdout, stderr).trim().to_string())
     }
 }
 

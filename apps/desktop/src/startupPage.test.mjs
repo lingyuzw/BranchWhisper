@@ -53,7 +53,7 @@ test("desktop shell hides to background and exposes tray restore and quit action
 
   assert.match(main, /use tauri::menu::MenuBuilder/);
   assert.match(main, /use tauri::tray::\{MouseButton,\s*TrayIconBuilder,\s*TrayIconEvent\}/);
-  assert.match(main, /use std::sync::atomic::\{AtomicBool,\s*Ordering\}/);
+  assert.match(main, /use std::sync::atomic::\{AtomicBool,[^}]*Ordering\}/);
   assert.match(main, /static IS_QUITTING:\s*AtomicBool\s*=\s*AtomicBool::new\(false\)/);
   assert.match(main, /setup_tray\(app\)/);
   assert.match(main, /WindowEvent::CloseRequested\s*\{\s*api,\s*\.\.\s*\}/);
@@ -85,4 +85,19 @@ test("desktop tray right click opens only the menu instead of stealing focus", a
 
   assert.match(main, /TrayIconEvent::Click\s*\{\s*button:\s*MouseButton::Left,[\s\S]*?\}\s*\|\s*TrayIconEvent::DoubleClick\s*\{\s*button:\s*MouseButton::Left,/);
   assert.doesNotMatch(main, /TrayIconEvent::Click\s*\{\s*\.\.\s*\}\s*\|\s*TrayIconEvent::DoubleClick\s*\{\s*\.\.\s*\}/);
+});
+
+test("desktop shell stops only the backend process it started when quitting", async () => {
+  const main = await readFile(desktopMainPath, "utf8");
+
+  assert.match(main, /use std::sync::atomic::\{AtomicBool,\s*AtomicU32,\s*Ordering\}/);
+  assert.match(main, /static STARTED_BACKEND_PID:\s*AtomicU32\s*=\s*AtomicU32::new\(0\)/);
+  assert.match(main, /remember_started_backend\(&process\)/);
+  assert.match(main, /fn remember_started_backend\(process:\s*&StartedBackendProcess\)/);
+  assert.match(main, /STARTED_BACKEND_PID\.store\(process\.pid,\s*Ordering::SeqCst\)/);
+  assert.match(main, /shutdown_started_backend_process\(\);[\s\S]*app\.exit\(0\)/);
+  assert.match(main, /STARTED_BACKEND_PID\.swap\(0,\s*Ordering::SeqCst\)/);
+  assert.match(main, /Command::new\("taskkill"\)/);
+  assert.match(main, /\.args\(\["\/PID",\s*&pid_text,\s*"\/F",\s*"\/T"\]\)/);
+  assert.doesNotMatch(main, /taskkill[\s\S]*branchwhisper-backend\.exe/);
 });
