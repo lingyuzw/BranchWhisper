@@ -278,6 +278,7 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
     "data-bot-profile-list",
     "data-bot-id-input",
     "data-bot-name-input",
+    "data-bot-api-provider-input",
     "data-bot-system-input",
     "data-bot-reply-style-input",
     "data-bot-tools-enabled",
@@ -322,6 +323,20 @@ test("studio Bot page creates loads and saves real bot profiles", async () => {
   assert.match(html, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/bot-profiles"/s);
   assert.match(html, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*`\/api\/bot-profiles\/\$\{encodeURIComponent\(selectedBotProfileId\)\}`/s);
   assert.doesNotMatch(html, /等待创建/);
+});
+
+test("studio Bot page binds each bot profile to an API provider", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /data-bot-api-provider-input/);
+  assert.match(html, /const botApiProviderInput = document\.querySelector\("\[data-bot-api-provider-input\]"\)/);
+  assert.match(html, /function renderBotApiProviderOptions\(\)/);
+  assert.match(html, /botApiProviderInput\.innerHTML = ""/);
+  assert.match(html, /apiProviders\.forEach\(\(provider\) => \{/);
+  assert.match(html, /botApiProviderInput\.value = current\.api_provider_id \|\| activeApiProviderId \|\| "qwen"/);
+  assert.match(html, /api_provider_id:\s*botApiProviderInput\?\.value\.trim\(\) \|\| activeApiProviderId \|\| "qwen"/);
+  assert.match(html, /await loadApiProviders\(\)/);
+  assert.match(html, /renderBotApiProviderOptions\(\)/);
 });
 
 test("studio Bot page persists and detects the selected weixin bridge", async () => {

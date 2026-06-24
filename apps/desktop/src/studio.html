@@ -2189,6 +2189,7 @@
                   <div class="form-grid">
                     <label class="field"><span>Bot ID</span><input class="text-input" data-bot-id-input value="morning-bot" autocomplete="off" /></label>
                     <label class="field"><span>Bot 名称</span><input class="text-input" data-bot-name-input value="早安助手" autocomplete="off" /></label>
+                    <label class="field"><span>使用 API</span><select class="text-input" data-bot-api-provider-input><option value="qwen">Qwen 默认</option></select></label>
                     <label class="field"><span>回复风格</span><input class="text-input" data-bot-reply-style-input value="natural" autocomplete="off" /></label>
                     <label class="checkbox-field"><input type="checkbox" data-bot-tools-enabled checked />允许使用工具</label>
                   </div>
@@ -2737,6 +2738,7 @@
       const botNameInput = document.querySelector("[data-bot-name-input]");
       const botSystemInput = document.querySelector("[data-bot-system-input]");
       const botReplyStyleInput = document.querySelector("[data-bot-reply-style-input]");
+      const botApiProviderInput = document.querySelector("[data-bot-api-provider-input]");
       const botToolsEnabledInput = document.querySelector("[data-bot-tools-enabled]");
       const botBridgeProviderInput = document.querySelector("[data-bot-bridge-provider-input]");
       const botBridgeIntegrationInput = document.querySelector("[data-bot-bridge-integration-input]");
@@ -3541,6 +3543,28 @@
         });
       }
 
+      function renderBotApiProviderOptions() {
+        if (!botApiProviderInput) {
+          return;
+        }
+        const currentValue = botApiProviderInput.value || selectedBotProfile()?.api_provider_id || activeApiProviderId || "qwen";
+        const providers = apiProviders.length ? apiProviders : defaultApiProviders;
+        botApiProviderInput.innerHTML = "";
+        providers.forEach((provider) => {
+          const option = document.createElement("option");
+          option.value = provider.id;
+          option.textContent = `${provider.name || provider.id}${provider.api_key_set ? " · Key 已保存" : ""}`;
+          botApiProviderInput.appendChild(option);
+        });
+        if (!providers.some((provider) => provider.id === currentValue)) {
+          const option = document.createElement("option");
+          option.value = currentValue;
+          option.textContent = `${currentValue} · 未在 API 列表中`;
+          botApiProviderInput.appendChild(option);
+        }
+        botApiProviderInput.value = currentValue;
+      }
+
       function currentApiProviderPayload() {
         const selected = selectedApiProvider();
         const payload = {
@@ -3609,6 +3633,7 @@
           }
           renderApiProviders();
           renderSelectedApiProvider();
+          renderBotApiProviderOptions();
           return payload;
         } catch (error) {
           apiProviders = defaultApiProviders.map((provider) => ({ ...provider }));
@@ -3616,6 +3641,7 @@
           selectedApiProviderId = apiProviders.some((provider) => provider.id === selectedApiProviderId) ? selectedApiProviderId : "qwen";
           renderApiProviders();
           renderSelectedApiProvider();
+          renderBotApiProviderOptions();
           setApiStatus(`无法加载 API 列表：${error.message}`, "error");
           return null;
         }
@@ -3817,6 +3843,10 @@
         if (botReplyStyleInput) {
           botReplyStyleInput.value = current.reply_style || "natural";
         }
+        renderBotApiProviderOptions();
+        if (botApiProviderInput) {
+          botApiProviderInput.value = current.api_provider_id || activeApiProviderId || "qwen";
+        }
         if (botToolsEnabledInput) {
           botToolsEnabledInput.checked = current.tools_enabled !== false;
         }
@@ -3905,6 +3935,7 @@
           name: botNameInput?.value.trim() || "未命名 Bot",
           system: botSystemInput?.value.trim() || botPersonaInput?.value.trim() || "只基于已有信息回复，不编造不存在的事情。",
           reply_style: botReplyStyleInput?.value.trim() || "natural",
+          api_provider_id: botApiProviderInput?.value.trim() || activeApiProviderId || "qwen",
           tools_enabled: Boolean(botToolsEnabledInput?.checked),
           bridge_provider: botBridgeProviderInput?.value.trim() || "openclaw",
           bridge_integration_id: selectedBotBridgeIntegrationId(),
@@ -3919,12 +3950,14 @@
 
       async function loadBotProfiles() {
         try {
+          await loadApiProviders();
           const payload = await backendRequest({ path: "/api/bot-profiles" });
           botProfiles = Array.isArray(payload.profiles) ? payload.profiles : [];
           if (!selectedBotProfile() && botProfiles[0]) {
             selectedBotProfileId = botProfiles[0].id;
           }
           renderBotProfiles();
+          renderBotApiProviderOptions();
           setBotStatus(`已加载 ${botProfiles.length} 个 Bot 档案。`, "ok");
           setConfigStatus("模型人格和 Bot 人格已加载，可以分别保存。", "ok");
           return botProfiles;
