@@ -1606,6 +1606,84 @@
         justify-content: flex-start;
       }
 
+      .bridge-preflight-panel {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+      }
+
+      .bridge-preflight-summary {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .bridge-preflight-summary strong {
+        flex: 0 0 auto;
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .bridge-preflight-summary span {
+        min-width: 0;
+        overflow: hidden;
+        text-align: right;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bridge-preflight-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+        gap: 6px;
+      }
+
+      .bridge-preflight-item {
+        min-width: 0;
+        display: grid;
+        gap: 2px;
+        padding: 7px 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+
+      .bridge-preflight-item strong {
+        overflow: hidden;
+        color: var(--text);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bridge-preflight-item span {
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bridge-preflight-item.ok {
+        border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+      }
+
+      .bridge-preflight-item.warn {
+        border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+      }
+
+      .bridge-preflight-item.error {
+        border-color: color-mix(in srgb, var(--danger) 36%, var(--border));
+      }
+
       .page[data-panel="guide"] .mode-grid {
         grid-template-columns: 1fr;
       }
@@ -2216,6 +2294,13 @@
                     <label class="field"><span>桥接地址</span><input class="text-input" data-bot-bridge-url-input placeholder="可选，例如 http://127.0.0.1:18080" autocomplete="off" /></label>
                     <label class="checkbox-field"><input type="checkbox" data-bot-bridge-enabled />启用这个微信桥接</label>
                   </div>
+                  <div class="bridge-preflight-panel" data-bot-bridge-preflight>
+                    <div class="bridge-preflight-summary" data-bot-bridge-preflight-summary>
+                      <strong>启动预检</strong>
+                      <span>选择 Bot、API 和微信桥接实例后再启动</span>
+                    </div>
+                    <div class="bridge-preflight-list" data-bot-bridge-preflight-list></div>
+                  </div>
                   <div class="panel-actions bridge-action-grid">
                     <button class="primary-action" type="button" data-bot-bridge-test>检测桥接</button>
                     <button class="secondary-action" type="button" data-bot-bridge-start>启动桥接</button>
@@ -2763,6 +2848,9 @@
       const botBridgeQrEmpty = document.querySelector("[data-bot-bridge-qr-empty]");
       const botBridgeLoginStatus = document.querySelector("[data-bot-bridge-login-status]");
       const botBridgeAccount = document.querySelector("[data-bot-bridge-account]");
+      const botBridgePreflight = document.querySelector("[data-bot-bridge-preflight]");
+      const botBridgePreflightSummary = document.querySelector("[data-bot-bridge-preflight-summary]");
+      const botBridgePreflightList = document.querySelector("[data-bot-bridge-preflight-list]");
       const botStatus = document.querySelector("[data-bot-status]");
       const botCount = document.querySelector("[data-bot-count]");
       const botSelectedName = document.querySelector("[data-bot-selected-name]");
@@ -3563,6 +3651,7 @@
           botApiProviderInput.appendChild(option);
         }
         botApiProviderInput.value = currentValue;
+        renderBotBridgePreflight(buildBotBridgePreflightChecks());
       }
 
       function currentApiProviderPayload() {
@@ -3772,8 +3861,85 @@
         return botProfiles.find((profile) => profile.id === selectedBotProfileId) || botProfiles[0] || null;
       }
 
+      function rawBotBridgeIntegrationId() {
+        return botBridgeIntegrationInput?.value.trim() || "";
+      }
+
       function selectedBotBridgeIntegrationId() {
-        return botBridgeIntegrationInput?.value.trim() || "weixin_personal";
+        return rawBotBridgeIntegrationId() || "weixin_personal";
+      }
+
+      function findBotBridgeApiProvider() {
+        const providerId = botApiProviderInput?.value.trim() || selectedBotProfile()?.api_provider_id || activeApiProviderId || "qwen";
+        const providers = apiProviders.length ? apiProviders : defaultApiProviders;
+        return providers.find((provider) => provider.id === providerId) || null;
+      }
+
+      function buildBotBridgePreflightChecks() {
+        const current = selectedBotProfile();
+        const provider = findBotBridgeApiProvider();
+        const providerId = botApiProviderInput?.value.trim() || current?.api_provider_id || activeApiProviderId || "qwen";
+        const integrationId = rawBotBridgeIntegrationId();
+        return [
+          {
+            id: "bot",
+            label: "Bot 档案",
+            ok: Boolean(current?.id && selectedBotProfileId),
+            detail: current?.name || current?.id || "未选择",
+            repair: "先在左侧选择或创建一个 Bot，并保存档案。",
+          },
+          {
+            id: "api",
+            label: "Bot API",
+            ok: Boolean(provider && provider.api_key_set && provider.model && provider.url),
+            detail: provider ? `${provider.name || provider.id} · ${provider.api_key_set ? "Key 已保存" : "配置待确认"}` : `${providerId} 未找到`,
+            repair: `在 API 页面保存 ${providerId} 的模型、地址和 Key，再回到 Bot 绑定该 API。`,
+          },
+          {
+            id: "integration",
+            label: "微信桥接",
+            ok: Boolean(integrationId),
+            detail: integrationId || "未填写实例 ID",
+            repair: "填写微信桥接集成实例 ID，例如 weixin_personal。",
+          },
+        ];
+      }
+
+      function renderBotBridgePreflight(checks) {
+        const items = checks || buildBotBridgePreflightChecks();
+        const failedRequired = items.filter((item) => !item.ok);
+        if (botBridgePreflight) {
+          botBridgePreflight.classList.toggle("has-error", failedRequired.length > 0);
+        }
+        if (botBridgePreflightSummary) {
+          const summaryText = failedRequired.length ? `还需修复 ${failedRequired.length} 项` : "预检通过，可启动桥接";
+          botBridgePreflightSummary.querySelector("span").textContent = summaryText;
+        }
+        if (botBridgePreflightList) {
+          botBridgePreflightList.innerHTML = "";
+          items.forEach((item) => {
+            const row = document.createElement("div");
+            row.className = `bridge-preflight-item ${item.ok ? "ok" : "error"}`;
+            row.innerHTML = "<strong></strong><span></span>";
+            row.querySelector("strong").textContent = `${item.ok ? "通过" : "待修"} · ${item.label}`;
+            row.querySelector("span").textContent = item.detail;
+            botBridgePreflightList.appendChild(row);
+          });
+        }
+        return failedRequired.length ? null : items;
+      }
+
+      function runBotBridgePreflight({ blockOnFailure = true } = {}) {
+        const checks = buildBotBridgePreflightChecks();
+        const passed = renderBotBridgePreflight(checks);
+        if (!passed && blockOnFailure) {
+          const repairLines = checks.filter((item) => !item.ok).map((item) => `- ${item.label}：${item.repair}`);
+          setBotBridgeStatus("预检未通过", "error");
+          setBotBridgeLog(`预检未通过，先修复以下项目：\n${repairLines.join("\n")}`);
+          setBotStatus("桥接预检未通过，请先修复 Bot、API 或集成实例配置。", "error");
+          return null;
+        }
+        return checks;
       }
 
       function normalizeBotProfileId(value) {
@@ -3854,7 +4020,7 @@
           botBridgeProviderInput.value = current.bridge_provider || "openclaw";
         }
         if (botBridgeIntegrationInput) {
-          botBridgeIntegrationInput.value = current.bridge_integration_id || "weixin_personal";
+          botBridgeIntegrationInput.value = current.bridge_integration_id ?? "weixin_personal";
         }
         if (botBridgeUrlInput) {
           botBridgeUrlInput.value = current.bridge_url || "";
@@ -3888,6 +4054,7 @@
         if (configSelectedBot) {
           configSelectedBot.textContent = `${current.name || current.id || "当前 Bot"} · ${current.id || "default"}`;
         }
+        renderBotBridgePreflight(buildBotBridgePreflightChecks());
       }
 
       function renderBotProfiles() {
@@ -3938,7 +4105,7 @@
           api_provider_id: botApiProviderInput?.value.trim() || activeApiProviderId || "qwen",
           tools_enabled: Boolean(botToolsEnabledInput?.checked),
           bridge_provider: botBridgeProviderInput?.value.trim() || "openclaw",
-          bridge_integration_id: selectedBotBridgeIntegrationId(),
+          bridge_integration_id: rawBotBridgeIntegrationId(),
           bridge_url: botBridgeUrlInput?.value.trim() || "",
           bridge_enabled: Boolean(botBridgeEnabledInput?.checked),
           auto_reply_enabled: Boolean(botAutoReplyEnabledInput?.checked),
@@ -4071,8 +4238,12 @@
         }
         const labels = { start: "启动", stop: "停止", restart: "重启" };
         try {
-          setBotBridgeStatus(`${labels[action] || "操作"}中`, "run");
-          if (action === "start" || action === "restart") {
+          if (["start", "restart"].includes(action)) {
+            const preflight = runBotBridgePreflight();
+            if (!preflight) {
+              return null;
+            }
+            setBotBridgeStatus(`${labels[action] || "操作"}中`, "run");
             if (botBridgeEnabledInput) {
               botBridgeEnabledInput.checked = true;
             }
@@ -4084,6 +4255,8 @@
             if (!synced) {
               return null;
             }
+          } else {
+            setBotBridgeStatus(`${labels[action] || "操作"}中`, "run");
           }
           const result = await backendRequest({ method: "POST", path });
           const actionResult = result.result || {};
@@ -4841,12 +5014,25 @@
         });
       }
 
+      if (botApiProviderInput) {
+        botApiProviderInput.addEventListener("change", () => {
+          renderBotBridgePreflight(buildBotBridgePreflightChecks());
+        });
+      }
+
+      if (botBridgeIntegrationInput) {
+        botBridgeIntegrationInput.addEventListener("input", () => {
+          renderBotBridgePreflight(buildBotBridgePreflightChecks());
+        });
+      }
+
       window.addEventListener("branchwhisper:startup-status", (event) => {
         renderStatus(event.detail || {});
       });
 
       applyTheme(localStorage.getItem("branchwhisper:desktop-theme") || "light");
       applyLanguage(localStorage.getItem("branchwhisper:desktop-language") || "zh");
+      renderBotBridgePreflight(buildBotBridgePreflightChecks());
       updateBotBridgeLogView();
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
       activateSection("guide");

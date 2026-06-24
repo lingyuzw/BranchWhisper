@@ -9,7 +9,24 @@ const tauriConfigPath = resolve("apps/desktop/src-tauri/tauri.conf.json");
 function extractScriptFunction(script, functionName) {
   const start = script.indexOf(`function ${functionName}(`);
   assert.notEqual(start, -1, `${functionName} should exist`);
-  const bodyStart = script.indexOf("{", start);
+  const paramsStart = script.indexOf("(", start);
+  assert.notEqual(paramsStart, -1, `${functionName} should have parameters`);
+  let parenDepth = 0;
+  let paramsEnd = -1;
+  for (let index = paramsStart; index < script.length; index += 1) {
+    const char = script[index];
+    if (char === "(") {
+      parenDepth += 1;
+    } else if (char === ")") {
+      parenDepth -= 1;
+      if (parenDepth === 0) {
+        paramsEnd = index;
+        break;
+      }
+    }
+  }
+  assert.notEqual(paramsEnd, -1, `${functionName} parameters should be closed`);
+  const bodyStart = script.indexOf("{", paramsEnd);
   assert.notEqual(bodyStart, -1, `${functionName} should have a body`);
   let depth = 0;
   for (let index = bodyStart; index < script.length; index += 1) {
@@ -25,6 +42,26 @@ function extractScriptFunction(script, functionName) {
   }
   throw new Error(`${functionName} body was not closed`);
 }
+
+test("extractScriptFunction handles preflight-style destructured defaults", () => {
+  const script = `
+    function runBotBridgePreflight({ blockOnFailure = true } = {}) {
+      if (!blockOnFailure) {
+        return "skipped";
+      }
+      return "passed";
+    }
+
+    function nextFunction() {
+      return "next";
+    }
+  `;
+
+  const source = extractScriptFunction(script, "runBotBridgePreflight");
+
+  assert.match(source, /return "passed"/);
+  assert.doesNotMatch(source, /function nextFunction/);
+});
 
 test("desktop app opens to BranchWhisper Studio instead of legacy web console", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
@@ -348,12 +385,13 @@ test("studio Bot page persists and detects the selected weixin bridge", async ()
   assert.match(html, /\.badge\.error/);
   assert.match(html, /\.badge\.run/);
   assert.match(html, /function selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /function rawBotBridgeIntegrationId\(\)/);
   assert.match(html, /bridge_provider:\s*botBridgeProviderInput\?\.value\.trim\(\) \|\| "openclaw"/);
-  assert.match(html, /bridge_integration_id:\s*selectedBotBridgeIntegrationId\(\)/);
+  assert.match(html, /bridge_integration_id:\s*rawBotBridgeIntegrationId\(\)/);
   assert.match(html, /bridge_url:\s*botBridgeUrlInput\?\.value\.trim\(\) \|\| ""/);
   assert.match(html, /bridge_enabled:\s*Boolean\(botBridgeEnabledInput\?\.checked\)/);
   assert.match(html, /botBridgeProviderInput\.value = current\.bridge_provider \|\| "openclaw"/);
-  assert.match(html, /botBridgeIntegrationInput\.value = current\.bridge_integration_id \|\| "weixin_personal"/);
+  assert.match(html, /botBridgeIntegrationInput\.value = current\.bridge_integration_id \?\? "weixin_personal"/);
   assert.match(html, /botBridgeUrlInput\.value = current\.bridge_url \|\| ""/);
   assert.match(html, /botBridgeEnabledInput\.checked = current\.bridge_enabled === true/);
   assert.match(html, /async function testBotBridge\(\)/);
@@ -406,6 +444,64 @@ test("studio Bot bridge detection does not mark disabled integrations as usable"
     html,
     /if \(!integration\.enabled\) \{\s*setBotBridgeStatus\("未启用", "warn"\);[\s\S]*\} else if \(\["running", "login", "logged_in"\]\.includes\(status\) \|\| accounts > 0\) \{/,
   );
+});
+
+test("studio Bot bridge shows Bot API and integration preflight checks", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const selector of [
+    "data-bot-bridge-preflight",
+    "data-bot-bridge-preflight-summary",
+    "data-bot-bridge-preflight-list",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+  assert.match(html, /<div class="form-grid">[\s\S]*data-bot-bridge-enabled[\s\S]*<\/div>\s*<div class="bridge-preflight-panel" data-bot-bridge-preflight>/);
+  assert.match(html, /function findBotBridgeApiProvider\(\)/);
+  assert.match(html, /function buildBotBridgePreflightChecks\(\)/);
+  assert.match(html, /function renderBotBridgePreflight\(checks\)/);
+  assert.match(html, /function runBotBridgePreflight\(\{ blockOnFailure = true \} = \{\}\)/);
+  assert.match(html, /const providerId = botApiProviderInput\?\.value\.trim\(\) \|\| selectedBotProfile\(\)\?\.api_provider_id \|\| activeApiProviderId \|\| "qwen"/);
+  assert.doesNotMatch(extractScriptFunction(html, "findBotBridgeApiProvider"), /selectedApiProvider\(\)/);
+  assert.match(html, /renderSelectedBotProfile\(profile\)[\s\S]*renderBotBridgePreflight\(buildBotBridgePreflightChecks\(\)\)/);
+  assert.match(html, /renderBotApiProviderOptions\(\)[\s\S]*renderBotBridgePreflight\(buildBotBridgePreflightChecks\(\)\)/);
+});
+
+test("studio Bot bridge start blocks launch when preflight fails", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const controlBotBridge = extractScriptFunction(html, "controlBotBridge");
+  const startBranch = /if \(\["start", "restart"\]\.includes\(action\)\) \{(?<body>[\s\S]*?)const result = await backendRequest\(\{\s*method:\s*"POST",\s*path\s*\}\)/.exec(controlBotBridge);
+
+  assert.ok(startBranch?.groups?.body, "start/restart branch should be found");
+  assert.match(startBranch.groups.body, /const preflight = runBotBridgePreflight\(\)/);
+  assert.match(startBranch.groups.body, /if \(!preflight\) \{[\s\S]*return null;[\s\S]*\}/);
+  assert.ok(
+    startBranch.groups.body.indexOf("runBotBridgePreflight()") <
+      startBranch.groups.body.indexOf("botBridgeEnabledInput.checked = true"),
+    "preflight should run before mutating the enable checkbox",
+  );
+  assert.ok(
+    startBranch.groups.body.indexOf("runBotBridgePreflight()") <
+      startBranch.groups.body.indexOf("persistBotProfileForBridgeRun()"),
+    "preflight should run before saving the Bot profile",
+  );
+  assert.ok(
+    startBranch.groups.body.indexOf("runBotBridgePreflight()") <
+      startBranch.groups.body.indexOf("syncBotBridgeIntegration("),
+    "preflight should run before syncing the integration",
+  );
+  assert.match(extractScriptFunction(html, "runBotBridgePreflight"), /setBotBridgeStatus\("预检未通过", "error"\)/);
+  assert.match(extractScriptFunction(html, "runBotBridgePreflight"), /setBotBridgeLog\(`预检未通过，先修复以下项目：\\n\$\{repairLines\.join\("\\n"\)\}`\)/);
+  assert.match(extractScriptFunction(html, "runBotBridgePreflight"), /setBotStatus\("桥接预检未通过，请先修复 Bot、API 或集成实例配置。", "error"\)/);
+});
+
+test("studio Bot bridge preflight requires the integration field before applying defaults", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const preflightSource = extractScriptFunction(html, "buildBotBridgePreflightChecks");
+
+  assert.match(preflightSource, /const integrationId = rawBotBridgeIntegrationId\(\)/);
+  assert.match(preflightSource, /ok:\s*Boolean\(integrationId\)/);
+  assert.doesNotMatch(preflightSource, /const integrationId = selectedBotBridgeIntegrationId\(\)/);
 });
 
 test("studio Bot selection resets bridge logs for the selected profile", async () => {
