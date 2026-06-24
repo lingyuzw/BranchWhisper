@@ -7,6 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -50,6 +51,7 @@ from service_runtime.profiles import (
 )
 from tools.runtime_brain import MemoryStore, ToolManager, admit_memory_candidate, extract_memory_candidates
 from integration_runtime import manager as manager_module
+from app.server import build_good_morning_context
 
 
 def default_settings() -> SessionSettings:
@@ -1243,6 +1245,60 @@ class OpenClawBridgeTests(unittest.TestCase):
 
 
 class ToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_good_morning_context_uses_default_weather_location_and_pending_reminders(self) -> None:
+        class ProviderConfigStub:
+            def load(self) -> dict:
+                return {
+                    "enabled": True,
+                    "timeout": 12,
+                    "weather": {
+                        "enabled": True,
+                        "provider": "gaode",
+                        "default_location": "漳州",
+                    },
+                }
+
+        class WeatherToolManager(ToolManager):
+            async def weather(self, location: str, timeout: float = 12, providers: dict | None = None) -> dict:
+                provider = (providers or {}).get("weather") or {}
+                final_location = location.strip() or str(provider.get("default_location") or "北京")
+                return {
+                    "ok": True,
+                    "tool": "weather",
+                    "location": final_location,
+                    "area": final_location,
+                    "current": {
+                        "weather": "晴",
+                        "temp_c": 29,
+                        "humidity": 65,
+                        "wind_power": "3级",
+                    },
+                }
+
+        class ReminderStoreStub:
+            def list(self, status: str = "") -> list[dict]:
+                self.requested_status = status
+                return [
+                    {"title": "10 点开会", "due_at": "2026-06-24 10:00:00", "status": "pending"},
+                    {"title": "明天再说", "due_at": "2026-06-25 10:00:00", "status": "pending"},
+                ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = WeatherToolManager(Path(tmp) / "tools.json", ProviderConfigStub())
+            reminder_store = ReminderStoreStub()
+            context = await build_good_morning_context(
+                tool_manager=manager,
+                reminder_store=reminder_store,
+                now=datetime(2026, 6, 24, 7, 30),
+            )
+
+        self.assertEqual(reminder_store.requested_status, "pending")
+        self.assertEqual(context["weather"]["city"], "漳州")
+        self.assertEqual(context["weather"]["weather"], "晴")
+        self.assertEqual(context["weather"]["current_temp"], 29)
+        self.assertEqual(context["weather"]["humidity"], 65)
+        self.assertEqual(context["reminders"], [{"title": "10 点开会", "due_at": "2026-06-24 10:00:00", "status": "pending"}])
+
     async def test_weather_question_uses_configured_default_location(self) -> None:
         class ProviderConfigStub:
             def load(self) -> dict:

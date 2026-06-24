@@ -304,7 +304,11 @@ def build_good_morning_greeting(data: dict[str, Any] | None) -> str:
         message = message.replace("出门前看一眼手机、钥匙和耳机，别落东西。", "钥匙和手机别落。")
     if len(message) > 120 and len(hints) > 2:
         message = "".join([sentences[0], "。".join(hints[:2]) + "。", "钥匙和手机别落。"])
-    return message[:120].rstrip("，。") + ("。" if not message[:120].endswith("。") else "")
+    if len(message) > 120:
+        message = message[:119].rstrip("，。") + "。"
+    elif not message.endswith("。"):
+        message = message.rstrip("，。") + "。"
+    return message
 
 
 class ProactiveStore:
@@ -516,11 +520,12 @@ class ProactiveStore:
             notes.append(f"今天还有 {count} 条提醒，我会按时间看着。")
         return "\n".join(notes)
 
-    def maybe_create_greetings(self, now: datetime | None = None) -> list[dict]:
+    def maybe_create_greetings(self, now: datetime | None = None, context: dict | None = None) -> list[dict]:
         config = self.load_config()
         if not config.get("enabled") or not (config.get("greetings") or {}).get("enabled"):
             return []
         now = now or datetime.now()
+        context = context or {}
         created = []
         greetings = config.get("greetings") or {}
         specs = [
@@ -538,7 +543,7 @@ class ProactiveStore:
             if not in_time_window(now, str(spec.get("window_start") or "00:00"), str(spec.get("window_end") or "23:59")):
                 continue
             message = str(spec.get("message") or self.default_greeting_message(key, now))
-            notes = self.greeting_note_message(spec)
+            notes = self.greeting_note_message(spec, context)
             if notes:
                 message = f"{message}\n{notes}"
             created.append(

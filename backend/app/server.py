@@ -8,6 +8,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 import sys
+from typing import Any
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -301,10 +302,65 @@ async def reminder_loop(app: FastAPI) -> None:
             await asyncio.sleep(15)
 
 
+def weather_result_to_good_morning_data(result: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(result, dict) or result.get("ok") is False:
+        return {}
+    current = result.get("current") if isinstance(result.get("current"), dict) else {}
+    if not current:
+        return {}
+    return {
+        "city": result.get("area") or result.get("location") or "",
+        "weather": current.get("weather") or "",
+        "current_temp": current.get("temp_c"),
+        "humidity": current.get("humidity"),
+        "wind_level": current.get("wind_power") or current.get("wind_kmph") or current.get("wind_direction") or "",
+    }
+
+
+def reminders_due_today(reminders: list[dict[str, Any]], now: datetime | None = None) -> list[dict[str, Any]]:
+    now = now or datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    result = []
+    for reminder in reminders:
+        if str(reminder.get("status") or "pending") != "pending":
+            continue
+        due_at = str(reminder.get("due_at") or "")
+        if due_at.startswith(today):
+            result.append(reminder)
+    return result
+
+
+async def build_good_morning_context(*, tool_manager: ToolManager, reminder_store: ReminderStore, now: datetime | None = None) -> dict[str, Any]:
+    context: dict[str, Any] = {}
+    providers = tool_manager.providers()
+    weather_provider = providers.get("weather") or {}
+    if weather_provider.get("enabled", True):
+        try:
+            timeout = float(providers.get("timeout") or 12.0)
+            weather_result = await tool_manager.weather("", timeout=timeout, providers=providers)
+            weather_data = weather_result_to_good_morning_data(weather_result)
+            if weather_data:
+                context["weather"] = weather_data
+        except Exception:
+            pass
+
+    try:
+        today_reminders = reminders_due_today(reminder_store.list(status="pending"), now)
+        if today_reminders:
+            context["reminders"] = today_reminders
+    except Exception:
+        pass
+    return context
+
+
 async def proactive_loop(app: FastAPI) -> None:
     while True:
         try:
-            app.state.proactive_store.maybe_create_greetings()
+            greeting_context = await build_good_morning_context(
+                tool_manager=app.state.tool_manager,
+                reminder_store=app.state.reminder_store,
+            )
+            app.state.proactive_store.maybe_create_greetings(context=greeting_context)
             session = app.state.integration_manager.my_weixin_session(preferred_integration_id(app))
             last_activity_at = str(session.get("updated_at") or "")
             if not last_activity_at:

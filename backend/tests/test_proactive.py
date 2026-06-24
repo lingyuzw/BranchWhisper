@@ -87,6 +87,50 @@ class ProactiveStoreTests(unittest.TestCase):
         self.assertNotIn("天气", created[0]["content"])
         self.assertNotIn("提醒", created[0]["content"])
 
+    def test_good_morning_event_uses_weather_and_only_existing_reminders(self) -> None:
+        tmp, store = self.make_store()
+        self.addCleanup(tmp.cleanup)
+        store.save_config(
+            {
+                "enabled": True,
+                "quiet_hours_enabled": False,
+                "channels": {"web": True, "weixin": False},
+                "greetings": {
+                    "enabled": True,
+                    "good_morning": {
+                        "enabled": True,
+                        "window_start": "07:00",
+                        "window_end": "09:30",
+                        "with_weather": True,
+                        "with_reminders": True,
+                        "message": "",
+                    },
+                },
+            }
+        )
+
+        created = store.maybe_create_greetings(
+            now=datetime(2026, 6, 17, 7, 30),
+            context={
+                "weather": {
+                    "city": "漳州",
+                    "weather": "晴",
+                    "min_temp": 24,
+                    "max_temp": 33,
+                    "uv_index": 8,
+                },
+                "reminders": [{"title": "10 点开会"}, {"title": "下午买药"}],
+            },
+        )
+
+        self.assertEqual(len(created), 1)
+        content = created[0]["content"]
+        self.assertIn("漳州晴", content)
+        self.assertIn("24～33℃", content)
+        self.assertIn("防晒", content)
+        self.assertIn("今天还有 2 条提醒", content)
+        self.assertNotIn("我会按已配置的默认地区一起参考", content)
+
     def test_good_morning_weather_greeting_uses_only_provided_weather_data(self) -> None:
         message = build_good_morning_greeting(
             {
@@ -113,6 +157,7 @@ class ProactiveStoreTests(unittest.TestCase):
         self.assertLessEqual(message.count("记得"), 1)
         self.assertGreaterEqual(len(message), 20)
         self.assertLessEqual(len(message), 120)
+        self.assertTrue(message.endswith("。"))
 
     def test_good_morning_weather_greeting_does_not_fabricate_missing_values(self) -> None:
         message = build_good_morning_greeting({"city": "漳州", "weather": "多云"})
