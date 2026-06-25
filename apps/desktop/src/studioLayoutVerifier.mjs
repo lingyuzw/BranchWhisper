@@ -122,6 +122,12 @@ export function workspaceTabSelector(workspaceName) {
 
 export function summarizeLayoutSnapshot(snapshot, tolerance = OVERFLOW_TOLERANCE_PX) {
   const issues = [];
+  const workspaceTop = Math.round(snapshot.scroll?.workspaceTop || 0);
+  const workspaceLeft = Math.round(snapshot.scroll?.workspaceLeft || 0);
+
+  if (workspaceTop > tolerance || workspaceLeft > tolerance) {
+    issues.push(`workspace starts scrolled: top ${workspaceTop}px, left ${workspaceLeft}px`);
+  }
 
   for (const measurement of snapshot.measurements || []) {
     if (measurement.delta > tolerance) {
@@ -200,6 +206,15 @@ function loadPlaywright() {
 }
 
 async function activateStudioPage(browserPage, pageName) {
+  await browserPage.evaluate(() => {
+    const workspace = document.querySelector(".workspace");
+    if (!workspace) {
+      return;
+    }
+    workspace.scrollTop = Math.min(120, Math.max(0, workspace.scrollHeight - workspace.clientHeight));
+    workspace.scrollLeft = Math.min(40, Math.max(0, workspace.scrollWidth - workspace.clientWidth));
+  });
+
   if (pageName === "chat") {
     await browserPage.locator(workspaceTabSelector("chat")).click();
     await browserPage.waitForSelector('.page[data-panel="chat"].active');
@@ -289,6 +304,10 @@ async function captureLayoutSnapshot(browserPage, pageName, viewport, screenshot
 
     return {
       activePageName,
+      scroll: {
+        workspaceTop: workspace ? workspace.scrollTop : 0,
+        workspaceLeft: workspace ? workspace.scrollLeft : 0,
+      },
       measurements: [
         measure("html", "document"),
         measure("body", "body"),
@@ -305,6 +324,7 @@ async function captureLayoutSnapshot(browserPage, pageName, viewport, screenshot
     pageName,
     viewport,
     screenshotPath,
+    scroll: data.scroll,
     measurements: data.measurements,
     clippedElements: data.clippedElements,
   };

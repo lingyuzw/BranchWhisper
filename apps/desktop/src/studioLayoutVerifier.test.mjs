@@ -126,11 +126,26 @@ test("workspace tab selectors target only the top workspace switcher", () => {
   assert.equal(workspaceTabSelector("bot"), '.workspace-toggle [data-workspace-tab="bot"]');
 });
 
+test("summarizeLayoutSnapshot flags pages that open with inherited workspace scroll", () => {
+  const failed = summarizeLayoutSnapshot({
+    pageName: "api",
+    viewport: { width: 1280, height: 820 },
+    screenshotPath: "C:\\Temp\\api.png",
+    scroll: { workspaceTop: 96, workspaceLeft: 0 },
+    measurements: [],
+    clippedElements: [],
+  });
+
+  assert.equal(failed.ok, false);
+  assert.deepEqual(failed.issues, ["workspace starts scrolled: top 96px, left 0px"]);
+});
+
 test("summarizeLayoutSnapshot fails only when measured overflow exceeds tolerance", () => {
   const ok = summarizeLayoutSnapshot({
     pageName: "bot",
     viewport: { width: 1280, height: 850 },
     screenshotPath: "C:\\Temp\\bot.png",
+    scroll: { workspaceTop: 0, workspaceLeft: 0 },
     measurements: [
       { selector: ".workspace", label: "workspace", clientWidth: 1000, scrollWidth: 1001, delta: 1 },
       { selector: ".page.active", label: "active page", clientWidth: 980, scrollWidth: 980, delta: 0 },
@@ -145,6 +160,7 @@ test("summarizeLayoutSnapshot fails only when measured overflow exceeds toleranc
     pageName: "bot",
     viewport: { width: 1280, height: 850 },
     screenshotPath: "C:\\Temp\\bot.png",
+    scroll: { workspaceTop: 0, workspaceLeft: 0 },
     measurements: [
       { selector: ".workspace", label: "workspace", clientWidth: 1000, scrollWidth: 1040, delta: 40 },
       { selector: ".page.active", label: "active page", clientWidth: 980, scrollWidth: 1008, delta: 28 },

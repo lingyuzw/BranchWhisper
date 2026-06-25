@@ -220,6 +220,21 @@ test("studio right rail is contextual instead of appearing on every page", async
   assert.match(html, /root\.dataset\.rail = railPages\.has\(next\) \? next : "hidden"/);
 });
 
+test("studio resets the workspace scroll when switching pages or workspaces", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+
+  assert.match(script, /const workspace = document\.querySelector\("\.workspace"\)/);
+  assert.match(script, /function resetWorkspaceScroll\(\)/);
+  assert.match(script, /workspace\.scrollTo\(\{\s*top:\s*0,\s*left:\s*0,\s*behavior:\s*"auto"\s*\}\)/s);
+
+  const activateSectionSource = extractScriptFunction(script, "activateSection");
+  assert.match(activateSectionSource, /resetWorkspaceScroll\(\)/);
+
+  const activateWorkspaceSource = extractScriptFunction(script, "activateWorkspace");
+  assert.match(activateWorkspaceSource, /resetWorkspaceScroll\(\)/);
+});
+
 test("studio api page is wired to backend config instead of static placeholders", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
@@ -348,6 +363,19 @@ test("studio API page keeps default provider choices visible when backend provid
   assert.match(html, /apiProviders = defaultApiProviders\.map\(\(provider\) => \(\{ \.\.\.provider \}\)\)/);
   assert.match(html, /activeApiProviderId = "qwen"/);
   assert.match(html, /renderSelectedApiProvider\(\)/);
+});
+
+test("studio API page keeps setup controls compact enough for the first desktop viewport", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const apiConfigPanel = html.match(
+    /<div class="api-config-layout">\s*<div class="panel">([\s\S]*?)<\/div>\s*<div class="panel api-provider-manager">/,
+  )?.[1] || "";
+
+  assert.match(html, /\.page\[data-panel="api"\] \.page-hero\s*\{[\s\S]*min-height:\s*0/);
+  assert.match(html, /\.page\[data-panel="api"\] \[data-api-provider-modal\]\s*\{[\s\S]*padding:\s*11px 12px/);
+  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-card\s*\{[\s\S]*min-height:\s*58px/);
+  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-list\s*\{[\s\S]*max-height:\s*144px/);
+  assert.match(apiConfigPanel, /<div class="status-line warn" data-api-status>[\s\S]*<\/div>\s*<div class="api-guide-compact">[\s\S]*保存规则/);
 });
 
 test("studio API page closes the setup loop by advancing to Bot creation after a successful test", async () => {

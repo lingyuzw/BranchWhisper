@@ -2340,7 +2340,7 @@
 
       .page[data-panel="api"] .page-hero {
         grid-template-columns: minmax(0, 1fr) minmax(360px, 0.68fr);
-        min-height: 178px;
+        min-height: 0;
         padding: 14px;
       }
 
@@ -2352,9 +2352,19 @@
         max-width: 720px;
       }
 
+      .page[data-panel="api"] [data-api-provider-modal] {
+        gap: 8px;
+        padding: 11px 12px;
+      }
+
       .page[data-panel="api"] .api-provider-card {
-        min-height: 68px;
-        padding: 10px 11px;
+        min-height: 58px;
+        gap: 4px;
+        padding: 8px 10px;
+      }
+
+      .page[data-panel="api"] .api-provider-card span {
+        line-height: 1.32;
       }
 
       .page[data-panel="api"] .api-config-layout {
@@ -2377,7 +2387,7 @@
       }
 
       .page[data-panel="api"] .api-provider-list {
-        max-height: 176px;
+        max-height: 144px;
         gap: 7px;
         padding: 0 2px 4px 0;
       }
@@ -2999,6 +3009,10 @@
                     <label class="field"><span>Max Tokens</span><input class="text-input" data-api-max-tokens-input type="number" min="64" max="8192" step="64" value="1024" /></label>
                   </div>
                   <div class="status-line warn" data-api-status>等待加载后端配置。后端未启动时，可以先填写，启动后再测试和保存。</div>
+                  <div class="api-guide-compact">
+                    <h3>保存规则</h3>
+                    <p>预设只填名称、URL 和模型。API Key 只保存到本机后端，列表不回显原文。</p>
+                  </div>
                 </div>
                 <div class="panel api-provider-manager">
                   <div class="panel-head">
@@ -3029,10 +3043,6 @@
                     <div class="panel-actions">
                       <button class="primary-action" type="button" data-api-next-bot>去创建 Bot</button>
                     </div>
-                  </div>
-                  <div class="api-guide-compact">
-                    <h3>保存规则</h3>
-                    <p>预设只填名称、URL 和模型。API Key 只保存到本机后端，列表不回显原文。</p>
                   </div>
                 </div>
               </div>
@@ -3774,6 +3784,7 @@
       const backendDot = document.querySelector("[data-backend-dot]");
       const commandLine = document.querySelector("[data-command-line]");
       const logPreview = document.querySelector("[data-log-preview]");
+      const workspace = document.querySelector(".workspace");
       const apiNameInput = document.querySelector("[data-api-name-input]");
       const apiUrlInput = document.querySelector("[data-api-url-input]");
       const apiModelInput = document.querySelector("[data-api-model-input]");
@@ -7246,6 +7257,13 @@
         await saveBotProfile();
       }
 
+      function resetWorkspaceScroll() {
+        if (!workspace) {
+          return;
+        }
+        workspace.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+
       function activateSection(section) {
         const next = document.querySelector(`[data-panel="${section}"]`) ? section : "guide";
         root.dataset.activeSection = next;
@@ -7263,6 +7281,7 @@
         title.textContent = nextTitle;
         subtitle.textContent = nextSubtitle;
         root.dataset.rail = railPages.has(next) ? next : "hidden";
+        resetWorkspaceScroll();
         if (next === "guide") {
           refreshGuideProgress();
         }
@@ -7309,6 +7328,7 @@
         document.querySelectorAll("[data-workspace-tab]").forEach((button) => {
           button.classList.toggle("active", button.dataset.workspaceTab === next);
         });
+        resetWorkspaceScroll();
         if (next === "chat") {
           activateSection("chat");
         } else if (root.dataset.activeSection === "chat") {
