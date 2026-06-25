@@ -27,7 +27,7 @@ impl BackendCommand {
             };
         }
 
-        if let Some(program) = default_packaged_backend_path(platform, &get_env) {
+        for program in default_packaged_backend_candidates(platform, &get_env) {
             if path_exists(&program) {
                 return Self {
                     program,
@@ -79,6 +79,7 @@ pub struct BackendLaunchContract {
 }
 
 impl BackendLaunchContract {
+    #[cfg(test)]
     pub fn default_for_repo(repo_root: &str) -> Self {
         Self::for_platform_and_repo(
             std::env::consts::OS,
@@ -144,26 +145,39 @@ where
     join_path(platform, repo_root, &["runtime", "desktop"])
 }
 
-fn default_packaged_backend_path<F>(platform: &str, get_env: &F) -> Option<String>
+fn default_packaged_backend_candidates<F>(platform: &str, get_env: &F) -> Vec<String>
 where
     F: Fn(&str) -> Option<String>,
 {
     if platform != "windows" {
-        return None;
+        return Vec::new();
     }
 
-    let local_app_data = get_env("LOCALAPPDATA")?;
-    Some(join_path(
-        platform,
-        &local_app_data,
-        &[
-            "BranchWhisper",
-            "backend-build",
-            "dist",
-            "branchwhisper-backend",
-            "branchwhisper-backend.exe",
-        ],
-    ))
+    let mut candidates = Vec::new();
+
+    if let Some(resource_dir) = get_env("BRANCHWHISPER_RESOURCE_DIR") {
+        candidates.push(join_path(
+            platform,
+            &resource_dir,
+            &["backend", "branchwhisper-backend.exe"],
+        ));
+    }
+
+    if let Some(local_app_data) = get_env("LOCALAPPDATA") {
+        candidates.push(join_path(
+            platform,
+            &local_app_data,
+            &[
+                "BranchWhisper",
+                "backend-build",
+                "dist",
+                "branchwhisper-backend",
+                "branchwhisper-backend.exe",
+            ],
+        ));
+    }
+
+    candidates
 }
 
 fn join_path(platform: &str, root: &str, parts: &[&str]) -> String {
@@ -288,6 +302,46 @@ mod tests {
         let command = BackendCommand::for_platform_with_paths(
             "windows",
             |key| match key {
+                "LOCALAPPDATA" => Some("C:\\Users\\Me\\AppData\\Local".to_string()),
+                _ => None,
+            },
+            |path| path == expected,
+        );
+
+        assert_eq!(command.program, expected);
+        assert_eq!(command.args, vec!["--host", "127.0.0.1", "--port", "7860"]);
+    }
+
+    #[test]
+    fn backend_command_prefers_installed_resource_backend_on_windows() {
+        let expected =
+            "C:\\Program Files\\BranchWhisper\\resources\\backend\\branchwhisper-backend.exe";
+        let command = BackendCommand::for_platform_with_paths(
+            "windows",
+            |key| match key {
+                "BRANCHWHISPER_RESOURCE_DIR" => {
+                    Some("C:\\Program Files\\BranchWhisper\\resources".to_string())
+                }
+                "LOCALAPPDATA" => Some("C:\\Users\\Me\\AppData\\Local".to_string()),
+                _ => None,
+            },
+            |path| path == expected,
+        );
+
+        assert_eq!(command.program, expected);
+        assert_eq!(command.args, vec!["--host", "127.0.0.1", "--port", "7860"]);
+    }
+
+    #[test]
+    fn backend_command_falls_back_to_local_backend_build_when_resource_backend_is_missing() {
+        let expected =
+            "C:\\Users\\Me\\AppData\\Local\\BranchWhisper\\backend-build\\dist\\branchwhisper-backend\\branchwhisper-backend.exe";
+        let command = BackendCommand::for_platform_with_paths(
+            "windows",
+            |key| match key {
+                "BRANCHWHISPER_RESOURCE_DIR" => {
+                    Some("C:\\Program Files\\BranchWhisper\\resources".to_string())
+                }
                 "LOCALAPPDATA" => Some("C:\\Users\\Me\\AppData\\Local".to_string()),
                 _ => None,
             },

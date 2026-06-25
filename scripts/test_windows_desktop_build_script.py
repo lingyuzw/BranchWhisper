@@ -22,6 +22,18 @@ def test_windows_desktop_build_packages_backend_by_default() -> None:
     assert "$env:BRANCHWHISPER_BACKEND_EXECUTABLE" in text
 
 
+def test_windows_desktop_build_embeds_backend_resource_and_exports_installer() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    assert "Copy-BackendRuntimeResource" in text
+    assert "src-tauri\\resources" in text
+    assert "branchwhisper-backend.exe" in text
+    assert "Get-WindowsInstallerArtifact" in text
+    assert "DesktopInstallerPath" in text
+    assert "BranchWhisper-Setup.exe" in text
+    assert "Copy-Item -LiteralPath $InstallerPath -Destination $DesktopInstallerPath -Force" in text
+
+
 def test_windows_desktop_build_verifies_required_desktop_api_routes() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
 

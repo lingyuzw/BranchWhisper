@@ -53,3 +53,18 @@ test("tauri config advertises Windows-friendly app icon sizes", async () => {
     "icons/icon.ico",
   ]);
 });
+
+test("tauri config builds a Windows installer with bundled backend resources", async () => {
+  const config = JSON.parse(await readFile(tauriConfigPath, "utf8"));
+
+  assert.equal(config.bundle.active, true);
+  assert.deepEqual(config.bundle.targets, ["nsis"]);
+  assert.equal(config.bundle.publisher, "BranchWhisper");
+  assert.equal(config.bundle.resources["resources/backend/"], "backend/");
+  assert.equal(config.bundle.windows.nsis.installMode, "currentUser");
+  assert.equal(config.bundle.windows.nsis.displayLanguageSelector, true);
+  assert.ok(
+    config.bundle.windows.webviewInstallMode,
+    "installer should declare how WebView2 is handled on fresh Windows machines",
+  );
+});

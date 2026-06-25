@@ -151,7 +151,7 @@ test("studio guide page gives beginner API and local setup tracks", async () => 
 
   assert.match(html, /API 轻量部署/);
   assert.match(html, /本地完整部署/);
-  assert.match(html, /不装本地环境也能先跑通/);
+  assert.match(html, /填写 API 地址、模型和密钥后即可测试对话/);
   assert.match(html, /新增 API/);
   assert.match(html, /创建微信 Bot/);
   assert.match(html, /测试对话/);
@@ -1137,6 +1137,26 @@ test("studio guide hero nests deployment tracks under the setup copy and keeps m
   assert.match(html, /\.guide-mode-grid\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*grid-template-rows:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(html, /\.guide-mode-grid \.mode-card small\s*\{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere/);
   assert.doesNotMatch(html, /<div class="guide-card">[\s\S]*<div class="guide-tabs">[\s\S]*<div class="mode-grid"/);
+});
+
+test("studio guide copy stays product-like without explicit beginner labels", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  for (const phrase of [
+    "新手",
+    "小白",
+    "没有环境的电脑",
+    "新电脑推荐",
+    "不装本地环境",
+    "无需手动命令",
+  ]) {
+    assert.doesNotMatch(html, new RegExp(phrase));
+  }
+
+  assert.match(html, /推荐路径/);
+  assert.match(html, /API 路径适合先完成模型连通性/);
+  assert.match(html, /运行目录会保存对话数据、素材库和日志/);
+  assert.match(html, /安装包包含桌面壳和后端资源/);
 });
 
 test("studio bot page moves persona editing left and places large actions above bot list and bridge", async () => {

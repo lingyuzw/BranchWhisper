@@ -5,7 +5,8 @@ param(
   [string]$BackendExecutable = "",
   [switch]$UseLocalCopy = $true,
   [string]$BuildRoot = (Join-Path $env:LOCALAPPDATA "BranchWhisper\windows-build"),
-  [string]$DesktopExePath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper.exe")
+  [string]$DesktopExePath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper.exe"),
+  [string]$DesktopInstallerPath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper-Setup.exe")
 )
 
 $ErrorActionPreference = "Stop"
@@ -169,6 +170,58 @@ function Assert-BackendDesktopApiContract {
   }
 }
 
+function Copy-BackendRuntimeResource {
+  param(
+    [string]$BackendDistDirectory,
+    [string]$DesktopRoot
+  )
+
+  if (-not $BackendDistDirectory) {
+    throw "Backend distribution directory is required before packaging desktop resources."
+  }
+
+  if (-not (Test-Path $BackendDistDirectory)) {
+    throw "Backend distribution directory does not exist: $BackendDistDirectory"
+  }
+
+  $resourceRoot = Join-Path $DesktopRoot "src-tauri\resources"
+  $resourceBackend = Join-Path $resourceRoot "backend"
+  if (Test-Path $resourceBackend) {
+    Remove-Item -LiteralPath $resourceBackend -Recurse -Force
+  }
+
+  New-Item -ItemType Directory -Force -Path $resourceRoot | Out-Null
+  Copy-Item -LiteralPath $BackendDistDirectory -Destination $resourceBackend -Recurse -Force
+
+  $resourceExecutable = Join-Path $resourceBackend "branchwhisper-backend.exe"
+  if (-not (Test-Path $resourceExecutable)) {
+    throw "Bundled backend resource is missing executable: $resourceExecutable"
+  }
+
+  return $resourceExecutable
+}
+
+function Get-WindowsInstallerArtifact {
+  param(
+    [string]$BundlePath
+  )
+
+  if (-not (Test-Path $BundlePath)) {
+    throw "Desktop bundle directory was not found: $BundlePath"
+  }
+
+  $installer = Get-ChildItem -LiteralPath $BundlePath -Recurse -File -Filter "*.exe" |
+    Where-Object { $_.FullName -match "\\nsis\\" -or $_.Name -match "setup|installer|BranchWhisper" } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+  if (-not $installer) {
+    throw "Windows installer was not found under bundle directory: $BundlePath"
+  }
+
+  return $installer.FullName
+}
+
 $WorkingRepoRoot = $SourceRepoRoot
 
 if ($UseLocalCopy) {
@@ -207,6 +260,12 @@ try {
     Write-Host "Using packaged backend executable:"
     Write-Host "  $env:BRANCHWHISPER_BACKEND_EXECUTABLE"
     Assert-BackendDesktopApiContract -ExecutablePath $env:BRANCHWHISPER_BACKEND_EXECUTABLE
+    $backendDistDirectory = Split-Path -Parent $env:BRANCHWHISPER_BACKEND_EXECUTABLE
+    $bundledBackendExecutable = Copy-BackendRuntimeResource `
+      -BackendDistDirectory $backendDistDirectory `
+      -DesktopRoot $DesktopRoot
+    Write-Host "Bundled backend resource:"
+    Write-Host "  $bundledBackendExecutable"
   }
 
   Push-Location $DesktopRoot
@@ -249,11 +308,15 @@ try {
   Get-Process branchwhisper-backend -ErrorAction SilentlyContinue | Stop-Process -Force
   Start-Sleep -Milliseconds 500
   Copy-Item -LiteralPath $ExePath -Destination $DesktopExePath -Force
+  $InstallerPath = Get-WindowsInstallerArtifact -BundlePath $BundlePath
+  Copy-Item -LiteralPath $InstallerPath -Destination $DesktopInstallerPath -Force
 
   Write-Host ""
   Write-Host "Windows desktop build finished."
   Write-Host "EXE: $ExePath"
   Write-Host "Desktop EXE: $DesktopExePath"
+  Write-Host "Installer: $InstallerPath"
+  Write-Host "Desktop installer: $DesktopInstallerPath"
   Write-Host "Bundle: $BundlePath"
   if ($UseLocalCopy) {
     Write-Host "Build workspace: $WorkingRepoRoot"

@@ -40,8 +40,7 @@ fn main() {
             let repo_root = std::env::current_dir()
                 .map(|path| path.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| ".".to_string());
-            let startup_contract =
-                backend_contract::BackendLaunchContract::default_for_repo(&repo_root);
+            let startup_contract = backend_contract_for_app(app, &repo_root);
             send_startup_status(
                 &window,
                 &DesktopStartupStatus::checking(&startup_contract.app_url),
@@ -113,6 +112,26 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running BranchWhisper desktop shell");
+}
+
+fn backend_contract_for_app(app: &App, repo_root: &str) -> backend_contract::BackendLaunchContract {
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .ok()
+        .map(|path| path.to_string_lossy().into_owned());
+
+    backend_contract::BackendLaunchContract::for_platform_and_repo(
+        std::env::consts::OS,
+        repo_root,
+        |key| {
+            if key == "BRANCHWHISPER_RESOURCE_DIR" {
+                return resource_dir.clone();
+            }
+            std::env::var(key).ok()
+        },
+        |path| std::path::Path::new(path).exists(),
+    )
 }
 
 fn setup_tray(app: &App) -> tauri::Result<()> {

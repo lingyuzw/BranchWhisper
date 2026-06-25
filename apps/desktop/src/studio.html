@@ -2891,7 +2891,7 @@
                 <div class="hero-copy guide-setup-copy">
                   <p class="eyebrow">欢迎引导</p>
                   <h1>从零开始配置 BranchWhisper</h1>
-                  <p class="lead">这版先做成小白也能看懂的桌面应用：不装本地环境也能先跑通 API，再创建微信 Bot、设置人格、保存对话数据，最后按需要进入本地完整部署。</p>
+                  <p class="lead">先完成 API 连通，再创建微信 Bot、设置人格、保存对话数据；需要本地语音链路时，再进入本地完整部署。</p>
                   <div class="panel-actions">
                     <button class="primary-action" type="button" data-section="api">开始新增 API</button>
                     <button class="secondary-action" type="button" data-section="bot">创建微信 Bot</button>
@@ -2900,7 +2900,7 @@
                   <div class="guide-track-grid">
                     <div class="guide-track active">
                       <strong>API 轻量部署</strong>
-                      <span>推荐新手先走这条，不需要 WSL、CUDA、conda、本地模型。</span>
+                      <span>API 路径适合先完成模型连通性，填写地址、模型和密钥后即可测试对话。</span>
                     </div>
                     <div class="guide-track">
                       <strong>本地完整部署</strong>
@@ -2911,9 +2911,9 @@
 
                 <div class="mode-grid guide-mode-grid" aria-label="运行方式">
                   <button class="mode-card recommended active" type="button" data-mode="api">
-                    <span>推荐</span>
+                    <span>推荐路径</span>
                     <strong>Use API</strong>
-                    <small>不装本地环境也能先跑通。配置 API URL、模型名和密钥后即可测试对话。</small>
+                    <small>填写 API 地址、模型和密钥后即可测试对话，再继续创建 Bot 和微信桥接。</small>
                   </button>
                   <button class="mode-card" type="button" data-mode="local">
                     <span>进阶</span>
@@ -2935,7 +2935,7 @@
                   <div class="guide-progress-summary">
                     <div>
                       <div class="guide-progress-score"><strong data-guide-progress-score>0/8</strong><span>已完成</span></div>
-                      <p data-guide-progress-detail>没有环境的电脑也可以先走 API；本地模型、CUDA、CosyVoice 后续再配。</p>
+                      <p data-guide-progress-detail>先完成 API、Bot、微信桥接和对话数据闭环；本地模型链路可以按需配置。</p>
                     </div>
                     <div class="guide-next-card">
                       <span>下一步</span>
@@ -2944,7 +2944,7 @@
                     </div>
                   </div>
                   <div class="guide-progress-list" data-guide-progress-list>
-                    <div class="guide-progress-item run"><span class="guide-progress-index">1</span><div class="guide-progress-body"><strong>选择 API 模式</strong><span>推荐新手先走 API。</span></div><span class="status-chip">待刷新</span></div>
+                    <div class="guide-progress-item run"><span class="guide-progress-index">1</span><div class="guide-progress-body"><strong>选择 API 模式</strong><span>先走 API 路径，快速确认模型连通。</span></div><span class="status-chip">待刷新</span></div>
                     <div class="guide-progress-item warn"><span class="guide-progress-index">2</span><div class="guide-progress-body"><strong>配置 API</strong><span>保存并测试模型连通性。</span></div><span class="status-chip">待刷新</span></div>
                     <div class="guide-progress-item warn"><span class="guide-progress-index">3</span><div class="guide-progress-body"><strong>创建 Bot</strong><span>创建微信 Bot 档案。</span></div><span class="status-chip">待刷新</span></div>
                     <div class="guide-progress-item warn"><span class="guide-progress-index">4</span><div class="guide-progress-body"><strong>连接微信</strong><span>扫码登录并启动桥接。</span></div><span class="status-chip">待刷新</span></div>
@@ -3707,11 +3707,12 @@
             </article>
 
             <article class="rail-card">
-              <h3>新手提示</h3>
+              <h3>配置提示</h3>
               <ul>
-                <li>没有环境的电脑，先走 API。</li>
-                <li>本地模型、CUDA、CosyVoice 可以以后再配。</li>
-                <li>对话数据、素材库和日志都会放到运行目录。</li>
+                <li>API 路径适合先确认模型连通和 Bot 配置。</li>
+                <li>本地模型、CUDA、CosyVoice 可在诊断中心逐项检查。</li>
+                <li>运行目录会保存对话数据、素材库和日志。</li>
+                <li>安装包包含桌面壳和后端资源，迁移时优先使用安装包。</li>
               </ul>
             </article>
 
@@ -3726,7 +3727,7 @@
 
             <article class="rail-card">
               <h3>启动命令</h3>
-              <pre class="log-box" data-command-line>当前无需手动命令。</pre>
+              <pre class="log-box" data-command-line>桌面端会自动准备后端命令。</pre>
             </article>
           </aside>
         </section>
@@ -3741,7 +3742,7 @@
         detail: "API 模式可先配置，本地环境可以稍后再做。",
         command_line: "",
         log_path: "",
-        repair_hints: ["没有环境的电脑，先使用 API 轻量部署。"],
+        repair_hints: ["优先检查 API 配置；本地链路问题可在诊断中心逐项处理。"],
         app_url: "http://127.0.0.1:7860/app/",
       };
 
@@ -4083,7 +4084,7 @@
           label: "选择 API 模式",
           section: "guide",
           ready: () => root.dataset.activeMode !== "local",
-          detail: () => (root.dataset.activeMode === "local" ? "当前是本地模式，新手建议先切回 API。" : "已选择 API 轻量部署。"),
+          detail: () => (root.dataset.activeMode === "local" ? "当前是本地模式；如果先验证模型连通，可切回 API。" : "已选择 API 轻量部署。"),
           action: "回到引导",
         },
         {
@@ -4284,7 +4285,7 @@
           guideProgressSummary.textContent = completed === items.length ? "核心闭环已完成。可以继续优化本地部署、提醒策略和素材规则。" : `已完成 ${completed} 项，下一步处理：${nextStep?.label || "检查状态"}。`;
         }
         if (guideProgressDetail) {
-          guideProgressDetail.textContent = nextStep?.detail || "没有环境的电脑也可以先走 API；本地模型、CUDA、CosyVoice 后续再配。";
+          guideProgressDetail.textContent = nextStep?.detail || "先完成 API、Bot、微信桥接和对话数据闭环；本地模型链路可以按需配置。";
         }
         if (guideNextLabel) {
           guideNextLabel.textContent = nextStep?.label || "检查状态";
@@ -7371,7 +7372,7 @@
         statusDetail.textContent = currentStatus.detail || defaultStatus.detail;
         backendSummary.textContent = label;
         backendDetail.textContent = currentStatus.detail || defaultStatus.detail;
-        commandLine.textContent = currentStatus.command_line || "当前无需手动命令。";
+        commandLine.textContent = currentStatus.command_line || "桌面端会自动准备后端命令。";
         if (logPreview) {
           logPreview.textContent = currentStatus.log_path ? `日志路径:\n${currentStatus.log_path}` : "等待后端状态...\napp: Studio shell loaded\nbackend: checking packaged runtime";
         }
