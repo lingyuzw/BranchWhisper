@@ -1,7 +1,7 @@
 param(
   [switch]$SkipPreflight,
   [switch]$PrepareOnly,
-  [switch]$BuildBackend,
+  [switch]$BuildBackend = $true,
   [string]$BackendExecutable = "",
   [switch]$UseLocalCopy = $true,
   [string]$BuildRoot = (Join-Path $env:LOCALAPPDATA "BranchWhisper\windows-build"),
@@ -72,6 +72,103 @@ function Copy-DirectoryPruned {
   }
 }
 
+function Get-FreeTcpPort {
+  $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Parse("127.0.0.1"), 0)
+  try {
+    $listener.Start()
+    return $listener.LocalEndpoint.Port
+  } finally {
+    $listener.Stop()
+  }
+}
+
+function Assert-BackendDesktopApiContract {
+  param(
+    [string]$ExecutablePath
+  )
+
+  if (-not $ExecutablePath) {
+    throw "Backend executable is required for desktop API contract verification."
+  }
+
+  if (-not (Test-Path $ExecutablePath)) {
+    throw "Backend executable does not exist: $ExecutablePath"
+  }
+
+  $port = Get-FreeTcpPort
+  $backendWorkdir = Split-Path -Parent $ExecutablePath
+  $contractOutLog = Join-Path $env:TEMP "branchwhisper-desktop-api-contract-$port.out.log"
+  $contractErrLog = Join-Path $env:TEMP "branchwhisper-desktop-api-contract-$port.err.log"
+  Remove-Item -LiteralPath $contractOutLog,$contractErrLog -Force -ErrorAction SilentlyContinue
+  Write-Host "Verifying packaged backend desktop API contract on port $port..."
+
+  $process = Start-Process `
+    -FilePath $ExecutablePath `
+    -ArgumentList @("--host", "127.0.0.1", "--port", [string]$port) `
+    -WorkingDirectory $backendWorkdir `
+    -PassThru `
+    -WindowStyle Hidden `
+    -RedirectStandardOutput $contractOutLog `
+    -RedirectStandardError $contractErrLog
+
+  try {
+    $origin = "http://tauri.localhost"
+    $baseUrl = "http://127.0.0.1:$port"
+    $requiredRoutes = @(
+      "/api/desktop/capabilities",
+      "/api/config/api-providers",
+      "/api/statistics"
+    )
+
+    $ready = $false
+    for ($i = 0; $i -lt 60; $i++) {
+      Start-Sleep -Milliseconds 500
+      try {
+        $response = Invoke-WebRequest `
+          -UseBasicParsing `
+          -Uri "$baseUrl/api/desktop/capabilities" `
+          -Headers @{ Origin = $origin } `
+          -TimeoutSec 2
+        if ($response.StatusCode -eq 200) {
+          $ready = $true
+          break
+        }
+      } catch {
+      }
+    }
+
+    if (-not $ready) {
+      $tail = @()
+      if (Test-Path $contractOutLog) { $tail += Get-Content -Tail 40 -LiteralPath $contractOutLog }
+      if (Test-Path $contractErrLog) { $tail += Get-Content -Tail 40 -LiteralPath $contractErrLog }
+      throw "Packaged backend did not expose /api/desktop/capabilities within 30 seconds. Logs: $contractOutLog / $contractErrLog`n$($tail -join "`n")"
+    }
+
+    foreach ($route in $requiredRoutes) {
+      $response = Invoke-WebRequest `
+        -UseBasicParsing `
+        -Uri "$baseUrl$route" `
+        -Headers @{ Origin = $origin } `
+        -TimeoutSec 5
+      if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) {
+        throw "Required desktop backend route failed: $route HTTP $($response.StatusCode)"
+      }
+    }
+
+    $capabilities = Invoke-RestMethod `
+      -Uri "$baseUrl/api/desktop/capabilities" `
+      -Headers @{ Origin = $origin } `
+      -TimeoutSec 5
+    if ($capabilities.product -ne "BranchWhisper" -or [int]$capabilities.desktop_api_version -lt 2) {
+      throw "Packaged backend desktop capabilities are too old: $($capabilities | ConvertTo-Json -Compress)"
+    }
+  } finally {
+    if ($process -and -not $process.HasExited) {
+      Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
 $WorkingRepoRoot = $SourceRepoRoot
 
 if ($UseLocalCopy) {
@@ -109,6 +206,7 @@ try {
     $env:BRANCHWHISPER_BACKEND_EXECUTABLE = (Resolve-Path $BackendExecutable).ProviderPath
     Write-Host "Using packaged backend executable:"
     Write-Host "  $env:BRANCHWHISPER_BACKEND_EXECUTABLE"
+    Assert-BackendDesktopApiContract -ExecutablePath $env:BRANCHWHISPER_BACKEND_EXECUTABLE
   }
 
   Push-Location $DesktopRoot

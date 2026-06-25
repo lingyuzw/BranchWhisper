@@ -16,6 +16,7 @@ test("creates the default qwen3-asr backend startup contract", () => {
   assert.equal(contract.host, "127.0.0.1");
   assert.equal(contract.port, 7860);
   assert.equal(contract.healthUrl, "http://127.0.0.1:7860/api/health");
+  assert.equal(contract.capabilitiesUrl, "http://127.0.0.1:7860/api/desktop/capabilities");
   assert.equal(contract.appUrl, "http://127.0.0.1:7860/app/");
   assert.equal(contract.cwd, root);
   assert.equal(contract.logPath, resolve(root, "runtime/desktop/backend.log"));
@@ -99,12 +100,14 @@ test("rejects invalid launch contracts", () => {
   const invalid = {
     ...contract,
     healthUrl: "http://127.0.0.1:7000/health",
+    capabilitiesUrl: "http://127.0.0.1:7000/capabilities",
     appUrl: "http://127.0.0.1:7000/",
     command: { program: "", args: [] },
   };
 
   assert.deepEqual(validateBackendLaunchContract(invalid), [
     "healthUrl must end with /api/health",
+    "capabilitiesUrl must end with /api/desktop/capabilities",
     "appUrl must end with /app/",
     "command.program is required",
     "command.args must include backend/main.py",

@@ -46,6 +46,7 @@ export function createBackendLaunchContract(options = {}) {
     port,
     cwd: root,
     healthUrl: `http://${host}:${port}/api/health`,
+    capabilitiesUrl: `http://${host}:${port}/api/desktop/capabilities`,
     appUrl: `http://${host}:${port}/app/`,
     logPath: resolve(root, "runtime/desktop/backend.log"),
     startupReadyTimeoutMs: Number(options.startupReadyTimeoutMs || 45000),
@@ -66,6 +67,10 @@ export function validateBackendLaunchContract(contract) {
 
   if (!contract.healthUrl?.endsWith("/api/health")) {
     errors.push("healthUrl must end with /api/health");
+  }
+
+  if (!contract.capabilitiesUrl?.endsWith("/api/desktop/capabilities")) {
+    errors.push("capabilitiesUrl must end with /api/desktop/capabilities");
   }
 
   if (!contract.appUrl?.endsWith("/app/")) {

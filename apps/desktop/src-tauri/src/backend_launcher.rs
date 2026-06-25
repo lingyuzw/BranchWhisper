@@ -9,6 +9,8 @@ use std::time::{Duration, Instant};
 
 const HEALTH_PROBE_TIMEOUT: Duration = Duration::from_millis(350);
 const DESKTOP_PROBE_ORIGIN: &str = "http://tauri.localhost";
+#[cfg(test)]
+const DESKTOP_CAPABILITIES_RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nConnection: close\r\n\r\n{\"ok\":true,\"product\":\"BranchWhisper\",\"desktop_api_version\":2,\"features\":[\"api_providers\",\"statistics\"]}";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackendLaunchAction {
@@ -105,7 +107,7 @@ pub fn is_desktop_backend_reusable(host: &str, port: u16) -> bool {
         let _ = stream.set_write_timeout(Some(HEALTH_PROBE_TIMEOUT));
 
         let request = format!(
-            "GET /api/config HTTP/1.1\r\nHost: {}:{}\r\nOrigin: {}\r\nConnection: close\r\n\r\n",
+            "GET /api/desktop/capabilities HTTP/1.1\r\nHost: {}:{}\r\nOrigin: {}\r\nConnection: close\r\n\r\n",
             host, port, DESKTOP_PROBE_ORIGIN
         );
 
@@ -143,7 +145,11 @@ fn desktop_probe_response_is_branchwhisper_config(response: &str, origin: &str) 
         return false;
     };
     desktop_probe_headers_allow_origin(headers, origin)
-        && (body.contains("\"asr_provider_mode\"") || body.contains("\"api_llm_url\""))
+        && body.contains("\"product\"")
+        && body.contains("\"BranchWhisper\"")
+        && body.contains("\"desktop_api_version\"")
+        && body.contains("\"api_providers\"")
+        && body.contains("\"statistics\"")
 }
 
 fn desktop_probe_headers_allow_origin(headers: &str, origin: &str) -> bool {
@@ -351,7 +357,7 @@ mod tests {
             if let Ok((mut stream, _)) = listener.accept() {
                 let mut buffer = [0_u8; 1024];
                 let _ = stream.read(&mut buffer);
-                let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 27\r\nConnection: close\r\n\r\n{\"asr_provider_mode\":\"api\"}");
+                let _ = stream.write_all(DESKTOP_CAPABILITIES_RESPONSE);
             }
         });
 
@@ -398,6 +404,16 @@ mod tests {
     #[test]
     fn desktop_probe_rejects_non_branchwhisper_service_even_with_cors() {
         let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 2\r\n\r\n{}";
+
+        assert!(!desktop_probe_response_is_branchwhisper_config(
+            response,
+            DESKTOP_PROBE_ORIGIN
+        ));
+    }
+
+    #[test]
+    fn desktop_probe_rejects_legacy_branchwhisper_backend_without_desktop_capabilities() {
+        let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 27\r\n\r\n{\"asr_provider_mode\":\"api\"}";
 
         assert!(!desktop_probe_response_is_branchwhisper_config(
             response,
@@ -453,7 +469,12 @@ mod tests {
         let port = listener.local_addr().expect("test listener address").port();
         drop(listener);
 
-        let mut contract = BackendLaunchContract::default_for_repo("/tmp/BranchWhisper");
+        let mut contract = BackendLaunchContract::for_platform_and_repo(
+            "linux",
+            "/tmp/BranchWhisper",
+            |_| None,
+            |_| false,
+        );
         contract.port = port;
         contract.health_url = format!("http://127.0.0.1:{}/api/health", port);
         contract.app_url = format!("http://127.0.0.1:{}/app/", port);
@@ -496,11 +517,9 @@ mod tests {
         let log_path = temp_dir.join("runtime/desktop/backend.log");
         let mut contract =
             BackendLaunchContract::default_for_repo(temp_dir.to_str().expect("temp dir path"));
-        contract.command.program = "/bin/sh".to_string();
-        contract.command.args = vec![
-            "-c".to_string(),
-            "printf backend-started; printf backend-error >&2".to_string(),
-        ];
+        let (program, args) = test_log_command();
+        contract.command.program = program;
+        contract.command.args = args;
         contract.log_path = log_path.to_string_lossy().into_owned();
 
         let result = start_backend_process(&contract).expect("process should start");
@@ -545,7 +564,7 @@ mod tests {
             if let Ok((mut stream, _)) = listener.accept() {
                 let mut buffer = [0_u8; 1024];
                 let _ = stream.read(&mut buffer);
-                let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: http://tauri.localhost\r\nContent-Length: 27\r\nConnection: close\r\n\r\n{\"asr_provider_mode\":\"api\"}");
+                let _ = stream.write_all(DESKTOP_CAPABILITIES_RESPONSE);
             }
         });
 
@@ -585,5 +604,27 @@ mod tests {
         }
 
         std::fs::read_to_string(path).unwrap_or_default()
+    }
+
+    #[cfg(windows)]
+    fn test_log_command() -> (String, Vec<String>) {
+        (
+            "cmd".to_string(),
+            vec![
+                "/C".to_string(),
+                "echo|set /p=backend-started & echo backend-error 1>&2".to_string(),
+            ],
+        )
+    }
+
+    #[cfg(not(windows))]
+    fn test_log_command() -> (String, Vec<String>) {
+        (
+            "/bin/sh".to_string(),
+            vec![
+                "-c".to_string(),
+                "printf backend-started; printf backend-error >&2".to_string(),
+            ],
+        )
     }
 }

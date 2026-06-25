@@ -11,7 +11,7 @@ import {
 
 const root = resolve("/tmp/BranchWhisper");
 
-test("probeBackendHealth reports ready when backend health is reachable", async () => {
+test("probeBackendHealth rejects reachable legacy backend without desktop capabilities", async () => {
   const contract = createBackendLaunchContract({ root, platform: "linux" });
   const result = await probeBackendHealth(contract, {
     fetch: async (url) => ({
@@ -22,9 +22,40 @@ test("probeBackendHealth reports ready when backend health is reachable", async 
   });
 
   assert.deepEqual(result, {
+    status: "error",
+    detail: "Backend is reachable but does not expose the required desktop API contract.",
+    payload: { ready: true, url: "http://127.0.0.1:7860/api/desktop/capabilities" },
+  });
+});
+
+test("probeBackendHealth reports ready when backend exposes desktop capabilities", async () => {
+  const contract = createBackendLaunchContract({ root, platform: "linux" });
+  const result = await probeBackendHealth(contract, {
+    fetch: async (url, options) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        product: "BranchWhisper",
+        desktop_api_version: 2,
+        features: ["api_providers", "statistics"],
+        url,
+        origin: options.headers.Origin,
+      }),
+    }),
+  });
+
+  assert.deepEqual(result, {
     status: "ready",
-    detail: "Backend health check passed.",
-    payload: { ready: true, url: "http://127.0.0.1:7860/api/health" },
+    detail: "Backend desktop capability check passed.",
+    payload: {
+      ok: true,
+      product: "BranchWhisper",
+      desktop_api_version: 2,
+      features: ["api_providers", "statistics"],
+      url: "http://127.0.0.1:7860/api/desktop/capabilities",
+      origin: "http://tauri.localhost",
+    },
   });
 });
 
@@ -64,7 +95,12 @@ test("launcher reuses a healthy backend without creating a start plan", async ()
     fetch: async () => ({
       ok: true,
       status: 200,
-      json: async () => ({ ready: true }),
+      json: async () => ({
+        ok: true,
+        product: "BranchWhisper",
+        desktop_api_version: 2,
+        features: ["api_providers", "statistics"],
+      }),
     }),
   });
 
@@ -73,8 +109,13 @@ test("launcher reuses a healthy backend without creating a start plan", async ()
     appUrl: "http://127.0.0.1:7860/app/",
     health: {
       status: "ready",
-      detail: "Backend health check passed.",
-      payload: { ready: true },
+      detail: "Backend desktop capability check passed.",
+      payload: {
+        ok: true,
+        product: "BranchWhisper",
+        desktop_api_version: 2,
+        features: ["api_providers", "statistics"],
+      },
     },
   });
 });

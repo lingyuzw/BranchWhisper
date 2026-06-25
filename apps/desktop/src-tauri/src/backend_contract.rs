@@ -197,7 +197,12 @@ mod tests {
 
     #[test]
     fn default_contract_uses_qwen3_asr_backend_command() {
-        let contract = BackendLaunchContract::default_for_repo("/home/me/workspace/BranchWhisper");
+        let contract = BackendLaunchContract::for_platform_and_repo(
+            "linux",
+            "/home/me/workspace/BranchWhisper",
+            empty_env,
+            |_| false,
+        );
 
         assert_eq!(contract.host, "127.0.0.1");
         assert_eq!(contract.port, 7860);

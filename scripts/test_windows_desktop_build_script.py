@@ -12,3 +12,20 @@ def test_windows_desktop_build_stops_stale_backend_process() -> None:
     assert "Get-Process BranchWhisper" in text
     assert "Get-Process branchwhisper-backend" in text
     assert "Stop-Process -Force" in text
+
+
+def test_windows_desktop_build_packages_backend_by_default() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    assert "[switch]$BuildBackend = $true" in text
+    assert "build_windows_backend.ps1" in text
+    assert "$env:BRANCHWHISPER_BACKEND_EXECUTABLE" in text
+
+
+def test_windows_desktop_build_verifies_required_desktop_api_routes() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    assert "Assert-BackendDesktopApiContract" in text
+    assert "/api/desktop/capabilities" in text
+    assert "/api/config/api-providers" in text
+    assert "/api/statistics" in text

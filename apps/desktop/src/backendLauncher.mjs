@@ -12,20 +12,25 @@ export async function probeBackendHealth(contract, options = {}) {
   }
 
   try {
-    const response = await fetchImpl(contract.healthUrl, { method: "GET" });
+    const response = await fetchImpl(contract.capabilitiesUrl, {
+      method: "GET",
+      headers: { Origin: "http://tauri.localhost" },
+    });
     const payload = await readJson(response);
 
-    if (response.ok) {
+    if (response.ok && isDesktopCapable(payload)) {
       return {
         status: "ready",
-        detail: "Backend health check passed.",
+        detail: "Backend desktop capability check passed.",
         payload,
       };
     }
 
     return {
       status: "error",
-      detail: `Backend health returned HTTP ${response.status}.`,
+      detail: response.ok
+        ? "Backend is reachable but does not expose the required desktop API contract."
+        : `Backend desktop capability check returned HTTP ${response.status}.`,
       payload,
     };
   } catch (error) {
@@ -35,6 +40,16 @@ export async function probeBackendHealth(contract, options = {}) {
       payload: null,
     };
   }
+}
+
+function isDesktopCapable(payload) {
+  const features = Array.isArray(payload?.features) ? payload.features : [];
+  return (
+    payload?.product === "BranchWhisper" &&
+    Number(payload?.desktop_api_version || 0) >= 2 &&
+    features.includes("api_providers") &&
+    features.includes("statistics")
+  );
 }
 
 export function createBackendStartPlan(contract) {
