@@ -32,6 +32,8 @@ def test_windows_desktop_build_embeds_backend_resource_and_exports_installer() -
     assert "DesktopInstallerPath" in text
     assert "BranchWhisper-Setup.exe" in text
     assert "Copy-Item -LiteralPath $InstallerPath -Destination $DesktopInstallerPath -Force" in text
+    assert "BranchWhisper-Portable-DevOnly.exe" in text
+    assert "Do not copy the dev-only EXE to another computer" in text
 
 
 def test_windows_desktop_build_verifies_required_desktop_api_routes() -> None:
@@ -41,3 +43,11 @@ def test_windows_desktop_build_verifies_required_desktop_api_routes() -> None:
     assert "/api/desktop/capabilities" in text
     assert "/api/config/api-providers" in text
     assert "/api/statistics" in text
+
+
+def test_windows_desktop_build_requires_offline_webview2_installer() -> None:
+    config = Path(__file__).parents[1] / "apps" / "desktop" / "src-tauri" / "tauri.conf.json"
+    text = config.read_text(encoding="utf-8")
+
+    assert '"type": "offlineInstaller"' in text
+    assert '"silent": true' in text

@@ -171,7 +171,8 @@ fn desktop_probe_headers_allow_origin(headers: &str, origin: &str) -> bool {
             return false;
         };
         let header_value = value.trim();
-        name.trim().eq_ignore_ascii_case("access-control-allow-origin")
+        name.trim()
+            .eq_ignore_ascii_case("access-control-allow-origin")
             && (header_value == "*" || header_value == origin)
     })
 }

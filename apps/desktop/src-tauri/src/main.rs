@@ -10,6 +10,10 @@ use desktop_shell::{
     CloseRequestAction, DesktopShellAction, TrayIconSignal, TrayMouseButton, TrayMouseButtonState,
 };
 use startup_status::DesktopStartupStatus;
+use std::fs::{create_dir_all, OpenOptions};
+use std::io::Write;
+use std::panic;
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
@@ -23,6 +27,8 @@ static IS_QUITTING: AtomicBool = AtomicBool::new(false);
 static STARTED_BACKEND_PID: AtomicU32 = AtomicU32::new(0);
 
 fn main() {
+    install_panic_logger();
+    write_startup_log("process starting");
     // Startup contract:
     // 1. If http://127.0.0.1:7860/api/health is alive, reuse that backend.
     // 2. Otherwise start the configured backend command and capture logs.
@@ -33,6 +39,7 @@ fn main() {
             show_main_window(app);
         }))
         .setup(|app| {
+            write_startup_log("setup entered");
             setup_tray(app)?;
             let window = app
                 .get_webview_window("main")
@@ -41,6 +48,17 @@ fn main() {
                 .map(|path| path.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| ".".to_string());
             let startup_contract = backend_contract_for_app(app, &repo_root);
+            write_startup_log(&format!(
+                "current_dir={}; resource_dir={}; backend_command={}; backend_log_path={}",
+                repo_root,
+                app.path()
+                    .resource_dir()
+                    .ok()
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "<unavailable>".to_string()),
+                startup_contract.command.command_line(),
+                startup_contract.log_path,
+            ));
             send_startup_status(
                 &window,
                 &DesktopStartupStatus::checking(&startup_contract.app_url),
@@ -60,6 +78,7 @@ fn main() {
                             Some(process)
                         }
                         Err(error) => {
+                            write_startup_log(&format!("startup failed: {}", error));
                             send_startup_status(
                                 &window,
                                 &DesktopStartupStatus::failed(&startup_result, None, &error),
@@ -75,6 +94,7 @@ fn main() {
                     Duration::from_secs(30),
                     Duration::from_millis(250),
                 ) {
+                    write_startup_log(&format!("startup failed: {}", error));
                     send_startup_status(
                         &window,
                         &DesktopStartupStatus::failed(
@@ -91,8 +111,10 @@ fn main() {
                     &window,
                     &DesktopStartupStatus::ready(&startup_result, started_process.as_ref()),
                 );
+                write_startup_log("backend ready");
             } else {
                 send_startup_status(&window, &DesktopStartupStatus::reusing(&startup_result));
+                write_startup_log("reusing existing backend");
             }
 
             Ok(())
@@ -112,6 +134,48 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running BranchWhisper desktop shell");
+}
+
+fn install_panic_logger() {
+    panic::set_hook(Box::new(|panic_info| {
+        write_startup_log(&format!("panic occurred: {}", panic_info));
+    }));
+}
+
+fn write_startup_log(message: &str) {
+    let path = desktop_startup_log_path();
+    if let Some(parent) = path.parent() {
+        let _ = create_dir_all(parent);
+    }
+
+    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) else {
+        return;
+    };
+
+    let _ = writeln!(file, "{}", message);
+}
+
+#[cfg(windows)]
+fn desktop_startup_log_path() -> PathBuf {
+    let root = std::env::var("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    root.join("BranchWhisper")
+        .join("desktop-runtime")
+        .join("desktop-startup.log")
+}
+
+#[cfg(not(windows))]
+fn desktop_startup_log_path() -> PathBuf {
+    std::env::var("BRANCHWHISPER_DESKTOP_RUNTIME_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            std::env::current_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join("runtime")
+                .join("desktop")
+        })
+        .join("desktop-startup.log")
 }
 
 fn backend_contract_for_app(app: &App, repo_root: &str) -> backend_contract::BackendLaunchContract {

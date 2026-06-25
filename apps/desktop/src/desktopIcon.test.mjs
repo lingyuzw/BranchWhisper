@@ -63,8 +63,10 @@ test("tauri config builds a Windows installer with bundled backend resources", a
   assert.equal(config.bundle.resources["resources/backend/"], "backend/");
   assert.equal(config.bundle.windows.nsis.installMode, "currentUser");
   assert.equal(config.bundle.windows.nsis.displayLanguageSelector, true);
-  assert.ok(
-    config.bundle.windows.webviewInstallMode,
-    "installer should declare how WebView2 is handled on fresh Windows machines",
+  assert.equal(
+    config.bundle.windows.webviewInstallMode?.type,
+    "offlineInstaller",
+    "installer must carry the WebView2 installer for fresh Windows machines without reliable internet",
   );
+  assert.equal(config.bundle.windows.webviewInstallMode?.silent, true);
 });

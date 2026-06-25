@@ -49,6 +49,20 @@ test("desktop shell keeps the hub visible after backend readiness", async () => 
   assert.match(main, /DesktopStartupStatus::reusing/);
 });
 
+test("desktop shell writes startup and panic diagnostics before backend launch", async () => {
+  const main = await readFile(desktopMainPath, "utf8");
+
+  assert.match(main, /fn main\(\)\s*\{\s*install_panic_logger\(\);/);
+  assert.match(main, /write_startup_log\("process starting"/);
+  assert.match(main, /desktop-startup\.log/);
+  assert.match(main, /panic occurred/);
+  assert.match(main, /resource_dir=/);
+  assert.match(main, /current_dir=/);
+  assert.match(main, /backend_command=/);
+  assert.match(main, /backend_log_path=/);
+  assert.match(main, /startup failed:/);
+});
+
 test("desktop shell hides to background and exposes tray restore and quit actions", async () => {
   const main = await readFile(desktopMainPath, "utf8");
 

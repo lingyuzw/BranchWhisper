@@ -90,6 +90,71 @@
         letter-spacing: 0;
       }
 
+      .startup-recovery {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        background:
+          radial-gradient(circle at 10% -10%, var(--primary-soft), transparent 30vw),
+          radial-gradient(circle at 90% 4%, var(--info-soft), transparent 32vw),
+          var(--bg);
+        color: var(--text);
+      }
+
+      html.studio-ready .startup-recovery {
+        display: none;
+      }
+
+      html:not(.studio-ready) .studio-shell {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .startup-recovery-card {
+        width: min(760px, 100%);
+        display: grid;
+        gap: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        box-shadow: var(--shadow-md);
+      }
+
+      .startup-recovery-card h1 {
+        font-size: 22px;
+        line-height: 1.25;
+      }
+
+      .startup-recovery-card p {
+        color: var(--text-soft);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .startup-recovery-log {
+        max-height: 130px;
+        overflow: auto;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+
+      .startup-recovery-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
       button,
       input,
       select,
@@ -2812,6 +2877,71 @@
     </style>
   </head>
   <body>
+    <div class="startup-recovery" data-startup-recovery role="alert">
+      <section class="startup-recovery-card">
+        <div>
+          <p class="eyebrow">启动诊断</p>
+          <h1 data-recovery-summary>BranchWhisper 正在加载</h1>
+          <p data-recovery-detail>如果页面一直停在这里，应用会显示可复制的错误信息和本地日志路径。</p>
+        </div>
+        <pre class="startup-recovery-log" data-recovery-log-path>%LOCALAPPDATA%\BranchWhisper\desktop-runtime\desktop-startup.log</pre>
+        <div class="startup-recovery-actions">
+          <button class="primary-action" type="button" data-recovery-reload>重新打开</button>
+          <button class="secondary-action" type="button" data-recovery-copy-report>复制诊断信息</button>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (() => {
+        const recovery = document.querySelector("[data-startup-recovery]");
+        const summary = document.querySelector("[data-recovery-summary]");
+        const detail = document.querySelector("[data-recovery-detail]");
+        const logPath = document.querySelector("[data-recovery-log-path]");
+        const startupLogPath = "%LOCALAPPDATA%\\BranchWhisper\\desktop-runtime\\desktop-startup.log";
+
+        window.__BRANCHWHISPER_SHOW_RECOVERY__ = function showStartupRecovery(error) {
+          if (!recovery) {
+            return;
+          }
+          const message = error?.reason?.message || error?.message || String(error || "未知错误");
+          summary.textContent = "BranchWhisper 页面加载异常";
+          detail.textContent = `页面初始化没有完成。可以重新打开应用；如果仍然空白，请查看本机启动日志。错误：${message}`;
+          logPath.textContent = startupLogPath;
+          document.documentElement.classList.remove("studio-ready");
+          recovery.hidden = false;
+        };
+
+        window.addEventListener("error", (event) => {
+          window.__BRANCHWHISPER_SHOW_RECOVERY__(event.error || event.message);
+        });
+        window.addEventListener("unhandledrejection", (event) => {
+          window.__BRANCHWHISPER_SHOW_RECOVERY__(event.reason || "Promise rejected");
+        });
+
+        document.addEventListener("click", (event) => {
+          if (event.target.closest("[data-recovery-reload]")) {
+            window.location.reload();
+          }
+          if (event.target.closest("[data-recovery-copy-report]")) {
+            const text = [
+              "BranchWhisper desktop startup issue",
+              `url: ${window.location.href}`,
+              `log: ${startupLogPath}`,
+              detail?.textContent || "",
+            ].join("\n");
+            window.navigator.clipboard?.writeText(text);
+          }
+        });
+
+        window.setTimeout(() => {
+          if (!document.documentElement.classList.contains("studio-ready")) {
+            window.__BRANCHWHISPER_SHOW_RECOVERY__("Studio initialization timeout");
+          }
+        }, 3500);
+      })();
+    </script>
+
     <main
       class="studio-shell"
       data-studio-root
@@ -7883,6 +8013,7 @@
       updateBotBridgeLogView();
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
       activateSection("guide");
+      document.documentElement.classList.add("studio-ready");
     </script>
   </body>
 </html>

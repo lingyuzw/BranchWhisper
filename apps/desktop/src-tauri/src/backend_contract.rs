@@ -138,7 +138,11 @@ where
 
     if platform == "windows" {
         if let Some(local_app_data) = get_env("LOCALAPPDATA") {
-            return join_path(platform, &local_app_data, &["BranchWhisper", "desktop-runtime"]);
+            return join_path(
+                platform,
+                &local_app_data,
+                &["BranchWhisper", "desktop-runtime"],
+            );
         }
     }
 
@@ -384,8 +388,12 @@ mod tests {
             "windows",
             "C:\\Users\\Me\\Desktop",
             |key| match key {
-                "BRANCHWHISPER_DESKTOP_RUNTIME_ROOT" => Some("D:\\BranchWhisperRuntime".to_string()),
-                "BRANCHWHISPER_BACKEND_EXECUTABLE" => Some("D:\\BranchWhisper\\backend.exe".to_string()),
+                "BRANCHWHISPER_DESKTOP_RUNTIME_ROOT" => {
+                    Some("D:\\BranchWhisperRuntime".to_string())
+                }
+                "BRANCHWHISPER_BACKEND_EXECUTABLE" => {
+                    Some("D:\\BranchWhisper\\backend.exe".to_string())
+                }
                 _ => None,
             },
             |_| false,

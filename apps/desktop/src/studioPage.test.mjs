@@ -43,6 +43,13 @@ function extractScriptFunction(script, functionName) {
   throw new Error(`${functionName} body was not closed`);
 }
 
+function extractMainScript(html) {
+  const scripts = Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g), (match) => match[1]);
+  const script = scripts.find((candidate) => candidate.includes("const defaultStatus ="));
+  assert.ok(script, "main Studio script should exist");
+  return script;
+}
+
 test("extractScriptFunction handles preflight-style destructured defaults", () => {
   const script = `
     function runBotBridgePreflight({ blockOnFailure = true } = {}) {
@@ -93,6 +100,22 @@ test("studio opens advanced web console without replacing the Studio window", as
   assert.match(html, /window\.navigator\.clipboard\.writeText\(url\)/);
   assert.doesNotMatch(html, /window\.location\.assign\(resolveAdvancedRoute/);
   assert.doesNotMatch(html, /if \(!opened\)/);
+});
+
+test("studio page has a visible recovery layer if frontend initialization fails", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /data-startup-recovery/);
+  assert.match(html, /data-recovery-summary/);
+  assert.match(html, /data-recovery-detail/);
+  assert.match(html, /data-recovery-log-path/);
+  assert.match(html, /data-recovery-copy-report/);
+  assert.match(html, /data-recovery-reload/);
+  assert.match(html, /\.startup-recovery/);
+  assert.match(html, /window\.addEventListener\("error"/);
+  assert.match(html, /window\.addEventListener\("unhandledrejection"/);
+  assert.match(html, /function showStartupRecovery\(error\)/);
+  assert.match(html, /document\.documentElement\.classList\.add\("studio-ready"\)/);
 });
 
 test("recommended mode card does not reuse primary button styling", async () => {
@@ -222,7 +245,7 @@ test("studio right rail is contextual instead of appearing on every page", async
 
 test("studio resets the workspace scroll when switching pages or workspaces", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
 
   assert.match(script, /const workspace = document\.querySelector\("\.workspace"\)/);
   assert.match(script, /function resetWorkspaceScroll\(\)/);
@@ -762,7 +785,7 @@ test("studio Bot QR login renders non-image QR payloads as scannable QR codes", 
 
 test("studio Bot QR login displays raw base64 QR images without re-encoding them", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const detectSource = extractScriptFunction(script, "detectBase64ImageMime");
   const normalizeSource = extractScriptFunction(script, "normalizeQrImageSource");
   const normalizeQrImageSource = Function(
@@ -916,7 +939,7 @@ test("studio conversation data page loads filters opens deletes and exports bot 
 
 test("studio conversation data page filters only bot or weixin conversation sources", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const identitySource = extractScriptFunction(script, "conversationIdentity");
   const filterSource = extractScriptFunction(script, "isBotConversation");
   const { isBotConversation } = Function(
@@ -931,7 +954,7 @@ test("studio conversation data page filters only bot or weixin conversation sour
 
 test("studio conversation data page searches bot metadata after backend query", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const identitySource = extractScriptFunction(script, "conversationIdentity");
   const searchSource = extractScriptFunction(script, "conversationMatchesSearch");
   const { conversationMatchesSearch } = Function(
@@ -965,7 +988,7 @@ test("studio conversation data page keeps layout robust for long content and mob
 
 test("studio conversation delete does not remove local UI state when backend delete fails", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const deleteSource = extractScriptFunction(script, "deleteBotConversation");
 
   assert.match(deleteSource, /if \(!result\.ok\) \{/);
@@ -979,7 +1002,7 @@ test("studio conversation delete does not remove local UI state when backend del
 
 test("studio conversation export tolerates missing clipboard API", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const exportSource = extractScriptFunction(script, "exportBotConversation");
 
   assert.match(exportSource, /navigator\.clipboard\?\.writeText\?\.call\(navigator\.clipboard,\s*url\)\.catch\(\(\) => \{\}\)/);
@@ -1035,7 +1058,7 @@ test("studio platform logs page loads service and bridge logs through existing b
 
 test("studio platform logs parser classifies filters and summarizes noisy output", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const entriesSource = extractScriptFunction(script, "platformLogEntriesFromText");
   const summarySource = extractScriptFunction(script, "summarizePlatformLogText");
   const { platformLogEntriesFromText, summarizePlatformLogText } = Function(
@@ -1059,7 +1082,7 @@ test("studio platform logs parser classifies filters and summarizes noisy output
 
 test("studio platform log copy handles missing clipboard without clearing logs", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const copySource = extractScriptFunction(script, "copyPlatformLogs");
 
   assert.match(copySource, /navigator\.clipboard\?\.writeText\?\.call\(navigator\.clipboard,\s*text\)\.catch\(\(\) => \{\}\)/);
@@ -1069,7 +1092,7 @@ test("studio platform log copy handles missing clipboard without clearing logs",
 
 test("studio platform logs ignore stale refresh responses and explain app source limits", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
   const loadSource = extractScriptFunction(script, "loadPlatformLogs");
 
   assert.match(html, /let platformLogLoadSequence = 0/);
@@ -1277,7 +1300,7 @@ test("studio secondary pages show usable empty states instead of blank canvases"
 
 test("studio statistics page loads aggregate backend data and renders metric targets", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
 
   for (const selector of [
     "data-stat-bots",
@@ -1379,7 +1402,7 @@ test("studio assets page exposes sticker library controls and summary metrics", 
 
 test("studio assets page loads stickers through backend api and renders searchable filtered rows", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
 
   assert.match(script, /let assetItems = \[\]/);
   assert.match(script, /let assetSearchQuery = ""/);
@@ -1397,7 +1420,7 @@ test("studio assets page loads stickers through backend api and renders searchab
 
 test("studio Bot page connects approved sticker assets to the WeChat sticker probe", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
 
   for (const selector of [
     "data-bot-asset-suggestions",
@@ -1426,7 +1449,7 @@ test("studio Bot page connects approved sticker assets to the WeChat sticker pro
 
 test("studio tasks page manages reminders and proactive greetings through backend APIs", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
 
   for (const selector of [
     "data-task-load",
@@ -1481,7 +1504,7 @@ test("studio tasks page manages reminders and proactive greetings through backen
 
 test("studio rules page persists custom rules through the tools config API", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
-  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || "";
+  const script = extractMainScript(html);
 
   for (const selector of [
     "data-rule-load",

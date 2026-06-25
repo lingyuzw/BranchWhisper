@@ -5,7 +5,7 @@ param(
   [string]$BackendExecutable = "",
   [switch]$UseLocalCopy = $true,
   [string]$BuildRoot = (Join-Path $env:LOCALAPPDATA "BranchWhisper\windows-build"),
-  [string]$DesktopExePath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper.exe"),
+  [string]$DesktopExePath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper-Portable-DevOnly.exe"),
   [string]$DesktopInstallerPath = (Join-Path ([Environment]::GetFolderPath("Desktop")) "BranchWhisper-Setup.exe")
 )
 
@@ -314,7 +314,8 @@ try {
   Write-Host ""
   Write-Host "Windows desktop build finished."
   Write-Host "EXE: $ExePath"
-  Write-Host "Desktop EXE: $DesktopExePath"
+  Write-Host "Desktop dev-only EXE: $DesktopExePath"
+  Write-Host "Do not copy the dev-only EXE to another computer. Share the installer instead."
   Write-Host "Installer: $InstallerPath"
   Write-Host "Desktop installer: $DesktopInstallerPath"
   Write-Host "Bundle: $BundlePath"
