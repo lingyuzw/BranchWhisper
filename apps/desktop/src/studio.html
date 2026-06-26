@@ -7191,6 +7191,18 @@
           return result;
         }
         const data = result.data || {};
+        if (result.ok === false) {
+          return result.error || result.message || data.error || data.message || "接口返回异常，但没有提供错误详情。";
+        }
+        if (typeof result.reply_text === "string" && result.reply_text.trim()) {
+          return result.reply_text;
+        }
+        if (Array.isArray(result.reply_parts)) {
+          const replyParts = result.reply_parts.filter((part) => typeof part === "string" && part.trim());
+          if (replyParts.length) {
+            return replyParts.join("\n");
+          }
+        }
         const candidates = [
           result.reply,
           result.text,

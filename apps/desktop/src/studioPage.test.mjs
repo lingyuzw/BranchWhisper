@@ -1346,6 +1346,47 @@ test("studio Chat page creates conversations and sends Bot test messages through
   assert.match(html, /event\.target\.closest\("\[data-chat-send\]"\)[\s\S]*sendChatMessage\(\)/);
 });
 
+test("studio Chat page displays only the assistant reply from integration dialog results", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = extractMainScript(html);
+  const extractChatReply = Function(
+    `${extractScriptFunction(script, "extractChatReply")}; return extractChatReply;`,
+  )();
+
+  const reply = extractChatReply({
+    ok: true,
+    trace_id: "ext_b4d1a9a163",
+    platform_id: "default",
+    session_id: "desktop_chat_1782444262247",
+    sender_id: "branchwhisper_desktop_chat",
+    conversation_id: "20260626_112426_37f950",
+    reply_text: "你好～",
+    reply_parts: ["你好～"],
+    timings: { llm_ms: 1755, total_ms: 1765 },
+  });
+
+  assert.equal(reply, "你好～");
+  assert.doesNotMatch(reply, /"trace_id"|reply_text|timings/);
+});
+
+test("studio Chat page joins integration dialog reply parts when reply text is absent", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = extractMainScript(html);
+  const extractChatReply = Function(
+    `${extractScriptFunction(script, "extractChatReply")}; return extractChatReply;`,
+  )();
+
+  const reply = extractChatReply({
+    ok: true,
+    reply_parts: ["first chunk", "", "   ", 42, "second chunk"],
+    trace_id: "ext_parts_only",
+    timings: { total_ms: 12 },
+  });
+
+  assert.equal(reply, "first chunk\nsecond chunk");
+  assert.doesNotMatch(reply, /"trace_id"|reply_parts|timings/);
+});
+
 test("studio secondary pages show usable empty states instead of blank canvases", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
