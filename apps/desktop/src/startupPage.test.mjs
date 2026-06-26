@@ -49,6 +49,15 @@ test("desktop shell keeps the hub visible after backend readiness", async () => 
   assert.match(main, /DesktopStartupStatus::reusing/);
 });
 
+test("desktop shell starts backend readiness checks in the background so loading can animate", async () => {
+  const main = await readFile(desktopMainPath, "utf8");
+  const setupBody = main.match(/\.setup\(\|app\| \{([\s\S]*?)\n\s*\}\)\n\s*\.on_window_event/)?.[1] || "";
+
+  assert.match(main, /std::thread::spawn\(move \|\|/);
+  assert.match(main, /run_backend_startup\(window,\s*startup_contract\)/);
+  assert.doesNotMatch(setupBody, /wait_for_backend_ready/);
+});
+
 test("desktop shell writes startup and panic diagnostics before backend launch", async () => {
   const main = await readFile(desktopMainPath, "utf8");
 

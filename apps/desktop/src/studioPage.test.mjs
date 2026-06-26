@@ -118,6 +118,29 @@ test("studio page has a visible recovery layer if frontend initialization fails"
   assert.match(html, /document\.documentElement\.classList\.add\("studio-ready"\)/);
 });
 
+test("studio startup recovery shows a concise environment loading animation", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+
+  assert.match(html, /data-startup-loading/);
+  assert.match(html, /data-startup-orbit/);
+  assert.match(html, /data-startup-loading-step/);
+  assert.match(html, /正在加载环境/);
+  assert.match(html, /检查后端/);
+  assert.match(html, /准备进入主界面/);
+  assert.match(html, /\.startup-loading-orbit/);
+  assert.match(html, /@keyframes startupOrbit/);
+  assert.match(html, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test("studio keeps the loading animation visible until backend reports ready", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = extractMainScript(html);
+  const renderStatusSource = extractScriptFunction(script, "renderStatus");
+
+  assert.match(renderStatusSource, /document\.documentElement\.classList\.add\("studio-ready"\)/);
+  assert.doesNotMatch(html, /activateSection\("guide"\);\s*document\.documentElement\.classList\.add\("studio-ready"\)/);
+});
+
 test("recommended mode card does not reuse primary button styling", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 

@@ -104,6 +104,102 @@
         color: var(--text);
       }
 
+      .startup-loading {
+        width: min(460px, 100%);
+        display: grid;
+        justify-items: center;
+        gap: 18px;
+        padding: 34px 26px;
+        text-align: center;
+      }
+
+      .startup-loading-orbit {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--surface) 88%, transparent);
+        box-shadow: var(--shadow-sm), 0 0 0 9px var(--primary-soft);
+      }
+
+      .startup-loading-orbit::before {
+        content: "";
+        width: 50px;
+        height: 50px;
+        border: 2px solid color-mix(in srgb, var(--primary) 20%, transparent);
+        border-top-color: var(--primary);
+        border-radius: 999px;
+        animation: startupOrbit 1.05s linear infinite;
+      }
+
+      .startup-loading-orbit::after {
+        content: "";
+        position: absolute;
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        background: var(--success);
+        box-shadow: 0 0 0 5px var(--success-soft);
+      }
+
+      .startup-loading h1 {
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      .startup-loading p {
+        max-width: 360px;
+        color: var(--text-soft);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .startup-loading-steps {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .startup-loading-step {
+        min-height: 30px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 11px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--surface) 82%, transparent);
+        color: var(--text-soft);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .startup-loading-step::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--primary);
+        opacity: 0.38;
+        animation: startupPulse 1.4s ease-in-out infinite;
+      }
+
+      .startup-loading-step:nth-child(2)::before {
+        animation-delay: 0.16s;
+      }
+
+      .startup-loading-step:nth-child(3)::before {
+        animation-delay: 0.32s;
+      }
+
+      .startup-recovery.is-error .startup-loading {
+        display: none;
+      }
+
       html.studio-ready .startup-recovery {
         display: none;
       }
@@ -115,13 +211,17 @@
 
       .startup-recovery-card {
         width: min(760px, 100%);
-        display: grid;
+        display: none;
         gap: 16px;
         padding: 24px;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
         background: var(--surface);
         box-shadow: var(--shadow-md);
+      }
+
+      .startup-recovery.is-error .startup-recovery-card {
+        display: grid;
       }
 
       .startup-recovery-card h1 {
@@ -153,6 +253,31 @@
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+      }
+
+      @keyframes startupOrbit {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes startupPulse {
+        0%,
+        100% {
+          opacity: 0.28;
+          transform: scale(0.82);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .startup-loading-orbit::before,
+        .startup-loading-step::before {
+          animation: none;
+        }
       }
 
       button,
@@ -2878,6 +3003,20 @@
   </head>
   <body>
     <div class="startup-recovery" data-startup-recovery role="alert">
+      <section class="startup-loading" data-startup-loading aria-live="polite">
+        <div class="startup-loading-orbit" data-startup-orbit aria-hidden="true"></div>
+        <div>
+          <p class="eyebrow">BranchWhisper Studio</p>
+          <h1>正在加载环境</h1>
+          <p>正在准备桌面端运行环境，完成后会自动进入主界面。</p>
+        </div>
+        <div class="startup-loading-steps" aria-label="启动阶段">
+          <span class="startup-loading-step" data-startup-loading-step>检查后端</span>
+          <span class="startup-loading-step">加载配置</span>
+          <span class="startup-loading-step">准备进入主界面</span>
+        </div>
+      </section>
+
       <section class="startup-recovery-card">
         <div>
           <p class="eyebrow">启动诊断</p>
@@ -2909,6 +3048,7 @@
           detail.textContent = `页面初始化没有完成。可以重新打开应用；如果仍然空白，请查看本机启动日志。错误：${message}`;
           logPath.textContent = startupLogPath;
           document.documentElement.classList.remove("studio-ready");
+          recovery.classList.add("is-error");
           recovery.hidden = false;
         };
 
@@ -7497,6 +7637,7 @@
         const label = statusLabels[currentStatus.state] || "未检测";
         const failed = currentStatus.state === "failed";
         const ready = currentStatus.state === "ready" || currentStatus.state === "reusing";
+        const recovery = document.querySelector("[data-startup-recovery]");
         statusLabel.textContent = label;
         statusSummary.textContent = currentStatus.summary || defaultStatus.summary;
         statusDetail.textContent = currentStatus.detail || defaultStatus.detail;
@@ -7507,6 +7648,13 @@
           logPreview.textContent = currentStatus.log_path ? `日志路径:\n${currentStatus.log_path}` : "等待后端状态...\napp: Studio shell loaded\nbackend: checking packaged runtime";
         }
         backendDot.className = `status-dot ${failed ? "warn" : ready ? "ok" : "run"}`;
+        if (ready) {
+          document.documentElement.classList.add("studio-ready");
+          recovery?.classList.remove("is-error");
+        } else if (failed) {
+          recovery?.classList.add("is-error");
+          document.documentElement.classList.remove("studio-ready");
+        }
       }
 
       function exportReport() {
@@ -8013,7 +8161,6 @@
       updateBotBridgeLogView();
       renderStatus(window.__BRANCHWHISPER_STARTUP_STATUS__ || defaultStatus);
       activateSection("guide");
-      document.documentElement.classList.add("studio-ready");
     </script>
   </body>
 </html>

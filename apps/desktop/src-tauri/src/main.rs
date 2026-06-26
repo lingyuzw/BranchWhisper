@@ -63,59 +63,9 @@ fn main() {
                 &window,
                 &DesktopStartupStatus::checking(&startup_contract.app_url),
             );
-            let startup_result =
-                backend_launcher::DesktopBackendLauncher::new(startup_contract.clone())
-                    .ensure_backend();
-            if let Some(ref start_plan) = startup_result.start_plan {
-                let _startup_command = &start_plan.command_line;
-                let _startup_log_path = &start_plan.log_path;
-                send_startup_status(&window, &DesktopStartupStatus::starting(&startup_result));
-
-                let started_process =
-                    match backend_launcher::start_backend_process(&startup_contract) {
-                        Ok(process) => {
-                            remember_started_backend(&process);
-                            Some(process)
-                        }
-                        Err(error) => {
-                            write_startup_log(&format!("startup failed: {}", error));
-                            send_startup_status(
-                                &window,
-                                &DesktopStartupStatus::failed(&startup_result, None, &error),
-                            );
-                            eprintln!("{}", error);
-                            return Ok(());
-                        }
-                    };
-
-                if let Err(error) = backend_launcher::wait_for_backend_ready(
-                    &startup_contract.host,
-                    startup_contract.port,
-                    Duration::from_secs(30),
-                    Duration::from_millis(250),
-                ) {
-                    write_startup_log(&format!("startup failed: {}", error));
-                    send_startup_status(
-                        &window,
-                        &DesktopStartupStatus::failed(
-                            &startup_result,
-                            started_process.as_ref(),
-                            &error,
-                        ),
-                    );
-                    eprintln!("{}", error);
-                    return Ok(());
-                }
-
-                send_startup_status(
-                    &window,
-                    &DesktopStartupStatus::ready(&startup_result, started_process.as_ref()),
-                );
-                write_startup_log("backend ready");
-            } else {
-                send_startup_status(&window, &DesktopStartupStatus::reusing(&startup_result));
-                write_startup_log("reusing existing backend");
-            }
+            std::thread::spawn(move || {
+                run_backend_startup(window, startup_contract);
+            });
 
             Ok(())
         })
@@ -196,6 +146,59 @@ fn backend_contract_for_app(app: &App, repo_root: &str) -> backend_contract::Bac
         },
         |path| std::path::Path::new(path).exists(),
     )
+}
+
+fn run_backend_startup(
+    window: tauri::WebviewWindow,
+    startup_contract: backend_contract::BackendLaunchContract,
+) {
+    let startup_result =
+        backend_launcher::DesktopBackendLauncher::new(startup_contract.clone()).ensure_backend();
+    if let Some(ref start_plan) = startup_result.start_plan {
+        let _startup_command = &start_plan.command_line;
+        let _startup_log_path = &start_plan.log_path;
+        send_startup_status(&window, &DesktopStartupStatus::starting(&startup_result));
+
+        let started_process = match backend_launcher::start_backend_process(&startup_contract) {
+            Ok(process) => {
+                remember_started_backend(&process);
+                Some(process)
+            }
+            Err(error) => {
+                write_startup_log(&format!("startup failed: {}", error));
+                send_startup_status(
+                    &window,
+                    &DesktopStartupStatus::failed(&startup_result, None, &error),
+                );
+                eprintln!("{}", error);
+                return;
+            }
+        };
+
+        if let Err(error) = backend_launcher::wait_for_backend_ready(
+            &startup_contract.host,
+            startup_contract.port,
+            Duration::from_secs(30),
+            Duration::from_millis(250),
+        ) {
+            write_startup_log(&format!("startup failed: {}", error));
+            send_startup_status(
+                &window,
+                &DesktopStartupStatus::failed(&startup_result, started_process.as_ref(), &error),
+            );
+            eprintln!("{}", error);
+            return;
+        }
+
+        send_startup_status(
+            &window,
+            &DesktopStartupStatus::ready(&startup_result, started_process.as_ref()),
+        );
+        write_startup_log("backend ready");
+    } else {
+        send_startup_status(&window, &DesktopStartupStatus::reusing(&startup_result));
+        write_startup_log("reusing existing backend");
+    }
 }
 
 fn setup_tray(app: &App) -> tauri::Result<()> {

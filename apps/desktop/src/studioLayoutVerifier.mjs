@@ -207,6 +207,10 @@ function loadPlaywright() {
 
 async function activateStudioPage(browserPage, pageName) {
   await browserPage.evaluate(() => {
+    document.documentElement.classList.add("studio-ready");
+  });
+
+  await browserPage.evaluate(() => {
     const workspace = document.querySelector(".workspace");
     if (!workspace) {
       return;
