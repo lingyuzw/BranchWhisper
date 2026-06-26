@@ -337,6 +337,43 @@ test("studio API page exposes real provider configuration controls", async () =>
   assert.doesNotMatch(html, /后续接后端配置保存/);
 });
 
+test("studio API page exposes sticker vision API configuration controls", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = extractMainScript(html);
+
+  for (const selector of [
+    "data-vision-enabled-input",
+    "data-vision-url-input",
+    "data-vision-model-input",
+    "data-vision-key-input",
+    "data-vision-timeout-input",
+    "data-vision-max-tokens-input",
+    "data-vision-secret-state",
+    "data-vision-save",
+    "data-vision-test",
+    "data-vision-status",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  for (const key of [
+    "sticker_vision_enabled",
+    "sticker_vision_url",
+    "sticker_vision_model",
+    "sticker_vision_api_key",
+    "sticker_vision_timeout",
+    "sticker_vision_max_tokens",
+  ]) {
+    assert.match(script, new RegExp(`${key}`));
+  }
+
+  assert.match(script, /async function saveVisionConfig\(\)/);
+  assert.match(script, /async function testVisionConfig\(\)/);
+  assert.match(script, /backendRequest\(\{\s*method:\s*"PATCH",\s*path:\s*"\/api\/config"/s);
+  assert.match(script, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/diagnostics\/vision-api-test"/s);
+  assert.doesNotMatch(script, /visionKeyInput\.value\s*=\s*[^;]*sticker_vision_api_key_masked/);
+});
+
 test("studio API page wires backend config load save and live test without exposing masked keys", async () => {
   const html = await readFile(studioHtmlPath, "utf8");
 
@@ -416,12 +453,18 @@ test("studio API page keeps setup controls compact enough for the first desktop 
   const apiConfigPanel = html.match(
     /<div class="api-config-layout">\s*<div class="panel">([\s\S]*?)<\/div>\s*<div class="panel api-provider-manager">/,
   )?.[1] || "";
+  const apiConfigLayout = html.match(/<div class="api-config-layout">([\s\S]*?)<\/section>\s*<section class="page" data-panel="bot">/)?.[1] || "";
 
   assert.match(html, /\.page\[data-panel="api"\] \.page-hero\s*\{[\s\S]*min-height:\s*0/);
-  assert.match(html, /\.page\[data-panel="api"\] \[data-api-provider-modal\]\s*\{[\s\S]*padding:\s*11px 12px/);
-  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-card\s*\{[\s\S]*min-height:\s*58px/);
-  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-list\s*\{[\s\S]*max-height:\s*144px/);
+  assert.match(html, /\.page\[data-panel="api"\] \[data-api-provider-modal\]\s*\{[\s\S]*padding:\s*9px 10px/);
+  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-card\s*\{[\s\S]*min-height:\s*32px/);
+  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-card span\s*\{[\s\S]*display:\s*none/);
+  assert.match(html, /\.page\[data-panel="api"\] \.api-provider-list\s*\{[\s\S]*max-height:\s*58px/);
+  assert.match(html, /\.page\[data-panel="api"\] \.vision-api-panel \.panel-head \.muted\s*\{[\s\S]*display:\s*none/);
   assert.match(apiConfigPanel, /<div class="status-line warn" data-api-status>[\s\S]*<\/div>\s*<div class="api-guide-compact">[\s\S]*保存规则/);
+  assert.match(apiConfigLayout, /class="panel vision-api-panel"/);
+  assert.match(apiConfigLayout, /data-vision-save/);
+  assert.match(apiConfigLayout, /data-vision-test/);
 });
 
 test("studio API page closes the setup loop by advancing to Bot creation after a successful test", async () => {
@@ -1421,6 +1464,39 @@ test("studio assets page exposes sticker library controls and summary metrics", 
   assert.match(html, /已通过/);
   assert.match(html, /待审核/);
   assert.match(html, /有问题/);
+});
+
+test("studio assets page supports uploading and managing sticker assets", async () => {
+  const html = await readFile(studioHtmlPath, "utf8");
+  const script = extractMainScript(html);
+
+  for (const selector of [
+    "data-asset-file-input",
+    "data-asset-upload-dropzone",
+    "data-asset-pick-files",
+    "data-asset-file-count",
+    "data-asset-upload",
+    "data-asset-analyze-toggle",
+    "data-asset-channel-input",
+    "data-asset-vision-test",
+    "data-asset-selected-count",
+    "data-asset-approve-selected",
+    "data-asset-reanalyze-selected",
+    "data-asset-delete-selected",
+  ]) {
+    assert.match(html, new RegExp(selector));
+  }
+
+  assert.match(script, /let selectedAssetIds = new Set\(\)/);
+  assert.match(script, /let pendingAssetFiles = \[\]/);
+  assert.match(script, /function readAssetFile\(file\)/);
+  assert.match(script, /async function uploadAssetFiles\(\)/);
+  assert.match(script, /async function testSelectedAssetVision\(\)/);
+  assert.match(script, /async function runSelectedAssetBulkAction\(action\)/);
+  assert.match(script, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/stickers\/batch"/s);
+  assert.match(script, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/stickers\/vision-test"/s);
+  assert.match(script, /backendRequest\(\{\s*method:\s*"POST",\s*path:\s*"\/api\/stickers\/bulk"/s);
+  assert.match(script, /data-asset-row-checkbox/);
 });
 
 test("studio assets page loads stickers through backend api and renders searchable filtered rows", async () => {

@@ -1228,6 +1228,9 @@
       .asset-list {
         display: grid;
         gap: 10px;
+        max-height: 540px;
+        overflow: auto;
+        padding-right: 2px;
       }
 
       .asset-row {
@@ -1239,11 +1242,23 @@
         background: color-mix(in srgb, var(--surface) 94%, transparent);
       }
 
+      .asset-row.selected {
+        border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
+        background: var(--primary-soft);
+      }
+
       .asset-row-head {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 10px;
         align-items: start;
+      }
+
+      .asset-row-select {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        accent-color: var(--primary);
       }
 
       .asset-row strong {
@@ -1289,6 +1304,104 @@
       .asset-status-line {
         min-width: 0;
         padding: 10px 12px;
+      }
+
+      .asset-workbench {
+        grid-template-columns: minmax(360px, 1.16fr) minmax(300px, 0.92fr) minmax(280px, 0.92fr);
+        align-items: start;
+      }
+
+      .asset-upload-card,
+      .asset-bulk-card {
+        align-content: start;
+      }
+
+      .asset-dropzone {
+        min-height: 158px;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        background:
+          linear-gradient(135deg, var(--primary-soft), transparent 68%),
+          color-mix(in srgb, var(--surface-muted) 82%, transparent);
+        color: var(--text-soft);
+        text-align: center;
+      }
+
+      .asset-dropzone.drag-over {
+        border-color: color-mix(in srgb, var(--primary) 62%, var(--border));
+        background: var(--primary-soft);
+      }
+
+      .asset-dropzone strong {
+        display: block;
+        color: var(--text);
+        font-size: 16px;
+      }
+
+      .asset-dropzone span {
+        display: block;
+        margin-top: 6px;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .asset-upload-controls {
+        display: grid;
+        gap: 10px;
+      }
+
+      .asset-upload-actions,
+      .asset-bulk-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .asset-upload-actions .primary-action,
+      .asset-upload-actions .secondary-action,
+      .asset-bulk-actions .primary-action,
+      .asset-bulk-actions .secondary-action {
+        width: 100%;
+      }
+
+      .asset-selected-summary {
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+        border-radius: var(--radius-md);
+        background: var(--primary-soft);
+      }
+
+      .asset-selected-summary span {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .asset-selected-summary strong {
+        color: var(--text);
+        font-size: 20px;
+        line-height: 1.1;
+      }
+
+      .asset-vision-result {
+        max-height: 188px;
+        overflow: auto;
+        margin: 0;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-muted);
+        color: var(--text-soft);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: pre-wrap;
       }
 
       .feature-workbench {
@@ -2057,28 +2170,37 @@
       }
 
       .api-guide-compact {
-        display: grid;
+        min-height: 34px;
+        display: flex;
+        align-items: center;
         gap: 8px;
-        padding: 12px;
+        padding: 7px 10px;
         border: 1px solid var(--border);
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-sm);
         background: color-mix(in srgb, var(--surface-muted) 78%, transparent);
       }
 
       .api-guide-compact h3 {
-        font-size: 14px;
+        flex: 0 0 auto;
+        font-size: 12px;
       }
 
       .api-guide-compact p {
+        min-width: 0;
+        overflow: hidden;
         color: var(--text-muted);
         font-size: 12px;
-        line-height: 1.55;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .api-next-step {
         display: grid;
-        gap: 10px;
-        padding: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        padding: 9px 10px;
         border: 1px solid color-mix(in srgb, var(--info) 28%, var(--border));
         border-radius: var(--radius-md);
         background:
@@ -2101,7 +2223,7 @@
       .api-next-step p {
         color: var(--text-muted);
         font-size: 12px;
-        line-height: 1.5;
+        line-height: 1.35;
       }
 
       .api-next-step .panel-actions {
@@ -2109,7 +2231,7 @@
       }
 
       .api-next-step .primary-action {
-        width: 100%;
+        width: 116px;
         min-height: 34px;
       }
 
@@ -2117,6 +2239,41 @@
         display: grid;
         grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
         gap: 14px;
+      }
+
+      .vision-api-panel {
+        grid-column: 1 / -1;
+      }
+
+      .vision-api-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.34fr) minmax(240px, 0.66fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .vision-api-grid .form-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .vision-api-help {
+        display: grid;
+        gap: 6px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-muted) 78%, transparent);
+      }
+
+      .vision-api-help strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .vision-api-help p {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
       }
 
       .status-line {
@@ -2525,65 +2682,127 @@
       }
 
       .page[data-panel="api"] {
-        gap: 12px;
+        gap: 8px;
       }
 
       .page[data-panel="api"] .page-hero {
         grid-template-columns: minmax(0, 1fr) minmax(360px, 0.68fr);
         min-height: 0;
-        padding: 14px;
+        padding: 8px 12px;
       }
 
       .page[data-panel="api"] .hero-copy {
-        gap: 9px;
+        gap: 6px;
+      }
+
+      .page[data-panel="api"] h1 {
+        font-size: 22px;
       }
 
       .page[data-panel="api"] .lead {
         max-width: 720px;
+        font-size: 13px;
+        line-height: 1.3;
       }
 
       .page[data-panel="api"] [data-api-provider-modal] {
-        gap: 8px;
-        padding: 11px 12px;
+        gap: 6px;
+        padding: 9px 10px;
       }
 
       .page[data-panel="api"] .api-provider-card {
-        min-height: 58px;
-        gap: 4px;
-        padding: 8px 10px;
+        min-height: 32px;
+        gap: 2px;
+        padding: 6px 9px;
       }
 
       .page[data-panel="api"] .api-provider-card span {
-        line-height: 1.32;
+        display: none;
       }
 
       .page[data-panel="api"] .api-config-layout {
         grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
-        gap: 12px;
+        gap: 8px;
       }
 
       .page[data-panel="api"] .panel {
         align-content: start;
-        gap: 10px;
-        padding: 13px 14px;
+        gap: 7px;
+        padding: 10px 12px;
       }
 
       .page[data-panel="api"] .form-grid {
-        gap: 8px 10px;
+        gap: 6px 9px;
       }
 
       .page[data-panel="api"] .text-input {
-        min-height: 42px;
+        min-height: 34px;
+      }
+
+      .page[data-panel="api"] .field {
+        gap: 3px;
+      }
+
+      .page[data-panel="api"] .status-line {
+        min-height: 32px;
+        padding: 6px 9px;
       }
 
       .page[data-panel="api"] .api-provider-list {
-        max-height: 144px;
-        gap: 7px;
-        padding: 0 2px 4px 0;
+        max-height: 58px;
+        gap: 6px;
+        padding: 0 2px 2px 0;
       }
 
       .page[data-panel="api"] .api-provider-row {
+        padding: 7px 9px;
+      }
+
+      .page[data-panel="api"] .api-provider-list:empty::before {
+        min-height: 48px;
         padding: 8px 10px;
+      }
+
+      .page[data-panel="api"] .api-active-summary {
+        padding: 6px 10px;
+      }
+
+      .page[data-panel="api"] .api-provider-actions {
+        gap: 6px;
+      }
+
+      .page[data-panel="api"] .vision-api-grid .form-grid {
+        gap: 7px 9px;
+      }
+
+      .page[data-panel="api"] .vision-api-panel {
+        margin-top: 0;
+      }
+
+      .page[data-panel="api"] .api-next-step {
+        padding: 7px 9px;
+      }
+
+      .page[data-panel="api"] .api-next-step h3 {
+        font-size: 13px;
+      }
+
+      .page[data-panel="api"] .api-next-step p {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .page[data-panel="api"] .vision-api-panel .panel-head .muted {
+        display: none;
+      }
+
+      .page[data-panel="api"] .vision-api-help {
+        align-self: stretch;
+      }
+
+      .page[data-panel="api"] .vision-api-help p {
+        line-height: 1.35;
       }
 
       .page[data-panel="bot"] .page-hero {
@@ -2947,6 +3166,9 @@
         .workspace,
         .page-hero,
         .chat-layout,
+        .api-config-layout,
+        .vision-api-grid,
+        .asset-workbench,
         .bot-intro-panel,
         .bot-workspace-layout,
         .bridge-operational-grid,
@@ -2984,6 +3206,9 @@
         .guide-track-grid,
         .bot-command-bar,
         .form-grid,
+        .vision-api-grid .form-grid,
+        .asset-upload-actions,
+        .asset-bulk-actions,
         .task-config-grid,
         .conversation-meta-grid,
         .bridge-login-box {
@@ -3315,6 +3540,38 @@
                     </div>
                   </div>
                 </div>
+                <div class="panel vision-api-panel">
+                  <div class="panel-head">
+                    <div>
+                      <h2>识图 API</h2>
+                      <p class="muted">用于素材上传后的自动识别、标签生成和图片测试。它和对话 API 分开配置，可以使用同一个服务，也可以单独换成视觉模型。</p>
+                    </div>
+                    <span class="badge" data-vision-secret-state>Vision Key 未检测</span>
+                  </div>
+                  <div class="vision-api-grid">
+                    <div class="asset-upload-controls">
+                      <div class="form-grid">
+                        <label class="checkbox-field"><input type="checkbox" data-vision-enabled-input checked />启用素材识图</label>
+                        <label class="field"><span>识图模型</span><input class="text-input" data-vision-model-input value="qwen3-vl-plus" autocomplete="off" /></label>
+                        <label class="field"><span>API URL</span><input class="text-input" data-vision-url-input value="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions" autocomplete="off" /></label>
+                        <label class="field"><span>API Key</span><input class="text-input" data-vision-key-input type="password" placeholder="保存后会显示已配置状态" autocomplete="off" /></label>
+                        <label class="field"><span>超时秒数</span><input class="text-input" data-vision-timeout-input type="number" min="5" max="180" step="1" value="45" /></label>
+                        <label class="field"><span>Max Tokens</span><input class="text-input" data-vision-max-tokens-input type="number" min="128" max="4096" step="64" value="420" /></label>
+                      </div>
+                      <div class="panel-actions">
+                        <button class="primary-action" type="button" data-vision-save>保存识图 API</button>
+                        <button class="secondary-action" type="button" data-vision-test>测试识图 API</button>
+                      </div>
+                      <div class="status-line warn" data-vision-status>等待加载识图 API 配置。保存后，素材库上传时可自动识别图片。</div>
+                    </div>
+                    <div class="vision-api-help">
+                      <strong>使用位置</strong>
+                      <p>素材库上传图片时会调用这里的识图 API，自动生成标签、情绪、描述和审核状态。对话模型 API 不会被这个配置覆盖。</p>
+                      <strong>建议配置</strong>
+                      <p>如果使用 DashScope，可以填 OpenAI-compatible chat completions 地址和视觉模型；如果使用其他兼容服务，确保支持 image_url 输入。</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -3639,7 +3896,7 @@
                 <div class="panel">
                   <div class="panel-head">
                     <div><h2>贴纸条目</h2><p class="muted">从后端读取 sticker 索引，按状态和关键词筛选。</p></div>
-                    <span class="badge">只读</span>
+                    <span class="badge"><span data-asset-selected-count>0</span> 已选</span>
                   </div>
                   <div class="status-line asset-status-line" data-asset-status>等待加载贴纸库。</div>
                   <div class="asset-list" data-asset-list></div>
@@ -3648,23 +3905,54 @@
                     <span>可以先刷新，或者切换状态和搜索条件。</span>
                   </div>
                 </div>
-                <div class="panel">
+                <div class="panel asset-upload-card">
                   <div class="panel-head">
-                    <div><h2>字段说明</h2><p class="muted">每条贴纸都保留审核与使用信息。</p></div>
+                    <div><h2>上传素材</h2><p class="muted">选择图片后上传到本机素材库，可同时触发识图分析。</p></div>
+                  </div>
+                  <input type="file" accept="image/*" multiple hidden data-asset-file-input />
+                  <button class="asset-dropzone" type="button" data-asset-upload-dropzone>
+                    <span>
+                      <strong>选择或拖入图片</strong>
+                      <span data-asset-file-count>还没有选择文件</span>
+                    </span>
+                  </button>
+                  <div class="asset-upload-controls">
+                    <label class="field">
+                      <span>通道</span>
+                      <select class="text-input" data-asset-channel-input>
+                        <option value="weixin">微信</option>
+                        <option value="all">全部通道</option>
+                        <option value="web">网页 / Chat</option>
+                      </select>
+                    </label>
+                    <label class="checkbox-field"><input type="checkbox" data-asset-analyze-toggle checked />上传后自动识图</label>
+                    <div class="asset-upload-actions">
+                      <button class="secondary-action" type="button" data-asset-pick-files>选择文件</button>
+                      <button class="primary-action" type="button" data-asset-upload>上传素材</button>
+                      <button class="secondary-action" type="button" data-asset-vision-test>测试识图</button>
+                      <button class="secondary-action" type="button" data-advanced-route="/app/assets">高级素材页</button>
+                    </div>
+                  </div>
+                  <pre class="asset-vision-result" data-asset-vision-result>识图测试结果会显示在这里。先选中一个已有素材，或选择一张本地图片。</pre>
+                </div>
+                <div class="panel asset-bulk-card">
+                  <div class="panel-head">
+                    <div><h2>批量管理</h2><p class="muted">勾选左侧素材后，可以审核通过、重新识别或删除。</p></div>
+                  </div>
+                  <div class="asset-selected-summary">
+                    <span>当前选择</span>
+                    <strong><span data-asset-selected-count>0</span> 个素材</strong>
+                  </div>
+                  <div class="asset-bulk-actions">
+                    <button class="primary-action" type="button" data-asset-approve-selected>审核通过</button>
+                    <button class="secondary-action" type="button" data-asset-reanalyze-selected>重新识别</button>
+                    <button class="secondary-action danger" type="button" data-asset-delete-selected>删除选中</button>
+                    <button class="secondary-action" type="button" data-asset-load>刷新列表</button>
                   </div>
                   <div class="step-list">
-                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>名称 / ID</strong><span>用于检索与引用。</span></div><span class="status-chip">显示</span></div>
-                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>状态 / 情绪</strong><span>展示审核状态、情绪与标签。</span></div><span class="status-chip">显示</span></div>
-                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>通道 / 计数</strong><span>展示可用通道、次数和错误摘要。</span></div><span class="status-chip">显示</span></div>
-                  </div>
-                </div>
-                <div class="panel">
-                  <div class="panel-head">
-                    <div><h2>素材操作</h2><p class="muted">上传、删除和批量编辑会在独立操作区完成。</p></div>
-                  </div>
-                  <div class="empty-state-panel">
-                    <strong>当前为浏览模式</strong>
-                    <span>先确认素材索引、审核状态和通道配置，再进行批量管理。</span>
+                    <div class="step-row"><span class="step-num">1</span><div class="step-main"><strong>上传</strong><span>图片会保存到运行目录的素材库。</span></div><span class="status-chip">本地</span></div>
+                    <div class="step-row"><span class="step-num">2</span><div class="step-main"><strong>识图</strong><span>调用 API 页的识图 API 自动生成标签。</span></div><span class="status-chip">可测</span></div>
+                    <div class="step-row"><span class="step-num">3</span><div class="step-main"><strong>审核</strong><span>通过后 Bot 页面可选为微信表情素材。</span></div><span class="status-chip">联动</span></div>
                   </div>
                 </div>
               </div>
@@ -4069,6 +4357,14 @@
       const apiProviderActiveName = document.querySelector("[data-api-provider-active-name]");
       const apiNextStep = document.querySelector("[data-api-next-step]");
       const apiNextStatus = document.querySelector("[data-api-next-status]");
+      const visionEnabledInput = document.querySelector("[data-vision-enabled-input]");
+      const visionUrlInput = document.querySelector("[data-vision-url-input]");
+      const visionModelInput = document.querySelector("[data-vision-model-input]");
+      const visionKeyInput = document.querySelector("[data-vision-key-input]");
+      const visionTimeoutInput = document.querySelector("[data-vision-timeout-input]");
+      const visionMaxTokensInput = document.querySelector("[data-vision-max-tokens-input]");
+      const visionSecretState = document.querySelector("[data-vision-secret-state]");
+      const visionStatus = document.querySelector("[data-vision-status]");
       const botProfileList = document.querySelector("[data-bot-profile-list]");
       const botIdInput = document.querySelector("[data-bot-id-input]");
       const botNameInput = document.querySelector("[data-bot-name-input]");
@@ -4169,6 +4465,12 @@
       const assetStatus = document.querySelector("[data-asset-status]");
       const assetList = document.querySelector("[data-asset-list]");
       const assetEmpty = document.querySelector("[data-asset-empty]");
+      const assetFileInput = document.querySelector("[data-asset-file-input]");
+      const assetUploadDropzone = document.querySelector("[data-asset-upload-dropzone]");
+      const assetFileCount = document.querySelector("[data-asset-file-count]");
+      const assetChannelInput = document.querySelector("[data-asset-channel-input]");
+      const assetAnalyzeToggle = document.querySelector("[data-asset-analyze-toggle]");
+      const assetVisionResult = document.querySelector("[data-asset-vision-result]");
       const taskReminderCount = document.querySelector("[data-task-reminder-count]");
       const taskGreetingState = document.querySelector("[data-task-greeting-state]");
       const taskEventCount = document.querySelector("[data-task-event-count]");
@@ -4245,6 +4547,8 @@
       let assetItems = [];
       let assetSearchQuery = "";
       let assetStatusFilter = "";
+      let selectedAssetIds = new Set();
+      let pendingAssetFiles = [];
       let selectedBotAssetId = "";
       let taskReminders = [];
       let proactiveConfig = null;
@@ -4481,6 +4785,14 @@
         }
         apiStatus.textContent = message;
         apiStatus.className = `status-line ${tone}`;
+      }
+
+      function setVisionStatus(message, tone = "warn") {
+        if (!visionStatus) {
+          return;
+        }
+        visionStatus.textContent = message;
+        visionStatus.className = `status-line ${tone}`;
       }
 
       function setBotStatus(message, tone = "warn") {
@@ -4828,6 +5140,158 @@
         return normalized.some((channel) => ["all", "wechat", "weixin", "weixin_oc", "openclaw"].includes(channel));
       }
 
+      function updateAssetSelectionSummary() {
+        const count = selectedAssetIds.size;
+        document.querySelectorAll("[data-asset-selected-count]").forEach((target) => {
+          target.textContent = String(count);
+        });
+      }
+
+      function selectedAssetItems() {
+        return assetItems.filter((item) => selectedAssetIds.has(String(item?.id || "")));
+      }
+
+      function syncSelectedAssetIds() {
+        const existingIds = new Set(assetItems.map((item) => String(item?.id || "")).filter(Boolean));
+        selectedAssetIds = new Set([...selectedAssetIds].filter((id) => existingIds.has(id)));
+        updateAssetSelectionSummary();
+      }
+
+      function setPendingAssetFiles(files) {
+        pendingAssetFiles = Array.from(files || []).filter((file) => file && String(file.type || "").startsWith("image/"));
+        if (assetFileCount) {
+          assetFileCount.textContent = pendingAssetFiles.length
+            ? `${pendingAssetFiles.length} 个文件：${pendingAssetFiles.slice(0, 3).map((file) => file.name).join("、")}${pendingAssetFiles.length > 3 ? "..." : ""}`
+            : "还没有选择文件";
+        }
+        if (pendingAssetFiles.length) {
+          setAssetStatus(`已选择 ${pendingAssetFiles.length} 个图片文件，可以上传或先测试识图。`, "ok");
+        }
+      }
+
+      function readAssetFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.addEventListener("load", () => {
+            resolve({ name: file.name || "sticker", data_url: String(reader.result || "") });
+          });
+          reader.addEventListener("error", () => reject(reader.error || new Error("读取文件失败")));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function renderAssetVisionResult(result) {
+        if (!assetVisionResult) {
+          return;
+        }
+        assetVisionResult.textContent = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+      }
+
+      function assetBulkFilters() {
+        return {
+          status: assetStatusFilterInput?.value || "",
+          q: assetSearchInput?.value || "",
+        };
+      }
+
+      async function uploadAssetFiles() {
+        if (!pendingAssetFiles.length) {
+          setAssetStatus("请先选择要上传的图片。", "warn");
+          return null;
+        }
+        try {
+          setAssetStatus(`正在上传 ${pendingAssetFiles.length} 个素材...`, "run");
+          const files = await Promise.all(pendingAssetFiles.map((file) => readAssetFile(file)));
+          const result = await backendRequest({
+            method: "POST",
+            path: "/api/stickers/batch",
+            body: {
+              files,
+              channels: assetChannelInput?.value || "weixin",
+              analyze: assetAnalyzeToggle?.checked !== false,
+            },
+          });
+          assetItems = Array.isArray(result.stickers) ? result.stickers : assetItems;
+          pendingAssetFiles = [];
+          if (assetFileInput) {
+            assetFileInput.value = "";
+          }
+          setPendingAssetFiles([]);
+          renderAssets();
+          const failed = Array.isArray(result.results) ? result.results.filter((item) => !item.ok).length : 0;
+          setAssetStatus(failed ? `上传完成，${failed} 个文件失败。` : "素材已上传。", failed ? "warn" : "ok");
+          renderAssetVisionResult(result);
+          refreshGuideProgress();
+          return result;
+        } catch (error) {
+          setAssetStatus(`上传素材失败：${error.message}`, "error");
+          renderAssetVisionResult(`上传失败：${error.message}`);
+          return null;
+        }
+      }
+
+      async function testSelectedAssetVision() {
+        try {
+          setAssetStatus("正在测试素材识图...", "run");
+          let body = {};
+          const selected = selectedAssetItems()[0];
+          if (selected?.id) {
+            body = { sticker_id: selected.id };
+          } else if (pendingAssetFiles[0]) {
+            const file = await readAssetFile(pendingAssetFiles[0]);
+            body = { data_url: file.data_url, name: file.name };
+          } else {
+            setAssetStatus("请先勾选一个素材，或选择一张本地图片再测试识图。", "warn");
+            return null;
+          }
+          const result = await backendRequest({ method: "POST", path: "/api/stickers/vision-test", body });
+          renderAssetVisionResult(result);
+          setAssetStatus(result.ok ? "识图测试通过，结果已显示在右侧。" : `识图测试未通过：${result.error || "未返回结果"}`, result.ok ? "ok" : "error");
+          return result;
+        } catch (error) {
+          setAssetStatus(`识图测试失败：${error.message}`, "error");
+          renderAssetVisionResult(`识图测试失败：${error.message}`);
+          return null;
+        }
+      }
+
+      async function runSelectedAssetBulkAction(action) {
+        const ids = [...selectedAssetIds];
+        if (!ids.length) {
+          setAssetStatus("请先勾选要处理的素材。", "warn");
+          return null;
+        }
+        if (action === "delete") {
+          const confirmed = window.confirm(`删除选中的 ${ids.length} 个素材？这会移除本机素材索引。`);
+          if (!confirmed) {
+            return null;
+          }
+        }
+        try {
+          const actionLabel = action === "approve" ? "审核" : action === "reanalyze" ? "重新识别" : "删除";
+          setAssetStatus(`正在${actionLabel} ${ids.length} 个素材...`, "run");
+          const result = await backendRequest({
+            method: "POST",
+            path: "/api/stickers/bulk",
+            body: { action, ids, filters: assetBulkFilters() },
+          });
+          assetItems = Array.isArray(result.stickers) ? result.stickers : assetItems;
+          if (action === "delete") {
+            selectedAssetIds.clear();
+          }
+          renderAssets();
+          const failed = Number(result.failed || 0);
+          setAssetStatus(failed ? `${actionLabel}完成，${failed} 个失败。` : `${actionLabel}完成。`, failed ? "warn" : "ok");
+          renderAssetVisionResult(result);
+          refreshGuideProgress();
+          return result;
+        } catch (error) {
+          setAssetStatus(`批量操作失败：${error.message}`, "error");
+          renderAssetVisionResult(`批量操作失败：${error.message}`);
+          return null;
+        }
+      }
+
       function approvedBotAssetItems() {
         return assetItems
           .filter((item) => normalizeAssetStatus(item) === "approved" && item?.enabled !== false && assetSupportsWeixin(item))
@@ -4889,6 +5353,7 @@
       }
 
       function renderAssets() {
+        syncSelectedAssetIds();
         const total = assetItems.length;
         const approved = assetItems.filter((item) => normalizeAssetStatus(item) === "approved").length;
         const pending = assetItems.filter((item) => normalizeAssetStatus(item) === "pending").length;
@@ -4924,10 +5389,12 @@
         const fragment = document.createDocumentFragment();
         filtered.forEach((sticker) => {
           const row = document.createElement("article");
-          row.className = "asset-row";
+          const stickerId = String(sticker?.id || "");
+          row.className = `asset-row${selectedAssetIds.has(stickerId) ? " selected" : ""}`;
           const errorSummary = String(sticker?.error || "").trim();
           row.innerHTML = `
             <div class="asset-row-head">
+              <input class="asset-row-select" type="checkbox" data-asset-row-checkbox aria-label="选择素材" />
               <div>
                 <strong></strong>
                 <small></small>
@@ -4941,6 +5408,9 @@
               <div class="asset-meta"><span>错误</span><strong></strong></div>
             </div>
           `;
+          const checkbox = row.querySelector("[data-asset-row-checkbox]");
+          checkbox.dataset.assetId = stickerId;
+          checkbox.checked = selectedAssetIds.has(stickerId);
           row.querySelector("strong").textContent = sticker?.name || sticker?.id || "未命名贴纸";
           row.querySelector("small").textContent = `ID: ${sticker?.id || "-"} · ${sticker?.review_status || "pending"}`;
           row.querySelector(".badge").textContent = assetStatusLabel(sticker);
@@ -6212,10 +6682,56 @@
         };
       }
 
+      function currentVisionPayload() {
+        const payload = {
+          sticker_vision_enabled: Boolean(visionEnabledInput?.checked),
+          sticker_vision_url: visionUrlInput?.value.trim() || "",
+          sticker_vision_model: visionModelInput?.value.trim() || "",
+          sticker_vision_timeout: Number(visionTimeoutInput?.value || 45),
+          sticker_vision_max_tokens: Number(visionMaxTokensInput?.value || 420),
+        };
+        const key = visionKeyInput?.value.trim() || "";
+        if (key) {
+          payload.sticker_vision_api_key = key;
+        }
+        return payload;
+      }
+
+      function renderVisionConfig(config) {
+        if (!config) {
+          return;
+        }
+        if (visionEnabledInput) {
+          visionEnabledInput.checked = config.sticker_vision_enabled !== false;
+        }
+        if (visionUrlInput) {
+          visionUrlInput.value = config.sticker_vision_url || "";
+        }
+        if (visionModelInput) {
+          visionModelInput.value = config.sticker_vision_model || "";
+        }
+        if (visionTimeoutInput && config.sticker_vision_timeout !== undefined) {
+          visionTimeoutInput.value = String(config.sticker_vision_timeout);
+        }
+        if (visionMaxTokensInput && config.sticker_vision_max_tokens !== undefined) {
+          visionMaxTokensInput.value = String(config.sticker_vision_max_tokens);
+        }
+        const keySet = Boolean(config.sticker_vision_api_key_set);
+        const masked = config.sticker_vision_api_key_masked || "";
+        if (visionKeyInput) {
+          visionKeyInput.value = "";
+          visionKeyInput.placeholder = masked || "未保存 Vision API Key";
+        }
+        if (visionSecretState) {
+          visionSecretState.textContent = keySet ? `Vision Key 已配置 ${masked}` : "Vision Key 未配置";
+        }
+      }
+
       function renderApiConfig(config) {
         if (!config) {
           return;
         }
+        renderVisionConfig(config);
         if (apiNameInput) {
           apiNameInput.value = config.api_name || apiNameInput.value || "当前 API";
         }
@@ -6359,13 +6875,16 @@
         try {
           await loadApiProviders();
           const config = await backendRequest({ path: "/api/config" });
+          renderVisionConfig(config);
           if (!apiProviders.length) {
             renderApiConfig(config);
           }
           setApiStatus("已加载本机后端配置。可以直接测试当前表单，或填入新 Key 后保存。", "ok");
+          setVisionStatus("已加载识图 API 配置。素材上传会按这个配置自动识别。", "ok");
           return config;
         } catch (error) {
           setApiStatus(`无法加载后端配置：${error.message}。确认桌面后端已启动后再点重新加载。`, "error");
+          setVisionStatus(`无法加载识图配置：${error.message}`, "error");
           return null;
         }
       }
@@ -6389,6 +6908,39 @@
           }
         } catch (error) {
           setApiStatus(`测试失败：${error.message}`, "error");
+        }
+      }
+
+      async function saveVisionConfig() {
+        try {
+          setVisionStatus("正在保存识图 API 配置...", "run");
+          const result = await backendRequest({ method: "PATCH", path: "/api/config", body: currentVisionPayload() });
+          renderVisionConfig(result);
+          setVisionStatus("识图 API 配置已保存。素材库上传和测试会使用这组配置。", "ok");
+          return result;
+        } catch (error) {
+          setVisionStatus(`保存识图 API 失败：${error.message}`, "error");
+          return null;
+        }
+      }
+
+      async function testVisionConfig() {
+        try {
+          const saved = await saveVisionConfig();
+          if (!saved) {
+            return null;
+          }
+          setVisionStatus("正在测试识图 API...", "run");
+          const result = await backendRequest({ method: "POST", path: "/api/diagnostics/vision-api-test" });
+          if (result.ok) {
+            setVisionStatus(`识图 API 测试通过：${result.model || visionModelInput?.value || "-"}，延迟 ${result.latency_ms ?? "-"} ms。`, "ok");
+          } else {
+            setVisionStatus(`识图 API 测试未通过：${result.error || "接口没有返回有效识图结果"}`, "error");
+          }
+          return result;
+        } catch (error) {
+          setVisionStatus(`识图 API 测试失败：${error.message}`, "error");
+          return null;
         }
       }
 
@@ -7743,6 +8295,16 @@
           return;
         }
 
+        if (event.target.closest("[data-vision-save]")) {
+          saveVisionConfig();
+          return;
+        }
+
+        if (event.target.closest("[data-vision-test]")) {
+          testVisionConfig();
+          return;
+        }
+
         if (event.target.closest("[data-api-provider-create]")) {
           createApiProvider();
           return;
@@ -7833,6 +8395,36 @@
 
         if (event.target.closest("[data-asset-load]")) {
           loadAssets();
+          return;
+        }
+
+        if (event.target.closest("[data-asset-pick-files]") || event.target.closest("[data-asset-upload-dropzone]")) {
+          assetFileInput?.click();
+          return;
+        }
+
+        if (event.target.closest("[data-asset-upload]")) {
+          uploadAssetFiles();
+          return;
+        }
+
+        if (event.target.closest("[data-asset-vision-test]")) {
+          testSelectedAssetVision();
+          return;
+        }
+
+        if (event.target.closest("[data-asset-approve-selected]")) {
+          runSelectedAssetBulkAction("approve");
+          return;
+        }
+
+        if (event.target.closest("[data-asset-reanalyze-selected]")) {
+          runSelectedAssetBulkAction("reanalyze");
+          return;
+        }
+
+        if (event.target.closest("[data-asset-delete-selected]")) {
+          runSelectedAssetBulkAction("delete");
           return;
         }
 
@@ -8094,6 +8686,46 @@
         assetStatusFilterInput.addEventListener("change", () => {
           assetStatusFilter = assetStatusFilterInput.value || "";
           renderAssets();
+        });
+      }
+
+      if (assetFileInput) {
+        assetFileInput.addEventListener("change", () => {
+          setPendingAssetFiles(assetFileInput.files);
+        });
+      }
+
+      if (assetList) {
+        assetList.addEventListener("change", (event) => {
+          const checkbox = event.target.closest("[data-asset-row-checkbox]");
+          if (!checkbox) {
+            return;
+          }
+          const id = checkbox.dataset.assetId || "";
+          if (!id) {
+            return;
+          }
+          if (checkbox.checked) {
+            selectedAssetIds.add(id);
+          } else {
+            selectedAssetIds.delete(id);
+          }
+          renderAssets();
+        });
+      }
+
+      if (assetUploadDropzone) {
+        assetUploadDropzone.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          assetUploadDropzone.classList.add("drag-over");
+        });
+        assetUploadDropzone.addEventListener("dragleave", () => {
+          assetUploadDropzone.classList.remove("drag-over");
+        });
+        assetUploadDropzone.addEventListener("drop", (event) => {
+          event.preventDefault();
+          assetUploadDropzone.classList.remove("drag-over");
+          setPendingAssetFiles(event.dataTransfer?.files || []);
         });
       }
 
